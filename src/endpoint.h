@@ -13,10 +13,12 @@ int endpoint_main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	try {
-		T client(argv[2], argv[3], argv[4], argv[5], argv[6]);
+	bool from = (argv[1] == string("from"));
 
-		if (argv[1] == string("from")) {
+	try {
+		T client(argv[2], argv[3], argv[4], argv[5], argv[6], from);
+
+		if (from) {
 			sync_from(client);
 		} else {
 			sync_to(client);
