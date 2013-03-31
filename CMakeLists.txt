@@ -27,6 +27,7 @@ set(ks_endpoint_LIBS ${PROTOBUF_LIBRARIES})
 
 # we have one endpoint program for mysql
 find_package(MySQL REQUIRED)
+include_directories(${MYSQL_INCLUDE_DIR})
 set(ks_mysql_SRCS src/ks_mysql.cpp)
 add_executable(ks_mysql ${ks_mysql_SRCS} ${ks_endpoint_SRCS})
 target_link_libraries(ks_mysql ${MYSQL_LIBRARIES} ${ks_endpoint_LIBS})
