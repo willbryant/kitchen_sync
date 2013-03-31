@@ -14,7 +14,7 @@ public:
 
 	inline PGresult *res() { return _res; }
 	inline ExecStatusType status() { return PQresultStatus(_res); }
-	inline int n_tuples() { return _n_tuples; }
+	inline int n_tuples()  { return _n_tuples; }
 	inline int n_columns() { return _n_columns; }
 
 private:
@@ -42,7 +42,7 @@ public:
 
 	inline    int n_columns() { return _res.n_columns(); }
 	inline   bool   null_at(int column_number) { return PQgetisnull(_res.res(), _row_number, column_number); }
-	inline  void *result_at(int column_number) { return PQgetvalue(_res.res(), _row_number, column_number); }
+	inline  void *result_at(int column_number) { return PQgetvalue (_res.res(), _row_number, column_number); }
 	inline    int length_of(int column_number) { return PQgetlength(_res.res(), _row_number, column_number); }
 	inline string string_at(int column_number) { return string((char *)result_at(column_number), length_of(column_number)); }
 
@@ -63,7 +63,7 @@ public:
 		bool readonly);
 	virtual ~PostgreSQLClient();
 
-	void print_tables();
+	kitchen_sync::Database database_schema();
 
 protected:
 	void execute(const char *sql);
@@ -110,8 +110,6 @@ PostgreSQLClient::PostgreSQLClient(
 	// postgresql has transactional DDL, so by starting our transaction before we've even looked at the tables,
 	// we'll get a 100% consistent view.
 	start_transaction(readonly);
-
-	print_tables();
 }
 
 PostgreSQLClient::~PostgreSQLClient() {
@@ -133,9 +131,22 @@ void PostgreSQLClient::start_transaction(bool readonly) {
 	execute(readonly ? "START TRANSACTION READ ONLY" : "START TRANSACTION");
 }
 
-void PostgreSQLClient::print_tables() {
-	RowPrinter<PostgreSQLRow> row_printer;
-	query< RowPrinter<PostgreSQLRow> >("SELECT tablename FROM pg_tables WHERE schemaname = ANY (current_schemas(false))", row_printer);
+struct PostgreSQLTableLister {
+	PostgreSQLTableLister(kitchen_sync::Database &database): _database(database) {}
+
+	void operator()(PostgreSQLRow &row) {
+		kitchen_sync::Table *table = _database.add_table();
+		table->set_name(row.string_at(0));
+	}
+
+	kitchen_sync::Database &_database;
+};
+
+kitchen_sync::Database PostgreSQLClient::database_schema() {
+	kitchen_sync::Database database;
+	PostgreSQLTableLister table_lister(database);
+	query<PostgreSQLTableLister>("SELECT tablename FROM pg_tables WHERE schemaname = ANY (current_schemas(false))", table_lister);
+	return database;
 }
 
 int main(int argc, char *argv[]) {

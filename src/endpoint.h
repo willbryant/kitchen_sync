@@ -4,8 +4,6 @@
 #include "sync_from.h"
 #include "sync_to.h"
 
-using namespace std;
-
 template<class T>
 int endpoint_main(int argc, char *argv[]) {
 	GOOGLE_PROTOBUF_VERIFY_VERSION;
