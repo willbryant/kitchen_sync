@@ -89,6 +89,9 @@ protected:
 
 private:
 	MYSQL mysql;
+
+	// forbid copying
+	MySQLClient(const MySQLClient& copy_from) { throw logic_error("copying forbidden"); }
 };
 
 MySQLClient::MySQLClient(

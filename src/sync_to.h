@@ -3,6 +3,6 @@
 #include "kitchen_sync.pb.h"
 
 template<class T>
-void sync_to(T client) {
+void sync_to(T &client) {
 
 }

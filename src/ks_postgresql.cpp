@@ -85,6 +85,9 @@ protected:
 
 private:
 	PGconn *conn;
+
+	// forbid copying
+	PostgreSQLClient(const PostgreSQLClient& copy_from) { throw logic_error("copying forbidden"); }
 };
 
 PostgreSQLClient::PostgreSQLClient(
