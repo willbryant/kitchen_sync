@@ -32,6 +32,8 @@ add_executable(ks_mysql ${ks_mysql_SRCS} ${ks_endpoint_SRCS})
 target_link_libraries(ks_mysql ${MYSQL_LIBRARIES} ${ks_endpoint_LIBS})
 
 # and one endpoint program for postgresql
+set(PostgreSQL_ADDITIONAL_SEARCH_PATHS /usr/include/postgresql)
+set(PostgreSQL_ADDITIONAL_VERSIONS "9.3" "9.2")
 find_package(PostgreSQL REQUIRED)
 set(ks_postgresql_SRCS src/ks_postgresql.cpp)
 add_executable(ks_postgresql ${ks_postgresql_SRCS} ${ks_endpoint_SRCS})
