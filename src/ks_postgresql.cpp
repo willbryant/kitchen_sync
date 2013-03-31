@@ -95,10 +95,10 @@ PostgreSQLClient::PostgreSQLClient(
 	const char *database_password,
 	bool readonly) {
 
-	conn = PQconnectdbParams(
-		(const char *[]) { "host",        "port",        "dbname",      "user",            "password",        NULL },
-		(const char *[]) { database_host, database_port, database_name, database_username, database_password, NULL },
-		1 /* allow expansion */);
+	const char *keywords[] = { "host",        "port",        "dbname",      "user",            "password",        NULL };
+	const char *values[]   = { database_host, database_port, database_name, database_username, database_password, NULL };
+
+	conn = PQconnectdbParams(keywords, values, 1 /* allow expansion */);
 
 	if (PQstatus(conn) != CONNECTION_OK) {
 		throw runtime_error(PQerrorMessage(conn));
