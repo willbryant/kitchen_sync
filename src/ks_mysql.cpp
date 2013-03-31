@@ -138,23 +138,23 @@ void MySQLClient::start_transaction(bool readonly) {
 	execute(readonly && mysql_get_server_version(&mysql) >= MYSQL_5_6_5 ? "START TRANSACTION READ ONLY" : "START TRANSACTION");
 }
 
-/* dumps out the results of a query for debugging - but only supports string values currently */
 struct MySQLTableLister {
-	MySQLTableLister(kitchen_sync::Database &database): _database(database) {}
+	MySQLTableLister(MySQLClient &client): _client(client) {}
+	inline kitchen_sync::Database database() { return _database; }
 
 	void operator()(MySQLRow &row) {
 		kitchen_sync::Table *table = _database.add_table();
 		table->set_name(row.string_at(0));
 	}
 
-	kitchen_sync::Database &_database;
+	MySQLClient &_client;
+	kitchen_sync::Database _database;
 };
 
 kitchen_sync::Database MySQLClient::database_schema() {
-	kitchen_sync::Database database;
-	MySQLTableLister table_lister(database);
+	MySQLTableLister table_lister(*this);
 	query<MySQLTableLister>("SHOW TABLES", table_lister);
-	return database;
+	return table_lister.database();
 }
 
 int main(int argc, char *argv[]) {

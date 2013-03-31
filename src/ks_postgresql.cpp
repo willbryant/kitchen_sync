@@ -132,21 +132,22 @@ void PostgreSQLClient::start_transaction(bool readonly) {
 }
 
 struct PostgreSQLTableLister {
-	PostgreSQLTableLister(kitchen_sync::Database &database): _database(database) {}
+	PostgreSQLTableLister(PostgreSQLClient &client): _client(client) {}
+	inline kitchen_sync::Database database() { return _database; }
 
 	void operator()(PostgreSQLRow &row) {
 		kitchen_sync::Table *table = _database.add_table();
 		table->set_name(row.string_at(0));
 	}
 
-	kitchen_sync::Database &_database;
+	PostgreSQLClient &_client;
+	kitchen_sync::Database _database;
 };
 
 kitchen_sync::Database PostgreSQLClient::database_schema() {
-	kitchen_sync::Database database;
-	PostgreSQLTableLister table_lister(database);
+	PostgreSQLTableLister table_lister(*this);
 	query<PostgreSQLTableLister>("SELECT tablename FROM pg_tables WHERE schemaname = ANY (current_schemas(false))", table_lister);
-	return database;
+	return table_lister.database();
 }
 
 int main(int argc, char *argv[]) {
