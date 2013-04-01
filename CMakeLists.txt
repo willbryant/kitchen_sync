@@ -11,7 +11,7 @@ find_package(Boost COMPONENTS program_options regex REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 
 # the main program knows nothing but how to hook up the endpoints
-set(ks_SRCS src/ks.cpp src/process.cpp src/unidirectional_pipe.cpp)
+set(ks_SRCS src/ks.cpp src/db_url.cpp src/process.cpp src/unidirectional_pipe.cpp)
 add_executable(ks ${ks_SRCS})
 target_link_libraries(ks ${Boost_LIBRARIES})
 
