@@ -1,8 +1,9 @@
 #include "unidirectional_pipe.h"
 
-#include <string>
 #include <stdexcept>
 #include <cerrno>
+#include <cstring>
+#include <unistd.h>
 
 using namespace std;
 

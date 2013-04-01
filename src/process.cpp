@@ -2,6 +2,9 @@
 
 #include <stdexcept>
 #include <cerrno>
+#include <cstring>
+#include <unistd.h>
+#include <sys/wait.h>
 
 #include "unidirectional_pipe.h"
 
