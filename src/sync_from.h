@@ -15,4 +15,6 @@ void sync_from(T &client) {
 			cout << "\t" << column.name() << endl;
 		}
 	}
+
+	close(STDOUT_FILENO);
 }

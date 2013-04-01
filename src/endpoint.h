@@ -29,8 +29,6 @@ int endpoint_main(int argc, char *argv[]) {
 		} else {
 			sync_to(client);
 		}
-
-		cerr << "Done Kitchen Syncing." << endl;
 	} catch (exception& e) {
 		cerr << e.what() << endl;
 		return 2;

@@ -1,10 +1,13 @@
 #include <iostream>
 
 #include "db_url.h"
+#include "process.h"
 
 using namespace std;
 using namespace boost;
 using namespace boost::program_options;
+
+const string this_program_name("ks");
 
 int help(options_description desc) {
     cout << desc << "\n";
@@ -34,24 +37,28 @@ int main(int argc, char *argv[]) {
 			return help(desc);
 		}
 
+		cout << "Kitchen Sync" << endl;
+
 		DbUrl from = vm["from"].as<DbUrl>();
-		cout << from.protocol << endl;
-		cout << from.username << endl;
-		cout << from.password << endl;
-		cout << from.host << endl;
-		cout << from.port << endl;
-		cout << from.database << endl;
+		DbUrl to   = vm["to"  ].as<DbUrl>();
 
-		DbUrl to = vm["to"].as<DbUrl>();
-		cout << to.protocol << endl;
-		cout << to.username << endl;
-		cout << to.password << endl;
-		cout << to.host << endl;
-		cout << to.port << endl;
-		cout << to.database << endl;
+		string self_binary(argv[0]);
+		string from_binary(Process::related_binary_path(self_binary, this_program_name, "ks_" + from.protocol));
+		string   to_binary(Process::related_binary_path(self_binary, this_program_name, "ks_" + from.protocol));
 
-		cout << "Kitchen Sync\n";
-		return 0;
+		const char *from_args[] = { from_binary.c_str(), "from", from.host.c_str(), from.port.c_str(), from.database.c_str(), from.username.c_str(), from.password.c_str(), NULL };
+		const char *  to_args[] = {   to_binary.c_str(),   "to",   to.host.c_str(),   to.port.c_str(),   to.database.c_str(),   to.username.c_str(),   to.password.c_str(), NULL };
+
+		pid_t from_pid, to_pid;
+		Process::fork_and_exec_pair(from_binary, to_binary, from_args, to_args, &from_pid, &to_pid);
+
+		if (Process::wait_for_and_check(from_pid) && Process::wait_for_and_check(to_pid)) {
+			cerr << "Finished Kitchen Syncing." << endl;
+			return 0;
+		} else {
+			cerr << "Kitchen Syncing failed." << endl;
+			return 1;
+		}
 	}
 	catch(std::exception &e) {
 		cerr << e.what() << endl;
