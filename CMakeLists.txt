@@ -7,13 +7,13 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
 
 # boost for program_options and threads
 set(Boost_USE_MULTITHREADED ON)
-find_package(Boost REQUIRED)
+find_package(Boost COMPONENTS program_options regex REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 
 # the main program knows nothing but how to hook up the endpoints
 set(ks_SRCS src/ks.cpp)
 add_executable(ks ${ks_SRCS})
-target_link_libraries(ks)
+target_link_libraries(ks ${Boost_LIBRARIES})
 
 # the endpoints communicate using protocol buffers over their stdin & out
 find_package(Protobuf REQUIRED)

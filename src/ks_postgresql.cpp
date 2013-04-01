@@ -61,7 +61,7 @@ public:
 		const char *database_username,
 		const char *database_password,
 		bool readonly);
-	virtual ~PostgreSQLClient();
+	~PostgreSQLClient();
 
 	kitchen_sync::Database database_schema();
 
