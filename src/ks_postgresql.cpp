@@ -66,6 +66,8 @@ public:
 	kitchen_sync::Database database_schema();
 
 protected:
+	friend class PostgreSQLTableLister;
+
 	void execute(const char *sql);
 	void start_transaction(bool readonly);
 
@@ -131,13 +133,33 @@ void PostgreSQLClient::start_transaction(bool readonly) {
 	execute(readonly ? "START TRANSACTION READ ONLY" : "START TRANSACTION");
 }
 
+struct PostgreSQLColumnLister {
+	inline PostgreSQLColumnLister(kitchen_sync::Table *table, const string &table_name): _table(table) { _table->set_name(table_name); }
+
+	inline void operator()(PostgreSQLRow &row) {
+		kitchen_sync::Column *column = _table->add_column();
+		column->set_name(row.string_at(0));
+	}
+
+private:
+	kitchen_sync::Table *_table;
+};
+
 struct PostgreSQLTableLister {
 	PostgreSQLTableLister(PostgreSQLClient &client): _client(client) {}
 	inline kitchen_sync::Database database() { return _database; }
 
 	void operator()(PostgreSQLRow &row) {
-		kitchen_sync::Table *table = _database.add_table();
-		table->set_name(row.string_at(0));
+		PostgreSQLColumnLister column_lister(_database.add_table(), row.string_at(0));
+		_client.query<PostgreSQLColumnLister>(
+			"SELECT attname "
+			  "FROM pg_attribute, pg_class "
+			 "WHERE attrelid = pg_class.oid AND "
+			       "attnum > 0 AND "
+			       "NOT attisdropped AND "
+			       "relname = '" + row.string_at(0) + "' "
+	      "ORDER BY attnum",
+	      column_lister);
 	}
 
 	PostgreSQLClient &_client;
@@ -146,7 +168,10 @@ struct PostgreSQLTableLister {
 
 kitchen_sync::Database PostgreSQLClient::database_schema() {
 	PostgreSQLTableLister table_lister(*this);
-	query<PostgreSQLTableLister>("SELECT tablename FROM pg_tables WHERE schemaname = ANY (current_schemas(false))", table_lister);
+	query<PostgreSQLTableLister>("SELECT tablename "
+		                           "FROM pg_tables "
+		                          "WHERE schemaname = ANY (current_schemas(false))",
+		                         table_lister);
 	return table_lister.database();
 }
 

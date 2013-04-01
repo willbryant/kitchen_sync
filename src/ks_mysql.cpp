@@ -9,7 +9,7 @@
 
 class MySQLRes {
 public:
-	MySQLRes(MYSQL &mysql);
+	MySQLRes(MYSQL &mysql, bool buffer);
 	~MySQLRes();
 
 	inline MYSQL_RES *res() { return _res; }
@@ -22,8 +22,8 @@ private:
 	int _n_columns;
 };
 
-MySQLRes::MySQLRes(MYSQL &mysql) {
-	_res = mysql_use_result(&mysql);
+MySQLRes::MySQLRes(MYSQL &mysql, bool buffer) {
+	_res = buffer ? mysql_store_result(&mysql) : mysql_use_result(&mysql);
 	_n_tuples = mysql_num_rows(_res);
 	_n_columns = mysql_num_fields(_res);
 }
@@ -67,16 +67,18 @@ public:
 	kitchen_sync::Database database_schema();
 
 protected:
+	friend class MySQLTableLister;
+
 	void execute(const char *sql);
 	void start_transaction(bool readonly);
 
 	template <class RowFunction>
-	void query(const string &sql, RowFunction &row_handler) {
+	void query(const string &sql, RowFunction &row_handler, bool buffer) {
 		if (mysql_real_query(&mysql, sql.c_str(), sql.length())) {
 			throw runtime_error(mysql_error(&mysql));
 		}
 
-	    MySQLRes res(mysql);
+	    MySQLRes res(mysql, buffer);
 
 	    while (true) {
 	    	MYSQL_ROW mysql_row = mysql_fetch_row(res.res());
@@ -138,22 +140,35 @@ void MySQLClient::start_transaction(bool readonly) {
 	execute(readonly && mysql_get_server_version(&mysql) >= MYSQL_5_6_5 ? "START TRANSACTION READ ONLY" : "START TRANSACTION");
 }
 
-struct MySQLTableLister {
-	MySQLTableLister(MySQLClient &client): _client(client) {}
-	inline kitchen_sync::Database database() { return _database; }
+struct MySQLColumnLister {
+	inline MySQLColumnLister(kitchen_sync::Table *table, const string &table_name): _table(table) { _table->set_name(table_name); }
 
-	void operator()(MySQLRow &row) {
-		kitchen_sync::Table *table = _database.add_table();
-		table->set_name(row.string_at(0));
+	inline void operator()(MySQLRow &row) {
+		kitchen_sync::Column *column = _table->add_column();
+		column->set_name(row.string_at(0));
 	}
 
+private:
+	kitchen_sync::Table *_table;
+};
+
+struct MySQLTableLister {
+	inline MySQLTableLister(MySQLClient &client): _client(client) {}
+	inline kitchen_sync::Database database() { return _database; }
+
+	inline void operator()(MySQLRow &row) {
+		MySQLColumnLister column_lister(_database.add_table(), row.string_at(0));
+		_client.query<MySQLColumnLister>("SHOW COLUMNS FROM " + row.string_at(0), column_lister, true /* buffer */);
+	}
+
+private:
 	MySQLClient &_client;
 	kitchen_sync::Database _database;
 };
 
 kitchen_sync::Database MySQLClient::database_schema() {
 	MySQLTableLister table_lister(*this);
-	query<MySQLTableLister>("SHOW TABLES", table_lister);
+	query<MySQLTableLister>("SHOW TABLES", table_lister, true /* buffer */);
 	return table_lister.database();
 }
 
