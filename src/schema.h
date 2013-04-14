@@ -9,6 +9,7 @@ struct Column {
 	string name;
 
 	inline Column(string name): name(name) { }
+	inline Column() { }
 };
 
 typedef vector<Column> Columns;
@@ -18,6 +19,7 @@ struct Table {
 	Columns columns;
 
 	inline Table(string name): name(name) { }
+	inline Table() { }
 };
 
 typedef vector<Table> Tables;

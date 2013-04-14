@@ -15,9 +15,13 @@ set(ks_SRCS src/ks.cpp src/db_url.cpp src/process.cpp src/unidirectional_pipe.cp
 add_executable(ks ${ks_SRCS})
 target_link_libraries(ks ${Boost_LIBRARIES})
 
+# the endpoints encode data using MessagePack
+find_package(MessagePack REQUIRED)
+include_directories(${MESSAGEPACK_INCLUDE_DIRS})
+
 # the endpoints do the actual work
 set(ks_endpoint_SRCS)
-set(ks_endpoint_LIBS)
+set(ks_endpoint_LIBS ${MessagePack_LIBRARIES})
 
 # we have one endpoint program for mysql
 find_package(MySQL REQUIRED)
