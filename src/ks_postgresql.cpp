@@ -63,7 +63,7 @@ public:
 		bool readonly);
 	~PostgreSQLClient();
 
-	kitchen_sync::Database database_schema();
+	Database database_schema();
 
 protected:
 	friend class PostgreSQLTableLister;
@@ -134,23 +134,24 @@ void PostgreSQLClient::start_transaction(bool readonly) {
 }
 
 struct PostgreSQLColumnLister {
-	inline PostgreSQLColumnLister(kitchen_sync::Table *table, const string &table_name): _table(table) { _table->set_name(table_name); }
+	inline PostgreSQLColumnLister(const string &table_name): _table(table_name) {}
+	inline Table table() { return _table; }
 
 	inline void operator()(PostgreSQLRow &row) {
-		kitchen_sync::Column *column = _table->add_column();
-		column->set_name(row.string_at(0));
+		Column column(row.string_at(0));
+		_table.columns.push_back(column);
 	}
 
 private:
-	kitchen_sync::Table *_table;
+	Table _table;
 };
 
 struct PostgreSQLTableLister {
 	PostgreSQLTableLister(PostgreSQLClient &client): _client(client) {}
-	inline kitchen_sync::Database database() { return _database; }
+	inline Database database() { return _database; }
 
 	void operator()(PostgreSQLRow &row) {
-		PostgreSQLColumnLister column_lister(_database.add_table(), row.string_at(0));
+		PostgreSQLColumnLister column_lister(row.string_at(0));
 		_client.query<PostgreSQLColumnLister>(
 			"SELECT attname "
 			  "FROM pg_attribute, pg_class "
@@ -160,13 +161,14 @@ struct PostgreSQLTableLister {
 			       "relname = '" + row.string_at(0) + "' "
 	      "ORDER BY attnum",
 	      column_lister);
+		_database.tables.push_back(column_lister.table());
 	}
 
 	PostgreSQLClient &_client;
-	kitchen_sync::Database _database;
+	Database _database;
 };
 
-kitchen_sync::Database PostgreSQLClient::database_schema() {
+Database PostgreSQLClient::database_schema() {
 	PostgreSQLTableLister table_lister(*this);
 	query<PostgreSQLTableLister>("SELECT tablename "
 		                           "FROM pg_tables "
@@ -174,6 +176,7 @@ kitchen_sync::Database PostgreSQLClient::database_schema() {
 		                         table_lister);
 	return table_lister.database();
 }
+
 
 int main(int argc, char *argv[]) {
 	return endpoint_main<PostgreSQLClient>(argc, argv);

@@ -15,15 +15,9 @@ set(ks_SRCS src/ks.cpp src/db_url.cpp src/process.cpp src/unidirectional_pipe.cp
 add_executable(ks ${ks_SRCS})
 target_link_libraries(ks ${Boost_LIBRARIES})
 
-# the endpoints communicate using protocol buffers over their stdin & out
-find_package(Protobuf REQUIRED)
-include_directories(${PROTOBUF_INCLUDE_DIRS})
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
-PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS src/kitchen_sync.proto)
-
 # the endpoints do the actual work
-set(ks_endpoint_SRCS ${PROTO_SRCS} ${PROTO_HDRS})
-set(ks_endpoint_LIBS ${PROTOBUF_LIBRARIES})
+set(ks_endpoint_SRCS)
+set(ks_endpoint_LIBS)
 
 # we have one endpoint program for mysql
 find_package(MySQL REQUIRED)

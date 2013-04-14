@@ -64,7 +64,7 @@ public:
 		bool readonly);
 	~MySQLClient();
 
-	kitchen_sync::Database database_schema();
+	Database database_schema();
 
 protected:
 	friend class MySQLTableLister;
@@ -141,32 +141,34 @@ void MySQLClient::start_transaction(bool readonly) {
 }
 
 struct MySQLColumnLister {
-	inline MySQLColumnLister(kitchen_sync::Table *table, const string &table_name): _table(table) { _table->set_name(table_name); }
+	inline MySQLColumnLister(const string &table_name): _table(table_name) {}
+	inline Table table() { return _table; }
 
 	inline void operator()(MySQLRow &row) {
-		kitchen_sync::Column *column = _table->add_column();
-		column->set_name(row.string_at(0));
+		Column column(row.string_at(0));
+		_table.columns.push_back(column);
 	}
 
 private:
-	kitchen_sync::Table *_table;
+	Table _table;
 };
 
 struct MySQLTableLister {
 	inline MySQLTableLister(MySQLClient &client): _client(client) {}
-	inline kitchen_sync::Database database() { return _database; }
+	inline Database database() { return _database; }
 
 	inline void operator()(MySQLRow &row) {
-		MySQLColumnLister column_lister(_database.add_table(), row.string_at(0));
+		MySQLColumnLister column_lister(row.string_at(0));
 		_client.query<MySQLColumnLister>("SHOW COLUMNS FROM " + row.string_at(0), column_lister, true /* buffer */);
+		_database.tables.push_back(column_lister.table());
 	}
 
 private:
 	MySQLClient &_client;
-	kitchen_sync::Database _database;
+	Database _database;
 };
 
-kitchen_sync::Database MySQLClient::database_schema() {
+Database MySQLClient::database_schema() {
 	MySQLTableLister table_lister(*this);
 	query<MySQLTableLister>("SHOW TABLES", table_lister, true /* buffer */);
 	return table_lister.database();

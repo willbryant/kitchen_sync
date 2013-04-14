@@ -6,8 +6,6 @@
 
 template<class T>
 int endpoint_main(int argc, char *argv[]) {
-	GOOGLE_PROTOBUF_VERIFY_VERSION;
-
 	if (argc < 7 || (argv[1] != string("from") && argv[1] != string("to"))) {
 		cerr << "This program is a part of Kitchen Sync.  Instead of running this program directly, run 'ks'.\n";
 		return 1;
