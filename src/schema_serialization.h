@@ -1,9 +1,8 @@
 #ifndef SCHEMA_SERIALIZATION_H
 #define SCHEMA_SERIALIZATION_H
 
-#include "msgpack.hpp"
-
 #include "schema.h"
+#include "stream.h"
 
 template <typename T>
 void operator << (msgpack::packer<ostream> &packer, const vector<T> &v) {
@@ -37,7 +36,7 @@ void operator << (ostream &os, const Database &database) {
 };
 
 void operator >> (msgpack::object obj, Column &column) {
-	if (obj.type != msgpack::type::MAP) throw logic_error("Expected a map while reading table");
+	if (obj.type != msgpack::type::MAP) throw runtime_error("Expected a map while reading table");
 	for (msgpack::object_kv *ptr = obj.via.map.ptr; ptr != obj.via.map.ptr + obj.via.map.size; ptr++) {
 		string attr_key = ptr->key.as<string>();
 
@@ -48,7 +47,7 @@ void operator >> (msgpack::object obj, Column &column) {
 }
 
 void operator >> (msgpack::object obj, Columns &columns) {
-	if (obj.type != msgpack::type::ARRAY) throw logic_error("Expected an array while reading columns");
+	if (obj.type != msgpack::type::ARRAY) throw runtime_error("Expected an array while reading columns");
 	for (msgpack::object *ptr = obj.via.array.ptr; ptr != obj.via.array.ptr + obj.via.array.size; ptr++) {
 		Column column;
 		*ptr >> column;
@@ -57,7 +56,7 @@ void operator >> (msgpack::object obj, Columns &columns) {
 }
 
 void operator >> (msgpack::object obj, Table &table) {
-	if (obj.type != msgpack::type::MAP) throw logic_error("Expected a map while reading table");
+	if (obj.type != msgpack::type::MAP) throw runtime_error("Expected a map while reading table");
 	for (msgpack::object_kv *ptr = obj.via.map.ptr; ptr != obj.via.map.ptr + obj.via.map.size; ptr++) {
 		string attr_key = ptr->key.as<string>();
 
@@ -70,7 +69,7 @@ void operator >> (msgpack::object obj, Table &table) {
 }
 
 void operator >> (msgpack::object obj, Tables &tables) {
-	if (obj.type != msgpack::type::ARRAY) throw logic_error("Expected an array while reading tables");
+	if (obj.type != msgpack::type::ARRAY) throw runtime_error("Expected an array while reading tables");
 	for (msgpack::object *ptr = obj.via.array.ptr; ptr != obj.via.array.ptr + obj.via.array.size; ptr++) {
 		Table table;
 		*ptr >> table;
@@ -79,7 +78,7 @@ void operator >> (msgpack::object obj, Tables &tables) {
 }
 
 void operator >> (msgpack::object obj, Database &database) {
-	if (obj.type != msgpack::type::MAP) throw logic_error("Expected a map while reading schema");
+	if (obj.type != msgpack::type::MAP) throw runtime_error("Expected a map while reading schema");
 	for (msgpack::object_kv *ptr = obj.via.map.ptr; ptr != obj.via.map.ptr + obj.via.map.size; ptr++) {
 		string attr_key = ptr->key.as<string>();
 
@@ -88,26 +87,5 @@ void operator >> (msgpack::object obj, Database &database) {
 		} // ignore anything else, for forward compatibility
 	}
 }
-
-Database read_database(int fd) {
-	Database database;
-	msgpack::unpacker unpacker;
-
-	while (true) {
-		unpacker.reserve_buffer(1024);
-
-		streamsize bytes_read = read(fd, unpacker.buffer(), unpacker.buffer_capacity());
-		if (!bytes_read) throw runtime_error("Reached end of stream while reading schema");
-		unpacker.buffer_consumed(bytes_read);
-
-		msgpack::unpacked result;
-		if (unpacker.next(&result)) {
-			result.get() >> database;
-			break;
-		}
-	}
-
-	return database;
-};
 
 #endif
