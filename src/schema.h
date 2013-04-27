@@ -20,6 +20,8 @@ struct Table {
 
 	inline Table(string name): name(name) { }
 	inline Table() { }
+
+	inline bool operator <(const Table &other) const { return (name < other.name); }
 };
 
 typedef vector<Table> Tables;

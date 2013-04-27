@@ -6,6 +6,8 @@
 
 template<class T>
 void sync_from(T &client) {
+	const int PROTOCOL_VERSION_SUPPORTED = 1;
+
 	Stream stream(STDIN_FILENO);
 	Command command;
 	int protocol = 0;
@@ -14,8 +16,9 @@ void sync_from(T &client) {
 		stream.read_and_unpack(command);
 
 		if (command.name == "protocol") {
-			protocol = command.arguments[0].as<typeof(protocol)>();
-			cerr << "using protocol " << protocol << endl;
+			protocol = min(PROTOCOL_VERSION_SUPPORTED, command.arguments[0].as<typeof(protocol)>());
+			cout << protocol;
+			cout.flush();
 
 		} else if (command.name == "schema") {
 			Database from_database(client.database_schema());

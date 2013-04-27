@@ -10,8 +10,34 @@ struct Command {
 	vector<msgpack::object> arguments;
 
 	inline Command() { }
+
 	inline Command(const string &name): name(name) { }
-	inline Command(const string &name, int intarg): name(name) { arguments.push_back(msgpack::object(intarg)); }
+
+	template <class T1>
+	inline Command(const string &name, T1 arg1): name(name) {
+		arguments.push_back(msgpack::object(arg1));
+	}
+
+	template <class T1, class T2>
+	inline Command(const string &name, T1 arg1, T2 arg2): name(name) {
+		arguments.push_back(msgpack::object(arg1));
+		arguments.push_back(msgpack::object(arg2));
+	}
+
+	template <class T1, class T2, class T3>
+	inline Command(const string &name, T1 arg1, T2 arg2, T3 arg3): name(name) {
+		arguments.push_back(msgpack::object(arg1));
+		arguments.push_back(msgpack::object(arg2));
+		arguments.push_back(msgpack::object(arg3));
+	}
+
+	template <class T1, class T2, class T3, class T4>
+	inline Command(const string &name, T1 arg1, T2 arg2, T3 arg3, T4 arg4): name(name) {
+		arguments.push_back(msgpack::object(arg1));
+		arguments.push_back(msgpack::object(arg2));
+		arguments.push_back(msgpack::object(arg3));
+		arguments.push_back(msgpack::object(arg4));
+	}
 };
 
 void operator << (msgpack::packer<ostream> &packer, const Command &command) {
