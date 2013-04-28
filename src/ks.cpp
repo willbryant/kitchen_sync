@@ -4,7 +4,6 @@
 #include "process.h"
 
 using namespace std;
-using namespace boost;
 using namespace boost::program_options;
 
 const string this_program_name("ks");
@@ -59,8 +58,7 @@ int main(int argc, char *argv[]) {
 			cout << "Kitchen Syncing failed." << endl;
 			return 1;
 		}
-	}
-	catch(std::exception &e) {
+	} catch (exception &e) {
 		cerr << e.what() << endl;
 	}
 }
