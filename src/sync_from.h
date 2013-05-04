@@ -9,6 +9,7 @@ void sync_from(T &client) {
 	const int PROTOCOL_VERSION_SUPPORTED = 1;
 
 	Stream stream(STDIN_FILENO);
+	msgpack::packer<ostream> packer(cout); // we could overload for ostreams automatically, but then any primitive types send to cout would get printed without encoding
 	Command command;
 	int protocol = 0;
 
@@ -17,12 +18,12 @@ void sync_from(T &client) {
 
 		if (command.name == "protocol") {
 			protocol = min(PROTOCOL_VERSION_SUPPORTED, command.arguments[0].as<typeof(protocol)>());
-			cout << protocol;
+			packer << protocol;
 			cout.flush();
 
 		} else if (command.name == "schema") {
 			Database from_database(client.database_schema());
-			cout << from_database;
+			packer << from_database;
 			cout.flush();
 			break;
 

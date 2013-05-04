@@ -30,11 +30,6 @@ void operator << (msgpack::packer<ostream> &packer, const Database &database) {
 	packer << database.tables;
 }
 
-void operator << (ostream &os, const Database &database) {
-	msgpack::packer<ostream> packer(os);
-	packer << database;
-};
-
 void operator >> (msgpack::object obj, Column &column) {
 	if (obj.type != msgpack::type::MAP) throw runtime_error("Expected a map while reading table");
 	for (msgpack::object_kv *ptr = obj.via.map.ptr; ptr != obj.via.map.ptr + obj.via.map.size; ptr++) {
