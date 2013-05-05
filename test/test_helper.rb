@@ -1,7 +1,9 @@
 require 'rubygems'
+
 require 'test/unit'
 require 'fileutils'
 require 'ruby-debug'
+
 require 'msgpack'
 require 'pg'
 require 'mysql2'

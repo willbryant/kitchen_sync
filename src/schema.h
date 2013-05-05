@@ -13,10 +13,12 @@ struct Column {
 };
 
 typedef vector<Column> Columns;
+typedef vector<string> PrimaryKeyColumns;
 
 struct Table {
 	string name;
 	Columns columns;
+	PrimaryKeyColumns primary_key_columns;
 
 	inline Table(string name): name(name) { }
 	inline Table() { }

@@ -134,7 +134,7 @@ void PostgreSQLClient::start_transaction(bool readonly) {
 }
 
 struct PostgreSQLColumnLister {
-	inline PostgreSQLColumnLister(const string &table_name): _table(table_name) {}
+	inline PostgreSQLColumnLister(Table &table): _table(table) {}
 	inline Table table() { return _table; }
 
 	inline void operator()(PostgreSQLRow &row) {
@@ -143,7 +143,20 @@ struct PostgreSQLColumnLister {
 	}
 
 private:
-	Table _table;
+	Table &_table;
+};
+
+struct PostgreSQLKeyLister {
+	inline PostgreSQLKeyLister(Table &table): _table(table) {}
+	inline Table table() { return _table; }
+
+	inline void operator()(PostgreSQLRow &row) {
+		string column_name = row.string_at(0);
+		_table.primary_key_columns.push_back(column_name);
+	}
+
+private:
+	Table &_table;
 };
 
 struct PostgreSQLTableLister {
@@ -151,17 +164,31 @@ struct PostgreSQLTableLister {
 	inline Database database() { return _database; }
 
 	void operator()(PostgreSQLRow &row) {
-		PostgreSQLColumnLister column_lister(row.string_at(0));
-		_client.query<PostgreSQLColumnLister>(
+		Table table(row.string_at(0));
+
+		PostgreSQLColumnLister column_lister(table);
+		_client.query(
 			"SELECT attname "
 			  "FROM pg_attribute, pg_class "
 			 "WHERE attrelid = pg_class.oid AND "
 			       "attnum > 0 AND "
 			       "NOT attisdropped AND "
 			       "relname = '" + row.string_at(0) + "' "
-	      "ORDER BY attnum",
-	      column_lister);
-		_database.tables.push_back(column_lister.table());
+			 "ORDER BY attnum",
+			column_lister);
+
+		PostgreSQLKeyLister key_lister(table);
+		_client.query(
+			"SELECT column_name "
+			  "FROM information_schema.table_constraints, "
+			       "information_schema.key_column_usage "
+			 "WHERE information_schema.table_constraints.table_name = '" + row.string_at(0) + "' AND "
+			       "information_schema.key_column_usage.table_name = information_schema.table_constraints.table_name AND "
+			       "constraint_type = 'PRIMARY KEY' "
+			 "ORDER BY ordinal_position",
+			key_lister);
+
+		_database.tables.push_back(table);
 	}
 
 	PostgreSQLClient &_client;
@@ -170,10 +197,10 @@ struct PostgreSQLTableLister {
 
 Database PostgreSQLClient::database_schema() {
 	PostgreSQLTableLister table_lister(*this);
-	query<PostgreSQLTableLister>("SELECT tablename "
-		                           "FROM pg_tables "
-		                          "WHERE schemaname = ANY (current_schemas(false))",
-		                         table_lister);
+	query("SELECT tablename "
+		    "FROM pg_tables "
+		   "WHERE schemaname = ANY (current_schemas(false))",
+		  table_lister);
 	return table_lister.database();
 }
 

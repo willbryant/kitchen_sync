@@ -22,10 +22,11 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
 SQL
     execute(<<-SQL)
       CREATE TABLE secondtbl (
-        pri INT NOT NULL,
+        pri1 INT NOT NULL,
+        pri2 INT NOT NULL,
         sec INT,
         tri INT,
-        PRIMARY KEY(pri))
+        PRIMARY KEY(pri2, pri1))
 SQL
     execute(<<-SQL)
       CREATE INDEX secidx ON secondtbl (sec)
@@ -37,12 +38,15 @@ SQL
          "columns" => [
           {"name" => "col1"},
           {"name" => "another_col"},
-          {"name" => "col3"}]},
+          {"name" => "col3"}],
+         "primary_key_columns" => ["col1"]},
         {"name"    => "secondtbl",
          "columns" => [
-          {"name" => "pri"},
+          {"name" => "pri1"},
+          {"name" => "pri2"},
           {"name" => "sec"},
-          {"name" => "tri"}]}]},
+          {"name" => "tri"}],
+         "primary_key_columns" => ["pri2", "pri1"]}]}, # note order is that listed in the key, not the index of the column in the table
       send_command("schema"))
   end
 end

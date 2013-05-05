@@ -17,11 +17,13 @@ void operator << (msgpack::packer<ostream> &packer, const Column &column) {
 }
 
 void operator << (msgpack::packer<ostream> &packer, const Table &table) {
-	packer.pack_map(2);
+	packer.pack_map(3);
 	packer << string("name");
 	packer << table.name;
 	packer << string("columns");
 	packer << table.columns;
+	packer << string("primary_key_columns");
+	packer << table.primary_key_columns;
 }
 
 void operator << (msgpack::packer<ostream> &packer, const Database &database) {
@@ -59,6 +61,8 @@ void operator >> (msgpack::object obj, Table &table) {
 			table.name = ptr->val.as<string>();
 		} else if (attr_key == "columns") {
 			ptr->val >> table.columns;
+		} else if (attr_key == "primary_key_columns") {
+			ptr->val >> table.primary_key_columns;
 		} // ignore anything else, for forward compatibility
 	}
 }

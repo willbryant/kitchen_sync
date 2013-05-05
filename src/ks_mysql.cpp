@@ -141,7 +141,7 @@ void MySQLClient::start_transaction(bool readonly) {
 }
 
 struct MySQLColumnLister {
-	inline MySQLColumnLister(const string &table_name): _table(table_name) {}
+	inline MySQLColumnLister(Table &table): _table(table) {}
 	inline Table table() { return _table; }
 
 	inline void operator()(MySQLRow &row) {
@@ -150,7 +150,23 @@ struct MySQLColumnLister {
 	}
 
 private:
-	Table _table;
+	Table &_table;
+};
+
+struct MySQLKeyLister {
+	inline MySQLKeyLister(Table &table): _table(table) {}
+	inline Table table() { return _table; }
+
+	inline void operator()(MySQLRow &row) {
+		string key_name = row.string_at(2);
+		if (key_name == "PRIMARY") {
+			string column_name = row.string_at(4);
+			_table.primary_key_columns.push_back(column_name);
+		}
+	}
+
+private:
+	Table &_table;
 };
 
 struct MySQLTableLister {
@@ -158,9 +174,15 @@ struct MySQLTableLister {
 	inline Database database() { return _database; }
 
 	inline void operator()(MySQLRow &row) {
-		MySQLColumnLister column_lister(row.string_at(0));
-		_client.query<MySQLColumnLister>("SHOW COLUMNS FROM " + row.string_at(0), column_lister, true /* buffer */);
-		_database.tables.push_back(column_lister.table());
+		Table table(row.string_at(0));
+
+		MySQLColumnLister column_lister(table);
+		_client.query("SHOW COLUMNS FROM " + row.string_at(0), column_lister, false);
+
+		MySQLKeyLister key_lister(table);
+		_client.query("SHOW KEYS FROM " + row.string_at(0), key_lister, false);
+
+		_database.tables.push_back(table);
 	}
 
 private:
@@ -170,7 +192,7 @@ private:
 
 Database MySQLClient::database_schema() {
 	MySQLTableLister table_lister(*this);
-	query<MySQLTableLister>("SHOW TABLES", table_lister, true /* buffer */);
+	query("SHOW TABLES", table_lister, true /* buffer so we can make further queries during iteration */);
 	return table_lister.database();
 }
 
