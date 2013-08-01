@@ -46,11 +46,11 @@ ENDPOINT_DATABASES = {
   },
   "mysql" => {
     :connect => lambda { |host, port, name, username, password| Mysql2::Client.new(
-      "host"     => host,
-      "port"     => port.to_i,
-      "database" => name,
-      "username" => username,
-      "password" => password)
+      :host     => host,
+      :port     => port.to_i,
+      :database => name,
+      :username => username,
+      :password => password)
     }
   }
 }
