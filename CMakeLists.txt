@@ -20,7 +20,7 @@ find_package(MessagePack REQUIRED)
 include_directories(${MESSAGEPACK_INCLUDE_DIRS})
 
 # the endpoints do the actual work
-set(ks_endpoint_SRCS)
+set(ks_endpoint_SRCS src/sql_functions.cpp src/schema_functions.cpp)
 set(ks_endpoint_LIBS ${MessagePack_LIBRARIES})
 
 # we have one endpoint program for mysql

@@ -1,6 +1,7 @@
 #ifndef SCHEMA_H
 #define SCHEMA_H
 
+#include <string>
 #include <vector>
 
 using namespace std;
