@@ -2,13 +2,14 @@ require 'rubygems'
 
 require 'test/unit'
 require 'fileutils'
-require 'ruby-debug'
+require 'mocha/setup'
 
 require 'msgpack'
 require 'pg'
 require 'mysql2'
 
 require File.expand_path(File.join(File.dirname(__FILE__), 'kitchen_sync_spawner'))
+require File.expand_path(File.join(File.dirname(__FILE__), 'test_table_schemas'))
 
 FileUtils.mkdir_p(File.join(File.dirname(__FILE__), 'tmp'))
 
@@ -74,6 +75,12 @@ module KitchenSync
 
     def send_command(*args)
       spawner.send_command(*args)
+    end
+
+    def receive_commands(*args)
+      spawner.receive_commands(*args) do |command|
+        send(*command)
+      end
     end
 
     def expect_stderr(contents)

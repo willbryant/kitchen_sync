@@ -54,7 +54,7 @@ class KitchenSyncSpawner
   end
 
   def stderr_contents
-    File.read(@capture_stderr_in)
+    @stderr_contents ||= File.read(@capture_stderr_in).chomp
   end
 
   def expect_stderr(contents)
@@ -62,6 +62,10 @@ class KitchenSyncSpawner
     yield
   ensure
     @expected_stderr_contents = nil
+  end
+
+  def expected_stderr_contents
+    @expected_stderr_contents || ""
   end
 
   def unpacker
@@ -74,6 +78,21 @@ class KitchenSyncSpawner
   ensure
     stderr = stderr_contents
     fail "Unexpected stderr output: #{stderr_contents.chomp}" unless stderr_contents == (@expected_stderr_contents || "")
+  end
+
+  def receive_commands(*args)
+    loop do
+      command = unpacker.read
+      result = yield command
+      break if command == ["quit"]
+      @program_stdin.write(result.to_msgpack)
+    end
+  rescue EOFError
+    # ignore; the test case will use expects(:quit) if it expects a less abrupt end to the conversation
+  ensure
+    if stderr_contents != expected_stderr_contents
+      fail "Unexpected stderr output: #{stderr_contents.inspect} instead of #{expected_stderr_contents.inspect}"
+    end
   end
 
   def quit
