@@ -19,13 +19,10 @@ void sync_from(T &client) {
 		if (command.name == "protocol") {
 			protocol = min(PROTOCOL_VERSION_SUPPORTED, command.arguments[0].as<typeof(protocol)>());
 			packer << protocol;
-			cout.flush();
 
 		} else if (command.name == "schema") {
 			Database from_database(client.database_schema());
 			packer << from_database;
-			cout.flush();
-			break;
 
 		} else if (command.name == "quit") {
 			break;
@@ -34,6 +31,8 @@ void sync_from(T &client) {
 			cerr << "Unknown command: " << command.name << endl;
 			break;
 		}
+
+		cout.flush();
 	}
 
 	close(STDOUT_FILENO);
