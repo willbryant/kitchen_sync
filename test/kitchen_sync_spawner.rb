@@ -54,7 +54,7 @@ class KitchenSyncSpawner
   end
 
   def stderr_contents
-    @stderr_contents ||= File.read(@capture_stderr_in).chomp
+    @stderr_contents ||= File.read(@capture_stderr_in).chomp if @capture_stderr_in
   end
 
   def expect_stderr(contents)
@@ -77,7 +77,7 @@ class KitchenSyncSpawner
     unpacker.read
   ensure
     stderr = stderr_contents
-    fail "Unexpected stderr output: #{stderr_contents.chomp}" unless stderr_contents == (@expected_stderr_contents || "")
+    fail "Unexpected stderr output: #{stderr_contents}" unless (stderr_contents || "") == (@expected_stderr_contents || "")
   end
 
   def receive_commands(*args)

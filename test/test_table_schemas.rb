@@ -22,7 +22,7 @@ SQL
     execute(<<-SQL)
       CREATE TABLE secondtbl (
         pri1 INT NOT NULL,
-        pri2 INT NOT NULL,
+        pri2 CHAR(2) NOT NULL,
         sec INT,
         tri INT,
         PRIMARY KEY(pri2, pri1))

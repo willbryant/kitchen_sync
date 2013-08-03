@@ -12,7 +12,10 @@ public:
 			throw runtime_error("Don't know the key columns for " + table_name);
 		}
 
-		return "SELECT * FROM " + table_name + " WHERE " + columns_list(table_key_columns[table_name]) + " BETWEEN " + non_binary_string_values_list(first_key) + " AND " + non_binary_string_values_list(last_key);
+		string key_columns(columns_list(table_key_columns[table_name]));
+
+		// mysql doesn't support BETWEEN for tuples, so we use >= and <= instead
+		return "SELECT * FROM " + table_name + " WHERE " + key_columns + " >= " + non_binary_string_values_list(first_key) + " AND " + key_columns + " <= " + non_binary_string_values_list(last_key) + " ORDER BY " + key_columns.substr(1, key_columns.size() - 2);
 	}
 
 protected:
