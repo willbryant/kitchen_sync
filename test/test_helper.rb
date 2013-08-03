@@ -75,6 +75,10 @@ module KitchenSync
       @spawner ||= KitchenSyncSpawner.new(binary_path, program_args, :capture_stderr_in => captured_stderr_filename).tap(&:start_binary)
     end
 
+    def unpacker
+      spawner.unpacker
+    end
+
     def send_command(*args)
       spawner.send_command(*args)
     end

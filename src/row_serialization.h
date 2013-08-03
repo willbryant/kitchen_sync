@@ -1,19 +1,13 @@
 template<class DatabaseRow>
 struct RowPacker {
-	RowPacker(msgpack::packer<ostream> &packer): packer(packer), packed_length(false) {}
+	RowPacker(msgpack::packer<ostream> &packer): packer(packer) {}
 
 	~RowPacker() {
-		if (!packed_length) {
-			packer.pack_array(0);
-		}
+		// we use nil to indicate the end of the rowset
+		packer.pack_nil();
 	}
 
 	void operator()(const DatabaseRow &row) {
-		if (!packed_length) {
-			packer.pack_array(row.results().n_tuples());
-			packed_length = true;
-		}
-
 		packer.pack_array(row.n_columns());
 
 		for (int i = 0; i < row.n_columns(); i++) {
@@ -26,5 +20,4 @@ struct RowPacker {
 	}
 
 	msgpack::packer<ostream> &packer;
-	bool packed_length;
 };

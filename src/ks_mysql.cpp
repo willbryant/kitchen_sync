@@ -70,7 +70,7 @@ public:
 
 	template <class RowPacker>
 	void retrieve_rows(const string &table_name, const RowValues &first_key, const RowValues &last_key, RowPacker &row_packer) {
-		query(retrieve_rows_sql(table_name, first_key, last_key), row_packer, true /* so n_tuples works */);
+		query(retrieve_rows_sql(table_name, first_key, last_key), row_packer, false /* nb. n_tuples won't work, which is ok since we send rows individually */);
 	}
 
 protected:
