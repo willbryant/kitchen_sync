@@ -1,3 +1,7 @@
+#include <openssl/evp.h>
+
+#define DIGEST_NAME "md5"
+
 template<class DatabaseRow>
 struct RowPacker {
 	RowPacker(msgpack::packer<ostream> &packer): packer(packer) {}
@@ -20,4 +24,76 @@ struct RowPacker {
 	}
 
 	msgpack::packer<ostream> &packer;
+};
+
+struct Hash {
+	unsigned int md_len;
+	unsigned char md_value[EVP_MAX_MD_SIZE];
+};
+
+void operator << (msgpack::packer<ostream> &packer, const Hash &hash) {
+	packer.pack_raw(hash.md_len);
+	packer.pack_raw_body((const char*)hash.md_value, hash.md_len);
+}
+
+struct InitOpenSSL {
+	InitOpenSSL() {
+		OpenSSL_add_all_digests();
+	}
+};
+
+static InitOpenSSL init_open_ssl;
+
+template<class DatabaseRow>
+struct RowHasher {
+	RowHasher(Hash &hash): hash(hash) {
+		const EVP_MD *md = EVP_get_digestbyname(DIGEST_NAME);
+		if (!md) throw runtime_error("Unknown message digest " DIGEST_NAME);
+		mdctx = EVP_MD_CTX_create();
+		EVP_DigestInit_ex(mdctx, md, NULL);
+	}
+
+	~RowHasher() {
+		EVP_MD_CTX_destroy(mdctx);
+	}
+
+	void finish() {
+		EVP_DigestFinal_ex(mdctx, hash.md_value, &hash.md_len);
+	}
+
+	void operator()(const DatabaseRow &row) {
+		msgpack::sbuffer packed_row;
+		msgpack::packer<msgpack::sbuffer> row_packer(packed_row);
+		row_packer.pack_array(row.n_columns());
+
+		for (int i = 0; i < row.n_columns(); i++) {
+			if (row.null_at(i)) {
+				row_packer.pack_nil();
+			} else {
+				row_packer << row.string_at(i);
+			}
+		}
+		EVP_DigestUpdate(mdctx, packed_row.data(), packed_row.size());
+	}
+
+	Hash &hash;
+	EVP_MD_CTX *mdctx;
+};
+
+template<class DatabaseRow>
+struct RowHasherAndPacker {
+	RowHasherAndPacker(msgpack::packer<ostream> &packer): packer(packer), row_hasher(hash) {}
+
+	~RowHasherAndPacker() {
+		row_hasher.finish();
+		packer << hash;
+	}
+
+	inline void operator()(const DatabaseRow &row) {
+		row_hasher(row);
+	}
+
+	msgpack::packer<ostream> &packer;
+	Hash hash;
+	RowHasher<DatabaseRow> row_hasher;
 };

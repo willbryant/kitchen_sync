@@ -19,9 +19,13 @@ target_link_libraries(ks ${Boost_LIBRARIES})
 find_package(MessagePack REQUIRED)
 include_directories(${MESSAGEPACK_INCLUDE_DIRS})
 
+# the endpoints hash data using OpenSSL
+find_package(OpenSSL REQUIRED)
+include_directories(${OPENSSL_INCLUDE_DIRS})
+
 # the endpoints do the actual work
-set(ks_endpoint_SRCS src/sql_functions.cpp src/schema_functions.cpp)
-set(ks_endpoint_LIBS ${MessagePack_LIBRARIES})
+set(ks_endpoint_SRCS src/sql_functions.cpp src/schema_functions.cpp src/database_client)
+set(ks_endpoint_LIBS ${MessagePack_LIBRARIES} ${OPENSSL_LIBRARIES})
 
 # we have one endpoint program for mysql
 find_package(MySQL REQUIRED)

@@ -72,6 +72,11 @@ public:
 		query(retrieve_rows_sql(table_name, first_key, last_key), row_packer);
 	}
 
+	template <class RowPacker>
+	void retrieve_rows(const string &table_name, const RowValues &first_key, size_t row_count, RowPacker &row_packer) {
+		query(retrieve_rows_sql(table_name, first_key, row_count), row_packer);
+	}
+
 protected:
 	friend class PostgreSQLTableLister;
 
