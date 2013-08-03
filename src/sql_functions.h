@@ -7,5 +7,6 @@
 using namespace std;
 
 string columns_list(const vector<string> &column_names);
+string non_binary_string_values_list(const vector<string> &values);
 
 #endif

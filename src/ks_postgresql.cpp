@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <libpq-fe.h>
 
+#include "database_client.h"
 #include "row_printer.h"
 
 using namespace std;
@@ -14,8 +15,8 @@ public:
 
 	inline PGresult *res() { return _res; }
 	inline ExecStatusType status() { return PQresultStatus(_res); }
-	inline int n_tuples()  { return _n_tuples; }
-	inline int n_columns() { return _n_columns; }
+	inline int n_tuples() const  { return _n_tuples; }
+	inline int n_columns() const { return _n_columns; }
 
 private:
 	PGresult *_res;
@@ -39,12 +40,13 @@ PostgreSQLRes::~PostgreSQLRes() {
 class PostgreSQLRow {
 public:
 	inline PostgreSQLRow(PostgreSQLRes &res, int row_number): _res(res), _row_number(row_number) { }
+	inline const PostgreSQLRes &results() const { return _res; }
 
-	inline    int n_columns() { return _res.n_columns(); }
-	inline   bool   null_at(int column_number) { return PQgetisnull(_res.res(), _row_number, column_number); }
-	inline  void *result_at(int column_number) { return PQgetvalue (_res.res(), _row_number, column_number); }
-	inline    int length_of(int column_number) { return PQgetlength(_res.res(), _row_number, column_number); }
-	inline string string_at(int column_number) { return string((char *)result_at(column_number), length_of(column_number)); }
+	inline         int n_columns() const { return _res.n_columns(); }
+	inline        bool   null_at(int column_number) const { return PQgetisnull(_res.res(), _row_number, column_number); }
+	inline const void *result_at(int column_number) const { return PQgetvalue (_res.res(), _row_number, column_number); }
+	inline         int length_of(int column_number) const { return PQgetlength(_res.res(), _row_number, column_number); }
+	inline      string string_at(int column_number) const { return string((char *)result_at(column_number), length_of(column_number)); }
 
 private:
 	PostgreSQLRes &_res;
@@ -52,8 +54,10 @@ private:
 };
 
 
-class PostgreSQLClient {
+class PostgreSQLClient: public DatabaseClient {
 public:
+	typedef PostgreSQLRow RowType;
+
 	PostgreSQLClient(
 		const char *database_host,
 		const char *database_port,
@@ -63,17 +67,21 @@ public:
 		bool readonly);
 	~PostgreSQLClient();
 
-	Database database_schema();
+	template <class RowPacker>
+	void retrieve_rows(const string &table_name, const RowValues &first_key, const RowValues &last_key, RowPacker &row_packer) {
+		query(retrieve_rows_sql(table_name, first_key, last_key), row_packer);
+	}
 
 protected:
 	friend class PostgreSQLTableLister;
 
 	void execute(const char *sql);
 	void start_transaction(bool readonly);
+	void populate_database_schema();
 
 	template <class RowFunction>
 	void query(const string &sql, RowFunction &row_handler) {
-	    PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, NULL, NULL, NULL, NULL, 1 /* binary results */));
+	    PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, NULL, NULL, NULL, NULL, 0 /* text-format results only */));
 
 	    if (res.status() != PGRES_TUPLES_OK) {
 			throw runtime_error(PQerrorMessage(conn));
@@ -112,6 +120,8 @@ PostgreSQLClient::PostgreSQLClient(
 	// postgresql has transactional DDL, so by starting our transaction before we've even looked at the tables,
 	// we'll get a 100% consistent view.
 	start_transaction(readonly);
+
+	populate_database_schema();
 }
 
 PostgreSQLClient::~PostgreSQLClient() {
@@ -160,8 +170,7 @@ private:
 };
 
 struct PostgreSQLTableLister {
-	PostgreSQLTableLister(PostgreSQLClient &client): _client(client) {}
-	inline Database database() { return _database; }
+	PostgreSQLTableLister(PostgreSQLClient &client, Database &database, map<string, ColumnNames> &table_key_columns): _client(client), _database(database), _table_key_columns(table_key_columns) {}
 
 	void operator()(PostgreSQLRow &row) {
 		Table table(row.string_at(0));
@@ -189,19 +198,20 @@ struct PostgreSQLTableLister {
 			key_lister);
 
 		_database.tables.push_back(table);
+		_table_key_columns[table.name] = table.primary_key_columns;
 	}
 
 	PostgreSQLClient &_client;
-	Database _database;
+	Database &_database;
+	map<string, ColumnNames> &_table_key_columns;
 };
 
-Database PostgreSQLClient::database_schema() {
-	PostgreSQLTableLister table_lister(*this);
+void PostgreSQLClient::populate_database_schema() {
+	PostgreSQLTableLister table_lister(*this, database, table_key_columns);
 	query("SELECT tablename "
 		    "FROM pg_tables "
 		   "WHERE schemaname = ANY (current_schemas(false))",
 		  table_lister);
-	return table_lister.database();
 }
 
 

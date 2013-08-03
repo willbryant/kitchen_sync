@@ -4,7 +4,7 @@ module TestTableSchemas
       CREATE TABLE footbl (
         col1 INT NOT NULL,
         another_col INT,
-        col3 CHAR(10),
+        col3 VARCHAR(10),
         PRIMARY KEY(col1))
 SQL
   end
@@ -55,5 +55,15 @@ SQL
       "columns" => [
         {"name" => "pri"}],
       "primary_key_columns" => ["pri"] }
+  end
+
+  def create_some_tables
+    clear_schema
+    create_footbl
+    create_secondtbl
+  end
+
+  def some_table_defs
+    [footbl_def, secondtbl_def]
   end
 end

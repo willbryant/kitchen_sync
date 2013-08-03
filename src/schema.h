@@ -33,4 +33,7 @@ struct Database {
 	Tables tables;
 };
 
+typedef vector<string> RowValues;
+typedef vector<RowValues> Rows;
+
 #endif

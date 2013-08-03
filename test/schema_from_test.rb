@@ -10,6 +10,7 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
   test_each "returns an empty list of tables on an empty database" do
     clear_schema
 
+    send_protocol_command
     assert_equal({"tables" => []}, send_command("schema"))
   end
 
@@ -17,7 +18,8 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
     clear_schema
     create_footbl
     create_secondtbl
-
+    send_protocol_command
+    
     assert_equal(
       {"tables" => [footbl_def, secondtbl_def]},
       send_command("schema"))

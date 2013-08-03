@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include "schema.h"
 
-struct schema_mismatch : public runtime_error {
+struct schema_mismatch: public runtime_error {
 	schema_mismatch(const string &error): runtime_error(error) { }
 };
 

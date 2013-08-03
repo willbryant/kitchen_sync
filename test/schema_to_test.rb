@@ -3,8 +3,6 @@ require File.expand_path(File.join(File.dirname(__FILE__), 'test_helper'))
 class SchemaToTest < KitchenSync::EndpointTestCase
   include TestTableSchemas
 
-  CURRENT_PROTOCOL_VERSION = 1
-
   def from_or_to
     :to
   end

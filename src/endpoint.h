@@ -27,6 +27,9 @@ int endpoint_main(int argc, char *argv[]) {
 		} else {
 			sync_to(client);
 		}
+
+		cout.flush();
+		close(STDOUT_FILENO);
 	} catch (exception& e) {
 		cerr << e.what() << endl;
 		return 2;

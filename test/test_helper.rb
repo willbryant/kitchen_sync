@@ -58,6 +58,8 @@ ENDPOINT_DATABASES = {
 
 module KitchenSync
   class TestCase < Test::Unit::TestCase
+    CURRENT_PROTOCOL_VERSION = 1
+
     undef_method :default_test if instance_methods.include? 'default_test' or
                                   instance_methods.include? :default_test
 
@@ -70,11 +72,15 @@ module KitchenSync
     end
 
     def spawner
-      @spawner ||= KitchenSyncSpawner.new(binary_path, program_args, :capture_stderr_in => captured_stderr_filename)
+      @spawner ||= KitchenSyncSpawner.new(binary_path, program_args, :capture_stderr_in => captured_stderr_filename).tap(&:start_binary)
     end
 
     def send_command(*args)
       spawner.send_command(*args)
+    end
+
+    def send_protocol_command
+      assert_equal CURRENT_PROTOCOL_VERSION, send_command("protocol", CURRENT_PROTOCOL_VERSION)
     end
 
     def receive_commands(*args)
@@ -121,12 +127,16 @@ module KitchenSync
       [ from_or_to.to_s, database_host, database_port, database_name, database_username, database_password ]
     end
 
-    def clear_schema
-      @connection.tables.each {|table_name| @connection.execute "DROP TABLE #{table_name}"}
+    def connection
+      @connection ||= @database_settings[:connect].call(database_host, database_port, database_name, database_username, database_password)
     end
 
     def execute(sql)
-      @connection.execute sql
+      connection.execute sql
+    end
+
+    def clear_schema
+      connection.tables.each {|table_name| execute "DROP TABLE #{table_name}"}
     end
 
     def self.test_each(description, &block)
@@ -134,13 +144,12 @@ module KitchenSync
         define_method("test #{description} for #{database_server}".gsub(/\W+/,'_').to_sym) do
           @database_server = database_server
           @database_settings = settings
-          @connection = settings[:connect].call(database_host, database_port, database_name, database_username, database_password)
-          spawner.start_binary
           begin
             instance_eval(&block)
           ensure
-            spawner.stop_binary
-            @connection.close rescue nil
+            @spawner.stop_binary if @spawner
+            @spawner = nil
+            @connection.close rescue nil if @connection
           end
         end
       end

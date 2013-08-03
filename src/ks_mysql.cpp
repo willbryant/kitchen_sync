@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <mysql.h>
 
+#include "database_client.h"
 #include "row_printer.h"
 
 #define MYSQL_5_6_5 50605
@@ -13,8 +14,8 @@ public:
 	~MySQLRes();
 
 	inline MYSQL_RES *res() { return _res; }
-	inline int n_tuples() { return _n_tuples; }
-	inline int n_columns() { return _n_columns; }
+	inline int n_tuples() const { return _n_tuples; }
+	inline int n_columns() const { return _n_columns; }
 
 private:
 	MYSQL_RES *_res;
@@ -39,12 +40,13 @@ MySQLRes::~MySQLRes() {
 class MySQLRow {
 public:
 	inline MySQLRow(MySQLRes &res, MYSQL_ROW row): _res(res), _row(row) { _lengths = mysql_fetch_lengths(_res.res()); }
+	inline const MySQLRes &results() const { return _res; }
 
-	inline    int n_columns() { return _res.n_columns(); }
-	inline   bool   null_at(int column_number) { return     _row[column_number] == NULL; }
-	inline  void *result_at(int column_number) { return     _row[column_number]; }
-	inline    int length_of(int column_number) { return _lengths[column_number]; }
-	inline string string_at(int column_number) { return string((char *)result_at(column_number), length_of(column_number)); }
+	inline         int n_columns() const { return _res.n_columns(); }
+	inline        bool   null_at(int column_number) const { return     _row[column_number] == NULL; }
+	inline const void *result_at(int column_number) const { return     _row[column_number]; }
+	inline         int length_of(int column_number) const { return _lengths[column_number]; }
+	inline      string string_at(int column_number) const { return string((char *)result_at(column_number), length_of(column_number)); }
 
 private:
 	MySQLRes &_res;
@@ -53,8 +55,10 @@ private:
 };
 
 
-class MySQLClient {
+class MySQLClient: public DatabaseClient {
 public:
+	typedef MySQLRow RowType;
+
 	MySQLClient(
 		const char *database_host,
 		const char *database_port,
@@ -64,28 +68,37 @@ public:
 		bool readonly);
 	~MySQLClient();
 
-	Database database_schema();
+	template <class RowPacker>
+	void retrieve_rows(const string &table_name, const RowValues &first_key, const RowValues &last_key, RowPacker &row_packer) {
+		query(retrieve_rows_sql(table_name, first_key, last_key), row_packer, true /* so n_tuples works */);
+	}
 
 protected:
 	friend class MySQLTableLister;
 
 	void execute(const char *sql);
 	void start_transaction(bool readonly);
+	void populate_database_schema();
 
 	template <class RowFunction>
 	void query(const string &sql, RowFunction &row_handler, bool buffer) {
 		if (mysql_real_query(&mysql, sql.c_str(), sql.length())) {
-			throw runtime_error(mysql_error(&mysql));
+			throw runtime_error(mysql_error(&mysql) + string("\n") + sql);
 		}
 
-	    MySQLRes res(mysql, buffer);
+		MySQLRes res(mysql, buffer);
 
-	    while (true) {
-	    	MYSQL_ROW mysql_row = mysql_fetch_row(res.res());
-	    	if (!mysql_row) break;
-	    	MySQLRow row(res, mysql_row);
-	    	row_handler(row);
-	    }
+		while (true) {
+			MYSQL_ROW mysql_row = mysql_fetch_row(res.res());
+			if (!mysql_row) break;
+			MySQLRow row(res, mysql_row);
+			row_handler(row);
+		}
+
+		// check again for errors, as mysql_fetch_row would return NULL for both errors & no more rows
+		if (mysql_errno(&mysql)) {
+			throw runtime_error(mysql_error(&mysql) + string("\n") + sql);
+		}
 	}
 
 private:
@@ -123,6 +136,8 @@ MySQLClient::MySQLClient(
 	// although we start the transaction here, in reality mysql's system catalogs are non-transactional
 	// and do not give a consistent snapshot
 	start_transaction(readonly);
+
+	populate_database_schema();
 }
 
 MySQLClient::~MySQLClient() {
@@ -170,30 +185,31 @@ private:
 };
 
 struct MySQLTableLister {
-	inline MySQLTableLister(MySQLClient &client): _client(client) {}
+	inline MySQLTableLister(MySQLClient &client, Database &database, map<string, ColumnNames> &table_key_columns): _client(client), _database(database), _table_key_columns(table_key_columns) {}
 	inline Database database() { return _database; }
 
 	inline void operator()(MySQLRow &row) {
 		Table table(row.string_at(0));
 
 		MySQLColumnLister column_lister(table);
-		_client.query("SHOW COLUMNS FROM " + row.string_at(0), column_lister, false);
+		_client.query("SHOW COLUMNS FROM " + table.name, column_lister, false);
 
 		MySQLKeyLister key_lister(table);
-		_client.query("SHOW KEYS FROM " + row.string_at(0), key_lister, false);
+		_client.query("SHOW KEYS FROM " + table.name, key_lister, false);
+		_table_key_columns[table.name] = table.primary_key_columns;
 
 		_database.tables.push_back(table);
 	}
 
 private:
 	MySQLClient &_client;
-	Database _database;
+	Database &_database;
+	map<string, ColumnNames> &_table_key_columns;
 };
 
-Database MySQLClient::database_schema() {
-	MySQLTableLister table_lister(*this);
+void MySQLClient::populate_database_schema() {
+	MySQLTableLister table_lister(*this, database, table_key_columns);
 	query("SHOW TABLES", table_lister, true /* buffer so we can make further queries during iteration */);
-	return table_lister.database();
 }
 
 int main(int argc, char *argv[]) {
