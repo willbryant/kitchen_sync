@@ -161,32 +161,29 @@ void MySQLClient::start_transaction(bool readonly) {
 }
 
 struct MySQLColumnLister {
-	inline MySQLColumnLister(Table &table): _table(table) {}
-	inline Table table() { return _table; }
+	inline MySQLColumnLister(Table &table): table(table) {}
 
 	inline void operator()(MySQLRow &row) {
 		Column column(row.string_at(0));
-		_table.columns.push_back(column);
+		table.columns.push_back(column);
 	}
 
-private:
-	Table &_table;
+	Table &table;
 };
 
 struct MySQLKeyLister {
-	inline MySQLKeyLister(Table &table): _table(table) {}
-	inline Table table() { return _table; }
+	inline MySQLKeyLister(Table &table): table(table) {}
 
 	inline void operator()(MySQLRow &row) {
 		string key_name = row.string_at(2);
 		if (key_name == "PRIMARY") {
 			string column_name = row.string_at(4);
-			_table.primary_key_columns.push_back(column_name);
+			size_t column_index = table.index_of_column(column_name);
+			table.primary_key_columns.push_back(column_index);
 		}
 	}
 
-private:
-	Table &_table;
+	Table &table;
 };
 
 struct MySQLTableLister {

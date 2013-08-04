@@ -15,6 +15,21 @@ string columns_list(const vector<string> &column_names) {
 	return result;
 }
 
+string columns_list(const Columns &columns, const ColumnIndices &column_indices){
+	if (column_indices.empty()) {
+		return "(NULL)";
+	}
+
+	string result("(");
+	result.append(columns[*column_indices.begin()].name);
+	for (ColumnIndices::const_iterator column_index = column_indices.begin() + 1; column_index != column_indices.end(); ++column_index) {
+		result.append(", ");
+		result.append(columns[*column_index].name);
+	}
+	result.append(")");
+	return result;
+}
+
 string escape_non_binary_string(const string &str) {
 	string result;
 	result.reserve(str.size());

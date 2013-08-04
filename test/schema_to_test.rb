@@ -203,7 +203,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     clear_schema
     create_secondtbl
 
-    expects(:schema).with().returns({"tables" => [secondtbl_def.merge("primary_key_columns" => ["pri1", "pri2"])]})
+    expects(:schema).with().returns({"tables" => [secondtbl_def.merge("primary_key_columns" => [0, 1])]})
     expect_stderr("Mismatching primary key (pri2, pri1) on table secondtbl, should have (pri1, pri2)") do
       receive_commands
     end
@@ -213,7 +213,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     clear_schema
     create_secondtbl
 
-    expects(:schema).with().returns({"tables" => [secondtbl_def.merge("primary_key_columns" => ["pri2", "pri1", "sec"])]})
+    expects(:schema).with().returns({"tables" => [secondtbl_def.merge("primary_key_columns" => [1, 0, 2])]})
     expect_stderr("Mismatching primary key (pri2, pri1) on table secondtbl, should have (pri2, pri1, sec)") do
       receive_commands
     end
@@ -223,7 +223,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     clear_schema
     create_secondtbl
 
-    expects(:schema).with().returns({"tables" => [secondtbl_def.merge("primary_key_columns" => ["sec", "pri2", "pri1"])]})
+    expects(:schema).with().returns({"tables" => [secondtbl_def.merge("primary_key_columns" => [2, 1, 0])]})
     expect_stderr("Mismatching primary key (pri2, pri1) on table secondtbl, should have (sec, pri2, pri1)") do
       receive_commands
     end

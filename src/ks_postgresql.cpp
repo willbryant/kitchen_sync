@@ -147,29 +147,26 @@ void PostgreSQLClient::start_transaction(bool readonly) {
 }
 
 struct PostgreSQLColumnLister {
-	inline PostgreSQLColumnLister(Table &table): _table(table) {}
-	inline Table table() { return _table; }
+	inline PostgreSQLColumnLister(Table &table): table(table) {}
 
 	inline void operator()(PostgreSQLRow &row) {
 		Column column(row.string_at(0));
-		_table.columns.push_back(column);
+		table.columns.push_back(column);
 	}
 
-private:
-	Table &_table;
+	Table &table;
 };
 
 struct PostgreSQLKeyLister {
-	inline PostgreSQLKeyLister(Table &table): _table(table) {}
-	inline Table table() { return _table; }
+	inline PostgreSQLKeyLister(Table &table): table(table) {}
 
 	inline void operator()(PostgreSQLRow &row) {
 		string column_name = row.string_at(0);
-		_table.primary_key_columns.push_back(column_name);
+		size_t column_index = table.index_of_column(column_name);
+		table.primary_key_columns.push_back(column_index);
 	}
 
-private:
-	Table &_table;
+	Table &table;
 };
 
 struct PostgreSQLTableLister {

@@ -24,7 +24,7 @@ find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIRS})
 
 # the endpoints do the actual work
-set(ks_endpoint_SRCS src/sql_functions.cpp src/schema_functions.cpp src/database_client)
+set(ks_endpoint_SRCS src/sql_functions.cpp src/schema.cpp src/schema_functions.cpp src/database_client)
 set(ks_endpoint_LIBS ${MessagePack_LIBRARIES} ${OPENSSL_LIBRARIES})
 
 # we have one endpoint program for mysql

@@ -15,7 +15,7 @@ SQL
         {"name" => "col1"},
         {"name" => "another_col"},
         {"name" => "col3"}],
-      "primary_key_columns" => ["col1"] }
+      "primary_key_columns" => [0] }
   end
 
   def create_secondtbl
@@ -39,7 +39,7 @@ SQL
        {"name" => "pri2"},
        {"name" => "sec"},
        {"name" => "tri"}],
-      "primary_key_columns" => ["pri2", "pri1"] } # note order is that listed in the key, not the index of the column in the table
+      "primary_key_columns" => [1, 0] } # note order is that listed in the key, not the index of the column in the table
   end
 
   def create_middletbl
@@ -54,7 +54,7 @@ SQL
     { "name"    => "middletbl",
       "columns" => [
         {"name" => "pri"}],
-      "primary_key_columns" => ["pri"] }
+      "primary_key_columns" => [0] }
   end
 
   def create_some_tables

@@ -47,10 +47,10 @@ void check_columns_match(const Table &table, const Columns &from_columns, const 
 	}
 }
 
-void check_primary_key_matches(const Table &table, const ColumnNames &from_primary_key_columns, const ColumnNames &to_primary_key_columns) {
+void check_primary_key_matches(const Table &table, const ColumnIndices &from_primary_key_columns, const ColumnIndices &to_primary_key_columns) {
 	if (from_primary_key_columns.size() != to_primary_key_columns.size() ||
 		!equal(from_primary_key_columns.begin(), from_primary_key_columns.end(), to_primary_key_columns.begin())) {
-		report_schema_mismatch("Mismatching primary key " + columns_list(to_primary_key_columns) + " on table " + table.name + ", should have " + columns_list(from_primary_key_columns));
+		report_schema_mismatch("Mismatching primary key " + columns_list(table.columns, to_primary_key_columns) + " on table " + table.name + ", should have " + columns_list(table.columns, from_primary_key_columns));
 	}
 }
 
