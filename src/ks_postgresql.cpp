@@ -175,7 +175,7 @@ private:
 };
 
 struct PostgreSQLTableLister {
-	PostgreSQLTableLister(PostgreSQLClient &client, Database &database): _client(client), _database(database) {}
+	PostgreSQLTableLister(PostgreSQLClient &client): _client(client) {}
 
 	void operator()(PostgreSQLRow &row) {
 		Table table(row.string_at(0));
@@ -202,15 +202,14 @@ struct PostgreSQLTableLister {
 			 "ORDER BY ordinal_position",
 			key_lister);
 
-		_database.tables.push_back(table);
+		_client.database.tables.push_back(table);
 	}
 
 	PostgreSQLClient &_client;
-	Database &_database;
 };
 
 void PostgreSQLClient::populate_database_schema() {
-	PostgreSQLTableLister table_lister(*this, database);
+	PostgreSQLTableLister table_lister(*this);
 	query("SELECT tablename "
 		    "FROM pg_tables "
 		   "WHERE schemaname = ANY (current_schemas(false))",

@@ -190,8 +190,7 @@ private:
 };
 
 struct MySQLTableLister {
-	inline MySQLTableLister(MySQLClient &client, Database &database): _client(client), _database(database) {}
-	inline Database database() { return _database; }
+	inline MySQLTableLister(MySQLClient &client): _client(client) {}
 
 	inline void operator()(MySQLRow &row) {
 		Table table(row.string_at(0));
@@ -202,19 +201,19 @@ struct MySQLTableLister {
 		MySQLKeyLister key_lister(table);
 		_client.query("SHOW KEYS FROM " + table.name, key_lister, false);
 
-		_database.tables.push_back(table);
+		_client.database.tables.push_back(table);
 	}
 
 private:
 	MySQLClient &_client;
-	Database &_database;
 };
 
 void MySQLClient::populate_database_schema() {
-	MySQLTableLister table_lister(*this, database);
+	MySQLTableLister table_lister(*this);
 	query("SHOW TABLES", table_lister, true /* buffer so we can make further queries during iteration */);
 	index_database_tables();
 }
+
 
 int main(int argc, char *argv[]) {
 	return endpoint_main<MySQLClient>(argc, argv);
