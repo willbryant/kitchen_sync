@@ -1,5 +1,6 @@
 #include "schema_functions.h"
 
+#include <algorithm>
 #include "sql_functions.h"
 
 template <class T>
