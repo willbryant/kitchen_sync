@@ -46,7 +46,7 @@ static InitOpenSSL init_open_ssl;
 
 template<class DatabaseRow>
 struct RowHasher {
-	RowHasher(Hash &hash): hash(hash) {
+	RowHasher() {
 		const EVP_MD *md = EVP_get_digestbyname(DIGEST_NAME);
 		if (!md) throw runtime_error("Unknown message digest " DIGEST_NAME);
 		mdctx = EVP_MD_CTX_create();
@@ -57,8 +57,9 @@ struct RowHasher {
 		EVP_MD_CTX_destroy(mdctx);
 	}
 
-	void finish() {
+	const Hash &finish() {
 		EVP_DigestFinal_ex(mdctx, hash.md_value, &hash.md_len);
+		return hash;
 	}
 
 	void operator()(const DatabaseRow &row) {
@@ -76,24 +77,22 @@ struct RowHasher {
 		EVP_DigestUpdate(mdctx, packed_row.data(), packed_row.size());
 	}
 
-	Hash &hash;
+	Hash hash;
 	EVP_MD_CTX *mdctx;
 };
 
 template<class DatabaseRow>
 struct RowHasherAndPacker {
-	RowHasherAndPacker(msgpack::packer<ostream> &packer): packer(packer), row_hasher(hash) {}
+	RowHasherAndPacker(msgpack::packer<ostream> &packer): packer(packer) {}
 
 	~RowHasherAndPacker() {
-		row_hasher.finish();
-		packer << hash;
+		packer << row_hasher.finish();
 	}
 
-	inline void operator()(const DatabaseRow &row) {
+	void operator()(const DatabaseRow &row) {
 		row_hasher(row);
 	}
 
 	msgpack::packer<ostream> &packer;
-	Hash hash;
 	RowHasher<DatabaseRow> row_hasher;
 };

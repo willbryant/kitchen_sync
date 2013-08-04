@@ -175,7 +175,7 @@ private:
 };
 
 struct PostgreSQLTableLister {
-	PostgreSQLTableLister(PostgreSQLClient &client, Database &database, map<string, ColumnNames> &table_key_columns): _client(client), _database(database), _table_key_columns(table_key_columns) {}
+	PostgreSQLTableLister(PostgreSQLClient &client, Database &database): _client(client), _database(database) {}
 
 	void operator()(PostgreSQLRow &row) {
 		Table table(row.string_at(0));
@@ -203,20 +203,19 @@ struct PostgreSQLTableLister {
 			key_lister);
 
 		_database.tables.push_back(table);
-		_table_key_columns[table.name] = table.primary_key_columns;
 	}
 
 	PostgreSQLClient &_client;
 	Database &_database;
-	map<string, ColumnNames> &_table_key_columns;
 };
 
 void PostgreSQLClient::populate_database_schema() {
-	PostgreSQLTableLister table_lister(*this, database, table_key_columns);
+	PostgreSQLTableLister table_lister(*this, database);
 	query("SELECT tablename "
 		    "FROM pg_tables "
 		   "WHERE schemaname = ANY (current_schemas(false))",
 		  table_lister);
+	index_database_tables();
 }
 
 

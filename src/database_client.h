@@ -12,8 +12,11 @@ public:
 	string retrieve_rows_sql(const string &table_name, const RowValues &first_key, size_t row_count);
 
 protected:
+	void index_database_tables();
+
+protected:
 	Database database;
-	map<string, ColumnNames> table_key_columns;
+	map<string, Tables::const_iterator> tables_by_name;
 };
 
 #endif
