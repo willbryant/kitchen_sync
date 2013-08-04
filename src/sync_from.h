@@ -38,18 +38,20 @@ void sync_from(DatabaseClient &client) {
 			packer << from_database;
 
 		} else if (command.name == "rows") {
-			RowPacker<typename DatabaseClient::RowType> row_packer(packer);
 			string   table_name(command.arguments[0].as<string>());
 			RowValues first_key(command.arguments[1].as<RowValues>());
 			RowValues  last_key(command.arguments[2].as<RowValues>());
-			client.retrieve_rows(table_name, first_key, last_key, row_packer);
+			const Table &table(client.table_by_name(table_name));
+			RowPacker<typename DatabaseClient::RowType> row_packer(packer);
+			client.retrieve_rows(table, first_key, last_key, row_packer);
 
 		} else if (command.name == "hash") {
-			RowHasherAndPacker<typename DatabaseClient::RowType> row_hasher_and_packer(packer);
 			string   table_name(command.arguments[0].as<string>());
 			RowValues first_key(command.arguments[1].as<RowValues>());
 			uint64_t  row_count(command.arguments[2].as<uint64_t>());
-			client.retrieve_rows(table_name, first_key, row_count, row_hasher_and_packer);
+			const Table &table(client.table_by_name(table_name));
+			RowHasherAndPacker<typename DatabaseClient::RowType> row_hasher_and_packer(packer);
+			client.retrieve_rows(table, first_key, row_count, row_hasher_and_packer);
 
 		} else if (command.name == "quit") {
 			break;

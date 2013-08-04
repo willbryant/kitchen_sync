@@ -63,6 +63,7 @@ struct RowHasher {
 	}
 
 	void operator()(const DatabaseRow &row) {
+		// pack the row to get a byte stream
 		msgpack::sbuffer packed_row;
 		msgpack::packer<msgpack::sbuffer> row_packer(packed_row);
 		row_packer.pack_array(row.n_columns());
@@ -74,6 +75,8 @@ struct RowHasher {
 				row_packer << row.string_at(i);
 			}
 		}
+
+		// hash the byte stream
 		EVP_DigestUpdate(mdctx, packed_row.data(), packed_row.size());
 	}
 

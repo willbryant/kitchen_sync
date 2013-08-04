@@ -69,13 +69,13 @@ public:
 	~MySQLClient();
 
 	template <class RowPacker>
-	void retrieve_rows(const string &table_name, const RowValues &first_key, const RowValues &last_key, RowPacker &row_packer) {
-		query(retrieve_rows_sql(table_name, first_key, last_key), row_packer, false /* nb. n_tuples won't work, which is ok since we send rows individually */);
+	void retrieve_rows(const Table &table, const RowValues &first_key, const RowValues &last_key, RowPacker &row_packer) {
+		query(retrieve_rows_sql(table, first_key, last_key), row_packer, false /* nb. n_tuples won't work, which is ok since we send rows individually */);
 	}
 
 	template <class RowPacker>
-	void retrieve_rows(const string &table_name, const RowValues &first_key, size_t row_count, RowPacker &row_packer) {
-		query(retrieve_rows_sql(table_name, first_key, row_count), row_packer, false /* as above */);
+	void retrieve_rows(const Table &table, const RowValues &first_key, size_t row_count, RowPacker &row_packer) {
+		query(retrieve_rows_sql(table, first_key, row_count), row_packer, false /* as above */);
 	}
 
 protected:
