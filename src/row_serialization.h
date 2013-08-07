@@ -14,7 +14,7 @@ struct RowPacker {
 	void operator()(const DatabaseRow &row) {
 		packer.pack_array(row.n_columns());
 
-		for (int i = 0; i < row.n_columns(); i++) {
+		for (size_t i = 0; i < row.n_columns(); i++) {
 			if (row.null_at(i)) {
 				packer.pack_nil();
 			} else {
@@ -68,7 +68,7 @@ struct RowHasher {
 		msgpack::packer<msgpack::sbuffer> row_packer(packed_row);
 		row_packer.pack_array(row.n_columns());
 
-		for (int i = 0; i < row.n_columns(); i++) {
+		for (size_t i = 0; i < row.n_columns(); i++) {
 			if (row.null_at(i)) {
 				row_packer.pack_nil();
 			} else {
@@ -86,16 +86,32 @@ struct RowHasher {
 
 template<class DatabaseRow>
 struct RowHasherAndPacker {
-	RowHasherAndPacker(msgpack::packer<ostream> &packer): packer(packer) {}
+	RowHasherAndPacker(msgpack::packer<ostream> &packer, const vector<size_t> &primary_key_columns): packer(packer), primary_key_columns(primary_key_columns) {
+	}
 
 	~RowHasherAndPacker() {
+		// send [hash, primary key of last row] to the other end.  ideally we'd use a named map
+		// here to make it easier to understand and extend, but this is the very core of the
+		// high-rate communications, so we need to keep it as minimal as possible and rely on the
+		// protocol version for future extensibility.
+		packer.pack_array(2);
 		packer << row_hasher.finish();
+		packer << key_of_last_row;
 	}
 
 	void operator()(const DatabaseRow &row) {
+		// hash the row
 		row_hasher(row);
+
+		// and keep its primary key, in case this turns out to be the last row, in which case we'll need to send it to the other end
+		key_of_last_row.resize(primary_key_columns.size());
+		for (size_t i = 0; i < primary_key_columns.size(); i++) {
+			key_of_last_row[i] = row.string_at(primary_key_columns[i]);
+		}
 	}
 
 	msgpack::packer<ostream> &packer;
+	const vector<size_t> &primary_key_columns;
+	vector<string> key_of_last_row;
 	RowHasher<DatabaseRow> row_hasher;
 };

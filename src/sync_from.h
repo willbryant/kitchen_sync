@@ -50,7 +50,7 @@ void sync_from(DatabaseClient &client) {
 			RowValues first_key(command.arguments[1].as<RowValues>());
 			uint64_t  row_count(command.arguments[2].as<uint64_t>());
 			const Table &table(client.table_by_name(table_name));
-			RowHasherAndPacker<typename DatabaseClient::RowType> row_hasher_and_packer(packer);
+			RowHasherAndPacker<typename DatabaseClient::RowType> row_hasher_and_packer(packer, table.primary_key_columns);
 			client.retrieve_rows(table, first_key, row_count, row_hasher_and_packer);
 
 		} else if (command.name == "quit") {
