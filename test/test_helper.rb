@@ -64,7 +64,7 @@ module KitchenSync
                                   instance_methods.include? :default_test
 
     def captured_stderr_filename
-      @captured_stderr_filename ||= File.join(File.dirname(__FILE__), 'tmp', 'captured_stderr')
+      @captured_stderr_filename ||= File.join(File.dirname(__FILE__), 'tmp', 'captured_stderr') unless ENV['NO_CAPTURE_STDERR']
     end
 
     def binary_path
