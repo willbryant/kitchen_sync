@@ -8,12 +8,12 @@ public:
 	Stream(int fd): _fd(fd) { }
 
 	template <typename T>
-	void read_and_unpack(T &obj) {
+	T &operator >>(T &obj) {
 		while (true) {
 			msgpack::unpacked result;
 			if (unpacker.next(&result)) {
 				result.get() >> obj;
-				return;
+				return obj;
 			}
 			if (!fill_buffer()) {
 				throw runtime_error("Reached end of stream unexpectedly");

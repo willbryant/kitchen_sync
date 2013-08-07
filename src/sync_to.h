@@ -23,12 +23,12 @@ void sync_to(T &client) {
 	Stream stream(STDIN_FILENO);
 	cout << Command("protocol", PROTOCOL_VERSION_SUPPORTED);
 	int protocol;
-	stream.read_and_unpack(protocol);
+	stream >> protocol;
 
 	// get its schema
 	cout << Command("schema");
 	Database from_database;
-	stream.read_and_unpack(from_database);
+	stream >> from_database;
 
 	// get our end's schema
 	Database to_database(client.database_schema());

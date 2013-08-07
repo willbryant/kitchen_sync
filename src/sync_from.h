@@ -18,7 +18,7 @@ void sync_from(DatabaseClient &client) {
 	Command command;
 
 	// all conversations must start with a "protocol" command to establish the language to be used
-	stream.read_and_unpack(command);
+	stream >> command;
 	if (command.name != "protocol") {
 		throw command_error("Expected a protocol command before " + command.name);
 	}
@@ -31,7 +31,7 @@ void sync_from(DatabaseClient &client) {
 	cout.flush();
 
 	while (true) {
-		stream.read_and_unpack(command);
+		stream >> command;
 
 		if (command.name == "schema") {
 			Database from_database(client.database_schema());
