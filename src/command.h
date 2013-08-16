@@ -17,29 +17,22 @@ void operator >> (msgpack::object obj, Command &command) {
 	command.arguments = vector<msgpack::object>(obj.via.array.ptr + 1, obj.via.array.ptr + obj.via.array.size);
 }
 
-void send_command(ostream &os, const string &name) {
-	msgpack::packer<ostream> packer(os);
-	packer.pack_array(1 + 0); /* name + number of args */
-	packer << name;
-	os.flush();
+inline void send_values(msgpack::packer<ostream> &packer) {
+	/* do nothing, this specialization is just to terminate the variadic template expansion */
 }
 
-template<class T1>
-void send_command(ostream &os, const string &name, const T1 &arg1) {
-	msgpack::packer<ostream> packer(os);
-	packer.pack_array(1 + 1); /* name + number of args */
-	packer << name;
-	packer << arg1;
-	os.flush();
+template<typename T, typename... Values>
+inline void send_values(msgpack::packer<ostream> &packer, const T &arg0, const Values &...args) {
+	packer << arg0;
+	send_values(packer, args...);
 }
 
-template<class T1, class T2>
-void send_command(ostream &os, const string &name, const T1 &arg1, const T2 &arg2) {
+template<typename... Values>
+void send_command(ostream &os, const string &name, const Values &...args) {
 	msgpack::packer<ostream> packer(os);
-	packer.pack_array(1 + 2); /* name + number of args */
+	packer.pack_array(1 + sizeof...(Values)); /* name + number of args */
 	packer << name;
-	packer << arg1;
-	packer << arg2;
+	send_values(packer, args...);
 	os.flush();
 }
 
