@@ -3,32 +3,25 @@
 
 #include "schema.h"
 #include "schema_functions.h"
+#include "sync_database_data.h"
+#include "sync_table_data.h"
+#include "sync_table_rows.h"
 
-void sync_table_data(const Table &from_table) {
-
-}
-
-void sync_database_data(const Database &from_database) {
-	// single-threaded for now
-	for (Tables::const_iterator from_table = from_database.tables.begin(); from_table != from_database.tables.end(); ++from_table) {
-		sync_table_data(*from_table);
-	}
-}
-
-template<class T>
-void sync_to(T &client) {
+template<typename DatabaseClient>
+void sync_to(DatabaseClient &client) {
 	const int PROTOCOL_VERSION_SUPPORTED = 1;
+	
+	Stream input(STDIN_FILENO);
 
-	// tell the other end what protocol we speak
-	Stream stream(STDIN_FILENO);
+	// tell the other end what protocol we speak, and have them tell us which version we're able to converse in
 	send_command(cout, "protocol", PROTOCOL_VERSION_SUPPORTED);
 	int protocol;
-	stream >> protocol;
+	input >> protocol;
 
 	// get its schema
 	send_command(cout, "schema");
 	Database from_database;
-	stream >> from_database;
+	input >> from_database;
 
 	// get our end's schema
 	Database to_database(client.database_schema());
@@ -37,7 +30,8 @@ void sync_to(T &client) {
 	check_schema_match(from_database, to_database);
 
 	// start syncing table data
-	sync_database_data(from_database);
+	sync_database_data(client, input, from_database);
 
+	client.commit_transaction();
 	send_command(cout, "quit");
 }

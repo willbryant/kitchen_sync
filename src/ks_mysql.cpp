@@ -69,19 +69,21 @@ public:
 	~MySQLClient();
 
 	template <class RowPacker>
-	void retrieve_rows(const Table &table, const RowValues &prev_key, const RowValues &last_key, RowPacker &row_packer) {
-		query(retrieve_rows_sql(table, prev_key, last_key), row_packer, false /* nb. n_tuples won't work, which is ok since we send rows individually */);
+	void retrieve_rows(const Table &table, const ColumnValues &prev_key, size_t row_count, RowPacker &row_packer) {
+		query(retrieve_rows_sql(table, prev_key, row_count), row_packer, false /* as above */);
 	}
 
 	template <class RowPacker>
-	void retrieve_rows(const Table &table, const RowValues &prev_key, size_t row_count, RowPacker &row_packer) {
-		query(retrieve_rows_sql(table, prev_key, row_count), row_packer, false /* as above */);
+	void retrieve_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, RowPacker &row_packer) {
+		query(retrieve_rows_sql(table, prev_key, last_key), row_packer, false /* nb. n_tuples won't work, which is ok since we send rows individually */);
 	}
+
+	void execute(const string &sql);
+	void commit_transaction();
 
 protected:
 	friend class MySQLTableLister;
 
-	void execute(const char *sql);
 	void start_transaction(bool readonly);
 	void populate_database_schema();
 
@@ -149,8 +151,8 @@ MySQLClient::~MySQLClient() {
 	mysql_close(&mysql);
 }
 
-void MySQLClient::execute(const char *sql) {
-	if (mysql_query(&mysql, "BEGIN")) {
+void MySQLClient::execute(const string &sql) {
+	if (mysql_query(&mysql, sql.c_str())) {
 		throw runtime_error(mysql_error(&mysql));
 	}
 }
@@ -158,6 +160,10 @@ void MySQLClient::execute(const char *sql) {
 void MySQLClient::start_transaction(bool readonly) {
 	execute("SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ");
 	execute(readonly && mysql_get_server_version(&mysql) >= MYSQL_5_6_5 ? "START TRANSACTION READ ONLY" : "START TRANSACTION");
+}
+
+void MySQLClient::commit_transaction() {
+	execute("COMMIT");
 }
 
 struct MySQLColumnLister {

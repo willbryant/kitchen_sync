@@ -13,12 +13,12 @@ template<class DatabaseClient>
 void sync_from(DatabaseClient &client) {
 	const int PROTOCOL_VERSION_SUPPORTED = 1;
 
-	Stream stream(STDIN_FILENO);
+	Stream input(STDIN_FILENO);
 	msgpack::packer<ostream> packer(cout); // we could overload for ostreams automatically, but then any primitive types send to cout would get printed without encoding
 	Command command;
 
 	// all conversations must start with a "protocol" command to establish the language to be used
-	stream >> command;
+	input >> command;
 	if (command.name != "protocol") {
 		throw command_error("Expected a protocol command before " + command.name);
 	}
@@ -31,7 +31,7 @@ void sync_from(DatabaseClient &client) {
 	cout.flush();
 
 	while (true) {
-		stream >> command;
+		input >> command;
 
 		if (command.name == "schema") {
 			Database from_database(client.database_schema());
@@ -39,15 +39,15 @@ void sync_from(DatabaseClient &client) {
 
 		} else if (command.name == "rows") {
 			string  table_name(command.arguments[0].as<string>());
-			RowValues prev_key(command.arguments[1].as<RowValues>());
-			RowValues last_key(command.arguments[2].as<RowValues>());
+			ColumnValues prev_key(command.arguments[1].as<ColumnValues>());
+			ColumnValues last_key(command.arguments[2].as<ColumnValues>());
 			const Table &table(client.table_by_name(table_name));
 			RowPacker<typename DatabaseClient::RowType> row_packer(packer);
 			client.retrieve_rows(table, prev_key, last_key, row_packer);
 
 		} else if (command.name == "hash") {
 			string  table_name(command.arguments[0].as<string>());
-			RowValues prev_key(command.arguments[1].as<RowValues>());
+			ColumnValues prev_key(command.arguments[1].as<ColumnValues>());
 			uint64_t row_count(command.arguments[2].as<uint64_t>());
 			const Table &table(client.table_by_name(table_name));
 			RowHasherAndPacker<typename DatabaseClient::RowType> row_hasher_and_packer(packer, table.primary_key_columns);

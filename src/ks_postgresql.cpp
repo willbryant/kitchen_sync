@@ -66,19 +66,21 @@ public:
 	~PostgreSQLClient();
 
 	template <class RowPacker>
-	void retrieve_rows(const Table &table, const RowValues &prev_key, const RowValues &last_key, RowPacker &row_packer) {
-		query(retrieve_rows_sql(table, prev_key, last_key), row_packer);
+	void retrieve_rows(const Table &table, const ColumnValues &prev_key, size_t row_count, RowPacker &row_packer) {
+		query(retrieve_rows_sql(table, prev_key, row_count), row_packer);
 	}
 
 	template <class RowPacker>
-	void retrieve_rows(const Table &table, const RowValues &prev_key, size_t row_count, RowPacker &row_packer) {
-		query(retrieve_rows_sql(table, prev_key, row_count), row_packer);
+	void retrieve_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, RowPacker &row_packer) {
+		query(retrieve_rows_sql(table, prev_key, last_key), row_packer);
 	}
+
+	void execute(const string &sql);
+	void commit_transaction();
 
 protected:
 	friend class PostgreSQLTableLister;
 
-	void execute(const char *sql);
 	void start_transaction(bool readonly);
 	void populate_database_schema();
 
@@ -133,8 +135,8 @@ PostgreSQLClient::~PostgreSQLClient() {
 	}
 }
 
-void PostgreSQLClient::execute(const char *sql) {
-    PostgreSQLRes res(PQexec(conn, sql));
+void PostgreSQLClient::execute(const string &sql) {
+    PostgreSQLRes res(PQexec(conn, sql.c_str()));
 
     if (res.status() != PGRES_COMMAND_OK) {
 		throw runtime_error(PQerrorMessage(conn));
@@ -144,6 +146,10 @@ void PostgreSQLClient::execute(const char *sql) {
 void PostgreSQLClient::start_transaction(bool readonly) {
 	execute("SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ");
 	execute(readonly ? "START TRANSACTION READ ONLY" : "START TRANSACTION");
+}
+
+void PostgreSQLClient::commit_transaction() {
+	execute("COMMIT");
 }
 
 struct PostgreSQLColumnLister {

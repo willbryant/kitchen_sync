@@ -1,17 +1,10 @@
 require File.expand_path(File.join(File.dirname(__FILE__), 'test_helper'))
 
-require 'openssl'
-
 class HashFromTest < KitchenSync::EndpointTestCase
   include TestTableSchemas
 
   def from_or_to
     :from
-  end
-
-  def hash_of(rows)
-    md5 = OpenSSL::Digest::MD5.new
-    md5.digest(rows.collect(&:to_msgpack).join)
   end
 
   def send_hash_command(*args)

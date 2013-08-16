@@ -16,6 +16,8 @@ struct Column {
 typedef vector<Column> Columns;
 typedef vector<string> ColumnNames;
 typedef vector<size_t> ColumnIndices;
+typedef vector<string> ColumnValues;
+typedef vector<ColumnValues> Rows;
 
 struct Table {
 	string name;
@@ -34,8 +36,5 @@ typedef vector<Table> Tables;
 struct Database {
 	Tables tables;
 };
-
-typedef vector<string> RowValues;
-typedef vector<RowValues> Rows;
 
 #endif

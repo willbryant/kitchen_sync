@@ -80,12 +80,16 @@ class KitchenSyncSpawner
     fail "Unexpected stderr output: #{stderr_contents}" unless (stderr_contents || "") == (@expected_stderr_contents || "")
   end
 
+  def send_result(result)
+    @program_stdin.write(result.to_msgpack)
+  end
+
   def receive_commands(*args)
     loop do
       command = unpacker.read
       result = yield command
       break if command == ["quit"]
-      @program_stdin.write(result.to_msgpack)
+      send_result(result)
     end
   rescue EOFError
     # ignore; the test case will use expects(:quit) if it expects a less abrupt end to the conversation

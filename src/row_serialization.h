@@ -36,6 +36,10 @@ void operator << (msgpack::packer<ostream> &packer, const Hash &hash) {
 	packer.pack_raw_body((const char*)hash.md_value, hash.md_len);
 }
 
+bool operator == (const Hash &hash, const string &str) {
+	return (hash.md_len == str.length() && string(hash.md_value, hash.md_value + hash.md_len) == str);
+}
+
 struct InitOpenSSL {
 	InitOpenSSL() {
 		OpenSSL_add_all_digests();
@@ -46,7 +50,7 @@ static InitOpenSSL init_open_ssl;
 
 template<class DatabaseRow>
 struct RowHasher {
-	RowHasher() {
+	RowHasher(): seen_rows(false) {
 		const EVP_MD *md = EVP_get_digestbyname(DIGEST_NAME);
 		if (!md) throw runtime_error("Unknown message digest " DIGEST_NAME);
 		mdctx = EVP_MD_CTX_create();
@@ -63,6 +67,8 @@ struct RowHasher {
 	}
 
 	void operator()(const DatabaseRow &row) {
+		seen_rows = true;
+		
 		// pack the row to get a byte stream
 		msgpack::sbuffer packed_row;
 		msgpack::packer<msgpack::sbuffer> row_packer(packed_row);
@@ -82,6 +88,7 @@ struct RowHasher {
 
 	Hash hash;
 	EVP_MD_CTX *mdctx;
+	bool seen_rows;
 };
 
 template<class DatabaseRow>

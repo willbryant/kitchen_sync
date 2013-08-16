@@ -7,6 +7,9 @@ require 'mocha/setup'
 require 'msgpack'
 require 'pg'
 require 'mysql2'
+require 'openssl'
+
+require 'debugger' if ENV['DEBUG']
 
 require File.expand_path(File.join(File.dirname(__FILE__), 'kitchen_sync_spawner'))
 require File.expand_path(File.join(File.dirname(__FILE__), 'test_table_schemas'))
@@ -136,11 +139,20 @@ module KitchenSync
     end
 
     def execute(sql)
-      connection.execute sql
+      connection.execute(sql)
+    end
+
+    def query(sql)
+      connection.query(sql).collect {|row| row.values.collect {|value| value.to_s unless value.nil?}} # one adapter returns strings, the other casts.  for now, we use the lowest common denominator.
     end
 
     def clear_schema
       connection.tables.each {|table_name| execute "DROP TABLE #{table_name}"}
+    end
+
+    def hash_of(rows)
+      md5 = OpenSSL::Digest::MD5.new
+      md5.digest(rows.collect(&:to_msgpack).join)
     end
 
     def self.test_each(description, &block)
