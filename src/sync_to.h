@@ -21,12 +21,12 @@ void sync_to(T &client) {
 
 	// tell the other end what protocol we speak
 	Stream stream(STDIN_FILENO);
-	cout << Command("protocol", PROTOCOL_VERSION_SUPPORTED);
+	send_command(cout, "protocol", PROTOCOL_VERSION_SUPPORTED);
 	int protocol;
 	stream >> protocol;
 
 	// get its schema
-	cout << Command("schema");
+	send_command(cout, "schema");
 	Database from_database;
 	stream >> from_database;
 
@@ -39,5 +39,5 @@ void sync_to(T &client) {
 	// start syncing table data
 	sync_database_data(from_database);
 
-	cout << Command("quit");
+	send_command(cout, "quit");
 }
