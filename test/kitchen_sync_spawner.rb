@@ -21,6 +21,16 @@ class KitchenSyncSpawner
       exec_args.unshift "--leak-check=full" if ENV['VALGRIND'] == "full"
       exec_args.unshift "valgrind"
     end
+
+    if ENV['OS_X_MALLOC_CHECKS']
+      ENV['MallocStackLogging'] = '1'
+      ENV['MallocScribble'] = '1'
+      ENV['MallocPreScribble'] = '1'
+      ENV['MallocGuardEdges'] = '1'
+      ENV['MallocCheckHeapStart'] = '1'
+      ENV['MallocCheckHeapEach'] = '1'
+      @capture_stderr_in = nil
+    end
     
     stdin_r, stdin_w = IO.pipe
     stdout_r, stdout_w = IO.pipe
@@ -65,7 +75,7 @@ class KitchenSyncSpawner
   end
 
   def expected_stderr_contents
-    @expected_stderr_contents || ""
+    @expected_stderr_contents || "" if @capture_stderr_in
   end
 
   def unpacker
