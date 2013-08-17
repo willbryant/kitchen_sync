@@ -79,6 +79,8 @@ public:
 	}
 
 	void execute(const string &sql);
+	void disable_referential_integrity();
+	void enable_referential_integrity();
 	void commit_transaction();
 
 protected:
@@ -164,6 +166,14 @@ void MySQLClient::start_transaction(bool readonly) {
 
 void MySQLClient::commit_transaction() {
 	execute("COMMIT");
+}
+
+void MySQLClient::disable_referential_integrity() {
+	execute("SET foreign_key_checks = 0");
+}
+
+void MySQLClient::enable_referential_integrity() {
+	execute("SET foreign_key_checks = 1");
 }
 
 struct MySQLColumnLister {

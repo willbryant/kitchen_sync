@@ -76,6 +76,8 @@ public:
 	}
 
 	void execute(const string &sql);
+	void disable_referential_integrity();
+	void enable_referential_integrity();
 	void commit_transaction();
 
 protected:
@@ -150,6 +152,20 @@ void PostgreSQLClient::start_transaction(bool readonly) {
 
 void PostgreSQLClient::commit_transaction() {
 	execute("COMMIT");
+}
+
+void PostgreSQLClient::disable_referential_integrity() {
+	execute("SET CONSTRAINTS ALL DEFERRED");
+
+	for (Tables::const_iterator table = database.tables.begin(); table != database.tables.end(); ++table) {
+		execute("ALTER TABLE " + table->name + " DISABLE TRIGGER ALL");
+	}
+}
+
+void PostgreSQLClient::enable_referential_integrity() {
+	for (Tables::const_iterator table = database.tables.begin(); table != database.tables.end(); ++table) {
+		execute("ALTER TABLE " + table->name + " ENABLE TRIGGER ALL");
+	}
 }
 
 struct PostgreSQLColumnLister {
