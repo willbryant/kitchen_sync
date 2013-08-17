@@ -155,6 +155,10 @@ module KitchenSync
       md5.digest(rows.collect(&:to_msgpack).join)
     end
 
+    def hash_and_count_of(rows)
+      [hash_of(rows), rows.size]
+    end
+
     def self.test_each(description, &block)
       ENDPOINT_DATABASES.each do |database_server, settings|
         define_method("test #{description} for #{database_server}".gsub(/\W+/,'_').to_sym) do

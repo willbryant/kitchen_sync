@@ -27,7 +27,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_secondtbl
 
     expects(:schema).with().returns([{"tables" => [footbl_def, middletbl_def, secondtbl_def]}])
-    expects(:hash).times(3).returns([[hash_of([]), []]])
+    expects(:rows).times(3).returns([[]])
     expects(:quit)
     receive_commands
   end
