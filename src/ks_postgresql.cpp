@@ -79,6 +79,7 @@ public:
 	void disable_referential_integrity();
 	void enable_referential_integrity();
 	void commit_transaction();
+	string escape_value(const string &value);
 
 protected:
 	friend class PostgreSQLTableLister;
@@ -166,6 +167,14 @@ void PostgreSQLClient::enable_referential_integrity() {
 	for (Tables::const_iterator table = database.tables.begin(); table != database.tables.end(); ++table) {
 		execute("ALTER TABLE " + table->name + " ENABLE TRIGGER ALL");
 	}
+}
+
+string PostgreSQLClient::escape_value(const string &value) {
+	string result;
+	result.resize(value.size()*2 + 1);
+	size_t result_length = PQescapeStringConn(conn, (char*)result.data(), value.c_str(), value.size(), NULL);
+	result.resize(result_length);
+	return result;
 }
 
 struct PostgreSQLColumnLister {

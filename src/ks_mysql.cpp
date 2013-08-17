@@ -82,6 +82,7 @@ public:
 	void disable_referential_integrity();
 	void enable_referential_integrity();
 	void commit_transaction();
+	string escape_value(const string &value);
 
 protected:
 	friend class MySQLTableLister;
@@ -174,6 +175,14 @@ void MySQLClient::disable_referential_integrity() {
 
 void MySQLClient::enable_referential_integrity() {
 	execute("SET foreign_key_checks = 1");
+}
+
+string MySQLClient::escape_value(const string &value) {
+	string result;
+	result.resize(value.size()*2 + 1);
+	size_t result_length = mysql_real_escape_string(&mysql, (char*)result.data(), value.c_str(), value.size());
+	result.resize(result_length);
+	return result;
 }
 
 struct MySQLColumnLister {

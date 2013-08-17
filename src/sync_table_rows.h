@@ -32,7 +32,7 @@ void sync_table_rows(
 				insert_sql += "NULL";
 			} else {
 				insert_sql += "'";
-				insert_sql += escape_non_binary_string(column_value->as<string>());
+				insert_sql += client.escape_value(column_value->as<string>());
 				insert_sql += "'";
 			}
 		}
