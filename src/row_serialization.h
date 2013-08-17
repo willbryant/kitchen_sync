@@ -50,7 +50,7 @@ static InitOpenSSL init_open_ssl;
 
 template<class DatabaseRow>
 struct RowHasher {
-	RowHasher(): seen_rows(false) {
+	RowHasher(): row_count(0) {
 		const EVP_MD *md = EVP_get_digestbyname(DIGEST_NAME);
 		if (!md) throw runtime_error("Unknown message digest " DIGEST_NAME);
 		mdctx = EVP_MD_CTX_create();
@@ -67,7 +67,7 @@ struct RowHasher {
 	}
 
 	void operator()(const DatabaseRow &row) {
-		seen_rows = true;
+		row_count++;
 		
 		// pack the row to get a byte stream
 		msgpack::sbuffer packed_row;
@@ -88,7 +88,7 @@ struct RowHasher {
 
 	Hash hash;
 	EVP_MD_CTX *mdctx;
-	bool seen_rows;
+	unsigned int row_count;
 };
 
 template<class DatabaseRow>

@@ -28,23 +28,29 @@ void sync_table_data(
 			// be optimistic: hash more data next time
 			rows_to_hash <<= 1;
 
-		} else if (!row_hasher.seen_rows) {
+		} else if (hash_result.last_key.empty()) {
+			// we don't match, and furthermore, the other end has found they have no more rows after the last matched row
+			// (if any).  so we know we need to delete our remaining rows, after which, we're done.
+			ColumnValues empty_key;
+			client.execute(client.delete_rows_sql(table, matched_up_to_key, empty_key));
+			break;
+
+		} else if (row_hasher.row_count == 0) {
 			// we don't match, and furthermore, we've found we actually have no more rows after the last matched row (if any),
 			// so we need to get the other end to send over the entire remainder of the table - after which, we're done.
 			ColumnValues empty_key;
 			sync_table_rows(client, input, table, matched_up_to_key, empty_key);
 			break;
 
-		} else if (hash_result.last_key.empty()) {
-			// we don't match, and furthermore, the other end has found they have no more rows - the reverse of the previous
-			// case.  so we know we need to delete our remaining rows, after which, we're done.
-			ColumnValues empty_key;
-			client.execute(client.delete_rows_sql(table, matched_up_to_key, empty_key));
-			break;
-
 		} else if (rows_to_hash > 1) {
 			// both this end and that have data after the last matching row, but it doesn't match; try matching a smaller set of rows
 			rows_to_hash >>= 1;
+
+			// there's no point requesting more rows than we actually have - if they have more than that number, then they must not
+			// match, and if they have no more than that number, there's no harm in requesting that number
+			if (rows_to_hash > row_hasher.row_count) {
+				rows_to_hash = row_hasher.row_count;
+			}
 
 		} else {
 			// we've got down to single rows already, so go ahead and request that row's data and update, then carry on after that
