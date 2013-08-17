@@ -7,8 +7,8 @@ struct RowPacker {
 	RowPacker(msgpack::packer<ostream> &packer): packer(packer) {}
 
 	~RowPacker() {
-		// we use nil to indicate the end of the rowset
-		packer.pack_nil();
+		// we use an empty array to indicate the end of the rowset
+		packer.pack_array(0);
 	}
 
 	void operator()(const DatabaseRow &row) {

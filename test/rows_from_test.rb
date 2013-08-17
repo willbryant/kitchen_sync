@@ -13,7 +13,7 @@ class RowsFromTest < KitchenSync::EndpointTestCase
     # terminating the resultset with a nil object (which is unambiguous since the rows are returned as arrays).
     rows = []
     result = send_command("rows", *args)
-    while result
+    while result.length > 0
       rows << result
       result = unpacker.read
     end
