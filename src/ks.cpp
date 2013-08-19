@@ -51,7 +51,10 @@ int main(int argc, char *argv[]) {
 		pid_t from_pid, to_pid;
 		Process::fork_and_exec_pair(from_binary, to_binary, from_args, to_args, &from_pid, &to_pid);
 
-		if (Process::wait_for_and_check(from_pid) && Process::wait_for_and_check(to_pid)) {
+		bool from_success = Process::wait_for_and_check(from_pid);
+		bool   to_success = Process::wait_for_and_check(to_pid);
+		
+		if (from_success && to_success) {
 			cout << "Finished Kitchen Syncing." << endl;
 			return 0;
 		} else {
