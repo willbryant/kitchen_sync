@@ -137,4 +137,35 @@ class SyncToTest < KitchenSync::EndpointTestCase
                   ["3",  nil,  "foo"]],
                  query("SELECT * FROM footbl ORDER BY col1")
   end
+
+  test_each "handles hashing long values" do
+    clear_schema
+    create_texttbl
+    execute "INSERT INTO texttbl VALUES (1, '#{'a'*80*1024}')"
+
+    long_row = ["1", "a"*80*1024]
+
+    expects(:schema).with().returns([{"tables" => [texttbl_def]}])
+    expects(:hash).in_sequence.with("texttbl", [], ["1"]).returns([hash_and_count_of([long_row])])
+    expects(:rows).in_sequence.with("texttbl", ["1"], []).returns([[]])
+    expects(:quit)
+    receive_commands
+
+    assert_equal [long_row],
+                 query("SELECT * FROM texttbl ORDER BY pri")
+  end
+
+  test_each "handles requesting and saving long values" do
+    clear_schema
+    create_texttbl
+    long_row = ["1", "a"*80*1024]
+
+    expects(:schema).with().returns([{"tables" => [texttbl_def]}])
+    expects(:rows).in_sequence.with("texttbl", [], []).returns([long_row, []])
+    expects(:quit)
+    receive_commands
+
+    assert_equal [long_row],
+                 query("SELECT * FROM texttbl ORDER BY pri")
+  end
 end

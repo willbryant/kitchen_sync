@@ -57,6 +57,23 @@ SQL
       "primary_key_columns" => [0] }
   end
 
+  def create_texttbl
+    execute(<<-SQL)
+      CREATE TABLE texttbl (
+        pri INT NOT NULL,
+        textfield TEXT#{'(268435456)' if @database_server == 'mysql'},
+        PRIMARY KEY(pri))
+SQL
+  end
+
+  def texttbl_def
+    { "name"    => "texttbl",
+      "columns" => [
+        {"name" => "pri"},
+        {"name" => "textfield"}],
+      "primary_key_columns" => [0] }
+  end
+
   def create_some_tables
     clear_schema
     create_footbl
