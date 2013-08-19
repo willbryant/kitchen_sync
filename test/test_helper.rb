@@ -171,7 +171,7 @@ module KitchenSync
             @spawner = nil
             @connection.close rescue nil if @connection
           end
-        end
+        end if ENV['ENDPOINT_DATABASES'].nil? || ENV['ENDPOINT_DATABASES'].include?(database_server)
       end
     end
   end
