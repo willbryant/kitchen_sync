@@ -1,6 +1,6 @@
 template <typename DatabaseClient>
 void sync_database_data(
-	DatabaseClient &client, Stream &input, const Database &database) {
+	DatabaseClient &client, Unpacker &input, const Database &database) {
 
 	client.disable_referential_integrity();
 

@@ -138,6 +138,19 @@ class SyncToTest < KitchenSync::EndpointTestCase
                  query("SELECT * FROM footbl ORDER BY col1")
   end
 
+  test_each "handles data after nil elements" do
+    clear_schema
+    create_footbl
+    expects(:schema).with().returns([{"tables" => [footbl_def]}])
+    expects(:rows).in_sequence.with("footbl", [], []).returns([["2", nil, nil], ["3",  nil,  "foo"], []])
+    expects(:quit)
+    receive_commands
+
+    assert_equal [["2", nil,   nil],
+                  ["3", nil, "foo"]],
+                 query("SELECT * FROM footbl ORDER BY col1")
+  end
+
   test_each "handles hashing medium values" do
     clear_schema
     create_texttbl

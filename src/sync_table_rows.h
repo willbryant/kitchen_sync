@@ -2,7 +2,7 @@
 
 template <typename DatabaseClient>
 void sync_table_rows(
-	DatabaseClient &client, Stream &input, const Table &table,
+	DatabaseClient &client, Unpacker &input, const Table &table,
 	const ColumnValues &matched_up_to_key, ColumnValues &last_not_matching_key) {
 
 	// for now, we clear and re-insert; matching up and using UPDATE statements is next on the list
@@ -19,20 +19,20 @@ void sync_table_rows(
 		// the rows command is unusual.  to avoid needing to know the number of results in advance,
 		// instead of a single response object, there's one response object per row, terminated by
 		// an empty row (which is not valid data, so is unambiguous).
-		vector<msgpack::object> values;
-		input >> values;
-		if (values.empty()) break;
+		size_t columns = input.next_array_length();
+		if (columns == 0) break;
 
 		insert_sql += any_values ? ",\n(" : "(";
-		for (vector<msgpack::object>::const_iterator column_value = values.begin(); column_value != values.end(); ++column_value) {
-			if (column_value != values.begin()) {
+		for (size_t n = 0; n < columns; n++) {
+			if (n > 0) {
 				insert_sql += ",";
 			}
-			if (column_value->is_nil()) {
+			if (input.next_is_nil()) {
+				input.next_nil();
 				insert_sql += "NULL";
 			} else {
 				insert_sql += "'";
-				insert_sql += client.escape_value(column_value->as<string>());
+				insert_sql += client.escape_value(input.next<string>());
 				insert_sql += "'";
 			}
 		}

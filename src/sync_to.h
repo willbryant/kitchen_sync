@@ -11,7 +11,7 @@ template<typename DatabaseClient>
 void sync_to(DatabaseClient &client) {
 	const int PROTOCOL_VERSION_SUPPORTED = 1;
 	
-	Stream input(STDIN_FILENO);
+	Unpacker input(STDIN_FILENO);
 
 	// tell the other end what protocol we speak, and have them tell us which version we're able to converse in
 	send_command(cout, "protocol", PROTOCOL_VERSION_SUPPORTED);

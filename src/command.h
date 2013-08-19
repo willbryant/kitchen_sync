@@ -2,19 +2,45 @@
 #define COMMANDS_H
 
 #include "msgpack.hpp"
+#include "unpacker.h"
 
 using namespace std;
 
 struct Command {
 	string name;
-	vector<msgpack::object> arguments;
+	// TODO: implement arbitrary object deserialization; happens we only need strings in this position right now
+	string arg0;
+	// TODO: implement arbitrary object deserialization; happens we only need arrays of strings in this position right now
+	vector< vector<string> > args;
+
+	template<class T>
+	T argument(int index) {
+		return args[index - 1];
+	}
 };
 
-void operator >> (msgpack::object obj, Command &command) {
-	if (obj.type != msgpack::type::ARRAY) throw logic_error("Expected an array while reading command");
-	if (obj.via.array.size < 1) throw logic_error("Expected at least one element when reading command");
-	command.name = obj.via.array.ptr->as<string>();
-	command.arguments = vector<msgpack::object>(obj.via.array.ptr + 1, obj.via.array.ptr + obj.via.array.size);
+Command &operator >> (Unpacker &unpacker, Command &command) {
+	size_t array_length = unpacker.next_array_length(); // checks type
+	if (array_length < 1) throw logic_error("Expected at least one element when reading command");
+
+	command.name = unpacker.next<string>();
+	array_length--;
+
+	// TODO: implement arbitrary object deserialization; happens we only need strings in this position right now
+	if (array_length >= 2) {
+		unpacker >> command.arg0;
+		array_length--;
+	} else {
+		command.arg0.clear();
+	}
+
+	command.args.clear();
+	while (array_length--) {
+		// TODO: implement arbitrary object deserialization; happens we only need arrays of strings in this position right now
+		command.args.push_back(unpacker.next< vector<string> >());
+	}
+
+	return command;
 }
 
 inline void send_values(msgpack::packer<ostream> &packer) {

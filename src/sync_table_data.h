@@ -1,7 +1,7 @@
 #include "hash_result.h"
 
 template <typename DatabaseClient>
-void sync_table_data(DatabaseClient &client, Stream &input, const Table &table) {
+void sync_table_data(DatabaseClient &client, Unpacker &input, const Table &table) {
 	// start off small, and from the very beginning (in primary key order) of the table
 	size_t rows_to_hash = 1;
 	ColumnValues matched_up_to_key;

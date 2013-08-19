@@ -8,23 +8,28 @@
 struct command_error: public runtime_error {
 	command_error(const string &error): runtime_error(error) { }
 };
-
+#include "sql_functions.h"
 template<class DatabaseClient>
 void sync_from(DatabaseClient &client) {
 	const int PROTOCOL_VERSION_SUPPORTED = 1;
 
-	Stream input(STDIN_FILENO);
+	Unpacker input(STDIN_FILENO);
 	msgpack::packer<ostream> packer(cout); // we could overload for ostreams automatically, but then any primitive types send to cout would get printed without encoding
 	Command command;
 
 	// all conversations must start with a "protocol" command to establish the language to be used
-	input >> command;
-	if (command.name != "protocol") {
+	// TODO: implement arbitrary object deserialization
+	if (input.next_array_length() != 2 || // checks type
+		input.next<string>() != "protocol") {
+	// input >> command;
+	// if (command.name != "protocol") {
 		throw command_error("Expected a protocol command before " + command.name);
 	}
 
 	// the usable protocol is the highest out of those supported by the two ends
-	int protocol = min(PROTOCOL_VERSION_SUPPORTED, command.arguments[0].as<typeof(protocol)>());
+	// TODO: as above
+	int protocol = min(PROTOCOL_VERSION_SUPPORTED, input.next<typeof(protocol)>());
+	// int protocol = min(PROTOCOL_VERSION_SUPPORTED, command.argument<typeof(protocol)>(0));
 
 	// tell the other end what version was selected
 	packer << protocol;
@@ -38,17 +43,17 @@ void sync_from(DatabaseClient &client) {
 			packer << from_database;
 
 		} else if (command.name == "rows") {
-			string  table_name(command.arguments[0].as<string>());
-			ColumnValues prev_key(command.arguments[1].as<ColumnValues>());
-			ColumnValues last_key(command.arguments[2].as<ColumnValues>());
+			string     table_name(command.arg0);
+			ColumnValues prev_key(command.argument<ColumnValues>(1));
+			ColumnValues last_key(command.argument<ColumnValues>(2));
 			const Table &table(client.table_by_name(table_name));
 			RowPacker<typename DatabaseClient::RowType> row_packer(packer);
 			client.retrieve_rows(table, prev_key, last_key, row_packer);
 
 		} else if (command.name == "hash") {
-			string  table_name(command.arguments[0].as<string>());
-			ColumnValues prev_key(command.arguments[1].as<ColumnValues>());
-			ColumnValues last_key(command.arguments[2].as<ColumnValues>());
+			string     table_name(command.arg0);
+			ColumnValues prev_key(command.argument<ColumnValues>(1));
+			ColumnValues last_key(command.argument<ColumnValues>(2));
 			const Table &table(client.table_by_name(table_name));
 			RowHasherAndPacker<typename DatabaseClient::RowType> row_hasher_and_packer(packer);
 			client.retrieve_rows(table, prev_key, last_key, row_hasher_and_packer);

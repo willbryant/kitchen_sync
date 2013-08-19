@@ -2,7 +2,7 @@
 #define SCHEMA_SERIALIZATION_H
 
 #include "schema.h"
-#include "stream.h"
+#include "unpacker.h"
 
 template <typename T>
 void operator << (msgpack::packer<ostream> &packer, const vector<T> &v) {
@@ -32,57 +32,42 @@ void operator << (msgpack::packer<ostream> &packer, const Database &database) {
 	packer << database.tables;
 }
 
-void operator >> (msgpack::object obj, Column &column) {
-	if (obj.type != msgpack::type::MAP) throw runtime_error("Expected a map while reading table");
-	for (msgpack::object_kv *ptr = obj.via.map.ptr; ptr != obj.via.map.ptr + obj.via.map.size; ptr++) {
-		string attr_key = ptr->key.as<string>();
+void operator >> (Unpacker &unpacker, Column &column) {
+	size_t map_length = unpacker.next_map_length(); // checks type
+
+	while (map_length--) {
+		string attr_key = unpacker.next<string>();
 
 		if (attr_key == "name") {
-			column.name = ptr->val.as<string>();
+			column.name = unpacker.next<string>();
 		} // ignore anything else, for forward compatibility
 	}
 }
 
-void operator >> (msgpack::object obj, Columns &columns) {
-	if (obj.type != msgpack::type::ARRAY) throw runtime_error("Expected an array while reading columns");
-	for (msgpack::object *ptr = obj.via.array.ptr; ptr != obj.via.array.ptr + obj.via.array.size; ptr++) {
-		Column column;
-		*ptr >> column;
-		columns.push_back(column);
-	}
-}
+void operator >> (Unpacker &unpacker, Table &table) {
+	size_t map_length = unpacker.next_map_length(); // checks type
 
-void operator >> (msgpack::object obj, Table &table) {
-	if (obj.type != msgpack::type::MAP) throw runtime_error("Expected a map while reading table");
-	for (msgpack::object_kv *ptr = obj.via.map.ptr; ptr != obj.via.map.ptr + obj.via.map.size; ptr++) {
-		string attr_key = ptr->key.as<string>();
+	while (map_length--) {
+		string attr_key = unpacker.next<string>();
 
 		if (attr_key == "name") {
-			table.name = ptr->val.as<string>();
+			table.name = unpacker.next<string>();
 		} else if (attr_key == "columns") {
-			ptr->val >> table.columns;
+			unpacker >> table.columns;
 		} else if (attr_key == "primary_key_columns") {
-			ptr->val >> table.primary_key_columns;
+			unpacker >> table.primary_key_columns;
 		} // ignore anything else, for forward compatibility
 	}
 }
 
-void operator >> (msgpack::object obj, Tables &tables) {
-	if (obj.type != msgpack::type::ARRAY) throw runtime_error("Expected an array while reading tables");
-	for (msgpack::object *ptr = obj.via.array.ptr; ptr != obj.via.array.ptr + obj.via.array.size; ptr++) {
-		Table table;
-		*ptr >> table;
-		tables.push_back(table);
-	}
-}
+void operator >> (Unpacker &unpacker, Database &database) {
+	size_t map_length = unpacker.next_map_length(); // checks type
 
-void operator >> (msgpack::object obj, Database &database) {
-	if (obj.type != msgpack::type::MAP) throw runtime_error("Expected a map while reading schema");
-	for (msgpack::object_kv *ptr = obj.via.map.ptr; ptr != obj.via.map.ptr + obj.via.map.size; ptr++) {
-		string attr_key = ptr->key.as<string>();
+	while (map_length--) {
+		string attr_key = unpacker.next<string>();
 
 		if (attr_key == "tables") {
-			ptr->val >> database.tables;
+			unpacker >> database.tables;
 		} // ignore anything else, for forward compatibility
 	}
 }
