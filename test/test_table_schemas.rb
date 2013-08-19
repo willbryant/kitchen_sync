@@ -74,6 +74,32 @@ SQL
       "primary_key_columns" => [0] }
   end
 
+  def create_noprimarytbl
+    execute(<<-SQL)
+      CREATE TABLE noprimarytbl (
+        nullable INT,
+        version VARCHAR(255) NOT NULL,
+        name VARCHAR(255),
+        non_nullable INT NOT NULL)
+SQL
+    execute "CREATE INDEX everything_key ON noprimarytbl (nullable, version, name)"
+    execute "CREATE INDEX not_unique_key ON noprimarytbl (non_nullable)"
+    execute "CREATE UNIQUE INDEX ignored_key ON noprimarytbl (nullable, version)"
+    execute "CREATE UNIQUE INDEX correct_key ON noprimarytbl (version)"
+    execute "CREATE UNIQUE INDEX version_and_name_key ON noprimarytbl (version, name)"
+    execute "CREATE UNIQUE INDEX non_nullable_key ON noprimarytbl (non_nullable)"
+  end
+
+  def noprimarytbl_def
+    { "name" => "noprimarytbl",
+      "columns" => [
+        {"name" => "nullable"},
+        {"name" => "version"},
+        {"name" => "name"},
+        {"name" => "non_nullable"}],
+      "primary_key_columns" => [1] }
+  end
+
   def create_some_tables
     clear_schema
     create_footbl

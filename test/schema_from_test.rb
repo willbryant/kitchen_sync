@@ -24,4 +24,14 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
       {"tables" => [footbl_def, secondtbl_def]},
       send_command("schema"))
   end
+
+  test_each "selects the first unique key with no nullable columns if there is no primary key" do
+    clear_schema
+    create_noprimarytbl
+    send_protocol_command
+
+    assert_equal(
+      {"tables" => [noprimarytbl_def]},
+      send_command("schema"))
+  end
 end

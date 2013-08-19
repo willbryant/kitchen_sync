@@ -124,11 +124,12 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
   test_each "complains about missing columns before other columns" do
     clear_schema
-    create_footbl
-    execute("ALTER TABLE footbl DROP COLUMN col1")
+    create_secondtbl
+    execute("ALTER TABLE secondtbl DROP COLUMN pri1")
+    execute("CREATE UNIQUE INDEX pri2_key ON secondtbl (pri2)") # needed for pg, which drops the primary key when a column is removed; mysql just removes the removed column from the index
 
-    expects(:schema).with().returns([{"tables" => [footbl_def]}])
-    expect_stderr("Missing column col1 on table footbl") do
+    expects(:schema).with().returns([{"tables" => [secondtbl_def]}])
+    expect_stderr("Missing column pri1 on table secondtbl") do
       receive_commands
     end
   end
