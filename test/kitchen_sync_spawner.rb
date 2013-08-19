@@ -20,6 +20,7 @@ class KitchenSyncSpawner
     if ENV['VALGRIND']
       exec_args.unshift "--leak-check=full" if ENV['VALGRIND'] == "full"
       exec_args.unshift "valgrind"
+      @capture_stderr_in = nil
     end
 
     if ENV['OS_X_MALLOC_CHECKS']
