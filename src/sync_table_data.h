@@ -41,7 +41,8 @@ void sync_table_data(DatabaseClient &client, Unpacker &input, const Table &table
 
 		} else if (rows_to_hash > 1) {
 			// both this end and that have data after the last matching row, but it doesn't match; try matching a smaller set of rows
-			rows_to_hash >>= 1;
+			rows_to_hash >>= 2;
+			if (rows_to_hash < 1) rows_to_hash = 1;
 
 		} else {
 			// we've got down to single rows already, so go ahead and request that row's data and update our copy, then carry on after that
