@@ -10,6 +10,7 @@
 #include <map>
 #include "to_string.h"
 #include "endian.h"
+#include "backtrace.h"
 
 struct unpacker_error: public std::runtime_error {
 	unpacker_error(const std::string &error): runtime_error(error) {}
@@ -68,6 +69,7 @@ public:
 	void next_nil() {
 		uint8_t leader = read_raw<uint8_t>();
 		if (leader != MSGPACK_NIL) {
+			backtrace();
 			throw unpacker_error("Don't know how to convert MessagePack type " + to_string((int)leader) + " to nil");
 		}
 	}
@@ -87,6 +89,7 @@ public:
 				return ntohl(read_raw<uint32_t>());
 
 			default:
+				backtrace();
 				throw unpacker_error("Don't know how to convert MessagePack type " + to_string((int)leader) + " to array");
 		}
 	}
@@ -106,6 +109,7 @@ public:
 				return ntohl(read_raw<uint32_t>());
 
 			default:
+				backtrace();
 				throw unpacker_error("Don't know how to convert MessagePack type " + to_string((int)leader) + " to map");
 		}
 	}
@@ -219,6 +223,7 @@ T &operator >>(Unpacker &unpacker, T &obj) {
 				break;
 
 			default:
+				backtrace();
 				throw unpacker_error("Don't know how to convert MessagePack type " + to_string((int)leader) + " to type " + typeid(T).name());
 		}
 	}
@@ -242,6 +247,7 @@ std::string &operator >>(Unpacker &unpacker, std::string &obj) {
 				break;
 
 			default:
+				backtrace();
 				throw unpacker_error("Don't know how to convert MessagePack type " + to_string((int)leader) + " to string");
 		}
 	}
