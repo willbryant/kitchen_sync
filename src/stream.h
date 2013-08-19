@@ -2,6 +2,7 @@
 #define STREAM_H
 
 #include "msgpack.hpp"
+#include <cerrno>
 
 class Stream {
 public:
@@ -34,6 +35,7 @@ bool Stream::fill_buffer() {
 	if (unpacker.buffer_capacity() == 0) return true;
 
 	streamsize bytes_read = read(_fd, unpacker.buffer(), unpacker.buffer_capacity());
+	if (bytes_read < 0) throw runtime_error("Read from stream failed: " + string(strerror(errno)));
 	unpacker.buffer_consumed(bytes_read);
 	return (bytes_read > 0);
 }

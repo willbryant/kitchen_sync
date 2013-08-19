@@ -12,7 +12,7 @@ void sync_table_rows(
 	send_command(cout, "rows", table.name, matched_up_to_key, last_not_matching_key);
 
 	// built a string of rows to insert as we go
-	string insert_sql("INSERT INTO " + table.name + " VALUES ");
+	string insert_sql("INSERT INTO " + table.name + " VALUES\n");
 	bool any_values = false;
 
 	while (true) {
@@ -23,10 +23,10 @@ void sync_table_rows(
 		input >> values;
 		if (values.empty()) break;
 
-		insert_sql += any_values ? ", (" : "(";
+		insert_sql += any_values ? ",\n(" : "(";
 		for (vector<msgpack::object>::const_iterator column_value = values.begin(); column_value != values.end(); ++column_value) {
 			if (column_value != values.begin()) {
-				insert_sql += ", ";
+				insert_sql += ",";
 			}
 			if (column_value->is_nil()) {
 				insert_sql += "NULL";

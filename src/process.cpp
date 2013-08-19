@@ -47,7 +47,7 @@ pid_t Process::fork_and_exec(const string &binary, const char *args[], Unidirect
 
 		// run the binary
 		if (execv(binary.c_str(), (char * const *)args) < 0) {
-			throw runtime_error("Couldn't exec " + binary + string(strerror(errno)));
+			throw runtime_error("Couldn't exec " + binary + ": " + string(strerror(errno)));
 		}
 		throw logic_error("execv returned");
 
