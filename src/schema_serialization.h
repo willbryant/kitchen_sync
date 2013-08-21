@@ -4,12 +4,6 @@
 #include "schema.h"
 #include "message_pack/unpack.h"
 
-template <typename T>
-void operator << (msgpack::packer<ostream> &packer, const vector<T> &v) {
-	packer.pack_array(v.size());
-	for (typename vector<T>::const_iterator it = v.begin(); it != v.end(); it++) packer << *it;
-}
-
 void operator << (msgpack::packer<ostream> &packer, const Column &column) {
 	packer.pack_map(1);
 	packer << string("name");
