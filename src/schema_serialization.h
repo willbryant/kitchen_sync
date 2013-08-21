@@ -4,14 +4,14 @@
 #include "schema.h"
 #include "message_pack/unpack.h"
 
-void operator << (msgpack::packer<ostream> &packer, const Column &column) {
-	packer.pack_map(1);
+void operator << (Packer<ostream> &packer, const Column &column) {
+	packer.pack_map_length(1);
 	packer << string("name");
 	packer << column.name;
 }
 
-void operator << (msgpack::packer<ostream> &packer, const Table &table) {
-	packer.pack_map(3);
+void operator << (Packer<ostream> &packer, const Table &table) {
+	packer.pack_map_length(3);
 	packer << string("name");
 	packer << table.name;
 	packer << string("columns");
@@ -20,8 +20,8 @@ void operator << (msgpack::packer<ostream> &packer, const Table &table) {
 	packer << table.primary_key_columns;
 }
 
-void operator << (msgpack::packer<ostream> &packer, const Database &database) {
-	packer.pack_map(1);
+void operator << (Packer<ostream> &packer, const Database &database) {
+	packer.pack_map_length(1);
 	packer << string("tables");
 	packer << database.tables;
 }

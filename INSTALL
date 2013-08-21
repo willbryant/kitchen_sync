@@ -1,6 +1,5 @@
 To compile Kitchen Sync, you will need:
 * cmake
-* msgpack C library
 * boost program options library
 * boost regex library
 * openssl library headers
@@ -8,7 +7,7 @@ To compile Kitchen Sync, you will need:
 * mysql client library headers
 
 You can install these on Ubuntu using:
-  apt-get install build-essential cmake libmsgpack-dev libboost-program-options-dev libboost-regex-dev libssl-dev libpq-dev libmysqlclient-dev
+  apt-get install build-essential cmake libboost-program-options-dev libboost-regex-dev libssl-dev libpq-dev libmysqlclient-dev
 
 If you want to run the test suite, you'll also need Ruby and the following gems installed: mocha msgpack pg mysql2
 

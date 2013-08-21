@@ -1,7 +1,7 @@
 #ifndef COMMANDS_H
 #define COMMANDS_H
 
-#include "msgpack.hpp"
+#include "message_pack/pack.h"
 #include "message_pack/unpack_any.h"
 
 using namespace std;
@@ -31,23 +31,23 @@ Command &operator >> (Unpacker &unpacker, Command &command) {
 	return command;
 }
 
-inline void send_values(msgpack::packer<ostream> &packer) {
+template<typename Stream>
+inline void send_values(Packer<Stream> &packer) {
 	/* do nothing, this specialization is just to terminate the variadic template expansion */
 }
 
-template<typename T, typename... Values>
-inline void send_values(msgpack::packer<ostream> &packer, const T &arg0, const Values &...args) {
+template<typename Stream, typename T, typename... Values>
+inline void send_values(Packer<Stream> &packer, const T &arg0, const Values &...args) {
 	packer << arg0;
 	send_values(packer, args...);
 }
 
 template<typename... Values>
-void send_command(ostream &os, const string &name, const Values &...args) {
-	msgpack::packer<ostream> packer(os);
-	packer.pack_array(1 + sizeof...(Values)); /* name + number of args */
+void send_command(Packer<ostream> &packer, const string &name, const Values &...args) {
+	packer.pack_array_length(1 + sizeof...(Values)); /* name + number of args */
 	packer << name;
 	send_values(packer, args...);
-	os.flush();
+	packer.flush();
 }
 
 #endif

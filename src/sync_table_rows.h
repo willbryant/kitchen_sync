@@ -2,14 +2,14 @@
 
 template <typename DatabaseClient>
 void sync_table_rows(
-	DatabaseClient &client, Unpacker &input, const Table &table,
+	DatabaseClient &client, Unpacker &input, Packer<ostream> &output, const Table &table,
 	const ColumnValues &matched_up_to_key, ColumnValues &last_not_matching_key) {
 
 	// for now, we clear and re-insert; matching up and using UPDATE statements is next on the list
 	client.execute(client.delete_rows_sql(table, matched_up_to_key, last_not_matching_key));
 
 	// retrieve the range of rows > matched_up_to_key and <= last_not_matching_key, and apply them to our end
-	send_command(cout, "rows", table.name, matched_up_to_key, last_not_matching_key);
+	send_command(output, "rows", table.name, matched_up_to_key, last_not_matching_key);
 
 	// built a string of rows to insert as we go
 	string insert_sql("INSERT INTO " + table.name + " VALUES\n");

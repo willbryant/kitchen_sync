@@ -4,15 +4,15 @@
 
 template<class DatabaseRow>
 struct RowPacker {
-	RowPacker(msgpack::packer<ostream> &packer): packer(packer) {}
+	RowPacker(Packer<ostream> &packer): packer(packer) {}
 
 	~RowPacker() {
 		// we use an empty array to indicate the end of the rowset
-		packer.pack_array(0);
+		packer.pack_array_length(0);
 	}
 
 	void operator()(const DatabaseRow &row) {
-		packer.pack_array(row.n_columns());
+		packer.pack_array_length(row.n_columns());
 
 		for (size_t i = 0; i < row.n_columns(); i++) {
 			if (row.null_at(i)) {
@@ -23,7 +23,7 @@ struct RowPacker {
 		}
 	}
 
-	msgpack::packer<ostream> &packer;
+	Packer<ostream> &packer;
 };
 
 struct Hash {
@@ -31,12 +31,11 @@ struct Hash {
 	unsigned char md_value[EVP_MAX_MD_SIZE];
 };
 
-void operator << (msgpack::packer<ostream> &packer, const Hash &hash) {
-	packer.pack_raw(hash.md_len);
-	packer.pack_raw_body((const char*)hash.md_value, hash.md_len);
+inline void operator << (Packer<ostream> &packer, const Hash &hash) {
+	packer.pack_raw((const char*)hash.md_value, hash.md_len);
 }
 
-bool operator == (const Hash &hash, const string &str) {
+inline bool operator == (const Hash &hash, const string &str) {
 	return (hash.md_len == str.length() && string(hash.md_value, hash.md_value + hash.md_len) == str);
 }
 
@@ -70,9 +69,9 @@ struct RowHasher {
 		row_count++;
 		
 		// pack the row to get a byte stream
-		msgpack::sbuffer packed_row;
-		msgpack::packer<msgpack::sbuffer> row_packer(packed_row);
-		row_packer.pack_array(row.n_columns());
+		ostringstream packed_row;
+		Packer<ostringstream> row_packer(packed_row);
+		row_packer.pack_array_length(row.n_columns());
 
 		for (size_t i = 0; i < row.n_columns(); i++) {
 			if (row.null_at(i)) {
@@ -83,7 +82,8 @@ struct RowHasher {
 		}
 
 		// hash the byte stream
-		EVP_DigestUpdate(mdctx, packed_row.data(), packed_row.size());
+		string data(packed_row.str());
+		EVP_DigestUpdate(mdctx, data.data(), data.size());
 	}
 
 	Hash hash;
@@ -113,7 +113,7 @@ struct RowHasherAndLastKey: RowHasher<DatabaseRow> {
 
 template<class DatabaseRow>
 struct RowHasherAndPacker: RowHasher<DatabaseRow> {
-	RowHasherAndPacker(msgpack::packer<ostream> &packer): packer(packer) {
+	RowHasherAndPacker(Packer<ostream> &packer): packer(packer) {
 	}
 
 	~RowHasherAndPacker() {
@@ -121,10 +121,10 @@ struct RowHasherAndPacker: RowHasher<DatabaseRow> {
 		// here to make it easier to understand and extend, but this is the very core of the
 		// high-rate communications, so we need to keep it as minimal as possible and rely on the
 		// protocol version for future extensibility.
-		packer.pack_array(2);
+		packer.pack_array_length(2);
 		packer << RowHasher<DatabaseRow>::finish();
 		packer << RowHasher<DatabaseRow>::row_count;
 	}
 
-	msgpack::packer<ostream> &packer;
+	Packer<ostream> &packer;
 };

@@ -1,7 +1,7 @@
 #include "hash_result.h"
 
 template <typename DatabaseClient>
-void sync_table_data(DatabaseClient &client, Unpacker &input, const Table &table) {
+void sync_table_data(DatabaseClient &client, Unpacker &input, Packer<ostream> &output, const Table &table) {
 	// start off small, and from the very beginning (in primary key order) of the table
 	size_t rows_to_hash = 1;
 	ColumnValues matched_up_to_key;
@@ -15,13 +15,13 @@ void sync_table_data(DatabaseClient &client, Unpacker &input, const Table &table
 			// we've found we actually have no more rows (after the last matched row, if any), so we need to
 			// get the other end to send over the entire remainder of the table - after which, we're done.
 			ColumnValues empty_key;
-			sync_table_rows(client, input, table, matched_up_to_key, empty_key);
+			sync_table_rows(client, input, output, table, matched_up_to_key, empty_key);
 			break;
 		} 
 
 		// ask the other end for its hash of the same rows, using key ranges rather than a count to improve the chances of a match
 		HashResult hash_result;
-		send_command(cout, "hash", table.name, matched_up_to_key, row_hasher.last_key);
+		send_command(output, "hash", table.name, matched_up_to_key, row_hasher.last_key);
 		input >> hash_result;
 
 		// if the two hashes match, we believe the rows match
@@ -46,7 +46,7 @@ void sync_table_data(DatabaseClient &client, Unpacker &input, const Table &table
 
 		} else {
 			// we've got down to single rows already, so go ahead and request that row's data and update our copy, then carry on after that
-			sync_table_rows(client, input, table, matched_up_to_key, row_hasher.last_key);
+			sync_table_rows(client, input, output, table, matched_up_to_key, row_hasher.last_key);
 			matched_up_to_key = row_hasher.last_key;
 		}
 	}
