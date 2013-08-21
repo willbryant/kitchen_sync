@@ -134,7 +134,7 @@ protected:
 };
 
 template <typename T>
-T &operator >>(Unpacker &unpacker, T &obj) {
+Unpacker &operator >>(Unpacker &unpacker, T &obj) {
 	uint8_t leader = unpacker.read_raw<uint8_t>();
 
 	if (leader >= MSGPACK_POSITIVE_FIXNUM_MIN && leader <= MSGPACK_POSITIVE_FIXNUM_MAX) {
@@ -198,11 +198,11 @@ T &operator >>(Unpacker &unpacker, T &obj) {
 				throw unpacker_error("Don't know how to convert MessagePack type " + to_string((int)leader) + " to type " + typeid(T).name());
 		}
 	}
-	return obj;
+	return unpacker;
 }
 
 template <>
-std::string &operator >>(Unpacker &unpacker, std::string &obj) {
+Unpacker &operator >>(Unpacker &unpacker, std::string &obj) {
 	uint8_t leader = unpacker.read_raw<uint8_t>();
 
 	if (leader >= MSGPACK_FIXRAW_MIN && leader <= MSGPACK_FIXRAW_MAX) {
@@ -224,21 +224,22 @@ std::string &operator >>(Unpacker &unpacker, std::string &obj) {
 	}
 
 	unpacker.read_raw_bytes((uint8_t *)obj.data(), obj.size());
-	return obj;
+	return unpacker;
 }
 
 template <typename T>
-std::vector<T> &operator >>(Unpacker &unpacker, std::vector<T> &obj) {
+Unpacker &operator >>(Unpacker &unpacker, std::vector<T> &obj) {
 	size_t array_length = unpacker.next_array_length();
 	obj.clear();
 	obj.reserve(array_length);
 	while (array_length--) {
 		obj.push_back(unpacker.next<T>());
 	}
+	return unpacker;
 }
 
 template <typename K, typename V>
-std::map<K, V> &operator >>(Unpacker &unpacker, std::map<K, V> &obj) {
+Unpacker &operator >>(Unpacker &unpacker, std::map<K, V> &obj) {
 	size_t map_length = unpacker.next_map_length();
 	obj.clear();
 	obj.reserve(map_length);
@@ -247,6 +248,7 @@ std::map<K, V> &operator >>(Unpacker &unpacker, std::map<K, V> &obj) {
 		V val = unpacker.next<V>();
 		obj[key] = val;
 	}
+	return unpacker;
 }
 
 #endif

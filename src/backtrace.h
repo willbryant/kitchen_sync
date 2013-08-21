@@ -1,3 +1,6 @@
+#ifndef BACKTRACE_H
+#define BACKTRACE_H
+
 #include <execinfo.h>
 #include <iostream>
 
@@ -11,3 +14,5 @@ void backtrace()
 	for (size_t i = 0; i < size; i++) cerr << symbols[i] << endl;
 	free(symbols);
 }
+
+#endif

@@ -13,7 +13,7 @@
 #include "unpack.h"
 
 template <typename K, typename V>
-boost::unordered_map<K, V> &operator >>(Unpacker &unpacker, boost::unordered_map<K, V> &obj) {
+Unpacker &operator >>(Unpacker &unpacker, boost::unordered_map<K, V> &obj) {
 	size_t map_length = unpacker.next_map_length();
 	obj.clear();
 	obj.reserve(map_length);
@@ -22,6 +22,7 @@ boost::unordered_map<K, V> &operator >>(Unpacker &unpacker, boost::unordered_map
 		V val = unpacker.next<V>();
 		obj[key] = val;
 	}
+	return unpacker;
 }
 
 // attempt to provide useful comparisons of boost::any key values; supports empty (nil),
@@ -39,7 +40,7 @@ typedef std::vector<boost::any> any_vector;
 typedef boost::unordered_map<boost::any, boost::any, hash_any> any_map;
 
 template <>
-boost::any &operator >>(Unpacker &unpacker, boost::any &obj) {
+Unpacker &operator >>(Unpacker &unpacker, boost::any &obj) {
 	uint8_t leader = unpacker.peek();
 
 	// raw => string
@@ -73,7 +74,7 @@ boost::any &operator >>(Unpacker &unpacker, boost::any &obj) {
 		unpacker >> value;
 		obj = value;
 	}
-	return obj;
+	return unpacker;
 }
 
 template <typename T>
@@ -101,6 +102,29 @@ boost::any &operator >>(boost::any &obj, std::vector<T> &value) {
 		return obj;
 	}
 	throw runtime_error("Don't know how to convert " + string(obj.type().name()) + " to " + string(typeid(T).name()));
+}
+
+template <typename K, typename V>
+boost::any &operator >>(boost::any &obj, std::map<K, V> &value) {
+	std::map<K, V>* typed = boost::any_cast<std::map<K, V> >(&obj);
+	if (typed) {
+		value = *typed;
+		return obj;
+	}
+	any_map* typed_map = boost::any_cast<any_map>(&obj);
+	if (typed_map) {
+		value.clear();
+		value.resize(typed_map->size());
+		for (typename std::map<K, V>::const_iterator it = typed_map->begin(); it != typed_map->end(); ++it) {
+			K k;
+			V v;
+			it->first >> k;
+			it->second >> v;
+			value[k] = v;
+		}
+		return obj;
+	}
+	throw runtime_error("Don't know how to convert " + string(obj.type().name()) + " to map<" + string(typeid(K).name()) + "," + string(typeid(K).name()) + ">");
 }
 
 #endif
