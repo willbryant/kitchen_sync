@@ -49,7 +49,7 @@ static InitOpenSSL init_open_ssl;
 
 template<class DatabaseRow>
 struct RowHasher {
-	RowHasher(): row_count(0) {
+	RowHasher(): row_count(0), row_packer(*this) {
 		const EVP_MD *md = EVP_get_digestbyname(DIGEST_NAME);
 		if (!md) throw runtime_error("Unknown message digest " DIGEST_NAME);
 		mdctx = EVP_MD_CTX_create();
@@ -68,9 +68,7 @@ struct RowHasher {
 	void operator()(const DatabaseRow &row) {
 		row_count++;
 		
-		// pack the row to get a byte stream
-		ostringstream packed_row;
-		Packer<ostringstream> row_packer(packed_row);
+		// pack the row to get a byte stream, and hash it as it is written
 		row_packer.pack_array_length(row.n_columns());
 
 		for (size_t i = 0; i < row.n_columns(); i++) {
@@ -80,15 +78,16 @@ struct RowHasher {
 				row_packer << row.string_at(i);
 			}
 		}
-
-		// hash the byte stream
-		string data(packed_row.str());
-		EVP_DigestUpdate(mdctx, data.data(), data.size());
 	}
 
-	Hash hash;
+	inline void write(const char* buf, size_t bytes) {
+		EVP_DigestUpdate(mdctx, buf, bytes);
+	}
+
 	EVP_MD_CTX *mdctx;
 	size_t row_count;
+	Packer<RowHasher> row_packer;
+	Hash hash;
 };
 
 template<class DatabaseRow>
