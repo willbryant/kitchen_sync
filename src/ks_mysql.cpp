@@ -1,6 +1,7 @@
 #include "endpoint.h"
 
 #include <stdexcept>
+#include <set>
 #include <mysql.h>
 
 #include "database_client.h"

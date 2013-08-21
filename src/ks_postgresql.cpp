@@ -1,6 +1,7 @@
 #include "endpoint.h"
 
 #include <stdexcept>
+#include <set>
 #include <libpq-fe.h>
 
 #include "database_client.h"
