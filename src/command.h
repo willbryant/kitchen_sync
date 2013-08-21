@@ -2,20 +2,19 @@
 #define COMMANDS_H
 
 #include "msgpack.hpp"
-#include "unpacker.h"
+#include "message_pack/unpack_any.h"
 
 using namespace std;
 
 struct Command {
 	string name;
-	// TODO: implement arbitrary object deserialization; happens we only need strings in this position right now
-	string arg0;
-	// TODO: implement arbitrary object deserialization; happens we only need arrays of strings in this position right now
-	vector< vector<string> > args;
+	vector<boost::any> arguments;
 
 	template<class T>
 	T argument(int index) {
-		return args[index - 1];
+		T value;
+		arguments[index] >> value;
+		return value;
 	}
 };
 
@@ -24,20 +23,9 @@ Command &operator >> (Unpacker &unpacker, Command &command) {
 	if (array_length < 1) throw logic_error("Expected at least one element when reading command");
 
 	command.name = unpacker.next<string>();
-	array_length--;
-
-	// TODO: implement arbitrary object deserialization; happens we only need strings in this position right now
-	if (array_length >= 2) {
-		unpacker >> command.arg0;
-		array_length--;
-	} else {
-		command.arg0.clear();
-	}
-
-	command.args.clear();
-	while (array_length--) {
-		// TODO: implement arbitrary object deserialization; happens we only need arrays of strings in this position right now
-		command.args.push_back(unpacker.next< vector<string> >());
+	command.arguments.clear();
+	while (--array_length) {
+		command.arguments.push_back(unpacker.next<boost::any>());
 	}
 
 	return command;

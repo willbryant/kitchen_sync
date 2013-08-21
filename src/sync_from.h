@@ -18,18 +18,13 @@ void sync_from(DatabaseClient &client) {
 	Command command;
 
 	// all conversations must start with a "protocol" command to establish the language to be used
-	// TODO: implement arbitrary object deserialization
-	if (input.next_array_length() != 2 || // checks type
-		input.next<string>() != "protocol") {
-	// input >> command;
-	// if (command.name != "protocol") {
+	input >> command;
+	if (command.name != "protocol") {
 		throw command_error("Expected a protocol command before " + command.name);
 	}
 
 	// the usable protocol is the highest out of those supported by the two ends
-	// TODO: as above
-	int protocol = min(PROTOCOL_VERSION_SUPPORTED, input.next<typeof(protocol)>());
-	// int protocol = min(PROTOCOL_VERSION_SUPPORTED, command.argument<typeof(protocol)>(0));
+	int protocol = min(PROTOCOL_VERSION_SUPPORTED, (int)command.argument<int64_t>(0));
 
 	// tell the other end what version was selected
 	packer << protocol;
@@ -43,7 +38,7 @@ void sync_from(DatabaseClient &client) {
 			packer << from_database;
 
 		} else if (command.name == "rows") {
-			string     table_name(command.arg0);
+			string     table_name(command.argument<string>(0));
 			ColumnValues prev_key(command.argument<ColumnValues>(1));
 			ColumnValues last_key(command.argument<ColumnValues>(2));
 			const Table &table(client.table_by_name(table_name));
@@ -51,7 +46,7 @@ void sync_from(DatabaseClient &client) {
 			client.retrieve_rows(table, prev_key, last_key, row_packer);
 
 		} else if (command.name == "hash") {
-			string     table_name(command.arg0);
+			string     table_name(command.argument<string>(0));
 			ColumnValues prev_key(command.argument<ColumnValues>(1));
 			ColumnValues last_key(command.argument<ColumnValues>(2));
 			const Table &table(client.table_by_name(table_name));

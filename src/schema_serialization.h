@@ -2,7 +2,7 @@
 #define SCHEMA_SERIALIZATION_H
 
 #include "schema.h"
-#include "unpacker.h"
+#include "message_pack/unpack.h"
 
 template <typename T>
 void operator << (msgpack::packer<ostream> &packer, const vector<T> &v) {

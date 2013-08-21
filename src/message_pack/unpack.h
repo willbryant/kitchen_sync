@@ -1,5 +1,5 @@
-#ifndef UNPACKER_H
-#define UNPACKER_H
+#ifndef UNPACK_H
+#define UNPACK_H
 
 #include "unistd.h"
 #include "stdint.h"
@@ -8,43 +8,14 @@
 #include <string>
 #include <vector>
 #include <map>
-#include "to_string.h"
 #include "endian.h"
-#include "backtrace.h"
+#include "type_codes.h"
+#include "../to_string.h"
+#include "../backtrace.h"
 
 struct unpacker_error: public std::runtime_error {
 	unpacker_error(const std::string &error): runtime_error(error) {}
 };
-
-#define MSGPACK_POSITIVE_FIXNUM_MIN 0x00
-#define MSGPACK_POSITIVE_FIXNUM_MAX 0x7f
-#define MSGPACK_NEGATIVE_FIXNUM_MIN 0xe0
-#define MSGPACK_NEGATIVE_FIXNUM_MAX 0xff
-#define MSGPACK_FIXRAW_MIN          0xa0
-#define MSGPACK_FIXRAW_MAX          0xbf
-#define MSGPACK_FIXMAP_MIN          0x80
-#define MSGPACK_FIXMAP_MAX          0x8f
-#define MSGPACK_FIXARRAY_MIN        0x90
-#define MSGPACK_FIXARRAY_MAX        0x9f
-#define MSGPACK_NIL                 0xc0
-#define MSGPACK_FALSE               0xc2
-#define MSGPACK_TRUE                0xc3
-#define MSGPACK_FLOAT               0xca
-#define MSGPACK_DOUBLE              0xcb
-#define MSGPACK_UINT8               0xcc
-#define MSGPACK_UINT16              0xcd
-#define MSGPACK_UINT32              0xce
-#define MSGPACK_UINT64              0xcf
-#define MSGPACK_INT8                0xd0
-#define MSGPACK_INT16               0xd1
-#define MSGPACK_INT32               0xd2
-#define MSGPACK_INT64               0xd3
-#define MSGPACK_RAW16               0xda
-#define MSGPACK_RAW32               0xdb
-#define MSGPACK_ARRAY16             0xdc
-#define MSGPACK_ARRAY32             0xdd
-#define MSGPACK_MAP16               0xde
-#define MSGPACK_MAP32               0xdf
 
 class Unpacker {
 public:
@@ -119,12 +90,12 @@ public:
 	template <typename T>
 	T read_raw() {
 		T obj;
-		read_raw_bytes((unsigned char*) &obj, sizeof(obj));
+		read_raw_bytes((uint8_t*) &obj, sizeof(obj));
 		return obj;
 	}
 
 	// gets but does not consume the next raw byte from the data stream
-	unsigned char peek() {
+	uint8_t peek() {
 		if (!have_next_byte) {
 			read_raw_bytes(&next_byte, 1);
 			have_next_byte = true;
@@ -133,7 +104,7 @@ public:
 	}
 
 	// reads the given number of raw bytes from the data stream, without byte order conversion or type unmarshalling
-	void read_raw_bytes(unsigned char *buf, size_t bytes) {
+	void read_raw_bytes(uint8_t *buf, size_t bytes) {
 		ssize_t bytes_read;
 
 		if (have_next_byte && bytes > 0) {
@@ -159,7 +130,7 @@ public:
 protected:
 	int fd;
 	bool have_next_byte;
-	unsigned char next_byte;
+	uint8_t next_byte;
 };
 
 template <typename T>
@@ -252,7 +223,7 @@ std::string &operator >>(Unpacker &unpacker, std::string &obj) {
 		}
 	}
 
-	unpacker.read_raw_bytes((unsigned char *)obj.data(), obj.size());
+	unpacker.read_raw_bytes((uint8_t *)obj.data(), obj.size());
 	return obj;
 }
 
@@ -260,6 +231,7 @@ template <typename T>
 std::vector<T> &operator >>(Unpacker &unpacker, std::vector<T> &obj) {
 	size_t array_length = unpacker.next_array_length();
 	obj.clear();
+	obj.reserve(array_length);
 	while (array_length--) {
 		obj.push_back(unpacker.next<T>());
 	}
@@ -269,6 +241,7 @@ template <typename K, typename V>
 std::map<K, V> &operator >>(Unpacker &unpacker, std::map<K, V> &obj) {
 	size_t map_length = unpacker.next_map_length();
 	obj.clear();
+	obj.reserve(map_length);
 	while (map_length--) {
 		K key = unpacker.next<K>();
 		V val = unpacker.next<V>();
