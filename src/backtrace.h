@@ -2,6 +2,7 @@
 #define BACKTRACE_H
 
 #include <execinfo.h>
+#include <stdlib.h> /* for free() */
 #include <iostream>
 
 using namespace std;
