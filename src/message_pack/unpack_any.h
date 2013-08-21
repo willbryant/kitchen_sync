@@ -28,7 +28,7 @@ Unpacker &operator >>(Unpacker &unpacker, boost::unordered_map<K, V> &obj) {
 // attempt to provide useful comparisons of boost::any key values; supports empty (nil),
 // strings, and integers.
 struct hash_any {
-	size_t operator ()(const boost::any &obj) {
+	size_t operator ()(const boost::any &obj) const {
 		if (obj.empty()) return 0; // arbitrary
 		if (boost::any_cast<string*>(obj)) return boost::hash_value(*boost::any_cast<string*>(obj));
 		if (boost::any_cast<int64_t*>(obj)) return boost::hash_value(*boost::any_cast<int64_t*>(obj));
