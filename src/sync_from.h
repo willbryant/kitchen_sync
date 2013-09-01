@@ -4,15 +4,49 @@
 #include "command.h"
 #include "schema_serialization.h"
 #include "row_serialization.h"
+#include "sync_algorithm.h"
 
 struct command_error: public runtime_error {
 	command_error(const string &error): runtime_error(error) { }
 };
-#include "sql_functions.h"
+
+template <typename DatabaseClient>
+void handle_rows_command(DatabaseClient &client, const string &table_name, const ColumnValues &prev_key, const ColumnValues &last_key, Packer<ostream> &output) {
+	const Table &table(client.table_by_name(table_name));
+
+	send_command(output, "rows", table_name, prev_key, last_key);
+	RowPacker<typename DatabaseClient::RowType> row_packer(output);
+	client.retrieve_rows(table, prev_key, last_key, row_packer);
+}
+
+template <typename DatabaseClient>
+void handle_hash_command(DatabaseClient &client, const string &table_name, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash, Packer<ostream> &output) {
+	const Table &table(client.table_by_name(table_name));
+
+	ColumnValues matched_up_to_key;
+	size_t rows_to_hash = check_hash_and_choose_next_range(client, table, prev_key, last_key, hash, matched_up_to_key);
+
+	// calculate our hash of the next rows_to_hash rows
+	RowHasherAndLastKey<typename DatabaseClient::RowType> hasher_for_our_rows(table.primary_key_columns);
+	if (rows_to_hash) {
+		client.retrieve_rows(table, matched_up_to_key, rows_to_hash, hasher_for_our_rows);
+	}
+
+	if (hasher_for_our_rows.row_count == 0) {
+		// rows don't match, and there's only one or no rows left, so send it straight across, as if they had given the rows command
+		handle_rows_command(client, table_name, prev_key, last_key, output);
+		
+	} else {
+		// tell the other end to check its hash of the same rows, using key ranges rather than a count to improve the chances of a match.
+		send_command(output, "hash", table_name, matched_up_to_key, hasher_for_our_rows.last_key, hasher_for_our_rows.finish());
+	}
+}
+
 template<class DatabaseClient>
-void sync_from(DatabaseClient &client) {
+void sync_from(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password) {
 	const int PROTOCOL_VERSION_SUPPORTED = 1;
 
+	DatabaseClient client(database_host, database_port, database_name, database_username, database_password, true /* readonly */);
 	Unpacker input(STDIN_FILENO);
 	Packer<ostream> output(cout);
 	Command command;
@@ -41,17 +75,14 @@ void sync_from(DatabaseClient &client) {
 			string     table_name(command.argument<string>(0));
 			ColumnValues prev_key(command.argument<ColumnValues>(1));
 			ColumnValues last_key(command.argument<ColumnValues>(2));
-			const Table &table(client.table_by_name(table_name));
-			RowPacker<typename DatabaseClient::RowType> row_packer(output);
-			client.retrieve_rows(table, prev_key, last_key, row_packer);
+			handle_rows_command(client, table_name, prev_key, last_key, output);
 
 		} else if (command.name == "hash") {
 			string     table_name(command.argument<string>(0));
 			ColumnValues prev_key(command.argument<ColumnValues>(1));
 			ColumnValues last_key(command.argument<ColumnValues>(2));
-			const Table &table(client.table_by_name(table_name));
-			RowHasherAndPacker<typename DatabaseClient::RowType> row_hasher_and_packer(output);
-			client.retrieve_rows(table, prev_key, last_key, row_hasher_and_packer);
+			string           hash(command.argument<string>(3));
+			handle_hash_command(client, table_name, prev_key, last_key, hash, output);
 
 		} else if (command.name == "quit") {
 			break;

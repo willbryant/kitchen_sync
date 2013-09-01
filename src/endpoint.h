@@ -4,7 +4,7 @@
 #include "sync_from.h"
 #include "sync_to.h"
 
-template<class T>
+template<class DatabaseClient>
 int endpoint_main(int argc, char *argv[]) {
 	if (argc < 7 || (argv[1] != string("from") && argv[1] != string("to"))) {
 		cerr << "This program is a part of Kitchen Sync.  Instead of running this program directly, run 'ks'.\n";
@@ -14,18 +14,16 @@ int endpoint_main(int argc, char *argv[]) {
 	bool from = (argv[1] == string("from"));
 
 	try {
-		T client(
-			argv[2], /* database_host */
-			argv[3], /* database_port */
-			argv[4], /* database_name */
-			argv[5], /* database_username */
-			argv[6], /* database_password */
-			from     /* readonly */);
-
+		const char *database_host(argv[2]);
+		const char *database_port(argv[3]);
+		const char *database_name(argv[4]);
+		const char *database_username(argv[5]);
+		const char *database_password(argv[6]);
+		
 		if (from) {
-			sync_from(client);
+			sync_from<DatabaseClient>(database_host, database_port, database_name, database_username, database_password);
 		} else {
-			sync_to(client);
+			sync_to<DatabaseClient>(database_host, database_port, database_name, database_username, database_password);
 		}
 
 		cout.flush();

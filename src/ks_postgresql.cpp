@@ -159,15 +159,19 @@ void PostgreSQLClient::commit_transaction() {
 void PostgreSQLClient::disable_referential_integrity() {
 	execute("SET CONSTRAINTS ALL DEFERRED");
 
+	/* TODO: investigate the pros and cons of disabling triggers - this blocks if there's a read transaction open
 	for (Tables::const_iterator table = database.tables.begin(); table != database.tables.end(); ++table) {
 		execute("ALTER TABLE " + table->name + " DISABLE TRIGGER ALL");
 	}
+	*/
 }
 
 void PostgreSQLClient::enable_referential_integrity() {
+	/* TODO: investigate the pros and cons of disabling triggers - this blocks if there's a read transaction open
 	for (Tables::const_iterator table = database.tables.begin(); table != database.tables.end(); ++table) {
 		execute("ALTER TABLE " + table->name + " ENABLE TRIGGER ALL");
 	}
+	*/
 }
 
 string PostgreSQLClient::escape_value(const string &value) {

@@ -11,11 +11,14 @@ class RowsFromTest < KitchenSync::EndpointTestCase
     # rather than return a single array containing all the requested rows, which would mean the rows would
     # have to be buffered and counted before sending them, the rows command returns multiple packed objects,
     # terminating the resultset with a nil object (which is unambiguous since the rows are returned as arrays).
+    command = ["rows"] + args
+    result = send_command(*command)
+    assert_equal result, command
     rows = []
-    result = send_command("rows", *args)
-    while result.length > 0
-      rows << result
+    loop do
       result = unpacker.read
+      break if result.length == 0
+      rows << result
     end
     rows
   end

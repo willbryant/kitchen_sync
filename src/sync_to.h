@@ -4,13 +4,13 @@
 #include "schema.h"
 #include "schema_functions.h"
 #include "sync_database_data.h"
-#include "sync_table_data.h"
-#include "sync_table_rows.h"
 
 template<typename DatabaseClient>
-void sync_to(DatabaseClient &client) {
+void sync_to(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password) {
 	const int PROTOCOL_VERSION_SUPPORTED = 1;
-	
+
+	DatabaseClient client(database_host, database_port, database_name, database_username, database_password, false /* not readonly */);
+	DatabaseClient read_client(database_host, database_port, database_name, database_username, database_password, true /* readonly */);
 	Unpacker input(STDIN_FILENO); // uses file descriptors rather than cin so it can get proper read-available-bytes behavior, which is hidden by istream
 	Packer<ostream> output(cout);
 
@@ -31,7 +31,7 @@ void sync_to(DatabaseClient &client) {
 	check_schema_match(from_database, to_database);
 
 	// start syncing table data
-	sync_database_data(client, input, output, from_database);
+	sync_database_data(client, read_client, input, output, from_database);
 
 	client.commit_transaction();
 	send_command(output, "quit");

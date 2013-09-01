@@ -156,7 +156,7 @@ MySQLClient::~MySQLClient() {
 }
 
 void MySQLClient::execute(const string &sql) {
-	if (mysql_query(&mysql, sql.c_str())) {
+	if (mysql_real_query(&mysql, sql.c_str(), sql.size())) {
 		throw runtime_error(mysql_error(&mysql));
 	}
 }

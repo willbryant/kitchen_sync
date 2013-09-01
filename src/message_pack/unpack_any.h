@@ -78,8 +78,8 @@ Unpacker &operator >>(Unpacker &unpacker, boost::any &obj) {
 }
 
 template <typename T>
-boost::any &operator >>(boost::any &obj, T &value) {
-	T* typed = boost::any_cast<T>(&obj);
+const boost::any &operator >>(const boost::any &obj, T &value) {
+	const T* typed = boost::any_cast<T>(&obj);
 	if (typed) {
 		value = *typed;
 		return obj;
@@ -88,13 +88,13 @@ boost::any &operator >>(boost::any &obj, T &value) {
 }
 
 template <typename T>
-boost::any &operator >>(boost::any &obj, std::vector<T> &value) {
-	std::vector<T>* typed = boost::any_cast<std::vector<T> >(&obj);
+const boost::any &operator >>(const boost::any &obj, std::vector<T> &value) {
+	const std::vector<T>* typed = boost::any_cast<std::vector<T> >(&obj);
 	if (typed) {
 		value = *typed;
 		return obj;
 	}
-	any_vector* typed_vector = boost::any_cast<any_vector>(&obj);
+	const any_vector* typed_vector = boost::any_cast<any_vector>(&obj);
 	if (typed_vector) {
 		value.clear();
 		value.resize(typed_vector->size());
@@ -105,13 +105,13 @@ boost::any &operator >>(boost::any &obj, std::vector<T> &value) {
 }
 
 template <typename K, typename V>
-boost::any &operator >>(boost::any &obj, std::map<K, V> &value) {
-	std::map<K, V>* typed = boost::any_cast<std::map<K, V> >(&obj);
+const boost::any &operator >>(const boost::any &obj, std::map<K, V> &value) {
+	const std::map<K, V>* typed = boost::any_cast<std::map<K, V> >(&obj);
 	if (typed) {
 		value = *typed;
 		return obj;
 	}
-	any_map* typed_map = boost::any_cast<any_map>(&obj);
+	const any_map* typed_map = boost::any_cast<any_map>(&obj);
 	if (typed_map) {
 		value.clear();
 		value.resize(typed_map->size());

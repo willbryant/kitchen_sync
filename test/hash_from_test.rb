@@ -8,70 +8,100 @@ class HashFromTest < KitchenSync::EndpointTestCase
   end
 
   def send_hash_command(*args)
-    send_command("hash", *args).tap {|results| results[0] = results[0].force_encoding("ASCII-8BIT")}
+    send_command("hash", *args).tap {|results| results[-1] = results[-1].force_encoding("ASCII-8BIT") if results[0] == "hash"}
   end
 
-  test_each "returns the hash of an empty array and a row count of 0 if there are no such rows" do
-    create_some_tables
+  def setup_with_footbl
+    clear_schema
+    create_footbl
+    execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str'), (100, 0, 'last')"
+    @rows = [["2",  "10",       "test"],
+             ["4",   nil,        "foo"],
+             ["5",   nil,          nil],
+             ["8",  "-1", "longer str"],
+             ["100", "0",       "last"]]
+    @keys = @rows.collect {|row| [row[0]]}
     send_protocol_command
-
-    assert_equal(hash_and_count_of([]), send_hash_command("footbl", ["0"], ["0"]))
-    assert_equal(hash_and_count_of([]), send_hash_command("footbl", ["-1"], ["0"]))
-    assert_equal(hash_and_count_of([]), send_hash_command("footbl", ["10"], ["11"]))
-    assert_equal(hash_and_count_of([]), send_hash_command("secondtbl", ["aa", "0"], ["aa", "0"]))
   end
 
-  test_each "returns the hash of all the rows whose key is greater than the first argument and not greater than the last argument, and the count of such rows" do
-    create_some_tables
-    execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"
-    send_protocol_command
+  test_each "calculates the hash of all the rows whose key is greater than the first argument and not greater than the last argument, and if it matches, responds likewise with the hash of the next rows (doubling the count of rows hashed)" do
+    setup_with_footbl
 
-    assert_equal(hash_and_count_of([["2", "10", "test"      ]]), send_hash_command("footbl", ["1"], ["2"]))
-    assert_equal(hash_and_count_of([["2", "10", "test"      ]]), send_hash_command("footbl", ["1"], ["2"])) # same request
-    assert_equal(hash_and_count_of([["2", "10", "test"      ]]), send_hash_command("footbl", ["0"], ["2"])) # different request, but same data matched
-    assert_equal(hash_and_count_of([["2", "10", "test"      ]]), send_hash_command("footbl", ["1"], ["3"])) # ibid
+    assert_equal(["hash", "footbl", @keys[1], @keys[3], hash_of(@rows[2..3])],
+        send_hash_command("footbl", @keys[0], @keys[1], hash_of(@rows[1..1])))
 
-    assert_equal(hash_and_count_of([["4",  nil, "foo"       ]]), send_hash_command("footbl", ["3"], ["4"])) # null numbers
-    assert_equal(hash_and_count_of([["5",  nil, nil         ]]), send_hash_command("footbl", ["4"], ["5"])) # null strings
-    assert_equal(hash_and_count_of([["8", "-1", "longer str"]]), send_hash_command("footbl", ["5"], ["9"])) # negative numbers
-
-    assert_equal(hash_and_count_of([["2", "10", "test"      ],
-                                    ["4",  nil, "foo"       ],
-                                    ["5",  nil, nil         ],
-                                    ["8", "-1", "longer str"]]),
-                 send_hash_command("footbl", ["0"], ["10"]))
+    assert_equal(["hash", "footbl", @keys[2], @keys[4], hash_of(@rows[3..4])],
+        send_hash_command("footbl", @keys[0], @keys[2], hash_of(@rows[1..2])))
   end
 
   test_each "starts from the first row if an empty array is given as the first argument" do
-    create_some_tables
-    execute "INSERT INTO footbl VALUES (2, 3, 'foo'), (4, 5, 'bar')"
-    send_protocol_command
+    setup_with_footbl
 
-    assert_equal(hash_and_count_of([["2", "3", "foo"]]), send_hash_command("footbl", [], ["2"]))
-    assert_equal(hash_and_count_of([["2", "3", "foo"], ["4", "5", "bar"]]), send_hash_command("footbl", [], ["4"]))
-    assert_equal(hash_and_count_of([["2", "3", "foo"], ["4", "5", "bar"]]), send_hash_command("footbl", [], ["10"]))
+    assert_equal(["hash", "footbl", @keys[0], @keys[2], hash_of(@rows[1..2])],
+        send_hash_command("footbl",       [], @keys[0], hash_of(@rows[0..0])))
+
+    assert_equal(["hash", "footbl", @keys[1], @keys[4], hash_of(@rows[2..4])],
+        send_hash_command("footbl",       [], @keys[1], hash_of(@rows[0..1])))
+  end
+
+  test_each "sends back its hash of half as many rows if the hash of multiple rows is given and it doesn't match" do
+    setup_with_footbl
+
+    assert_equal(["hash", "footbl", @keys[0], @keys[1], hash_of(@rows[1..1])],
+        send_hash_command("footbl", @keys[0], @keys[2], hash_of(@rows[1..2]).reverse))
+
+    assert_equal(["hash", "footbl", @keys[0], @keys[2], hash_of(@rows[1..2])],
+        send_hash_command("footbl", @keys[0], @keys[4], hash_of(@rows[1..4]).reverse))
+  end
+
+  test_each "sends back the row instead if the hash of only one is given and it doesn't match" do
+    setup_with_footbl
+
+    assert_equal(["rows", "footbl", @keys[0], @keys[1]],
+        send_hash_command("footbl", @keys[0], @keys[1], hash_of(@rows[1..1]).reverse))
+    assert_equal @rows[1], unpacker.read
+    assert_equal       [], unpacker.read # indicates end - see rows_from_test.rb
+
+    assert_equal(["rows", "footbl", [], @keys[0]],
+        send_hash_command("footbl", [], @keys[0], hash_of(@rows[0..0]).reverse))
+    assert_equal @rows[0], unpacker.read
+    assert_equal       [], unpacker.read # as above
   end
 
   test_each "supports composite keys" do
-    create_some_tables
+    clear_schema
+    create_secondtbl
     execute "INSERT INTO secondtbl VALUES (2349174, 'xy', 1, 2), (968116383, 'aa', 9, 9), (100, 'aa', 100, 100), (363401169, 'ab', 20, 340)"
+    @rows = [[      "100", "aa", "100", "100"], # first because the second column is the first term in the key so it's sorted like ["aa", 100]
+             ["968116383", "aa",   "9",   "9"],
+             ["363401169", "ab",  "20", "340"],
+             [  "2349174", "xy",   "1",   "2"]]
+    # note that the primary key columns are in reverse order to the table definition; the command arguments need to be given in the key order, but the column order for the results is unrelated
+    @keys = @rows.collect {|row| [row[1], row[0]]}
     send_protocol_command
 
-    # note when reading these that the primary key columns are in reverse order to the table definition; the command arguments need to be given in the key order, but the column order for the results is unrelated
+    assert_equal(["hash", "secondtbl", @keys[0], @keys[2], hash_of(@rows[1..2])],
+        send_hash_command("secondtbl",       [], @keys[0], hash_of(@rows[0..0])))
 
-    assert_equal(hash_and_count_of([[      "100", "aa", "100", "100"], # first because aa is the first term in the key, then 100 the next
-                                    ["968116383", "aa",   "9",   "9"],
-                                    ["363401169", "ab",  "20", "340"],
-                                    [  "2349174", "xy",   "1",   "2"]]),
-                 send_hash_command("secondtbl", ["aa", "1"], ["zz", "2147483647"]))
+    assert_equal(["hash", "secondtbl", @keys[1], @keys[3], hash_of(@rows[2..3])],
+        send_hash_command("secondtbl", ["aa", "101"], @keys[1], hash_of(@rows[1..1])))
 
-    assert_equal(hash_and_count_of([["968116383", "aa", "9", "9"]]),
-                 send_hash_command("secondtbl", ["aa", "101"], ["aa", "1000000000"]))
-    assert_equal(hash_and_count_of([["968116383", "aa", "9", "9"]]),
-                 send_hash_command("secondtbl", ["aa", "100"], ["aa", "1000000000"]))
-    assert_equal(hash_and_count_of([["2349174", "xy", "1", "2"]]),
-                 send_hash_command("secondtbl", ["ww", "1"], ["zz", "1"]))
-    assert_equal(hash_and_count_of([["2349174", "xy", "1", "2"]]),
-                 send_hash_command("secondtbl", ["xy", "1"], ["xy", "10000000"]))
+    assert_equal(["hash", "secondtbl", ["aa", "101"], @keys[2], hash_of(@rows[1..2])],
+        send_hash_command("secondtbl",       [], ["aa", "101"], hash_of(@rows[0..0])))
+
+    assert_equal(["hash", "secondtbl", @keys[1], @keys[3], hash_of(@rows[2..3])],
+        send_hash_command("secondtbl", @keys[0], @keys[1], hash_of(@rows[1..1])))
+
+    assert_equal(["hash", "secondtbl", @keys[2], @keys[3], hash_of(@rows[3..3])],
+        send_hash_command("secondtbl", @keys[0], @keys[2], hash_of(@rows[1..2])))
+
+    assert_equal(["rows", "secondtbl", @keys[0], @keys[1]],
+        send_hash_command("secondtbl", @keys[0], @keys[1], hash_of(@rows[1..1]).reverse))
+    assert_equal @rows[1], unpacker.read
+    assert_equal       [], unpacker.read # indicates end - see rows_from_test.rb
+
+    assert_equal(["rows", "secondtbl", @keys[0], ["aa", "101"]],
+        send_hash_command("secondtbl", @keys[0], ["aa", "101"], hash_of(@rows[1..1])))
+    assert_equal       [], unpacker.read # no rows (in fact in this case it wouldn't be stupid if it gave us the next row instead, but that isn't implemented)
   end
 end

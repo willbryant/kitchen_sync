@@ -11,7 +11,7 @@ struct Command {
 	vector<boost::any> arguments;
 
 	template<class T>
-	T argument(int index) {
+	T argument(int index) const {
 		T value;
 		arguments[index] >> value;
 		return value;
