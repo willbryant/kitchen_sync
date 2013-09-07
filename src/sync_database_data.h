@@ -1,5 +1,5 @@
 #include "sync_to_worker.h"
-#include "apply_table_rows.h"
+#include "table_row_applier.h"
 
 template <typename DatabaseClient>
 void handle_rows_response(SyncWorkQueue &work_queue, DatabaseClient &client, const string &table_name, const ColumnValues &prev_key, const ColumnValues &last_key, Unpacker &input) {
@@ -7,7 +7,7 @@ void handle_rows_response(SyncWorkQueue &work_queue, DatabaseClient &client, con
 	// provide flow control - if we buffered and used a separate apply thread, we would
 	// bloat up if this end couldn't write to disk as quickly as the other end sent data.
 	const Table &table(client.table_by_name(table_name));
-	size_t row_count = apply_table_rows(client, input, table, prev_key, last_key);
+	TableRowApplier<DatabaseClient> applier(client, input, table, prev_key, last_key);
 
 	if (last_key.empty()) {
 		// if the range extends to the end of the table, that means we're done with that table;
