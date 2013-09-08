@@ -70,7 +70,6 @@ void validate(
 
 	smatch match;
 	if (regex_match(validators::get_single_string(values), match, r)) {
-		// FUTURE: implement percent-decoding
 		v = any(DbUrl(
 				DbUrl::urldecode(match[1]),
 				DbUrl::urldecode(match[2]),
