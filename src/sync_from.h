@@ -1,5 +1,4 @@
 #include <iostream>
-#include <unistd.h>
 
 #include "command.h"
 #include "schema_serialization.h"
@@ -47,7 +46,7 @@ void sync_from(const char *database_host, const char *database_port, const char 
 	const int PROTOCOL_VERSION_SUPPORTED = 1;
 
 	DatabaseClient client(database_host, database_port, database_name, database_username, database_password, true /* readonly */);
-	Unpacker input(STDIN_FILENO);
+	Unpacker<istream> input(cin);
 	Packer<ostream> output(cout);
 	Command command;
 

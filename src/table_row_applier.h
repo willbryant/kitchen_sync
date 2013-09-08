@@ -1,10 +1,10 @@
 #include "sql_functions.h"
 
-template <typename DatabaseClient>
+template <typename DatabaseClient, typename Stream>
 struct TableRowApplier {
 	static const size_t MAX_SENSIBLE_INSERT_COMMAND_SIZE = 8*1024*1024;
 
-	TableRowApplier(DatabaseClient &client, Unpacker &input, const Table &table, const ColumnValues &matched_up_to_key, const ColumnValues &last_not_matching_key): client(client) {
+	TableRowApplier(DatabaseClient &client, Unpacker<Stream> &input, const Table &table, const ColumnValues &matched_up_to_key, const ColumnValues &last_not_matching_key): client(client) {
 		// we're being sent the range of rows > matched_up_to_key and <= last_not_matching_key; apply them to our end
 
 		base_insert_sql = "INSERT INTO " + table.name + " VALUES\n";

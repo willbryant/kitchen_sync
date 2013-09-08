@@ -26,26 +26,28 @@ void operator << (Packer<ostream> &packer, const Database &database) {
 	packer << database.tables;
 }
 
-void operator >> (Unpacker &unpacker, Column &column) {
+template <typename Stream>
+void operator >> (Unpacker<Stream> &unpacker, Column &column) {
 	size_t map_length = unpacker.next_map_length(); // checks type
 
 	while (map_length--) {
-		string attr_key = unpacker.next<string>();
+		string attr_key = unpacker.template next<string>();
 
 		if (attr_key == "name") {
-			column.name = unpacker.next<string>();
+			column.name = unpacker.template next<string>();
 		} // ignore anything else, for forward compatibility
 	}
 }
 
-void operator >> (Unpacker &unpacker, Table &table) {
+template <typename Stream>
+void operator >> (Unpacker<Stream> &unpacker, Table &table) {
 	size_t map_length = unpacker.next_map_length(); // checks type
 
 	while (map_length--) {
-		string attr_key = unpacker.next<string>();
+		string attr_key = unpacker.template next<string>();
 
 		if (attr_key == "name") {
-			table.name = unpacker.next<string>();
+			table.name = unpacker.template next<string>();
 		} else if (attr_key == "columns") {
 			unpacker >> table.columns;
 		} else if (attr_key == "primary_key_columns") {
@@ -54,11 +56,12 @@ void operator >> (Unpacker &unpacker, Table &table) {
 	}
 }
 
-void operator >> (Unpacker &unpacker, Database &database) {
+template <typename Stream>
+void operator >> (Unpacker<Stream> &unpacker, Database &database) {
 	size_t map_length = unpacker.next_map_length(); // checks type
 
 	while (map_length--) {
-		string attr_key = unpacker.next<string>();
+		string attr_key = unpacker.template next<string>();
 
 		if (attr_key == "tables") {
 			unpacker >> database.tables;

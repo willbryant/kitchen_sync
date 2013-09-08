@@ -18,14 +18,15 @@ struct Command {
 	}
 };
 
-Command &operator >> (Unpacker &unpacker, Command &command) {
+template <typename Stream>
+Command &operator >> (Unpacker<Stream> &unpacker, Command &command) {
 	size_t array_length = unpacker.next_array_length(); // checks type
 	if (array_length < 1) throw logic_error("Expected at least one element when reading command");
 
-	command.name = unpacker.next<string>();
+	command.name = unpacker.template next<string>();
 	command.arguments.clear();
 	while (--array_length) {
-		command.arguments.push_back(unpacker.next<boost::any>());
+		command.arguments.push_back(unpacker.template next<boost::any>());
 	}
 
 	return command;

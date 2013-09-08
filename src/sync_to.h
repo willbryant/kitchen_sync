@@ -11,7 +11,7 @@ void sync_to(const char *database_host, const char *database_port, const char *d
 
 	DatabaseClient client(database_host, database_port, database_name, database_username, database_password, false /* not readonly */);
 	DatabaseClient read_client(database_host, database_port, database_name, database_username, database_password, true /* readonly */);
-	Unpacker input(STDIN_FILENO); // uses file descriptors rather than cin so it can get proper read-available-bytes behavior, which is hidden by istream
+	Unpacker<istream> input(cin);
 	Packer<ostream> output(cout);
 
 	// tell the other end what protocol we speak, and have them tell us which version we're able to converse in

@@ -12,14 +12,14 @@
 
 #include "unpack.h"
 
-template <typename K, typename V>
-Unpacker &operator >>(Unpacker &unpacker, boost::unordered_map<K, V> &obj) {
+template <typename Stream, typename K, typename V>
+Unpacker<Stream> &operator >>(Unpacker<Stream> &unpacker, boost::unordered_map<K, V> &obj) {
 	size_t map_length = unpacker.next_map_length();
 	obj.clear();
 	obj.reserve(map_length);
 	while (map_length--) {
-		K key = unpacker.next<K>();
-		V val = unpacker.next<V>();
+		K key = unpacker.template next<K>();
+		V val = unpacker.template next<V>();
 		obj[key] = val;
 	}
 	return unpacker;
@@ -39,28 +39,28 @@ struct hash_any {
 typedef std::vector<boost::any> any_vector;
 typedef boost::unordered_map<boost::any, boost::any, hash_any> any_map;
 
-template <>
-Unpacker &operator >>(Unpacker &unpacker, boost::any &obj) {
+template <typename Stream>
+Unpacker<Stream> &operator >>(Unpacker<Stream> &unpacker, boost::any &obj) {
 	uint8_t leader = unpacker.peek();
 
 	// raw => string
 	if ((leader >= MSGPACK_FIXRAW_MIN && leader <= MSGPACK_FIXRAW_MAX) ||
 		leader == MSGPACK_RAW16 || leader == MSGPACK_RAW32) {
-		obj = unpacker.next<std::string>();
+		obj = unpacker.template next<std::string>();
 
 	// arrays
 	} else if ((leader >= MSGPACK_FIXARRAY_MIN && leader <= MSGPACK_FIXARRAY_MAX) ||
 		leader == MSGPACK_ARRAY16 || leader == MSGPACK_ARRAY32) {
-		obj = unpacker.next<any_vector>();
+		obj = unpacker.template next<any_vector>();
 
 	// maps
 	} else if ((leader >= MSGPACK_FIXMAP_MIN && leader <= MSGPACK_FIXMAP_MAX) ||
 		leader == MSGPACK_MAP16 || leader == MSGPACK_MAP32) {
-		obj = unpacker.next<any_map>();
+		obj = unpacker.template next<any_map>();
 
 	// boolean
 	} else if (leader == MSGPACK_FALSE || leader == MSGPACK_TRUE) {
-		obj = unpacker.next<bool>();
+		obj = unpacker.template next<bool>();
 
 	// nil - bit debateable how to handle these since they nil is not a real type in C++
 	} else if (leader == MSGPACK_NIL) {
