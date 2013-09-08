@@ -31,7 +31,7 @@ struct TableRowApplier {
 					insert_sql += "NULL";
 				} else {
 					insert_sql += '\'';
-					insert_sql += client.escape_value(input.next<string>());
+					insert_sql += client.escape_value(input.template next<string>());
 					insert_sql += '\'';
 				}
 			}
