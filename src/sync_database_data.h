@@ -27,14 +27,14 @@ void handle_hash_response(SyncWorkQueue &work_queue, DatabaseClient &client, con
 	work_queue.enqueue(table, prev_key, last_key, hash);
 }
 
-template <typename DatabaseClient, typename InputStream>
+template <typename DatabaseClient, typename InputStream, typename OutputStream>
 void sync_database_data(
-	DatabaseClient &client, DatabaseClient &read_client, Unpacker<InputStream> &input, Packer<ostream> &output, const Database &database) {
+	DatabaseClient &client, DatabaseClient &read_client, Unpacker<InputStream> &input, Packer<OutputStream> &output, const Database &database) {
 
 	SyncWorkQueue work_queue(database.tables);
 
 	// single worker (but pipelined, with one writer thread and us as reader thread) for now; we'll need to be able to start up additional database clients and remote endpoints with the same snapshot to fully parallelize
-	SyncToWorker<DatabaseClient> writer_worker(work_queue, read_client, output);
+	SyncToWorker<DatabaseClient, OutputStream> writer_worker(work_queue, read_client, output);
 
 	client.disable_referential_integrity();
 

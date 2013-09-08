@@ -2,9 +2,9 @@
 
 #define DIGEST_NAME "md5"
 
-template<class DatabaseRow>
+template <typename DatabaseRow, typename OutputStream>
 struct RowPacker {
-	RowPacker(Packer<ostream> &packer): packer(packer) {}
+	RowPacker(Packer<OutputStream> &packer): packer(packer) {}
 
 	~RowPacker() {
 		// we use an empty array to indicate the end of the rowset
@@ -23,7 +23,7 @@ struct RowPacker {
 		}
 	}
 
-	Packer<ostream> &packer;
+	Packer<OutputStream> &packer;
 };
 
 struct Hash {
@@ -31,7 +31,8 @@ struct Hash {
 	unsigned char md_value[EVP_MAX_MD_SIZE];
 };
 
-inline void operator << (Packer<ostream> &packer, const Hash &hash) {
+template <typename OutputStream>
+inline void operator << (Packer<OutputStream> &packer, const Hash &hash) {
 	packer.pack_raw((const char*)hash.md_value, hash.md_len);
 }
 
@@ -47,7 +48,7 @@ struct InitOpenSSL {
 
 static InitOpenSSL init_open_ssl;
 
-template<class DatabaseRow>
+template <typename DatabaseRow>
 struct RowHasher {
 	RowHasher(): row_count(0), row_packer(*this) {
 		const EVP_MD *md = EVP_get_digestbyname(DIGEST_NAME);
@@ -90,7 +91,7 @@ struct RowHasher {
 	Hash hash;
 };
 
-template<class DatabaseRow>
+template <typename DatabaseRow>
 struct RowHasherAndLastKey: RowHasher<DatabaseRow> {
 	RowHasherAndLastKey(const vector<size_t> &primary_key_columns): primary_key_columns(primary_key_columns) {
 	}
@@ -110,9 +111,9 @@ struct RowHasherAndLastKey: RowHasher<DatabaseRow> {
 	vector<string> last_key;
 };
 
-template<class DatabaseRow>
+template <typename DatabaseRow, typename OutputStream>
 struct RowHasherAndPacker: RowHasher<DatabaseRow> {
-	RowHasherAndPacker(Packer<ostream> &packer): packer(packer) {
+	RowHasherAndPacker(Packer<OutputStream> &packer): packer(packer) {
 	}
 
 	~RowHasherAndPacker() {
@@ -125,5 +126,5 @@ struct RowHasherAndPacker: RowHasher<DatabaseRow> {
 		packer << RowHasher<DatabaseRow>::row_count;
 	}
 
-	Packer<ostream> &packer;
+	Packer<OutputStream> &packer;
 };

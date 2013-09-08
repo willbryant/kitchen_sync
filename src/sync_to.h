@@ -5,7 +5,7 @@
 #include "schema_functions.h"
 #include "sync_database_data.h"
 
-template<typename DatabaseClient>
+template <typename DatabaseClient>
 void sync_to(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password) {
 	const int PROTOCOL_VERSION_SUPPORTED = 1;
 

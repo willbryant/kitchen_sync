@@ -2,9 +2,9 @@
 #include "sync_work_queue.h"
 #include "sync_algorithm.h"
 
-template <typename DatabaseClient>
+template <typename DatabaseClient, typename OutputStream>
 struct SyncToWorker {
-	SyncToWorker(SyncWorkQueue &work_queue, DatabaseClient &client, Packer<ostream> &output): work_queue(work_queue), client(client), output(output), worker_thread(boost::ref(*this)) {}
+	SyncToWorker(SyncWorkQueue &work_queue, DatabaseClient &client, Packer<OutputStream> &output): work_queue(work_queue), client(client), output(output), worker_thread(boost::ref(*this)) {}
 
 	~SyncToWorker() {
 		worker_thread.join();
@@ -40,6 +40,6 @@ struct SyncToWorker {
 
 	SyncWorkQueue &work_queue;
 	DatabaseClient &client;
-	Packer<ostream> &output;
+	Packer<OutputStream> &output;
 	boost::thread worker_thread;
 };

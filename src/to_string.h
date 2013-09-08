@@ -4,7 +4,7 @@
 #include <string>
 #include <sstream>
 
-template <class T>
+template <typename T>
 std::string to_string(T n) {
 	std::ostringstream stream;
 	stream << n;

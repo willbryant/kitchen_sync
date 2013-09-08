@@ -69,12 +69,12 @@ public:
 		bool readonly);
 	~MySQLClient();
 
-	template <class RowPacker>
+	template <typename RowPacker>
 	void retrieve_rows(const Table &table, const ColumnValues &prev_key, size_t row_count, RowPacker &row_packer) {
 		query(retrieve_rows_sql(table, prev_key, row_count), row_packer, false /* as above */);
 	}
 
-	template <class RowPacker>
+	template <typename RowPacker>
 	void retrieve_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, RowPacker &row_packer) {
 		query(retrieve_rows_sql(table, prev_key, last_key), row_packer, false /* nb. n_tuples won't work, which is ok since we send rows individually */);
 	}
@@ -91,7 +91,7 @@ protected:
 	void start_transaction(bool readonly);
 	void populate_database_schema();
 
-	template <class RowFunction>
+	template <typename RowFunction>
 	void query(const string &sql, RowFunction &row_handler, bool buffer) {
 		if (mysql_real_query(&mysql, sql.c_str(), sql.length())) {
 			throw runtime_error(mysql_error(&mysql) + string("\n") + sql);

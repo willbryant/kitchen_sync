@@ -18,8 +18,8 @@ struct Command {
 	}
 };
 
-template <typename Stream>
-Command &operator >> (Unpacker<Stream> &unpacker, Command &command) {
+template <typename InputStream>
+Command &operator >> (Unpacker<InputStream> &unpacker, Command &command) {
 	size_t array_length = unpacker.next_array_length(); // checks type
 	if (array_length < 1) throw logic_error("Expected at least one element when reading command");
 
@@ -32,19 +32,19 @@ Command &operator >> (Unpacker<Stream> &unpacker, Command &command) {
 	return command;
 }
 
-template<typename Stream>
-inline void send_values(Packer<Stream> &packer) {
+template <typename OutputStream>
+inline void send_values(Packer<OutputStream> &packer) {
 	/* do nothing, this specialization is just to terminate the variadic template expansion */
 }
 
-template<typename Stream, typename T, typename... Values>
-inline void send_values(Packer<Stream> &packer, const T &arg0, const Values &...args) {
+template <typename OutputStream, typename T, typename... Values>
+inline void send_values(Packer<OutputStream> &packer, const T &arg0, const Values &...args) {
 	packer << arg0;
 	send_values(packer, args...);
 }
 
-template<typename... Values>
-void send_command(Packer<ostream> &packer, const string &name, const Values &...args) {
+template <typename OutputStream, typename... Values>
+void send_command(Packer<OutputStream> &packer, const string &name, const Values &...args) {
 	packer.pack_array_length(1 + sizeof...(Values)); /* name + number of args */
 	packer << name;
 	send_values(packer, args...);

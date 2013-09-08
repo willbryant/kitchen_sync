@@ -66,12 +66,12 @@ public:
 		bool readonly);
 	~PostgreSQLClient();
 
-	template <class RowPacker>
+	template <typename RowPacker>
 	void retrieve_rows(const Table &table, const ColumnValues &prev_key, size_t row_count, RowPacker &row_packer) {
 		query(retrieve_rows_sql(table, prev_key, row_count), row_packer);
 	}
 
-	template <class RowPacker>
+	template <typename RowPacker>
 	void retrieve_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, RowPacker &row_packer) {
 		query(retrieve_rows_sql(table, prev_key, last_key), row_packer);
 	}
@@ -88,7 +88,7 @@ protected:
 	void start_transaction(bool readonly);
 	void populate_database_schema();
 
-	template <class RowFunction>
+	template <typename RowFunction>
 	void query(const string &sql, RowFunction &row_handler) {
 	    PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, NULL, NULL, NULL, NULL, 0 /* text-format results only */));
 

@@ -4,13 +4,15 @@
 #include "schema.h"
 #include "message_pack/unpack.h"
 
-void operator << (Packer<ostream> &packer, const Column &column) {
+template <typename OutputStream>
+void operator << (Packer<OutputStream> &packer, const Column &column) {
 	packer.pack_map_length(1);
 	packer << string("name");
 	packer << column.name;
 }
 
-void operator << (Packer<ostream> &packer, const Table &table) {
+template <typename OutputStream>
+void operator << (Packer<OutputStream> &packer, const Table &table) {
 	packer.pack_map_length(3);
 	packer << string("name");
 	packer << table.name;
@@ -20,14 +22,15 @@ void operator << (Packer<ostream> &packer, const Table &table) {
 	packer << table.primary_key_columns;
 }
 
-void operator << (Packer<ostream> &packer, const Database &database) {
+template <typename OutputStream>
+void operator << (Packer<OutputStream> &packer, const Database &database) {
 	packer.pack_map_length(1);
 	packer << string("tables");
 	packer << database.tables;
 }
 
-template <typename Stream>
-void operator >> (Unpacker<Stream> &unpacker, Column &column) {
+template <typename InputStream>
+void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 	size_t map_length = unpacker.next_map_length(); // checks type
 
 	while (map_length--) {
@@ -39,8 +42,8 @@ void operator >> (Unpacker<Stream> &unpacker, Column &column) {
 	}
 }
 
-template <typename Stream>
-void operator >> (Unpacker<Stream> &unpacker, Table &table) {
+template <typename InputStream>
+void operator >> (Unpacker<InputStream> &unpacker, Table &table) {
 	size_t map_length = unpacker.next_map_length(); // checks type
 
 	while (map_length--) {
@@ -56,8 +59,8 @@ void operator >> (Unpacker<Stream> &unpacker, Table &table) {
 	}
 }
 
-template <typename Stream>
-void operator >> (Unpacker<Stream> &unpacker, Database &database) {
+template <typename InputStream>
+void operator >> (Unpacker<InputStream> &unpacker, Database &database) {
 	size_t map_length = unpacker.next_map_length(); // checks type
 
 	while (map_length--) {

@@ -9,17 +9,17 @@ struct command_error: public runtime_error {
 	command_error(const string &error): runtime_error(error) { }
 };
 
-template <typename DatabaseClient>
-void handle_rows_command(DatabaseClient &client, const string &table_name, const ColumnValues &prev_key, const ColumnValues &last_key, Packer<ostream> &output) {
+template <typename DatabaseClient, typename OutputStream>
+void handle_rows_command(DatabaseClient &client, const string &table_name, const ColumnValues &prev_key, const ColumnValues &last_key, Packer<OutputStream> &output) {
 	const Table &table(client.table_by_name(table_name));
 
 	send_command(output, "rows", table_name, prev_key, last_key);
-	RowPacker<typename DatabaseClient::RowType> row_packer(output);
+	RowPacker<typename DatabaseClient::RowType, OutputStream> row_packer(output);
 	client.retrieve_rows(table, prev_key, last_key, row_packer);
 }
 
-template <typename DatabaseClient>
-void handle_hash_command(DatabaseClient &client, const string &table_name, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash, Packer<ostream> &output) {
+template <typename DatabaseClient, typename OutputStream>
+void handle_hash_command(DatabaseClient &client, const string &table_name, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash, Packer<OutputStream> &output) {
 	const Table &table(client.table_by_name(table_name));
 
 	ColumnValues matched_up_to_key;

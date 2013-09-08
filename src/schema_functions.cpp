@@ -3,12 +3,12 @@
 #include <algorithm>
 #include "sql_functions.h"
 
-template <class T>
+template <typename T>
 bool name_equal(const T &a, const T &b) {
 	return (a.name == b.name);
 };
 
-template <class T>
+template <typename T>
 struct name_is {
 	const string &name;
 	name_is(const string &name): name(name) {}
