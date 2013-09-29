@@ -16,8 +16,6 @@ UnidirectionalPipe::UnidirectionalPipe() {
 UnidirectionalPipe::~UnidirectionalPipe() {
 	close_read();
 	close_write();
-	if (pipe_handles[0]) close(pipe_handles[0]);
-	if (pipe_handles[1]) close(pipe_handles[1]);
 }
 
 /* we arbitrarily make the first the read end and the second the write end; in fact they're identical to the OS */
