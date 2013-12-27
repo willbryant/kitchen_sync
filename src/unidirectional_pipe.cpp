@@ -1,6 +1,7 @@
 #include "unidirectional_pipe.h"
 
 #include <stdexcept>
+#include <string>
 #include <cerrno>
 #include <cstring>
 #include <unistd.h>
