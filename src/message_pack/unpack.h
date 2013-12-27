@@ -20,7 +20,7 @@ struct unpacker_error: public std::runtime_error {
 template <typename Stream>
 class Unpacker {
 public:
-	Unpacker(Stream &stream): stream(stream), have_next_byte(false), next_byte(0) {}
+	Unpacker(Stream &stream): stream(stream) {}
 
 	// determines if the next value is nil, but doesn't read it - call \next_nil() to do that.
 	bool next_is_nil() {
@@ -110,8 +110,6 @@ public:
 
 protected:
 	Stream &stream;
-	bool have_next_byte;
-	uint8_t next_byte;
 };
 
 template <typename Stream, typename T>
