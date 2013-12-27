@@ -7,5 +7,6 @@ struct RowPrinter {
 			if (column_number != row.n_columns() - 1) cout << "\t";
 		}
 		cout << endl;
+		cout.flush();
 	}
 };

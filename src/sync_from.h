@@ -4,6 +4,7 @@
 #include "schema_serialization.h"
 #include "row_serialization.h"
 #include "sync_algorithm.h"
+#include "fdstream.h"
 
 struct command_error: public runtime_error {
 	command_error(const string &error): runtime_error(error) { }
@@ -46,8 +47,10 @@ void sync_from(const char *database_host, const char *database_port, const char 
 	const int PROTOCOL_VERSION_SUPPORTED = 1;
 
 	DatabaseClient client(database_host, database_port, database_name, database_username, database_password, true /* readonly */);
-	Unpacker<istream> input(cin);
-	Packer<ostream> output(cout);
+	FDReadStream in(STDIN_FILENO);
+	Unpacker<FDReadStream> input(in);
+	FDWriteStream out(STDOUT_FILENO);
+	Packer<FDWriteStream> output(out);
 	Command command;
 
 	// all conversations must start with a "protocol" command to establish the language to be used
@@ -61,7 +64,7 @@ void sync_from(const char *database_host, const char *database_port, const char 
 
 	// tell the other end what version was selected
 	output << protocol;
-	cout.flush();
+	out.flush();
 
 	while (true) {
 		input >> command;
@@ -90,6 +93,6 @@ void sync_from(const char *database_host, const char *database_port, const char 
 			throw command_error("Unknown command " + command.name);
 		}
 
-		cout.flush();
+		out.flush();
 	}
 }

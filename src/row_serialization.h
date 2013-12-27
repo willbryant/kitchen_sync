@@ -33,7 +33,7 @@ struct Hash {
 
 template <typename OutputStream>
 inline void operator << (Packer<OutputStream> &packer, const Hash &hash) {
-	packer.pack_raw((const char*)hash.md_value, hash.md_len);
+	packer.pack_raw((const uint8_t *)hash.md_value, hash.md_len);
 }
 
 inline bool operator == (const Hash &hash, const string &str) {
@@ -81,7 +81,7 @@ struct RowHasher {
 		}
 	}
 
-	inline void write(const char* buf, size_t bytes) {
+	inline void write(const uint8_t *buf, size_t bytes) {
 		EVP_DigestUpdate(mdctx, buf, bytes);
 	}
 

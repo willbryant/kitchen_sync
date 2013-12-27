@@ -1,9 +1,9 @@
-#include <iostream>
 #include <unistd.h>
 
 #include "schema.h"
 #include "schema_functions.h"
 #include "sync_database_data.h"
+#include "fdstream.h"
 
 template <typename DatabaseClient>
 void sync_to(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password) {
@@ -11,8 +11,10 @@ void sync_to(const char *database_host, const char *database_port, const char *d
 
 	DatabaseClient client(database_host, database_port, database_name, database_username, database_password, false /* not readonly */);
 	DatabaseClient read_client(database_host, database_port, database_name, database_username, database_password, true /* readonly */);
-	Unpacker<istream> input(cin);
-	Packer<ostream> output(cout);
+	FDReadStream in(STDIN_FILENO);
+	Unpacker<FDReadStream> input(in);
+	FDWriteStream out(STDOUT_FILENO);
+	Packer<FDWriteStream> output(out);
 
 	// tell the other end what protocol we speak, and have them tell us which version we're able to converse in
 	send_command(output, "protocol", PROTOCOL_VERSION_SUPPORTED);

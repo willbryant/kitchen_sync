@@ -31,7 +31,7 @@ public:
 		write_raw(MSGPACK_NIL);
 	}
 
-	inline void pack_raw(const char *buf, size_t bytes) {
+	inline void pack_raw(const uint8_t *buf, size_t bytes) {
 		pack_raw_length(bytes);
 		write_raw_bytes(buf, bytes);
 	}
@@ -90,11 +90,11 @@ public:
 	// writes the selected type as raw bytes to the data stream, without byte order conversion or type marshalling
 	template <typename T>
 	inline void write_raw(const T &obj) {
-		write_raw_bytes((const char*) &obj, sizeof(obj));
+		write_raw_bytes((const uint8_t*)&obj, sizeof(obj));
 	}
 
 	// writes the given number of raw bytes to the data stream, without byte order conversion or type unmarshalling
-	inline void write_raw_bytes(const char *buf, size_t bytes) {
+	inline void write_raw_bytes(const uint8_t *buf, size_t bytes) {
 		stream.write(buf, bytes);
 	}
 
@@ -228,7 +228,7 @@ inline Packer<Stream> &operator <<(Packer<Stream> &packer, const double &obj) {
 
 template <typename Stream>
 inline Packer<Stream> &operator <<(Packer<Stream> &packer, const std::string &obj) {
-	packer.pack_raw((const char*)obj.data(), obj.size());
+	packer.pack_raw((const uint8_t *)obj.data(), obj.size());
 	return packer;
 }
 

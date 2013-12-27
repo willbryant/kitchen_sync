@@ -91,21 +91,18 @@ public:
 	template <typename T>
 	T read_raw() {
 		T obj;
-		read_raw_bytes((uint8_t*) &obj, sizeof(obj));
+		read_raw_bytes((uint8_t *)&obj, sizeof(obj));
 		return obj;
 	}
 
 	// gets but does not consume the next raw byte from the data stream
-	uint8_t peek() {
+	inline uint8_t peek() {
 		return stream.peek();
 	}
 
 	// reads the given number of raw bytes from the data stream, without byte order conversion or type unmarshalling
-	void read_raw_bytes(uint8_t *buf, size_t bytes) {
-		stream.read((char*) buf, bytes);
-		if (!stream) {
-			throw unpacker_error("Read from stream failed: " + std::string(strerror(errno)));
-		}
+	inline void read_raw_bytes(uint8_t *buf, size_t bytes) {
+		stream.read(buf, bytes);
 	}
 
 protected:

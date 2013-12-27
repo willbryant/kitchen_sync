@@ -26,7 +26,6 @@ int endpoint_main(int argc, char *argv[]) {
 			sync_to<DatabaseClient>(database_host, database_port, database_name, database_username, database_password);
 		}
 
-		cout.flush();
 		close(STDOUT_FILENO);
 	} catch (exception& e) {
 		cerr << e.what() << endl;
