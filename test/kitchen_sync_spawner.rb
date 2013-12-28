@@ -10,7 +10,7 @@ class KitchenSyncSpawner
   def initialize(program_binary, program_args, options = {})
     @program_binary = program_binary
     @program_args = program_args
-    @capture_stderr_in = options[:capture_stderr_in]
+    @capture_stderr_in = options[:capture_stderr_in] unless ENV['NO_CAPTURE_STDERR']
     raise "Can't see a program binary at #{program_binary}" unless File.executable?(program_binary)
   end
   
@@ -88,7 +88,7 @@ class KitchenSyncSpawner
     unpacker.read
   ensure
     stderr = stderr_contents
-    fail "Unexpected stderr output: #{stderr_contents}" unless (stderr_contents || "") == (@expected_stderr_contents || "")
+    fail "Unexpected stderr output: #{stderr_contents}" unless ENV['NO_CAPTURE_STDERR'] || (stderr_contents || "") == (@expected_stderr_contents || "")
   end
 
   def send_results(results)
