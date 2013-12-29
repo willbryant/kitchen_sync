@@ -43,13 +43,13 @@ void handle_hash_command(DatabaseClient &client, const string &table_name, const
 }
 
 template<class DatabaseClient>
-void sync_from(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password) {
+void sync_from(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, int read_from_descriptor, int write_to_descriptor) {
 	const int PROTOCOL_VERSION_SUPPORTED = 1;
 
-	DatabaseClient client(database_host, database_port, database_name, database_username, database_password, true /* readonly */);
-	FDReadStream in(STDIN_FILENO);
+	DatabaseClient client(database_host, database_port, database_name, database_username, database_password, true /* readonly */, true /* snapshot */);
+	FDReadStream in(read_from_descriptor);
 	Unpacker<FDReadStream> input(in);
-	FDWriteStream out(STDOUT_FILENO);
+	FDWriteStream out(write_to_descriptor);
 	Packer<FDWriteStream> output(out);
 	Command command;
 

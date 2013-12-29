@@ -21,13 +21,16 @@ int endpoint_main(int argc, char *argv[]) {
 		const char *database_password(argv[6]);
 		
 		if (from) {
-			sync_from<DatabaseClient>(database_host, database_port, database_name, database_username, database_password);
+			sync_from<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, STDIN_FILENO, STDOUT_FILENO);
 		} else {
-			sync_to<DatabaseClient>(database_host, database_port, database_name, database_username, database_password);
+			int workers = argc > 7 ? atoi(argv[7]) : 1;
+			int startfd = argc > 8 ? atoi(argv[8]) : STDIN_FILENO;
+			sync_to<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, workers, startfd);
 		}
-
-		close(STDOUT_FILENO);
-	} catch (exception& e) {
+	} catch (const sync_error& e) {
+		// the worker thread has already output the error to cerr
+		return 2;
+	} catch (const exception& e) {
 		cerr << e.what() << endl;
 		return 2;
 	}

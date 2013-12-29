@@ -63,7 +63,8 @@ public:
 		const char *database_name,
 		const char *database_username,
 		const char *database_password,
-		bool readonly);
+		bool readonly,
+		bool snapshot);
 	~PostgreSQLClient();
 
 	template <typename RowPacker>
@@ -85,7 +86,7 @@ public:
 protected:
 	friend class PostgreSQLTableLister;
 
-	void start_transaction(bool readonly);
+	void start_transaction(bool readonly, bool snapshot);
 	void populate_database_schema();
 
 	template <typename RowFunction>
@@ -93,7 +94,8 @@ protected:
 	    PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, NULL, NULL, NULL, NULL, 0 /* text-format results only */));
 
 	    if (res.status() != PGRES_TUPLES_OK) {
-			throw runtime_error(PQerrorMessage(conn));
+			backtrace();
+			throw runtime_error(PQerrorMessage(conn) + string("\n") + sql);
 	    }
 
 	    for (int row_number = 0; row_number < res.n_tuples(); row_number++) {
@@ -115,7 +117,8 @@ PostgreSQLClient::PostgreSQLClient(
 	const char *database_name,
 	const char *database_username,
 	const char *database_password,
-	bool readonly) {
+	bool readonly,
+	bool snapshot) {
 
 	const char *keywords[] = { "host",        "port",        "dbname",      "user",            "password",        NULL };
 	const char *values[]   = { database_host, database_port, database_name, database_username, database_password, NULL };
@@ -128,7 +131,7 @@ PostgreSQLClient::PostgreSQLClient(
 
 	// postgresql has transactional DDL, so by starting our transaction before we've even looked at the tables,
 	// we'll get a 100% consistent view.
-	start_transaction(readonly);
+	start_transaction(readonly, snapshot);
 
 	populate_database_schema();
 }
@@ -143,13 +146,16 @@ void PostgreSQLClient::execute(const string &sql) {
     PostgreSQLRes res(PQexec(conn, sql.c_str()));
 
     if (res.status() != PGRES_COMMAND_OK) {
-		throw runtime_error(PQerrorMessage(conn));
+		throw runtime_error(PQerrorMessage(conn) + string("\n") + sql);
     }
 }
 
-void PostgreSQLClient::start_transaction(bool readonly) {
-	execute("SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ");
-	execute(readonly ? "START TRANSACTION READ ONLY" : "START TRANSACTION");
+void PostgreSQLClient::start_transaction(bool readonly, bool snapshot) {
+	if (snapshot) {
+		execute(readonly ? "START TRANSACTION READ ONLY ISOLATION LEVEL REPEATABLE READ" : "START TRANSACTION ISOLATION LEVEL REPEATABLE READ");
+	} else {
+		execute(readonly ? "START TRANSACTION READ ONLY ISOLATION LEVEL READ COMMITTED"  : "START TRANSACTION ISOLATION LEVEL READ COMMITTED");
+	}
 }
 
 void PostgreSQLClient::commit_transaction() {

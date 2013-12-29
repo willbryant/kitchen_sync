@@ -61,7 +61,7 @@ void check_table_match(const Table &from_table, const Table &to_table) {
 	// FUTURE: check secondary indexes, collation etc.
 }
 
-void check_tables_match(Tables &from_tables, Tables &to_tables) {
+void check_tables_match(Tables from_tables, Tables to_tables) {
 	// databases typically return the tables in sorted order, but our algorithm requires it, so we quickly enforce it here
 	sort(from_tables.begin(), from_tables.end());
 	sort(  to_tables.begin(),   to_tables.end());
@@ -84,7 +84,7 @@ void check_tables_match(Tables &from_tables, Tables &to_tables) {
 	}
 }
 
-void check_schema_match(Database &from_database, Database &to_database) {
+void check_schema_match(const Database &from_database, const Database &to_database) {
 	// currently we only pay attention to tables, but in the future we might support other schema items
 	check_tables_match(from_database.tables, to_database.tables);
 }

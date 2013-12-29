@@ -58,10 +58,14 @@ class KitchenSyncSpawner
     return unless @child_pid
     @program_stdin.close unless @program_stdin.closed?
     @program_stdout.close
-    Process.kill('TERM', @child_pid)
-    Process.wait(@child_pid)
-    @child_pid = nil
+    Process.kill('TERM', @child_pid) if @child_pid
+    wait
     @unpacker = nil
+  end
+
+  def wait
+    Process.wait(@child_pid) if @child_pid
+    @child_pid = nil
   end
 
   def stderr_contents
@@ -102,6 +106,10 @@ class KitchenSyncSpawner
       break if command == ["quit"]
       send_results(results)
     end
+
+    # to get meaningful test results, we have to wait until the program has committed its work, and we can't assume that till it's terminated
+    @program_stdin.close
+    wait
   rescue EOFError
     # ignore; the test case will use expects(:quit) if it expects a less abrupt end to the conversation
   ensure

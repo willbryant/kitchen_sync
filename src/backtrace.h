@@ -7,7 +7,7 @@
 
 using namespace std;
 
-void backtrace()
+static void backtrace()
 {
 	void *callers[100];
 	size_t size = backtrace(callers, 100);

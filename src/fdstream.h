@@ -8,9 +8,16 @@ struct stream_error: public std::runtime_error {
 	stream_error(const std::string &error): runtime_error(error) {}
 };
 
+struct stream_closed_error: public stream_error {
+	stream_closed_error(): stream_error("Connection closed") {}
+};
+
 struct FDReadStream {
 	FDReadStream(int fd): fd(fd), buf_pos(0), buf_avail(0) {}
-	~FDReadStream() {}
+
+	~FDReadStream() {
+		close(fd);
+	}
 
 	// gets but does not consume the next raw byte from the data stream
 	inline uint8_t peek() {
@@ -22,7 +29,7 @@ struct FDReadStream {
 	inline void read(uint8_t *dest, size_t bytes) {
 		while (bytes > buf_avail) {
 			memcpy(dest, buf + buf_pos, buf_avail);
-			dest   += buf_avail;
+			dest  += buf_avail;
 			bytes -= buf_avail;
 			fill_buf();
 		}
@@ -36,7 +43,10 @@ protected:
 		ssize_t bytes_read;
 		while (true) {
 			bytes_read = ::read(fd, buf, sizeof(buf));
-			if (bytes_read <= 0) {
+			if (bytes_read == 0) {
+				throw stream_closed_error();
+			}
+			if (bytes_read < 0) {
 				if (errno == EINTR) continue;
 				throw stream_error("Couldn't read from descriptor: " + string(strerror(errno)));
 			}
@@ -53,7 +63,10 @@ protected:
 
 struct FDWriteStream {
 	FDWriteStream(int fd): fd(fd), buf_used(0) {}
-	~FDWriteStream() {}
+	
+	~FDWriteStream() {
+		close(fd);
+	}
 
 	// writes the given number of raw bytes to the data stream, possibly using a buffer; call flush() to force that to the underlying descriptor
 	inline void write(const uint8_t *src, size_t bytes) {

@@ -19,22 +19,15 @@ struct WorkTask {
 };
 
 struct SyncWorkQueue {
-	SyncWorkQueue(const Tables &tables) {
+	SyncWorkQueue(): tables_left(-1), aborted(false) {}
+
+	void enqueue(const Tables &tables) {
+		boost::unique_lock<boost::mutex> lock(queue_mutex);
 		tables_left = tables.size();
 		for (Tables::const_iterator from_table = tables.begin(); from_table != tables.end(); ++from_table) {
 			queue.push(WorkTask(*from_table));
 		}
-	}
-
-	priority_queue<WorkTask> queue;
-	boost::mutex queue_mutex;
-	boost::condition_variable enqueued;
-	size_t tables_left;
-
-	void finished_table() {
-		boost::unique_lock<boost::mutex> lock(queue_mutex);
-		tables_left--;
-		if (!tables_left) enqueued.notify_all();
+		enqueued.notify_all();
 	}
 
 	void enqueue(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
@@ -54,4 +47,33 @@ struct SyncWorkQueue {
 		}
 		return task;
 	}
+
+	void wait_until_started() {
+		boost::unique_lock<boost::mutex> lock(queue_mutex);
+		while (tables_left == -1) enqueued.wait(lock);
+	}
+
+	void finished_table() {
+		boost::unique_lock<boost::mutex> lock(queue_mutex);
+		tables_left--;
+		if (!tables_left) enqueued.notify_all();
+	}
+
+	void abort() {
+		boost::unique_lock<boost::mutex> lock(queue_mutex);
+		tables_left = 0; // note that this value makes both wait_until_started() and pop() return, so both input & output threads will terminate once they get the notification
+		aborted = true;
+		enqueued.notify_all();
+	}
+
+	bool check_if_finished_all_tables() {
+		boost::unique_lock<boost::mutex> lock(queue_mutex);
+		return (tables_left == 0);
+	}
+	
+	priority_queue<WorkTask> queue;
+	boost::mutex queue_mutex;
+	boost::condition_variable enqueued;
+	size_t tables_left;
+	bool aborted;
 };

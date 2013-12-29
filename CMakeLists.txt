@@ -23,6 +23,9 @@ include_directories(${OPENSSL_INCLUDE_DIRS})
 set(ks_endpoint_SRCS src/sql_functions.cpp src/schema.cpp src/schema_functions.cpp src/database_client.cpp)
 set(ks_endpoint_LIBS ${OPENSSL_LIBRARIES})
 
+# turn on debugging symbols
+set(CMAKE_BUILD_TYPE Debug)
+
 # we have one endpoint program for mysql
 find_package(MySQL REQUIRED)
 include_directories(${MYSQL_INCLUDE_DIR})

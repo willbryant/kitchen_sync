@@ -66,7 +66,8 @@ public:
 		const char *database_name,
 		const char *database_username,
 		const char *database_password,
-		bool readonly);
+		bool readonly,
+		bool snapshot);
 	~MySQLClient();
 
 	template <typename RowPacker>
@@ -88,12 +89,13 @@ public:
 protected:
 	friend class MySQLTableLister;
 
-	void start_transaction(bool readonly);
+	void start_transaction(bool readonly, bool snapshot);
 	void populate_database_schema();
 
 	template <typename RowFunction>
 	void query(const string &sql, RowFunction &row_handler, bool buffer) {
 		if (mysql_real_query(&mysql, sql.c_str(), sql.length())) {
+			backtrace();
 			throw runtime_error(mysql_error(&mysql) + string("\n") + sql);
 		}
 
@@ -108,6 +110,7 @@ protected:
 
 		// check again for errors, as mysql_fetch_row would return NULL for both errors & no more rows
 		if (mysql_errno(&mysql)) {
+			backtrace();
 			throw runtime_error(mysql_error(&mysql) + string("\n") + sql);
 		}
 	}
@@ -125,7 +128,8 @@ MySQLClient::MySQLClient(
 	const char *database_name,
 	const char *database_username,
 	const char *database_password,
-	bool readonly) {
+	bool readonly,
+	bool snapshot) {
 
 	// mysql_real_connect takes separate params for numeric ports and unix domain sockets
 	int port = 0;
@@ -146,7 +150,7 @@ MySQLClient::MySQLClient(
 
 	// although we start the transaction here, in reality mysql's system catalogs are non-transactional
 	// and do not give a consistent snapshot
-	start_transaction(readonly);
+	start_transaction(readonly, snapshot);
 
 	populate_database_schema();
 }
@@ -157,12 +161,12 @@ MySQLClient::~MySQLClient() {
 
 void MySQLClient::execute(const string &sql) {
 	if (mysql_real_query(&mysql, sql.c_str(), sql.size())) {
-		throw runtime_error(mysql_error(&mysql));
+		throw runtime_error(mysql_error(&mysql) + string("\n") + sql);
 	}
 }
 
-void MySQLClient::start_transaction(bool readonly) {
-	execute("SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ");
+void MySQLClient::start_transaction(bool readonly, bool snapshot) {
+	execute(snapshot ? "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ" : "SET TRANSACTION ISOLATION LEVEL READ COMMITTED");
 	execute(readonly && mysql_get_server_version(&mysql) >= MYSQL_5_6_5 ? "START TRANSACTION READ ONLY" : "START TRANSACTION");
 }
 

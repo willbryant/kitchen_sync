@@ -23,6 +23,22 @@ UnidirectionalPipe::~UnidirectionalPipe() {
 int UnidirectionalPipe:: read_fileno() { return pipe_handles[0]; }
 int UnidirectionalPipe::write_fileno() { return pipe_handles[1]; }
 
+void UnidirectionalPipe::dup_read_to(int fd) {
+	int result;
+	do { result = dup2(read_fileno(), fd); } while (result < 0 && errno == EINTR); // closes fd if it is currently open
+	if (result < 0) {
+		throw runtime_error("Couldn't reattach read descriptor: " + string(strerror(errno)));
+	}
+}
+
+void UnidirectionalPipe::dup_write_to(int fd) {
+	int result;
+	do { result = dup2(write_fileno(), fd); } while (result < 0 && errno == EINTR); // closes fd if it is currently open
+	if (result < 0) {
+		throw runtime_error("Couldn't reattach write descriptor: " + string(strerror(errno)));
+	}
+}
+
 void UnidirectionalPipe::close_read() {
 	if (pipe_handles[0]) {
 		close(pipe_handles[0]);

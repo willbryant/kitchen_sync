@@ -18,31 +18,43 @@ string Process::related_binary_path(const string &argv0, const string &this_prog
 	}
 }
 
+pid_t Process::fork_and_exec(const string &binary, const char *args[]) {
+	pid_t child = fork();
+
+	if (child < 0) {
+		// hit the process limit
+		throw runtime_error("Couldn't fork to start binary: " + string(strerror(errno)));
+
+	} else if (child == 0) {
+		// we are the child; run the binary
+		if (execv(binary.c_str(), (char * const *)args) < 0) {
+			throw runtime_error("Couldn't exec " + binary + ": " + string(strerror(errno)));
+		}
+		throw logic_error("execv returned");
+
+	} else {
+		return child;
+	}
+}
+
 pid_t Process::fork_and_exec(const string &binary, const char *args[], UnidirectionalPipe &stdin_pipe, UnidirectionalPipe &stdout_pipe) {
 	pid_t child = fork();
 
 	if (child < 0) {
 		// hit the process limit
-		throw runtime_error("Couldn't fork to start first binary: " + string(strerror(errno)));
+		throw runtime_error("Couldn't fork to start binary: " + string(strerror(errno)));
 
 	} else if (child == 0) {
 		// we are the child; close the ends of the pipe that we won't use (as otherwise we'd not see the pipes close when the other end is done)
-		int result;
 		stdin_pipe.close_write();
 		stdout_pipe.close_read();
 
 		// attach our stdin
-		do { result = dup2(stdin_pipe.read_fileno(), STDIN_FILENO); } while (result < 0 && errno == EINTR); // closes STDIN_FILENO
-		if (result < 0) {
-			throw runtime_error("Couldn't reattach STDIN: " + string(strerror(errno)));
-		}
+		stdin_pipe.dup_read_to(STDIN_FILENO);
 		stdin_pipe.close_read();
 
 		// attach our stdout
-		do { result = dup2(stdout_pipe.write_fileno(), STDOUT_FILENO); } while (result < 0 && errno == EINTR); // closes STDOUT_FILENO
-		if (result < 0) {
-			throw runtime_error("Couldn't reattach STDOUT: " + string(strerror(errno)));
-		}
+		stdout_pipe.dup_write_to(STDOUT_FILENO);
 		stdout_pipe.close_write();
 
 		// run the binary
