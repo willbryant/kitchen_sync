@@ -298,7 +298,8 @@ void PostgreSQLClient::populate_database_schema() {
 	PostgreSQLTableLister table_lister(*this);
 	query("SELECT tablename "
 		    "FROM pg_tables "
-		   "WHERE schemaname = ANY (current_schemas(false))",
+		   "WHERE schemaname = ANY (current_schemas(false)) "
+		   "ORDER BY pg_relation_size(tablename::text) DESC, tablename ASC",
 		  table_lister);
 	index_database_tables();
 }
