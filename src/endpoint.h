@@ -26,7 +26,8 @@ int endpoint_main(int argc, char *argv[]) {
 			int workers = argc > 7 ? atoi(argv[7]) : 1;
 			int startfd = argc > 8 ? atoi(argv[8]) : STDIN_FILENO;
 			bool verbose = argc > 9 ? atoi(argv[9]) : false;
-			sync_to<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, workers, startfd, verbose);
+			bool partial = argc > 10 ? atoi(argv[10]) : false;
+			sync_to<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, workers, startfd, verbose, partial);
 		}
 	} catch (const sync_error& e) {
 		// the worker thread has already output the error to cerr

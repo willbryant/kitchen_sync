@@ -22,10 +22,12 @@ int main(int argc, char *argv[]) {
 		options_description desc("Allowed options");
 		int workers;
 		bool verbose = false;
+		bool partial = false;
 		desc.add_options()
 			("from",    value<DbUrl>()->required(),             "The URL of the database to copy data from.  Required.\n")
 			("to",      value<DbUrl>()->required(),             "The URL of the database to copy data to.  Required.\n")
 			("workers", value<int>(&workers)->default_value(1), "The number of concurrent workers to use at each end.\n")
+			("partial", "Attempt to commit changes even if some workers hit errors.\n")
 			("verbose", "Log more information as the program works.\n");
 		variables_map vm;
 
@@ -39,13 +41,9 @@ int main(int argc, char *argv[]) {
 			return help(desc);
 		}
 
-		if (vm.count("help")) {
-			return help(desc);
-		}
-
-		if (vm.count("verbose")) {
-			verbose = true;
-		}
+		if (vm.count("help")) return help(desc);
+		if (vm.count("verbose")) verbose = true;
+		if (vm.count("partial")) partial = true;
 
 		cout << "Kitchen Sync" << endl;
 
@@ -59,7 +57,7 @@ int main(int argc, char *argv[]) {
 		string startfd_str(to_string(to_descriptor_list_start));
 
 		const char *from_args[] = { from_binary.c_str(), "from", from.host.c_str(), from.port.c_str(), from.database.c_str(), from.username.c_str(), from.password.c_str(), NULL };
-		const char *  to_args[] = {   to_binary.c_str(),   "to",   to.host.c_str(),   to.port.c_str(),   to.database.c_str(),   to.username.c_str(),   to.password.c_str(), workers_str.c_str(), startfd_str.c_str(), verbose ? "1" : "0", NULL };
+		const char *  to_args[] = {   to_binary.c_str(),   "to",   to.host.c_str(),   to.port.c_str(),   to.database.c_str(),   to.username.c_str(),   to.password.c_str(), workers_str.c_str(), startfd_str.c_str(), verbose ? "1" : "0", partial ? "1" : "0", NULL };
 
 		vector<pid_t> child_pids;
 		for (int worker = 0; worker < workers; ++worker) {
