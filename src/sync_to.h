@@ -217,5 +217,5 @@ void sync_to(const char *database_host, const char *database_port, const char *d
 
 	for (typename vector<SyncToWorker<DatabaseClient>*>::const_iterator it = workers.begin(); it != workers.end(); ++it) delete *it;
 
-	if (table_queue.aborted) throw sync_error();
+	if (!table_queue.check_if_finished_all_tables()) throw sync_error();
 }
