@@ -20,12 +20,13 @@ struct SyncToWorker {
 	SyncToWorker(
 		SyncTableQueue &table_queue,
 		const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password,
-		int read_from_descriptor, int write_to_descriptor, bool leader):
+		int read_from_descriptor, int write_to_descriptor, bool leader, bool verbose):
 			table_queue(table_queue),
 			client(database_host, database_port, database_name, database_username, database_password, false /* not readonly */, false /* no snapshot - don't take gap locks */),
 			input_stream(read_from_descriptor), input(input_stream), 
 			output_stream(write_to_descriptor), output(output_stream),
 			leader(leader),
+			verbose(verbose),
 			protocol_version(0),
 			worker_thread(boost::ref(*this)) {
 	}
@@ -115,6 +116,8 @@ struct SyncToWorker {
 		ColumnValues last_key;
 		string hash;
 
+		if (verbose) cout << "starting " << table.name << endl << flush;
+
 		while (true) {
 			ColumnValues matched_up_to_key;
 			size_t rows_to_hash = check_hash_and_choose_next_range(client, table, prev_key, last_key, hash, matched_up_to_key);
@@ -161,7 +164,10 @@ struct SyncToWorker {
 				TableRowApplier<DatabaseClient, FDReadStream> applier(client, input, table, prev_key, last_key);
 
 				// if the range extends to the end of their table, that means we're done with that table
-				if (last_key.empty()) return;
+				if (last_key.empty()) {
+					if (verbose) cout << "finished " << table.name << endl << flush;
+					return;
+				}
 
 				// if it doesn't, that means they have more rows after these ones, so more work to do;
 				// since we failed to match last time, don't increase the row count.
@@ -190,12 +196,13 @@ struct SyncToWorker {
 	Unpacker<FDReadStream> input;
 	Packer<FDWriteStream> output;
 	bool leader;
+	bool verbose;
 	int protocol_version;
 	boost::thread worker_thread;
 };
 
 template <typename DatabaseClient>
-void sync_to(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, int num_workers, int startfd) {
+void sync_to(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, int num_workers, int startfd, bool verbose) {
 	SyncTableQueue table_queue;
 	vector<SyncToWorker<DatabaseClient>*> workers;
 
@@ -205,7 +212,7 @@ void sync_to(const char *database_host, const char *database_port, const char *d
 		bool leader = (worker == 0);
 		int read_from_descriptor = startfd + worker;
 		int write_to_descriptor = startfd + worker + num_workers;
-		workers[worker] = new SyncToWorker<DatabaseClient>(table_queue, database_host, database_port, database_name, database_username, database_password, read_from_descriptor, write_to_descriptor, leader);
+		workers[worker] = new SyncToWorker<DatabaseClient>(table_queue, database_host, database_port, database_name, database_username, database_password, read_from_descriptor, write_to_descriptor, leader, verbose);
 	}
 
 	for (typename vector<SyncToWorker<DatabaseClient>*>::const_iterator it = workers.begin(); it != workers.end(); ++it) delete *it;
