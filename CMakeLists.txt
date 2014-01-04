@@ -2,6 +2,11 @@ project(kitchen_sync CXX)
 
 cmake_minimum_required(VERSION 2.6)
 
+# suppress warnings about using c++0x features such as variadic templates
+if(CMAKE_COMPILER_IS_GNUCXX)
+    add_definitions(-std=gnu++0x)
+endif()
+
 # where to look first for cmake modules, before ${CMAKE_ROOT}/Modules/ is checked
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
 
