@@ -109,6 +109,7 @@ struct SyncToWorker {
 	}
 
 	void sync_table(const Table &table) {
+		TableRowApplier<DatabaseClient> row_applier(client, table);
 		ColumnValues prev_key;
 		ColumnValues last_key;
 		string hash;
@@ -152,12 +153,22 @@ struct SyncToWorker {
 				prev_key = command.argument<ColumnValues>(1);
 				last_key = command.argument<ColumnValues>(2);
 
-				TableRowApplier<DatabaseClient, FDReadStream> applier(client, input, table, prev_key, last_key);
+				row_applier.stream_from_input(input, prev_key, last_key);
 
-				// if the range extends to the end of their table, that means we're done with that table
+				// if the range extends to the end of their table, that means we're done with this table
 				if (last_key.empty()) {
+					// apply any pending updates
+					row_applier.apply();
 					if (verbose) cout << "finished " << table.name << endl << flush;
 					return;
+				} else {
+					// we want to batch up our updates as much as possible, so we don't apply pending
+					// inserts and range deletes yet.  however, we must apply any unique key clearing
+					// now, because otherwise we would miss the fact that later ranges have been made
+					// non-matching when they started out matching.  the only other alternative would
+					// be to check the rows retrieved to service later hash checks against the unique
+					// keys that we have registered for clearing but not yet applied.
+					row_applier.apply_forward_deletes();
 				}
 
 				// if it doesn't, that means they have more rows after these ones, so more work to do;

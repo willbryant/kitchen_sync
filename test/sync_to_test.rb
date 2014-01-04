@@ -201,4 +201,30 @@ class SyncToTest < KitchenSync::EndpointTestCase
     assert_equal [long_row],
                  query("SELECT * FROM texttbl ORDER BY pri")
   end
+
+  test_each "handles reusing unique values that were previously on later rows" do
+    setup_with_footbl
+    execute "CREATE UNIQUE INDEX unique_key ON footbl (col3)"
+
+    @rows[0][-1] = @rows[-1][-1] # reuse this value from the last row
+    @rows[-1][-1] = "new value"  # and change it there to something else
+
+    expects(:schema).with().
+      returns([{"tables" => [footbl_def.merge("keys" => [{"name" => "unique_key", "unique" => true, "columns" => [2]}])]}])
+    expects(:hash).with("footbl", [], @keys[0], hash_of([["2", "10", "test"]])).
+      returns([["rows", "footbl", [], @keys[0]], @rows[0], []])
+    expects(:hash).with("footbl", @keys[0], @keys[1], hash_of(@rows[1..1])).
+      returns([["hash", "footbl", @keys[1], @keys[3], hash_of(@rows[2..3])]])
+    expects(:hash).with("footbl", @keys[3], @keys[5], hash_of(@rows[4..5])).
+      returns([["hash", "footbl", @keys[5], @keys[-1], hash_of(@rows[5..-1])]])
+    expects(:rows).with("footbl", @keys[-2], @keys[-1]).
+      returns([["rows", "footbl", @keys[-2], @keys[-1]], @rows[-1], []])
+    expects(:rows).with("footbl", @keys[-1], []).
+      returns([["rows", "footbl", @keys[-1], []], []])
+    expects(:quit)
+    receive_commands
+
+    assert_equal @rows,
+                 query("SELECT * FROM footbl ORDER BY col1")
+  end
 end
