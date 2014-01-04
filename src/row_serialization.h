@@ -39,7 +39,7 @@ inline void operator << (Packer<OutputStream> &packer, const Hash &hash) {
 }
 
 inline bool operator == (const Hash &hash, const string &str) {
-	return (hash.md_len == str.length() && str == hash.to_string());
+	return (hash.md_len == str.length() && memcmp(str.c_str(), hash.md_value, hash.md_len) == 0);
 }
 
 struct InitOpenSSL {
