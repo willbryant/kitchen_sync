@@ -34,4 +34,16 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
       {"tables" => [noprimarytbl_def]},
       send_command("schema"))
   end
+
+  test_each "complains if there's no unique key with no nullable columns" do
+    clear_schema
+    create_noprimarytbl(false)
+
+    assert_raises(EOFError) do
+      expect_stderr("Couldn't find a primary or non-nullable unique key on table noprimarytbl") do
+        send_protocol_command
+        send_command("schema")
+      end
+    end
+  end
 end

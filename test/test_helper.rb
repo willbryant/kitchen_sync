@@ -165,6 +165,7 @@ module KitchenSync
           @database_server = database_server
           @database_settings = settings
           begin
+            skip "pending" unless block
             instance_eval(&block)
           ensure
             @spawner.stop_binary if @spawner

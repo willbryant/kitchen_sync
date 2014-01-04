@@ -205,32 +205,36 @@ struct MySQLKeyLister {
 	inline MySQLKeyLister(Table &table): table(table) {}
 
 	inline void operator()(MySQLRow &row) {
+		bool unique = (row.string_at(1) == "0");
 		string key_name = row.string_at(2);
+		string column_name = row.string_at(4);
+		size_t column_index = table.index_of_column(column_name);
+		// FUTURE: consider representing collation, sub_part, packed, index_type, and perhaps comment/index_comment
+
 		if (key_name == "PRIMARY") {
-			string column_name = row.string_at(4);
-			size_t column_index = table.index_of_column(column_name);
+			// there is of course only one primary key; we get a row for each column it includes
 			table.primary_key_columns.push_back(column_index);
-		}
-		if (table.primary_key_columns.empty()) {
-			// if we have no primary key, we might need to use another unique key as a surrogate - see MySQLTableLister below
-			string non_unique = row.string_at(1);
-			if (non_unique == "0") {
-				// furthermore this key must have no NULLable columns, as they effectively make the index not unique
+
+		} else {
+			// a column in a generic key, which may or may not be unique
+			if (table.keys.empty() || table.keys.back().name != key_name) {
+				table.keys.push_back(Key(key_name, unique));
+			}
+			table.keys.back().columns.push_back(column_index);
+
+			if (table.primary_key_columns.empty()) {
+				// if we have no primary key, we might need to use another unique key as a surrogate - see MySQLTableLister below -
+				// but this key must have no NULLable columns, as they effectively make the index not unique
 				string nullable = row.string_at(9);
-				if (nullable == "YES") {
+				if (unique && nullable == "YES") {
 					// mark this as unusable
 					unique_but_nullable_keys.insert(key_name);
-				} else {
-					string column_name = row.string_at(4);
-					size_t column_index = table.index_of_column(column_name);
-					unique_keys[key_name].push_back(column_index);
 				}
 			}
 		}
 	}
 
 	Table &table;
-	map<string, ColumnIndices> unique_keys;
 	set<string> unique_but_nullable_keys;
 };
 
@@ -246,16 +250,17 @@ struct MySQLTableLister {
 		MySQLKeyLister key_lister(table);
 		_client.query("SHOW KEYS FROM " + table.name, key_lister, false);
 
+		// if the table has no primary key, we need to find a unique key with no nullable columns to act as a surrogate primary key
+		sort(table.keys.begin(), table.keys.end()); // order is arbitrary for keys, but both ends must be consistent, so we sort the keys by name
+		
+		for (Keys::const_iterator key = table.keys.begin(); key != table.keys.end() && table.primary_key_columns.empty(); ++key) {
+			if (key->unique && !key_lister.unique_but_nullable_keys.count(key->name)) {
+				table.primary_key_columns = key->columns;
+			}
+		}
 		if (table.primary_key_columns.empty()) {
-			// if the table has no primary key, we need to find a unique key with no nullable columns to act as a surrogate primary key
-			for (set<string>::const_iterator key = key_lister.unique_but_nullable_keys.begin(); key != key_lister.unique_but_nullable_keys.end(); ++key) {
-				key_lister.unique_keys.erase(*key);
-			}
-			if (key_lister.unique_keys.empty()) {
-				// of course this falls apart if there are no unique keys, so we don't allow that
-				throw runtime_error("Couldn't find a primary or non-nullable unique key on table " + table.name);
-			}
-			table.primary_key_columns = key_lister.unique_keys.begin()->second; // will use the first key alphabetically, so should be comparable at the other end
+			// of course this falls apart if there are no unique keys, so we don't allow that
+			throw runtime_error("Couldn't find a primary or non-nullable unique key on table " + table.name);
 		}
 
 		_client.database.tables.push_back(table);

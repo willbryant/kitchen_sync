@@ -60,7 +60,8 @@ class SyncToTest < KitchenSync::EndpointTestCase
   test_each "requests hashes for twice as many each iteration while we continue to return matching hashes" do
     setup_with_footbl
 
-    expects(:schema).with().returns([{"tables" => [footbl_def]}])
+    expects(:schema).with().
+      returns([{"tables" => [footbl_def]}])
     expects(:hash).with("footbl", [], @keys[0], hash_of(@rows[0..0])).
       returns([["hash", "footbl", @keys[0], @keys[2], hash_of(@rows[1..2])]])
     expects(:hash).with("footbl", @keys[2], @keys[6], hash_of(@rows[3..6])).
@@ -76,7 +77,8 @@ class SyncToTest < KitchenSync::EndpointTestCase
     setup_with_footbl
     execute "UPDATE footbl SET col3 = 'different' WHERE col1 = 2"
 
-    expects(:schema).with().returns([{"tables" => [footbl_def]}])
+    expects(:schema).with().
+      returns([{"tables" => [footbl_def]}])
     expects(:hash).with("footbl", [], @keys[0], hash_of([["2", "10", "different"]])).
       returns([["rows", "footbl", [], @keys[0]], @rows[0], []])
     expects(:hash).with("footbl", @keys[0], @keys[1], hash_of(@rows[1..1])).

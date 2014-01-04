@@ -22,7 +22,7 @@ void report_schema_mismatch(const string &error) {
 	throw schema_mismatch(error);
 }
 
-void check_column_match(const Column &from_column, const Column &to_column) {
+void check_column_match(const Table &table, const Column &from_column, const Column &to_column) {
 	// FUTURE: check column type, collation etc.
 }
 
@@ -30,7 +30,7 @@ void check_columns_match(const Table &table, const Columns &from_columns, const 
 	Columns::const_iterator to_column = to_columns.begin();
 	for (Columns::const_iterator from_column = from_columns.begin(); from_column != from_columns.end(); ++from_column) {
 		if (to_column != to_columns.end() && to_column->name == from_column->name) {
-			check_column_match(*from_column, *to_column);
+			check_column_match(table, *from_column, *to_column);
 			++to_column;
 
 		} else if (find_if(to_column, to_columns.end(), name_is<Column>(from_column->name)) == to_columns.end()) {
@@ -49,16 +49,48 @@ void check_columns_match(const Table &table, const Columns &from_columns, const 
 }
 
 void check_primary_key_matches(const Table &table, const ColumnIndices &from_primary_key_columns, const ColumnIndices &to_primary_key_columns) {
-	if (from_primary_key_columns.size() != to_primary_key_columns.size() ||
-		!equal(from_primary_key_columns.begin(), from_primary_key_columns.end(), to_primary_key_columns.begin())) {
+	if (from_primary_key_columns != to_primary_key_columns) {
 		report_schema_mismatch("Mismatching primary key " + columns_list(table.columns, to_primary_key_columns) + " on table " + table.name + ", should have " + columns_list(table.columns, from_primary_key_columns));
+	}
+}
+
+void check_key_match(const Table &table, const Key &from_key, const Key &to_key) {
+	if (from_key.unique != to_key.unique) {
+		report_schema_mismatch("Mismatching unique flag on table " + table.name + " key " + from_key.name);
+	}
+	if (from_key.columns != to_key.columns) {
+		report_schema_mismatch("Mismatching columns " + columns_list(table.columns, to_key.columns) + " on table " + table.name + " key " + from_key.name + ", should have " + columns_list(table.columns, from_key.columns));
+	}
+}
+
+void check_keys_match(const Table &table, Keys from_keys, Keys to_keys) {
+	// the keys should already be given in a consistent sorted order, but our algorithm requires it, so we quickly enforce it here
+	sort(from_keys.begin(), from_keys.end());
+	sort(  to_keys.begin(),   to_keys.end());
+
+	Keys::const_iterator to_key = to_keys.begin();
+	for (Keys::const_iterator from_key = from_keys.begin(); from_key != from_keys.end(); ++from_key) {
+		if (to_key == to_keys.end() || to_key->name > from_key->name) {
+			report_schema_mismatch("Missing key " + from_key->name + " on table " + table.name);
+
+		} else if (to_key->name < from_key->name) {
+			report_schema_mismatch("Extra key " + to_key->name + " on table " + table.name);
+
+		} else {
+			check_key_match(table, *from_key, *to_key);
+			++to_key;
+		}
+	}
+	if (to_key != to_keys.end()) {
+		report_schema_mismatch("Extra key " + to_key->name + " on table " + table.name);
 	}
 }
 
 void check_table_match(const Table &from_table, const Table &to_table) {
 	check_columns_match(from_table, from_table.columns, to_table.columns);
 	check_primary_key_matches(from_table, from_table.primary_key_columns, to_table.primary_key_columns);
-	// FUTURE: check secondary indexes, collation etc.
+	check_keys_match(from_table, from_table.keys, to_table.keys);
+	// FUTURE: check collation etc.
 }
 
 void check_tables_match(Tables from_tables, Tables to_tables) {

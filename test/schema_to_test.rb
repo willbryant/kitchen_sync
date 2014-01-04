@@ -251,4 +251,50 @@ class SchemaToTest < KitchenSync::EndpointTestCase
       receive_commands
     end
   end
+
+
+  test_each "complains about extra keys" do
+    clear_schema
+    create_secondtbl
+    execute "CREATE INDEX extrakey ON secondtbl (sec, tri)"
+
+    expects(:schema).with().returns([{"tables" => [secondtbl_def]}])
+    stubs(:quit)
+    expect_stderr("Extra key extrakey on table secondtbl") do
+      receive_commands
+    end
+  end
+
+  test_each "complains about missing keys" do
+    clear_schema
+    create_secondtbl
+
+    expects(:schema).with().returns([{"tables" => [secondtbl_def.merge("keys" => secondtbl_def["keys"] + [secondtbl_def["keys"][0].merge("name" => "missingkey")])]}])
+    stubs(:quit)
+    expect_stderr("Missing key missingkey on table secondtbl") do
+      receive_commands
+    end
+  end
+
+  test_each "complains about keys whose unique flag doesn't match" do
+    clear_schema
+    create_secondtbl
+
+    expects(:schema).with().returns([{"tables" => [secondtbl_def.merge("keys" => [secondtbl_def["keys"][0].merge("unique" => true)])]}])
+    stubs(:quit)
+    expect_stderr("Mismatching unique flag on table secondtbl key secidx") do
+      receive_commands
+    end
+  end
+
+  test_each "complains about about column list differences on keys" do
+    clear_schema
+    create_secondtbl
+
+    expects(:schema).with().returns([{"tables" => [secondtbl_def.merge("keys" => [secondtbl_def["keys"][0].merge("columns" => [3, 1])])]}])
+    stubs(:quit)
+    expect_stderr("Mismatching columns (sec) on table secondtbl key secidx, should have (tri, pri2)") do
+      receive_commands
+    end
+  end
 end

@@ -211,26 +211,35 @@ struct PostgreSQLPrimaryKeyLister {
 	Table &table;
 };
 
-struct PostgreSQLUniqueKeyLister {
-	inline PostgreSQLUniqueKeyLister(Table &table): table(table) {}
+struct PostgreSQLKeyLister {
+	inline PostgreSQLKeyLister(Table &table): table(table) {}
 
 	inline void operator()(PostgreSQLRow &row) {
 		// if we have no primary key, we might need to use another unique key as a surrogate - see PostgreSQLTableLister below
 		// furthermore this key must have no NULLable columns, as they effectively make the index not unique
 		string key_name = row.string_at(0);
-		string not_null = row.string_at(2);
-		if (not_null == "f") {
-			// mark this as unusable
-			unique_but_nullable_keys.insert(key_name);
-		} else {
-			string column_name = row.string_at(1);
-			size_t column_index = table.index_of_column(column_name);
-			unique_keys[key_name].push_back(column_index);
+		bool unique = (row.string_at(1) == "t");
+		string column_name = row.string_at(2);
+		size_t column_index = table.index_of_column(column_name);
+		// FUTURE: consider representing collation, index type, partial keys etc.
+
+		if (table.keys.empty() || table.keys.back().name != key_name) {
+			table.keys.push_back(Key(key_name, unique));
+		}
+		table.keys.back().columns.push_back(column_index);
+
+		if (table.primary_key_columns.empty()) {
+			// if we have no primary key, we might need to use another unique key as a surrogate - see MySQLTableLister below -
+			// but this key must have no NULLable columns, as they effectively make the index not unique
+			bool nullable = (row.string_at(3) == "f");
+			if (unique && nullable) {
+				// mark this as unusable
+				unique_but_nullable_keys.insert(key_name);
+			}
 		}
 	}
 
 	Table &table;
-	map<string, ColumnIndices> unique_keys;
 	set<string> unique_but_nullable_keys;
 };
 
@@ -247,7 +256,7 @@ struct PostgreSQLTableLister {
 			 "WHERE attrelid = pg_class.oid AND "
 			       "attnum > 0 AND "
 			       "NOT attisdropped AND "
-			       "relname = '" + row.string_at(0) + "' "
+			       "relname = '" + table.name + "' "
 			 "ORDER BY attnum",
 			column_lister);
 
@@ -262,30 +271,28 @@ struct PostgreSQLTableLister {
 			 "ORDER BY ordinal_position",
 			primary_key_lister);
 
-		if (table.primary_key_columns.empty()) {
-			// if the table has no primary key, we need to find a unique key with no nullable columns to act as a surrogate primary key
-			PostgreSQLUniqueKeyLister unique_key_lister(table);
-			_client.query(
-				"SELECT index_class.relname, attname, attnotnull "
-				  "FROM pg_class table_class "
-				  "JOIN pg_index ON table_class.oid = pg_index.indrelid "
-				  "JOIN pg_class index_class ON pg_index.indexrelid = index_class.oid "
-				  "JOIN pg_attribute ON table_class.oid = pg_attribute.attrelid AND pg_attribute.attnum = ANY(indkey) "
-				 "WHERE table_class.relname = '" + table.name + "' AND "
-				       "pg_index.indisunique AND "
-				       "NOT pg_index.indisprimary AND "
-				       "pg_index.indisvalid AND "
-				       "index_class.relkind = 'i'",
-				unique_key_lister);
+		PostgreSQLKeyLister key_lister(table);
+		_client.query(
+			"SELECT index_class.relname, pg_index.indisunique, attname, attnotnull "
+			  "FROM pg_class table_class "
+			  "JOIN pg_index ON table_class.oid = pg_index.indrelid "
+			  "JOIN pg_class index_class ON pg_index.indexrelid = index_class.oid AND index_class.relkind = 'i' "
+			  "JOIN pg_attribute ON table_class.oid = pg_attribute.attrelid AND pg_attribute.attnum = ANY(indkey) "
+			 "WHERE table_class.relname = '" + table.name + "' AND "
+			       "NOT pg_index.indisprimary",
+			key_lister);
 
-			for (set<string>::const_iterator key = unique_key_lister.unique_but_nullable_keys.begin(); key != unique_key_lister.unique_but_nullable_keys.end(); ++key) {
-				unique_key_lister.unique_keys.erase(*key);
+		// if the table has no primary key, we need to find a unique key with no nullable columns to act as a surrogate primary key
+		sort(table.keys.begin(), table.keys.end()); // order is arbitrary for keys, but both ends must be consistent, so we sort the keys by name
+		
+		for (Keys::const_iterator key = table.keys.begin(); key != table.keys.end() && table.primary_key_columns.empty(); ++key) {
+			if (key->unique && !key_lister.unique_but_nullable_keys.count(key->name)) {
+				table.primary_key_columns = key->columns;
 			}
-			if (unique_key_lister.unique_keys.empty()) {
-				// of course this falls apart if there are no unique keys, so we don't allow that
-				throw runtime_error("Couldn't find a primary or non-nullable unique key on table " + table.name);
-			}
-			table.primary_key_columns = unique_key_lister.unique_keys.begin()->second; // will use the first key alphabetically, so should be comparable at the other end
+		}
+		if (table.primary_key_columns.empty()) {
+			// of course this falls apart if there are no unique keys, so we don't allow that
+			throw runtime_error("Couldn't find a primary or non-nullable unique key on table " + table.name);
 		}
 
 		_client.database.tables.push_back(table);

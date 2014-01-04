@@ -15,7 +15,8 @@ SQL
         {"name" => "col1"},
         {"name" => "another_col"},
         {"name" => "col3"}],
-      "primary_key_columns" => [0] }
+      "primary_key_columns" => [0],
+      "keys" => [] }
   end
 
   def create_secondtbl
@@ -35,11 +36,13 @@ SQL
   def secondtbl_def
     { "name"    => "secondtbl",
       "columns" => [
-       {"name" => "pri1"},
-       {"name" => "pri2"},
-       {"name" => "sec"},
-       {"name" => "tri"}],
-      "primary_key_columns" => [1, 0] } # note order is that listed in the key, not the index of the column in the table
+        {"name" => "pri1"},
+        {"name" => "pri2"},
+        {"name" => "sec"},
+        {"name" => "tri"}],
+      "primary_key_columns" => [1, 0], # note order is that listed in the key, not the index of the column in the table
+      "keys" => [
+        {"name" => "secidx", "unique" => false, "columns" => [2]}] }
   end
 
   def create_middletbl
@@ -54,7 +57,8 @@ SQL
     { "name"    => "middletbl",
       "columns" => [
         {"name" => "pri"}],
-      "primary_key_columns" => [0] }
+      "primary_key_columns" => [0],
+      "keys" => [] }
   end
 
   def create_texttbl
@@ -71,10 +75,11 @@ SQL
       "columns" => [
         {"name" => "pri"},
         {"name" => "textfield"}],
-      "primary_key_columns" => [0] }
+      "primary_key_columns" => [0],
+      "keys" => [] }
   end
 
-  def create_noprimarytbl
+  def create_noprimarytbl(create_suitable_keys = true)
     execute(<<-SQL)
       CREATE TABLE noprimarytbl (
         nullable INT,
@@ -83,11 +88,11 @@ SQL
         non_nullable INT NOT NULL)
 SQL
     execute "CREATE INDEX everything_key ON noprimarytbl (nullable, version, name)"
-    execute "CREATE INDEX not_unique_key ON noprimarytbl (non_nullable)"
     execute "CREATE UNIQUE INDEX ignored_key ON noprimarytbl (nullable, version)"
-    execute "CREATE UNIQUE INDEX correct_key ON noprimarytbl (version)"
+    execute "CREATE UNIQUE INDEX correct_key ON noprimarytbl (version)" if create_suitable_keys
     execute "CREATE UNIQUE INDEX version_and_name_key ON noprimarytbl (version, name)"
-    execute "CREATE UNIQUE INDEX non_nullable_key ON noprimarytbl (non_nullable)"
+    execute "CREATE UNIQUE INDEX non_nullable_key ON noprimarytbl (non_nullable)" if create_suitable_keys
+    execute "CREATE INDEX not_unique_key ON noprimarytbl (non_nullable)"
   end
 
   def noprimarytbl_def
@@ -97,7 +102,14 @@ SQL
         {"name" => "version"},
         {"name" => "name"},
         {"name" => "non_nullable"}],
-      "primary_key_columns" => [1] }
+      "primary_key_columns" => [1],
+      "keys" => [ # sorted in uniqueness then alphabetic name order, but otherwise a transcription of the above create index statements
+        {"name" => "correct_key",          "unique" => true,  "columns" => [1]},
+        {"name" => "ignored_key",          "unique" => true,  "columns" => [0, 1]},
+        {"name" => "non_nullable_key",     "unique" => true,  "columns" => [3]},
+        {"name" => "version_and_name_key", "unique" => true,  "columns" => [1, 2]},
+        {"name" => "everything_key",       "unique" => false, "columns" => [0, 1, 2]},
+        {"name" => "not_unique_key",       "unique" => false, "columns" => [3]} ] }
   end
 
   def create_some_tables
