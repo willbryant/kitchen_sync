@@ -1,11 +1,7 @@
-#include <stdexcept>
-#include <unistd.h>
-
-#include "schema.h"
-#include "schema_functions.h"
 #include "command.h"
-#include "sync_table_queue.h"
 #include "sync_algorithm.h"
+#include "schema_functions.h"
+#include "sync_table_queue.h"
 #include "table_row_applier.h"
 #include "fdstream.h"
 
@@ -121,21 +117,15 @@ struct SyncToWorker {
 
 		while (true) {
 			ColumnValues matched_up_to_key;
-			size_t rows_to_hash = check_hash_and_choose_next_range(client, table, prev_key, last_key, hash, matched_up_to_key);
+			check_hash_and_choose_next_range(client, table, prev_key, last_key, hash);
 
-			// calculate our hash of the next rows_to_hash rows
-			RowHasherAndLastKey<typename DatabaseClient::RowType> hasher_for_our_rows(table.primary_key_columns);
-			if (rows_to_hash) {
-				client.retrieve_rows(table, matched_up_to_key, rows_to_hash, hasher_for_our_rows);
-			}
-
-			if (hasher_for_our_rows.row_count == 0) {
-				// rows don't match, and there's only one or no rows in that range at our end, so ask the other end to send theirs
-				send_command(output, "rows", table.name, matched_up_to_key, hasher_for_our_rows.last_key /* empty, meaning to the end of the table */);
+			if (hash.empty()) {
+				// ask the other end to send their rows in this range.
+				send_command(output, "rows", table.name, prev_key, last_key);
 
 			} else {
 				// tell the other end to check its hash of the same rows, using key ranges rather than a count to improve the chances of a match.
-				send_command(output, "hash", table.name, matched_up_to_key, hasher_for_our_rows.last_key, hasher_for_our_rows.finish());
+				send_command(output, "hash", table.name, prev_key, last_key, hash);
 			}
 
 			Command command;

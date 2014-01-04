@@ -1,6 +1,7 @@
 #ifndef COMMANDS_H
 #define COMMANDS_H
 
+#include <stdexcept>
 #include "message_pack/pack.h"
 #include "message_pack/unpack_any.h"
 
@@ -50,5 +51,9 @@ void send_command(Packer<OutputStream> &packer, const string &name, const Values
 	send_values(packer, args...);
 	packer.flush();
 }
+
+struct command_error: public runtime_error {
+	command_error(const string &error): runtime_error(error) { }
+};
 
 #endif

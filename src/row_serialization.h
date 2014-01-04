@@ -27,6 +27,8 @@ struct RowPacker {
 };
 
 struct Hash {
+	inline std::string to_string() const { return string(md_value, md_value + md_len); }
+
 	unsigned int md_len;
 	unsigned char md_value[EVP_MAX_MD_SIZE];
 };
@@ -37,7 +39,7 @@ inline void operator << (Packer<OutputStream> &packer, const Hash &hash) {
 }
 
 inline bool operator == (const Hash &hash, const string &str) {
-	return (hash.md_len == str.length() && string(hash.md_value, hash.md_value + hash.md_len) == str);
+	return (hash.md_len == str.length() && str == hash.to_string());
 }
 
 struct InitOpenSSL {

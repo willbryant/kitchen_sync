@@ -1,17 +1,10 @@
-#include <iostream>
-
 #include "command.h"
 #include "schema_serialization.h"
-#include "row_serialization.h"
 #include "sync_algorithm.h"
 #include "fdstream.h"
 
-struct command_error: public runtime_error {
-	command_error(const string &error): runtime_error(error) { }
-};
-
 template <typename DatabaseClient, typename OutputStream>
-void handle_rows_command(DatabaseClient &client, const string &table_name, const ColumnValues &prev_key, const ColumnValues &last_key, Packer<OutputStream> &output) {
+void handle_rows_command(DatabaseClient &client, Packer<OutputStream> &output, const string &table_name, const ColumnValues &prev_key, const ColumnValues &last_key) {
 	const Table &table(client.table_by_name(table_name));
 
 	send_command(output, "rows", table_name, prev_key, last_key);
@@ -20,25 +13,18 @@ void handle_rows_command(DatabaseClient &client, const string &table_name, const
 }
 
 template <typename DatabaseClient, typename OutputStream>
-void handle_hash_command(DatabaseClient &client, const string &table_name, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash, Packer<OutputStream> &output) {
+void handle_hash_command(DatabaseClient &client, Packer<OutputStream> &output, const string &table_name, ColumnValues &prev_key, ColumnValues &last_key, string &hash) { // mutable as we allow check_hash_and_choose_next_range to update the values; caller has no use for the original values once passed
 	const Table &table(client.table_by_name(table_name));
 
-	ColumnValues matched_up_to_key;
-	size_t rows_to_hash = check_hash_and_choose_next_range(client, table, prev_key, last_key, hash, matched_up_to_key);
+	check_hash_and_choose_next_range(client, table, prev_key, last_key, hash);
 
-	// calculate our hash of the next rows_to_hash rows
-	RowHasherAndLastKey<typename DatabaseClient::RowType> hasher_for_our_rows(table.primary_key_columns);
-	if (rows_to_hash) {
-		client.retrieve_rows(table, matched_up_to_key, rows_to_hash, hasher_for_our_rows);
-	}
-
-	if (hasher_for_our_rows.row_count == 0) {
+	if (hash.empty()) {
 		// rows don't match, and there's only one or no rows left, so send it straight across, as if they had given the rows command
-		handle_rows_command(client, table_name, prev_key, last_key, output);
+		handle_rows_command(client, output, table_name, prev_key, last_key /* empty, meaning to the end of the table */);
 		
 	} else {
 		// tell the other end to check its hash of the same rows, using key ranges rather than a count to improve the chances of a match.
-		send_command(output, "hash", table_name, matched_up_to_key, hasher_for_our_rows.last_key, hasher_for_our_rows.finish());
+		send_command(output, "hash", table_name, prev_key, last_key, hash);
 	}
 }
 
@@ -77,14 +63,14 @@ void sync_from(const char *database_host, const char *database_port, const char 
 			string     table_name(command.argument<string>(0));
 			ColumnValues prev_key(command.argument<ColumnValues>(1));
 			ColumnValues last_key(command.argument<ColumnValues>(2));
-			handle_rows_command(client, table_name, prev_key, last_key, output);
+			handle_rows_command(client, output, table_name, prev_key, last_key);
 
 		} else if (command.name == "hash") {
 			string     table_name(command.argument<string>(0));
 			ColumnValues prev_key(command.argument<ColumnValues>(1));
 			ColumnValues last_key(command.argument<ColumnValues>(2));
 			string           hash(command.argument<string>(3));
-			handle_hash_command(client, table_name, prev_key, last_key, hash, output);
+			handle_hash_command(client, output, table_name, prev_key, last_key, hash);
 
 		} else if (command.name == "quit") {
 			break;
