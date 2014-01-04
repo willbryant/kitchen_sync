@@ -272,9 +272,9 @@ struct PostgreSQLTableLister {
 				  "JOIN pg_class index_class ON pg_index.indexrelid = index_class.oid "
 				  "JOIN pg_attribute ON table_class.oid = pg_attribute.attrelid AND pg_attribute.attnum = ANY(indkey) "
 				 "WHERE table_class.relname = '" + table.name + "' AND "
-				       "pg_index.indisunique = 't' AND "
-				       "pg_index.indisprimary = 'f' AND "
-				       "pg_index.indisvalid = 't' AND "
+				       "pg_index.indisunique AND "
+				       "NOT pg_index.indisprimary AND "
+				       "pg_index.indisvalid AND "
 				       "index_class.relkind = 'i'",
 				unique_key_lister);
 
