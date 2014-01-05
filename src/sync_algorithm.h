@@ -4,6 +4,10 @@
 #include "schema.h"
 #include "row_serialization.h"
 
+struct sync_error: public runtime_error {
+	sync_error(): runtime_error("Sync error") { }
+};
+
 template <typename DatabaseClient>
 void check_hash_and_choose_next_range(DatabaseClient &client, const Table &table, ColumnValues &prev_key, ColumnValues &last_key, string &hash) {
 	size_t rows_to_hash;

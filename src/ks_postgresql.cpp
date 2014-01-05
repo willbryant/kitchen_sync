@@ -62,9 +62,7 @@ public:
 		const char *database_port,
 		const char *database_name,
 		const char *database_username,
-		const char *database_password,
-		bool readonly,
-		bool snapshot);
+		const char *database_password);
 	~PostgreSQLClient();
 
 	template <typename RowPacker>
@@ -80,13 +78,17 @@ public:
 	void execute(const string &sql);
 	void disable_referential_integrity();
 	void enable_referential_integrity();
+	string export_snapshot();
+	void import_snapshot(const string &snapshot);
+	void unhold_snapshot();
+	void start_read_transaction();
+	void start_write_transaction();
 	void commit_transaction();
 	string escape_value(const string &value);
 
 protected:
 	friend class PostgreSQLTableLister;
 
-	void start_transaction(bool readonly, bool snapshot);
 	void populate_database_schema();
 
 	template <typename RowFunction>
@@ -104,6 +106,21 @@ protected:
 	    }
 	}
 
+	string select_one(const string &sql) {
+	    PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, NULL, NULL, NULL, NULL, 0 /* text-format results only */));
+
+	    if (res.status() != PGRES_TUPLES_OK) {
+			backtrace();
+			throw runtime_error(PQerrorMessage(conn) + string("\n") + sql);
+	    }
+
+	    if (res.n_tuples() != 1 || res.n_columns() != 1) {
+	    	throw runtime_error("Expected query to return only one row with only one column\n" + sql);
+	    }
+	    
+	    return PostgreSQLRow(res, 0).string_at(0);
+	}
+
 private:
 	PGconn *conn;
 
@@ -116,9 +133,7 @@ PostgreSQLClient::PostgreSQLClient(
 	const char *database_port,
 	const char *database_name,
 	const char *database_username,
-	const char *database_password,
-	bool readonly,
-	bool snapshot) {
+	const char *database_password) {
 
 	const char *keywords[] = { "host",        "port",        "dbname",      "user",            "password",        NULL };
 	const char *values[]   = { database_host, database_port, database_name, database_username, database_password, NULL };
@@ -128,12 +143,6 @@ PostgreSQLClient::PostgreSQLClient(
 	if (PQstatus(conn) != CONNECTION_OK) {
 		throw runtime_error(PQerrorMessage(conn));
 	}
-
-	// postgresql has transactional DDL, so by starting our transaction before we've even looked at the tables,
-	// we'll get a 100% consistent view.
-	start_transaction(readonly, snapshot);
-
-	populate_database_schema();
 }
 
 PostgreSQLClient::~PostgreSQLClient() {
@@ -150,16 +159,36 @@ void PostgreSQLClient::execute(const string &sql) {
     }
 }
 
-void PostgreSQLClient::start_transaction(bool readonly, bool snapshot) {
-	if (snapshot) {
-		execute(readonly ? "START TRANSACTION READ ONLY ISOLATION LEVEL REPEATABLE READ" : "START TRANSACTION ISOLATION LEVEL REPEATABLE READ");
-	} else {
-		execute(readonly ? "START TRANSACTION READ ONLY ISOLATION LEVEL READ COMMITTED"  : "START TRANSACTION ISOLATION LEVEL READ COMMITTED");
-	}
+void PostgreSQLClient::start_read_transaction() {
+	execute("START TRANSACTION READ ONLY ISOLATION LEVEL REPEATABLE READ");
+	populate_database_schema();
+}
+
+void PostgreSQLClient::start_write_transaction() {
+	execute("START TRANSACTION ISOLATION LEVEL READ COMMITTED");
+	populate_database_schema();
 }
 
 void PostgreSQLClient::commit_transaction() {
 	execute("COMMIT");
+}
+
+string PostgreSQLClient::export_snapshot() {
+	// postgresql has transactional DDL, so by starting our transaction before we've even looked at the tables,
+	// we'll get a 100% consistent view.
+	execute("START TRANSACTION READ ONLY ISOLATION LEVEL REPEATABLE READ");
+	populate_database_schema();
+	return select_one("SELECT pg_export_snapshot()");
+}
+
+void PostgreSQLClient::import_snapshot(const string &snapshot) {
+	execute("START TRANSACTION READ ONLY ISOLATION LEVEL REPEATABLE READ");
+	execute("SET TRANSACTION SNAPSHOT '" + escape_value(snapshot) + "'");
+	populate_database_schema();
+}
+
+void PostgreSQLClient::unhold_snapshot() {
+	// do nothing - only needed for lock-based systems like mysql
 }
 
 void PostgreSQLClient::disable_referential_integrity() {

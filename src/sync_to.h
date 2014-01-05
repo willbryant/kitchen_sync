@@ -1,26 +1,24 @@
 #include "command.h"
 #include "sync_algorithm.h"
 #include "schema_functions.h"
-#include "sync_table_queue.h"
+#include "sync_queue.h"
 #include "table_row_applier.h"
 #include "fdstream.h"
 
 using namespace std;
 
-struct sync_error: public runtime_error {
-	sync_error(): runtime_error("Sync error") { }
-};
-
 template <typename DatabaseClient>
 struct SyncToWorker {
 	SyncToWorker(
-		SyncTableQueue &table_queue,
+		SyncQueue &sync_queue,
 		const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password,
 		int read_from_descriptor, int write_to_descriptor, bool leader, bool verbose, bool partial):
-			table_queue(table_queue),
-			client(database_host, database_port, database_name, database_username, database_password, false /* not readonly */, false /* no snapshot - don't take gap locks */),
-			input_stream(read_from_descriptor), input(input_stream), 
-			output_stream(write_to_descriptor), output(output_stream),
+			sync_queue(sync_queue),
+			client(database_host, database_port, database_name, database_username, database_password),
+			input_stream(read_from_descriptor),
+			output_stream(write_to_descriptor),
+			input(input_stream),
+			output(output_stream),
 			leader(leader),
 			verbose(verbose),
 			partial(partial),
@@ -35,36 +33,25 @@ struct SyncToWorker {
 	void operator()() {
 		try {
 			negotiate_protocol();
-			// FUTURE: export the remote snapshot from the leader to the other workers
+			share_snapshot();
+
+			client.start_write_transaction();
+
 			compare_schema();
 			enqueue_tables();
+			sync_tables();
 
-			client.disable_referential_integrity();
-
-			while (true) {
-				// grab the next table to work on from the queue (blocking if it's empty)
-				const Table *table = table_queue.pop();
-
-				// quit if there's no more tables to process
-				if (!table) break;
-
-				// synchronize that table (unfortunately we can't share this job with other threads because next-key
-				// locking is used for unique key indexes to enforce the uniqueness constraint, so we can't share
-				// write traffic to the database, which makes it somewhat futile to try and farm the read work out)
-				sync_table(*table);
-
-				// update our count of completed tables so we know when we've finished syncing
-				table_queue.finished_table();
-			}
-
-			// if any of the workers aborted, exit without committing our changes, otherwise commit and return
-			if (table_queue.check_if_finished_all_tables() || partial) {
-				client.enable_referential_integrity();
-				client.commit_transaction();
-			}
+			client.commit_transaction();
 		} catch (const exception &e) {
-			cerr << e.what() << endl;
-			table_queue.abort(); // abort all other output threads
+			// make sure all other workers terminate promptly, and if we are the first to fail, output the error
+			if (sync_queue.abort()) {
+				cerr << e.what() << endl;
+			}
+
+			// if the --partial option was used, try to commit the changes we've made, but ignore any errors
+			if (partial) {
+				try { client.commit_transaction(); } catch (...) {}
+			}
 		}
 
 		// send a quit so the other end closes its output and terminates gracefully; note we do this both for normal completion and also errors
@@ -82,9 +69,45 @@ struct SyncToWorker {
 		input >> protocol_version;
 	}
 
+	void share_snapshot() {
+		if (sync_queue.workers > 1) {
+			// although some databases (such as postgresql) can share & adopt snapshots with no penalty
+			// to other transactions, those that don't have an actual snapshot adoption mechanism (mysql)
+			// need us to use blocking locks to prevent other transactions changing the data while they
+			// start simultaneous transactions.  it's therefore important to minimize the time that we
+			// hold the locks, so we wait for all workers to be up, running, and connected before
+			// starting; this is also nicer (on all databases) in that it means no changes will be made
+			// if some of the workers fail to start.
+			sync_queue.wait_at_barrier();
+
+			// now, request the lock or snapshot from the leader's peer.
+			if (leader) {
+				send_command(output, "export_snapshot");
+				sync_queue.snapshot = input.next<string>();
+			}
+			sync_queue.wait_at_barrier();
+
+			// as soon as it has responded, adopt the snapshot/start the transaction in each of the other workers.
+			if (!leader) {
+				send_command(output, "import_snapshot", sync_queue.snapshot);
+				input.next_nil(); // arbitrary; sent by the other end once they've started their transaction
+			}
+			sync_queue.wait_at_barrier();
+
+			// those databases that use locking instead of snapshot adoption can release the locks once
+			// all the workers have started their transactions.
+			if (leader) {
+				send_command(output, "unhold_snapshot");
+				input.next_nil(); // similarly arbitrary
+			}
+		} else {
+			send_command(output, "without_snapshot");
+			input.next_nil(); // similarly arbitrary
+		}
+	}
+
 	void compare_schema() {
-		// we could do this in all workers, and it wouldn't be a bad idea to, but (especially with mysql) getting schema information
-		// is actually relatively expensive (particularly on older servers without SSDs, or on servers with many databases or tables)
+		// we could do this in all workers, but there's no need, and it'd waste a bit of traffic/time
 		if (leader) {
 			// get its schema
 			send_command(output, "schema");
@@ -99,13 +122,36 @@ struct SyncToWorker {
 	}
 
 	void enqueue_tables() {
+		// queue up all the tables
 		if (leader) {
-			// queue up all the tables, and signal the non-leaders that it's time to start
-			table_queue.enqueue(client.database_schema().tables);
-		} else {
-			// wait for the leader to queue the tables
-			table_queue.wait_until_started();
+			sync_queue.enqueue(client.database_schema().tables);
 		}
+
+		// wait for the leader to do that (a barrier here is slightly excessive as we don't care if the other
+		// workers are ready to start work, but it's not worth having another synchronisation mechanism for this)
+		sync_queue.wait_at_barrier();
+	}
+
+	void sync_tables() {
+		client.disable_referential_integrity();
+
+		while (true) {
+			// grab the next table to work on from the queue (blocking if it's empty)
+			const Table *table = sync_queue.pop();
+
+			// quit if there's no more tables to process
+			if (!table) break;
+
+			// synchronize that table (unfortunately we can't share this job with other workers because next-key
+			// locking is used for unique key indexes to enforce the uniqueness constraint, so we can't share
+			// write traffic to the database across connections, which makes it somewhat futile to try and farm the
+			// read work out since that needs to see changes made to satisfy unique indexes earlier in the table)
+			sync_table(*table);
+		}
+
+		// wait for all workers to finish their tables
+		sync_queue.wait_at_barrier();
+		client.enable_referential_integrity();
 	}
 
 	void sync_table(const Table &table) {
@@ -191,7 +237,7 @@ struct SyncToWorker {
 		}
 	}
 
-	SyncTableQueue &table_queue;
+	SyncQueue &sync_queue;
 	DatabaseClient client;
 	FDWriteStream output_stream;
 	FDReadStream input_stream;
@@ -206,7 +252,7 @@ struct SyncToWorker {
 
 template <typename DatabaseClient>
 void sync_to(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, int num_workers, int startfd, bool verbose, bool partial) {
-	SyncTableQueue table_queue;
+	SyncQueue sync_queue(num_workers);
 	vector<SyncToWorker<DatabaseClient>*> workers;
 
 	workers.resize(num_workers);
@@ -215,10 +261,10 @@ void sync_to(const char *database_host, const char *database_port, const char *d
 		bool leader = (worker == 0);
 		int read_from_descriptor = startfd + worker;
 		int write_to_descriptor = startfd + worker + num_workers;
-		workers[worker] = new SyncToWorker<DatabaseClient>(table_queue, database_host, database_port, database_name, database_username, database_password, read_from_descriptor, write_to_descriptor, leader, verbose, partial);
+		workers[worker] = new SyncToWorker<DatabaseClient>(sync_queue, database_host, database_port, database_name, database_username, database_password, read_from_descriptor, write_to_descriptor, leader, verbose, partial);
 	}
 
 	for (typename vector<SyncToWorker<DatabaseClient>*>::const_iterator it = workers.begin(); it != workers.end(); ++it) delete *it;
 
-	if (!table_queue.check_if_finished_all_tables()) throw sync_error();
+	if (sync_queue.aborted) throw sync_error();
 }

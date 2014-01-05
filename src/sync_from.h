@@ -28,57 +28,85 @@ void handle_hash_command(DatabaseClient &client, Packer<OutputStream> &output, c
 	}
 }
 
-template<class DatabaseClient>
-void sync_from(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, int read_from_descriptor, int write_to_descriptor) {
-	const int PROTOCOL_VERSION_SUPPORTED = 1;
-
-	DatabaseClient client(database_host, database_port, database_name, database_username, database_password, true /* readonly */, true /* snapshot */);
-	FDReadStream in(read_from_descriptor);
-	Unpacker<FDReadStream> input(in);
-	FDWriteStream out(write_to_descriptor);
-	Packer<FDWriteStream> output(out);
-	Command command;
-
+template <typename InputStream, typename OutputStream>
+int negotiate_protocol_version(Unpacker<InputStream> &input, Packer<OutputStream> &output, int protocol_version_supported) {
 	// all conversations must start with a "protocol" command to establish the language to be used
+	Command command;
 	input >> command;
 	if (command.name != "protocol") {
 		throw command_error("Expected a protocol command before " + command.name);
 	}
 
 	// the usable protocol is the highest out of those supported by the two ends
-	int protocol = min(PROTOCOL_VERSION_SUPPORTED, (int)command.argument<int64_t>(0));
+	int protocol = min(protocol_version_supported, (int)command.argument<int64_t>(0));
 
 	// tell the other end what version was selected
 	output << protocol;
-	out.flush();
+	output.flush();
+}
 
-	while (true) {
-		input >> command;
+template<class DatabaseClient>
+void sync_from(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, int read_from_descriptor, int write_to_descriptor) {
+	const int PROTOCOL_VERSION_SUPPORTED = 1;
 
-		if (command.name == "schema") {
-			Database from_database(client.database_schema());
-			output << from_database;
+	DatabaseClient client(database_host, database_port, database_name, database_username, database_password);
+	FDReadStream in(read_from_descriptor);
+	Unpacker<FDReadStream> input(in);
+	FDWriteStream out(write_to_descriptor);
+	Packer<FDWriteStream> output(out);
 
-		} else if (command.name == "rows") {
-			string     table_name(command.argument<string>(0));
-			ColumnValues prev_key(command.argument<ColumnValues>(1));
-			ColumnValues last_key(command.argument<ColumnValues>(2));
-			handle_rows_command(client, output, table_name, prev_key, last_key);
+	int protocol = negotiate_protocol_version(input, output, PROTOCOL_VERSION_SUPPORTED);
 
-		} else if (command.name == "hash") {
-			string     table_name(command.argument<string>(0));
-			ColumnValues prev_key(command.argument<ColumnValues>(1));
-			ColumnValues last_key(command.argument<ColumnValues>(2));
-			string           hash(command.argument<string>(3));
-			handle_hash_command(client, output, table_name, prev_key, last_key, hash);
+	try {
+		Command command;
 
-		} else if (command.name == "quit") {
-			break;
+		while (true) {
+			input >> command;
 
-		} else {
-			throw command_error("Unknown command " + command.name);
+			if (command.name == "hash") {
+				string     table_name(command.argument<string>(0));
+				ColumnValues prev_key(command.argument<ColumnValues>(1));
+				ColumnValues last_key(command.argument<ColumnValues>(2));
+				string           hash(command.argument<string>(3));
+				handle_hash_command(client, output, table_name, prev_key, last_key, hash);
+
+			} else if (command.name == "rows") {
+				string     table_name(command.argument<string>(0));
+				ColumnValues prev_key(command.argument<ColumnValues>(1));
+				ColumnValues last_key(command.argument<ColumnValues>(2));
+				handle_rows_command(client, output, table_name, prev_key, last_key);
+
+			} else if (command.name == "export_snapshot") {
+				output << client.export_snapshot();
+
+			} else if (command.name == "import_snapshot") {
+				string snapshot(command.argument<string>(0));
+				client.import_snapshot(snapshot);
+				output.pack_nil(); // arbitrary, sent to indicate we've started our transaction
+
+			} else if (command.name == "unhold_snapshot") {
+				client.unhold_snapshot();
+				output.pack_nil(); // similarly arbitrary
+
+			} else if (command.name == "without_snapshot") {
+				client.start_read_transaction();
+				output.pack_nil(); // similarly arbitrary
+
+			} else if (command.name == "schema") {
+				output << client.database_schema();
+
+			} else if (command.name == "quit") {
+				break;
+
+			} else {
+				throw command_error("Unknown command " + command.name);
+			}
+
+			output.flush();
 		}
-
-		out.flush();
+	} catch (const exception &e) {
+		// in fact we just output these errors much the same way that our caller does, but we do it here (before the stream gets closed) to help tests
+		cerr << e.what() << endl;
+		throw sync_error();
 	}
 }

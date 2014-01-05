@@ -25,7 +25,7 @@ class RowsFromTest < KitchenSync::EndpointTestCase
 
   test_each "returns an empty array if there are no such rows" do
     create_some_tables
-    send_protocol_command
+    send_handshake_commands
 
     assert_equal([], send_rows_command("footbl", ["0"], ["0"]))
     assert_equal([], send_rows_command("footbl", ["-1"], ["0"]))
@@ -36,7 +36,7 @@ class RowsFromTest < KitchenSync::EndpointTestCase
   test_each "returns all the rows whose key is greater than the first argument and not greater than the last argument" do
     create_some_tables
     execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"
-    send_protocol_command
+    send_handshake_commands
 
     assert_equal([["2", "10", "test"      ]], send_rows_command("footbl", ["1"], ["2"]))
     assert_equal([["2", "10", "test"      ]], send_rows_command("footbl", ["1"], ["2"])) # same request
@@ -57,7 +57,7 @@ class RowsFromTest < KitchenSync::EndpointTestCase
   test_each "starts from the first row if an empty array is given as the first argument" do
     create_some_tables
     execute "INSERT INTO footbl VALUES (2, 3, 'foo'), (4, 5, 'bar')"
-    send_protocol_command
+    send_handshake_commands
 
     assert_equal([["2", "3", "foo"]], send_rows_command("footbl", [], ["2"]))
     assert_equal([["2", "3", "foo"], ["4", "5", "bar"]], send_rows_command("footbl", [], ["4"]))
@@ -67,7 +67,7 @@ class RowsFromTest < KitchenSync::EndpointTestCase
   test_each "supports composite keys" do
     create_some_tables
     execute "INSERT INTO secondtbl VALUES (2349174, 'xy', 1, 2), (968116383, 'aa', 9, 9), (100, 'aa', 100, 100), (363401169, 'ab', 20, 340)"
-    send_protocol_command
+    send_handshake_commands
 
     # note when reading these that the primary key columns are in reverse order to the table definition; the command arguments need to be given in the key order, but the column order for the results is unrelated
 

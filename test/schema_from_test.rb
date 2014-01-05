@@ -10,7 +10,7 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
   test_each "returns an empty list of tables on an empty database" do
     clear_schema
 
-    send_protocol_command
+    send_handshake_commands
     assert_equal({"tables" => []}, send_command("schema"))
   end
 
@@ -18,7 +18,7 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
     clear_schema
     create_footbl
     create_secondtbl
-    send_protocol_command
+    send_handshake_commands
     
     assert_equal(
       {"tables" => [footbl_def, secondtbl_def]},
@@ -28,7 +28,7 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
   test_each "selects the first unique key with no nullable columns if there is no primary key" do
     clear_schema
     create_noprimarytbl
-    send_protocol_command
+    send_handshake_commands
 
     assert_equal(
       {"tables" => [noprimarytbl_def]},
@@ -39,9 +39,9 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
     clear_schema
     create_noprimarytbl(false)
 
-    assert_raises(EOFError) do
-      expect_stderr("Couldn't find a primary or non-nullable unique key on table noprimarytbl") do
-        send_protocol_command
+    expect_stderr("Couldn't find a primary or non-nullable unique key on table noprimarytbl") do
+      assert_raises(EOFError) do
+        send_handshake_commands
         send_command("schema")
       end
     end

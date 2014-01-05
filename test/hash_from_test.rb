@@ -21,7 +21,7 @@ class HashFromTest < KitchenSync::EndpointTestCase
              ["8",  "-1", "longer str"],
              ["100", "0",       "last"]]
     @keys = @rows.collect {|row| [row[0]]}
-    send_protocol_command
+    send_handshake_commands
   end
 
   test_each "calculates the hash of all the rows whose key is greater than the first argument and not greater than the last argument, and if it matches, responds likewise with the hash of the next rows (doubling the count of rows hashed)" do
@@ -92,7 +92,7 @@ class HashFromTest < KitchenSync::EndpointTestCase
              [  "2349174", "xy",   "1",   "2"]]
     # note that the primary key columns are in reverse order to the table definition; the command arguments need to be given in the key order, but the column order for the results is unrelated
     @keys = @rows.collect {|row| [row[1], row[0]]}
-    send_protocol_command
+    send_handshake_commands
 
     assert_equal(["hash", "secondtbl", @keys[0], @keys[2], hash_of(@rows[1..2])],
         send_hash_command("secondtbl",       [], @keys[0], hash_of(@rows[0..0])))

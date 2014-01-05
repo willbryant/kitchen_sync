@@ -86,8 +86,25 @@ module KitchenSync
       spawner.send_command(*args)
     end
 
+    def send_handshake_commands
+      send_protocol_command
+      send_without_snapshot_command
+    end
+
     def send_protocol_command
       assert_equal CURRENT_PROTOCOL_VERSION, send_command("protocol", CURRENT_PROTOCOL_VERSION)
+    end
+
+    def send_without_snapshot_command
+      assert_equal nil, send_command("without_snapshot")
+    end
+
+    def expect_handshake_commands
+      # checking how protocol versions are handled is covered in protocol_versions_test; here we just need to get past that to get on to the commands we want to test
+      expects(:protocol).with(CURRENT_PROTOCOL_VERSION).returns([CURRENT_PROTOCOL_VERSION])
+
+      # since we haven't asked for multiple workers, we'll always get sent the snapshot-less start command
+      expects(:without_snapshot).returns([nil])
     end
 
     def receive_commands(*args)

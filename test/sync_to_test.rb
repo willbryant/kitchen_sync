@@ -8,8 +8,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
   end
 
   def setup
-    # checking how protocol versions are handled is covered in protocol_versions_test; here we just need to get past that to get on to the commands we want to test
-    expects(:protocol).with(CURRENT_PROTOCOL_VERSION).returns([CURRENT_PROTOCOL_VERSION])
+    expect_handshake_commands
   end
 
   def setup_with_footbl

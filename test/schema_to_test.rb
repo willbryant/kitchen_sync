@@ -8,8 +8,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   end
 
   def setup
-    # checking how protocol versions are handled is covered in protocol_versions_test; here we just need to get past that to get on to the commands we want to test
-    expects(:protocol).with(CURRENT_PROTOCOL_VERSION).returns([CURRENT_PROTOCOL_VERSION])
+    expect_handshake_commands
   end
 
   test_each "accepts an empty list of tables on an empty database" do

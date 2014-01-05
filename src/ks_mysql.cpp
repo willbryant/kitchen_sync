@@ -65,9 +65,7 @@ public:
 		const char *database_port,
 		const char *database_name,
 		const char *database_username,
-		const char *database_password,
-		bool readonly,
-		bool snapshot);
+		const char *database_password);
 	~MySQLClient();
 
 	template <typename RowPacker>
@@ -83,13 +81,17 @@ public:
 	void execute(const string &sql);
 	void disable_referential_integrity();
 	void enable_referential_integrity();
+	string export_snapshot();
+	void import_snapshot(const string &snapshot);
+	void unhold_snapshot();
+	void start_read_transaction();
+	void start_write_transaction();
 	void commit_transaction();
 	string escape_value(const string &value);
 
 protected:
 	friend class MySQLTableLister;
 
-	void start_transaction(bool readonly, bool snapshot);
 	void populate_database_schema();
 
 	template <typename RowFunction>
@@ -127,9 +129,7 @@ MySQLClient::MySQLClient(
 	const char *database_port,
 	const char *database_name,
 	const char *database_username,
-	const char *database_password,
-	bool readonly,
-	bool snapshot) {
+	const char *database_password) {
 
 	// mysql_real_connect takes separate params for numeric ports and unix domain sockets
 	int port = 0;
@@ -147,12 +147,6 @@ MySQLClient::MySQLClient(
 	if (!mysql_real_connect(&mysql, database_host, database_username, database_password, database_name, port, socket, 0)) {
 		throw runtime_error(mysql_error(&mysql));
 	}
-
-	// although we start the transaction here, in reality mysql's system catalogs are non-transactional
-	// and do not give a consistent snapshot
-	start_transaction(readonly, snapshot);
-
-	populate_database_schema();
 }
 
 MySQLClient::~MySQLClient() {
@@ -165,13 +159,38 @@ void MySQLClient::execute(const string &sql) {
 	}
 }
 
-void MySQLClient::start_transaction(bool readonly, bool snapshot) {
-	execute(snapshot ? "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ" : "SET TRANSACTION ISOLATION LEVEL READ COMMITTED");
-	execute(readonly && mysql_get_server_version(&mysql) >= MYSQL_5_6_5 ? "START TRANSACTION READ ONLY" : "START TRANSACTION");
+void MySQLClient::start_read_transaction() {
+	execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
+	execute(mysql_get_server_version(&mysql) >= MYSQL_5_6_5 ? "START TRANSACTION READ ONLY WITH CONSISTENT SNAPSHOT" : "START TRANSACTION WITH CONSISTENT SNAPSHOT");
+	populate_database_schema();
+}
+
+void MySQLClient::start_write_transaction() {
+	execute("SET TRANSACTION ISOLATION LEVEL READ COMMITTED"); // use read committed instead of the default repeatable read - we don't want to take gap locks
+	execute("START TRANSACTION");
+	populate_database_schema();
 }
 
 void MySQLClient::commit_transaction() {
 	execute("COMMIT");
+}
+
+string MySQLClient::export_snapshot() {
+	// mysql's system catalogs are non-transactional and do not give a consistent snapshot; furthermore,
+	// it doesn't support export/import of transactions, so we need to exclude other transactions while
+	// we start up our set of read transactions so that they see consistent data.
+	execute("FLUSH TABLES"); // wait for current update statements to finish, without blocking other connections
+	execute("FLUSH TABLES WITH READ LOCK"); // then block other connections from updating/committing
+	start_read_transaction(); // and start our transaction, and signal the other workers to start theirs
+	return "locked";
+}
+
+void MySQLClient::import_snapshot(const string &snapshot) { // note the argument isn't needed for mysql
+	start_read_transaction();
+}
+
+void MySQLClient::unhold_snapshot() {
+	execute("UNLOCK TABLES");
 }
 
 void MySQLClient::disable_referential_integrity() {
