@@ -10,7 +10,7 @@ class KitchenSyncSpawner
   def initialize(program_binary, program_args, options = {})
     @program_binary = program_binary
     @program_args = program_args
-    @capture_stderr_in = options[:capture_stderr_in] unless ENV['NO_CAPTURE_STDERR']
+    @capture_stderr_in = options[:capture_stderr_in]
     raise "Can't see a program binary at #{program_binary}" unless File.executable?(program_binary)
   end
   
@@ -69,13 +69,16 @@ class KitchenSyncSpawner
   end
 
   def stderr_contents
-    @stderr_contents ||= File.read(@capture_stderr_in).chomp if @capture_stderr_in
+    File.read(@capture_stderr_in).chomp if @capture_stderr_in
   end
 
   def expect_stderr(contents)
-    @expected_stderr_contents = contents
+    @expected_stderr_contents = contents if @capture_stderr_in
     yield
   ensure
+    if stderr_contents != @expected_stderr_contents
+      fail "Unexpected stderr output: #{stderr_contents.inspect}; should be #{@expected_stderr_contents.inspect}"
+    end
     @expected_stderr_contents = nil
   end
 
@@ -91,8 +94,9 @@ class KitchenSyncSpawner
     @program_stdin.write(args.to_msgpack)
     unpacker.read
   ensure
-    stderr = stderr_contents
-    fail "Unexpected stderr output: #{stderr_contents}" unless ENV['NO_CAPTURE_STDERR'] || (stderr_contents || "") == (@expected_stderr_contents || "")
+    if stderr_contents && stderr_contents != "" && !@expected_stderr_contents
+      fail "Unexpected stderr output: #{stderr_contents.inspect}"
+    end
   end
 
   def send_results(results)
