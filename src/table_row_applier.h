@@ -33,8 +33,8 @@ struct BaseSQL {
 		}
 	}
 
-	const string prefix;
-	const string suffix;
+	string prefix;
+	string suffix;
 	string curr;
 };
 
@@ -44,14 +44,14 @@ typedef vector<NullableColumnValue> NullableRow;
 template <typename DatabaseClient>
 struct UniqueKeyClearer {
 	UniqueKeyClearer(DatabaseClient &client, const Table &table, const Key &key):
-		client(client),
-		columns(key.columns),
+		client(&client),
+		columns(&key.columns),
 		delete_sql("DELETE FROM " + table.name + " WHERE " + columns_list(table.columns, key.columns) + " IN (\n(", "))") {
 	}
 
 	bool key_enforceable(const NullableRow &row) {
-		for (size_t n = 0; n < columns.size(); n++) {
-			if (row[columns[n]].null) return false;
+		for (size_t n = 0; n < columns->size(); n++) {
+			if (row[(*columns)[n]].null) return false;
 		}
 		return true;
 	}
@@ -61,22 +61,24 @@ struct UniqueKeyClearer {
 		if (!key_enforceable(row)) return;
 
 		if (delete_sql.have_content()) delete_sql += "),\n(";
-		for (size_t n = 0; n < columns.size(); n++) {
+		for (size_t n = 0; n < columns->size(); n++) {
 			if (n > 0) {
 				delete_sql += ',';
 			}
 			delete_sql += '\'';
-			delete_sql += client.escape_value(row[columns[n]].value);
+			delete_sql += client->escape_value(row[(*columns)[n]].value);
 			delete_sql += '\'';
 		}
 	}
 
-	inline void apply(DatabaseClient &client) {
-		delete_sql.apply(client);
+	inline void apply() {
+		delete_sql.apply(*client);
 	}
 
-	DatabaseClient &client;
-	const ColumnIndices &columns;
+	// these two should both be references, but g++ 4.6's STL needs vector element types to be Assignable,
+	// which is impossible with references.
+	DatabaseClient *client;
+	const ColumnIndices *columns;
 	BaseSQL delete_sql;
 };
 
@@ -144,7 +146,7 @@ struct TableRowApplier {
 	}
 
 	inline void apply_forward_deletes() {
-		for (UniqueKeyClearer<DatabaseClient> &unique_key : unique_keys) unique_key.apply(client);
+		for (UniqueKeyClearer<DatabaseClient> &unique_key : unique_keys) unique_key.apply();
 	}
 
 	inline void apply() {
