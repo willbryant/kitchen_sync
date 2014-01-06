@@ -274,12 +274,13 @@ struct PostgreSQLTableLister {
 		PostgreSQLKeyLister key_lister(table);
 		_client.query(
 			"SELECT index_class.relname, pg_index.indisunique, attname, attnotnull "
-			  "FROM pg_class table_class "
-			  "JOIN pg_index ON table_class.oid = pg_index.indrelid "
-			  "JOIN pg_class index_class ON pg_index.indexrelid = index_class.oid AND index_class.relkind = 'i' "
-			  "JOIN pg_attribute ON table_class.oid = pg_attribute.attrelid AND pg_attribute.attnum = ANY(indkey) "
-			 "WHERE table_class.relname = '" + table.name + "' AND "
-			       "NOT pg_index.indisprimary",
+			  "FROM pg_class table_class, pg_index, pg_class index_class, generate_subscripts(indkey, 1) AS position, pg_attribute "
+			 "WHERE table_class.oid = pg_index.indrelid AND "
+			       "pg_index.indexrelid = index_class.oid AND index_class.relkind = 'i' AND "
+			       "table_class.oid = pg_attribute.attrelid AND pg_attribute.attnum = indkey[position] AND "
+			       "table_class.relname = '" + table.name + "' AND "
+			       "NOT pg_index.indisprimary "
+			 "ORDER BY relname, position",
 			key_lister);
 
 		// if the table has no primary key, we need to find a unique key with no nullable columns to act as a surrogate primary key
