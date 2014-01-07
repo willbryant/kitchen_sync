@@ -132,6 +132,94 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   end
 
 
+  test_each "doesn't complain about a missing table before other tables if told to ignore the table, and doesn't ask for its data" do
+    program_args << 'footbl'
+    clear_schema
+    create_middletbl
+    create_secondtbl
+
+    expects(:schema).with().returns([{"tables" => [footbl_def, middletbl_def, secondtbl_def]}])
+    expects(:rows).times(2).returns(
+      [["rows", "middletbl", [], []], []],
+      [["rows", "secondtbl", [], []], []])
+    expects(:quit)
+    receive_commands
+  end
+
+  test_each "doesn't complain about a missing table between other tables if told to ignore the table" do
+    program_args << 'middletbl'
+    clear_schema
+    create_footbl
+    create_secondtbl
+
+    expects(:schema).with().returns([{"tables" => [footbl_def, middletbl_def, secondtbl_def]}])
+    expects(:rows).times(2).returns(
+      [["rows", "footbl", [], []], []],
+      [["rows", "secondtbl", [], []], []])
+    expects(:quit)
+    receive_commands
+  end
+
+  test_each "doesn't complain about a missing table after other tables if told to ignore the table" do
+    program_args << 'secondtbl'
+    clear_schema
+    create_footbl
+    create_middletbl
+
+    expects(:schema).with().returns([{"tables" => [footbl_def, middletbl_def, secondtbl_def]}])
+    expects(:rows).times(2).returns(
+      [["rows", "footbl", [], []], []],
+      [["rows", "middletbl", [], []], []])
+    expects(:quit)
+    receive_commands
+  end
+
+  test_each "doesn't complain about extra tables before other tables if told to ignore the table" do
+    program_args << 'footbl'
+    clear_schema
+    create_footbl
+    create_middletbl
+    create_secondtbl
+
+    expects(:schema).with().returns([{"tables" => [middletbl_def, secondtbl_def]}])
+    expects(:rows).times(2).returns(
+      [["rows", "middletbl", [], []], []],
+      [["rows", "secondtbl", [], []], []])
+    expects(:quit)
+    receive_commands
+  end
+
+  test_each "doesn't complain about extra tables between other tables if told to ignore the table" do
+    program_args << 'middletbl'
+    clear_schema
+    create_footbl
+    create_middletbl
+    create_secondtbl
+
+    expects(:schema).with().returns([{"tables" => [footbl_def, secondtbl_def]}])
+    expects(:rows).times(2).returns(
+      [["rows", "footbl", [], []], []],
+      [["rows", "secondtbl", [], []], []])
+    expects(:quit)
+    receive_commands
+  end
+
+  test_each "doesn't complain about extra tables after other tables if told to ignore the table" do
+    program_args << 'secondtbl'
+    clear_schema
+    create_footbl
+    create_middletbl
+    create_secondtbl
+
+    expects(:schema).with().returns([{"tables" => [footbl_def, middletbl_def]}])
+    expects(:rows).times(2).returns(
+      [["rows", "footbl", [], []], []],
+      [["rows", "middletbl", [], []], []])
+    expects(:quit)
+    receive_commands
+  end
+
+
   test_each "complains about missing columns before other columns" do
     clear_schema
     create_secondtbl

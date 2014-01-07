@@ -4,17 +4,25 @@
 #include "sync_queue.h"
 #include "table_row_applier.h"
 #include "fdstream.h"
+#include <boost/algorithm/string.hpp>
 
 using namespace std;
+
+set<string> split_list(const string &str) {
+	set<string> result;
+	boost::split(result, str, boost::is_any_of(", "));
+	return result;
+}
 
 template <typename DatabaseClient>
 struct SyncToWorker {
 	SyncToWorker(
 		SyncQueue &sync_queue,
 		const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password,
-		int read_from_descriptor, int write_to_descriptor, bool leader, bool verbose, bool partial):
+		const char *ignore, int read_from_descriptor, int write_to_descriptor, bool leader, bool verbose, bool partial):
 			sync_queue(sync_queue),
 			client(database_host, database_port, database_name, database_username, database_password),
+			ignore_tables(split_list(ignore)),
 			input_stream(read_from_descriptor),
 			output_stream(write_to_descriptor),
 			input(input_stream),
@@ -117,14 +125,14 @@ struct SyncToWorker {
 			input >> from_database;
 
 			// check they match
-			check_schema_match(from_database, client.database_schema());
+			check_schema_match(from_database, client.database_schema(), ignore_tables);
 		}
 	}
 
 	void enqueue_tables() {
 		// queue up all the tables
 		if (leader) {
-			sync_queue.enqueue(client.database_schema().tables);
+			sync_queue.enqueue(client.database_schema().tables, ignore_tables);
 		}
 
 		// wait for the leader to do that (a barrier here is slightly excessive as we don't care if the other
@@ -239,6 +247,7 @@ struct SyncToWorker {
 
 	SyncQueue &sync_queue;
 	DatabaseClient client;
+	set<string> ignore_tables;
 	FDWriteStream output_stream;
 	FDReadStream input_stream;
 	Unpacker<FDReadStream> input;
@@ -251,7 +260,7 @@ struct SyncToWorker {
 };
 
 template <typename DatabaseClient>
-void sync_to(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, int num_workers, int startfd, bool verbose, bool partial) {
+void sync_to(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, const char *ignore, int num_workers, int startfd, bool verbose, bool partial) {
 	SyncQueue sync_queue(num_workers);
 	vector<SyncToWorker<DatabaseClient>*> workers;
 
@@ -261,7 +270,7 @@ void sync_to(const char *database_host, const char *database_port, const char *d
 		bool leader = (worker == 0);
 		int read_from_descriptor = startfd + worker;
 		int write_to_descriptor = startfd + worker + num_workers;
-		workers[worker] = new SyncToWorker<DatabaseClient>(sync_queue, database_host, database_port, database_name, database_username, database_password, read_from_descriptor, write_to_descriptor, leader, verbose, partial);
+		workers[worker] = new SyncToWorker<DatabaseClient>(sync_queue, database_host, database_port, database_name, database_username, database_password, ignore, read_from_descriptor, write_to_descriptor, leader, verbose, partial);
 	}
 
 	for (typename vector<SyncToWorker<DatabaseClient>*>::const_iterator it = workers.begin(); it != workers.end(); ++it) delete *it;

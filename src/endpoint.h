@@ -27,11 +27,12 @@ int endpoint_main(int argc, char *argv[]) {
 		if (from) {
 			sync_from<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, STDIN_FILENO, STDOUT_FILENO);
 		} else {
-			int workers = argc > 7 ? atoi(argv[7]) : 1;
-			int startfd = argc > 8 ? atoi(argv[8]) : STDIN_FILENO;
-			bool verbose = argc > 9 ? atoi(argv[9]) : false;
-			bool partial = argc > 10 ? atoi(argv[10]) : false;
-			sync_to<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, workers, startfd, verbose, partial);
+			const char *ignore = argc > 7 ? argv[7] : "";
+			int workers = argc > 8 ? atoi(argv[8]) : 1;
+			int startfd = argc > 9 ? atoi(argv[9]) : STDIN_FILENO;
+			bool verbose = argc > 10 ? atoi(argv[10]) : false;
+			bool partial = argc > 11 ? atoi(argv[11]) : false;
+			sync_to<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, ignore, workers, startfd, verbose, partial);
 		}
 	} catch (const sync_error& e) {
 		// the worker thread has already output the error to cerr

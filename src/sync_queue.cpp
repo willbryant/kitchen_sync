@@ -1,9 +1,11 @@
 #include "sync_queue.h"
 
-void SyncQueue::enqueue(const Tables &tables) {
+void SyncQueue::enqueue(const Tables &tables, const set<string> &ignore_tables) {
 	boost::unique_lock<boost::mutex> lock(mutex);
 	for (Tables::const_iterator from_table = tables.begin(); from_table != tables.end(); ++from_table) {
-		queue.push_back(&*from_table);
+		if (!ignore_tables.count(from_table->name)) {
+			queue.push_back(&*from_table);
+		}
 	}
 }
 
