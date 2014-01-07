@@ -19,6 +19,10 @@ int endpoint_main(int argc, char *argv[]) {
 		const char *database_name(argv[4]);
 		const char *database_username(argv[5]);
 		const char *database_password(argv[6]);
+
+		if (database_port     == string("-")) database_port     = "";
+		if (database_username == string("-")) database_username = "";
+		if (database_password == string("-")) database_password = "";
 		
 		if (from) {
 			sync_from<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, STDIN_FILENO, STDOUT_FILENO);
