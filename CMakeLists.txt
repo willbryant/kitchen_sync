@@ -3,7 +3,7 @@ project(kitchen_sync CXX)
 cmake_minimum_required(VERSION 2.6)
 
 # suppress warnings about using c++0x features such as variadic templates
-if(CMAKE_COMPILER_IS_GNUCXX)
+if (CMAKE_COMPILER_IS_GNUCXX)
     add_definitions(-std=gnu++0x)
 endif()
 
@@ -32,17 +32,23 @@ set(ks_endpoint_LIBS ${OPENSSL_LIBRARIES})
 set(CMAKE_BUILD_TYPE Debug)
 
 # we have one endpoint program for mysql
-find_package(MySQL REQUIRED)
-include_directories(${MYSQL_INCLUDE_DIR})
-set(ks_mysql_SRCS src/ks_mysql.cpp)
-add_executable(ks_mysql ${ks_mysql_SRCS} ${ks_endpoint_SRCS})
-target_link_libraries(ks_mysql ${MYSQL_LIBRARIES} ${ks_endpoint_LIBS} ${Boost_LIBRARIES})
+find_package(MySQL)
+
+if (MYSQL_FOUND)
+	include_directories(${MYSQL_INCLUDE_DIR})
+	set(ks_mysql_SRCS src/ks_mysql.cpp)
+	add_executable(ks_mysql ${ks_mysql_SRCS} ${ks_endpoint_SRCS})
+	target_link_libraries(ks_mysql ${MYSQL_LIBRARIES} ${ks_endpoint_LIBS} ${Boost_LIBRARIES})
+endif()
 
 # and one endpoint program for postgresql
 set(PostgreSQL_ADDITIONAL_SEARCH_PATHS /usr/include/postgresql)
 set(PostgreSQL_ADDITIONAL_VERSIONS "9.3" "9.2")
-find_package(PostgreSQL REQUIRED)
-include_directories(${PostgreSQL_INCLUDE_DIR})
-set(ks_postgresql_SRCS src/ks_postgresql.cpp)
-add_executable(ks_postgresql ${ks_postgresql_SRCS} ${ks_endpoint_SRCS})
-target_link_libraries(ks_postgresql ${PostgreSQL_LIBRARIES} ${ks_endpoint_LIBS} ${Boost_LIBRARIES})
+find_package(PostgreSQL)
+
+if (PostgreSQL_FOUND)
+	include_directories(${PostgreSQL_INCLUDE_DIR})
+	set(ks_postgresql_SRCS src/ks_postgresql.cpp)
+	add_executable(ks_postgresql ${ks_postgresql_SRCS} ${ks_endpoint_SRCS})
+	target_link_libraries(ks_postgresql ${PostgreSQL_LIBRARIES} ${ks_endpoint_LIBS} ${Boost_LIBRARIES})
+endif()
