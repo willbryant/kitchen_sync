@@ -183,6 +183,8 @@ struct SyncToWorker {
 				send_command(output, "hash", table.name, prev_key, last_key, hash);
 			}
 
+			sync_queue.check_aborted(); // rather than wait until the end of the current table; we do it here since it's likely we'll have no work to do for a short while
+
 			Command command;
 			input >> command;
 

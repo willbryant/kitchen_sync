@@ -12,6 +12,7 @@ struct AbortableBarrier {
 	AbortableBarrier(size_t workers): workers(workers), waiting_for_workers(workers), generation(0), aborted(false) {}
 
 	bool wait_at_barrier();
+	void check_aborted();
 	bool abort();
 
 	boost::mutex mutex;
