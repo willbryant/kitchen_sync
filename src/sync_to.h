@@ -260,6 +260,7 @@ struct SyncToWorker {
 		} catch (const exception &e) {
 			// we don't care if sending this command fails itself, we're already past the point where we could abort anyway
 		}
+		output_stream.close();
 	}
 
 	SyncQueue &sync_queue;

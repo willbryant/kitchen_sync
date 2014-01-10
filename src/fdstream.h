@@ -16,7 +16,14 @@ struct FDReadStream {
 	FDReadStream(int fd): fd(fd), buf_pos(0), buf_avail(0) {}
 
 	~FDReadStream() {
-		close(fd);
+		close();
+	}
+
+	void close() {
+		if (fd) {
+			::close(fd);
+			fd = 0;
+		}
 	}
 
 	// gets but does not consume the next raw byte from the data stream
@@ -65,7 +72,14 @@ struct FDWriteStream {
 	FDWriteStream(int fd): fd(fd), buf_used(0) {}
 	
 	~FDWriteStream() {
-		close(fd);
+		close();
+	}
+
+	void close() {
+		if (fd) {
+			::close(fd);
+			fd = 0;
+		}
 	}
 
 	// writes the given number of raw bytes to the data stream, possibly using a buffer; call flush() to force that to the underlying descriptor
