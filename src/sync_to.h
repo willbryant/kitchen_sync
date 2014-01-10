@@ -167,8 +167,14 @@ struct SyncToWorker {
 		ColumnValues prev_key;
 		ColumnValues last_key;
 		string hash;
+		size_t hash_commands = 0;
+		size_t rows_commands = 0;
+		time_t started = time(NULL);
 
-		if (verbose) cout << "starting " << table.name << endl << flush;
+		if (verbose) {
+			boost::unique_lock<boost::mutex> lock(sync_queue.mutex);
+			cout << "starting " << table.name << endl << flush;
+		}
 
 		while (true) {
 			ColumnValues matched_up_to_key;
@@ -177,10 +183,12 @@ struct SyncToWorker {
 			if (hash.empty()) {
 				// ask the other end to send their rows in this range.
 				send_command(output, "rows", table.name, prev_key, last_key);
+				rows_commands++;
 
 			} else {
 				// tell the other end to check its hash of the same rows, using key ranges rather than a count to improve the chances of a match.
 				send_command(output, "hash", table.name, prev_key, last_key, hash);
+				hash_commands++;
 			}
 
 			sync_queue.check_aborted(); // rather than wait until the end of the current table; we do it here since it's likely we'll have no work to do for a short while
@@ -200,6 +208,9 @@ struct SyncToWorker {
 				last_key = command.argument<ColumnValues>(2);
 				hash     = command.argument<string>(3);
 
+				// unlike 'rows', this is an independent command (which implies our last hash command was successfully matched), so count it
+				hash_commands++;
+
 			} else if (command.name == "rows") {
 				if (command.argument<string>(0) != table.name) throw command_error("Received response on table " + command.argument<string>(0) + " but request was for " + table.name);
 
@@ -215,7 +226,11 @@ struct SyncToWorker {
 				if (last_key.empty()) {
 					// apply any pending updates
 					row_applier.apply();
-					if (verbose) cout << "finished " << table.name << endl << flush;
+					if (verbose) {
+						time_t now = time(NULL);
+						boost::unique_lock<boost::mutex> lock(sync_queue.mutex);
+						cout << "finished " << table.name << " in " << (now - started) << "s using " << hash_commands << " hash commands and " << rows_commands << " rows commands sending " << row_applier.rows << " rows" << endl << flush;
+					}
 					return;
 				} else {
 					// we want to batch up our updates as much as possible, so we don't apply pending

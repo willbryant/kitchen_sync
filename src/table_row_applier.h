@@ -87,7 +87,8 @@ struct TableRowApplier {
 	TableRowApplier(DatabaseClient &client, const Table &table):
 		client(client),
 		table(table),
-		insert_sql("INSERT INTO " + table.name + " VALUES\n(", ")") {
+		insert_sql("INSERT INTO " + table.name + " VALUES\n(", ")"),
+		rows(0) {
 
 		// we will need to clear later rows that have our unique key values in order to insert
 		for (const Key &key : table.keys) {
@@ -113,6 +114,7 @@ struct TableRowApplier {
 			// an empty row (which is not valid data, so is unambiguous).
 			input >> row;
 			if (row.size() == 0) break;
+			rows++;
 
 			// built a string of rows to insert as we go
 			if (insert_sql.have_content()) insert_sql += "),\n(";
@@ -158,4 +160,5 @@ struct TableRowApplier {
 	const Table &table;
 	BaseSQL insert_sql;
 	vector< UniqueKeyClearer<DatabaseClient> > unique_keys;
+	size_t rows;
 };
