@@ -1,97 +1,8 @@
+#ifndef TABLE_ROW_APPLIER_H
+#define TABLE_ROW_APPLIER_H
+
 #include "sql_functions.h"
-#include "message_pack/unpack_nullable.h"
-
-struct BaseSQL {
-	static const size_t MAX_SENSIBLE_INSERT_COMMAND_SIZE = 8*1024*1024;
-	static const size_t MAX_SENSIBLE_DELETE_COMMAND_SIZE =     16*1024;
-
-	inline BaseSQL(const string &prefix, const string &suffix): prefix(prefix), suffix(suffix) {
-		reset();
-	}
-
-	inline void reset() {
-		curr = prefix;
-		curr.reserve(2*MAX_SENSIBLE_INSERT_COMMAND_SIZE);
-	}
-
-	inline void operator += (const string &sql) {
-		curr += sql;
-	}
-
-	inline void operator += (char sql) {
-		curr += sql;
-	}
-
-	inline bool have_content() {
-		return curr.size() > prefix.size();
-	}
-
-	template <typename DatabaseClient>
-	inline void apply(DatabaseClient &client) {
-		if (have_content()) {
-			client.execute(curr + suffix);
-			reset();
-		}
-	}
-
-	string prefix;
-	string suffix;
-	string curr;
-};
-
-typedef Nullable<string> NullableColumnValue;
-typedef vector<NullableColumnValue> NullableRow;
-
-template <typename DatabaseClient>
-struct UniqueKeyClearer {
-	UniqueKeyClearer(DatabaseClient &client, const Table &table, const Key &key):
-		client(&client),
-		table(&table),
-		columns(&key.columns),
-		delete_sql("DELETE FROM " + table.name + " WHERE (", ")") {
-	}
-
-	bool key_enforceable(const NullableRow &row) {
-		for (size_t n = 0; n < columns->size(); n++) {
-			if (row[(*columns)[n]].null) return false;
-		}
-		return true;
-	}
-
-	void row(const NullableRow &row) {
-		// rows with any NULL values won't enforce a uniqueness constraint, so we don't need to clear them
-		if (!key_enforceable(row)) return;
-
-		if (delete_sql.have_content()) delete_sql += ")\nOR (";
-		for (size_t n = 0; n < columns->size(); n++) {
-			// frustratingly http://bugs.mysql.com/bug.php?id=31188 was not fixed until 5.7.3 so we can't simply make a big WHERE (key columns) IN (tuples) here, and have to use AND/OR repetition instead
-			if (n > 0) {
-				delete_sql += " AND ";
-			}
-			size_t column = (*columns)[n];
-			delete_sql += table->columns[column].name;
-			delete_sql += '=';
-			delete_sql += '\'';
-			delete_sql += client->escape_value(row[column].value);
-			delete_sql += '\'';
-		}
-
-		if (delete_sql.curr.size() > BaseSQL::MAX_SENSIBLE_DELETE_COMMAND_SIZE) {
-			apply();
-		}
-	}
-
-	inline void apply() {
-		delete_sql.apply(*client);
-	}
-
-	// these three should both be references, but g++ 4.6's STL needs vector element types to be Assignable,
-	// which is impossible with references.
-	DatabaseClient *client;
-	const Table *table;
-	const ColumnIndices *columns;
-	BaseSQL delete_sql;
-};
+#include "unique_key_clearer.h"
 
 template <typename DatabaseClient>
 struct TableRowApplier {
@@ -172,3 +83,5 @@ struct TableRowApplier {
 	vector< UniqueKeyClearer<DatabaseClient> > unique_keys;
 	size_t rows;
 };
+
+#endif
