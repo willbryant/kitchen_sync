@@ -99,16 +99,12 @@ struct TableRowApplier {
 		client(client),
 		table(table),
 		primary_key_columns(columns_list(table.columns, table.primary_key_columns)),
-		insert_sql("INSERT INTO " + table.name + " VALUES\n(", ")"),
+		insert_sql(client.replace_sql_prefix() + table.name + " VALUES\n(", ")"),
 		delete_sql("DELETE FROM " + table.name + " WHERE\n(", ")"),
 		rows(0) {
 
-		// we will need to clear later rows that have our unique key values in order to insert
-		for (const Key &key : table.keys) {
-			if (key.unique) {
-				unique_keys.push_back(UniqueKeyClearer<DatabaseClient>(client, table, key));
-			}
-		}
+		// if the client doesn't support REPLACE, we will need to clear later rows that have our unique key values in order to insert
+		client.add_replace_clearers(unique_keys, table);
 	}
 
 	template <typename InputStream>

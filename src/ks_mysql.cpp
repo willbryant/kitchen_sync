@@ -89,6 +89,11 @@ public:
 	void commit_transaction();
 	string escape_value(const string &value);
 
+	inline const char* replace_sql_prefix() { return "REPLACE INTO "; }
+
+	template <typename UniqueKeyClearerClass>
+	inline void add_replace_clearers(vector<UniqueKeyClearerClass> &unique_key_clearers, const Table &table) { /* not needed since we support REPLACE */ }
+
 protected:
 	friend class MySQLTableLister;
 
