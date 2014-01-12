@@ -232,14 +232,6 @@ struct SyncToWorker {
 						cout << "finished " << table.name << " in " << (now - started) << "s using " << hash_commands << " hash commands and " << rows_commands << " rows commands sending " << row_applier.rows << " rows" << endl << flush;
 					}
 					return;
-				} else {
-					// we want to batch up our updates as much as possible, so we don't apply pending
-					// inserts and range deletes yet.  however, we must apply any unique key clearing
-					// now, because otherwise we would miss the fact that later ranges have been made
-					// non-matching when they started out matching.  the only other alternative would
-					// be to check the rows retrieved to service later hash checks against the unique
-					// keys that we have registered for clearing but not yet applied.
-					row_applier.apply_forward_deletes();
 				}
 
 				// if it doesn't, that means they have more rows after these ones, so more work to do;

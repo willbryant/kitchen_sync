@@ -3,6 +3,7 @@
 
 struct BaseSQL {
 	static const size_t MAX_SENSIBLE_INSERT_COMMAND_SIZE = 8*1024*1024;
+	static const size_t MAX_SENSIBLE_DELETE_COMMAND_SIZE =     16*1024;
 
 	inline BaseSQL(const string &prefix, const string &suffix): prefix(prefix), suffix(suffix) {
 		reset();
@@ -73,6 +74,10 @@ struct UniqueKeyClearer {
 			delete_sql += '\'';
 			delete_sql += client->escape_value(row[column].value);
 			delete_sql += '\'';
+		}
+
+		if (delete_sql.curr.size() > BaseSQL::MAX_SENSIBLE_DELETE_COMMAND_SIZE) {
+			apply();
 		}
 	}
 
@@ -153,12 +158,8 @@ struct TableRowApplier {
 		}
 	}
 
-	inline void apply_forward_deletes() {
-		for (UniqueKeyClearer<DatabaseClient> &unique_key : unique_keys) unique_key.apply();
-	}
-
 	inline void apply() {
-		apply_forward_deletes();
+		for (UniqueKeyClearer<DatabaseClient> &unique_key : unique_keys) unique_key.apply();
 		insert_sql.apply(client);
 	}
 
