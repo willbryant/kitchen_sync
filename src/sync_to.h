@@ -186,11 +186,12 @@ struct SyncToWorker {
 			if (hash.empty()) {
 				// ask the other end to send their rows in this range.
 				send_command(output, "rows", table.name, prev_key, last_key);
-				rows_commands++;
 
 			} else {
 				// tell the other end to check its hash of the same rows, using key ranges rather than a count to improve the chances of a match.
 				send_command(output, "hash", table.name, prev_key, last_key, hash);
+
+				// unlike 'rows', this is an independent command (which implies the last hash command was successfully matched), so count it
 				hash_commands++;
 			}
 
@@ -211,7 +212,6 @@ struct SyncToWorker {
 				last_key = command.argument<ColumnValues>(2);
 				hash     = command.argument<string>(3);
 
-				// unlike 'rows', this is an independent command (which implies our last hash command was successfully matched), so count it
 				hash_commands++;
 
 			} else if (command.name == "rows") {
@@ -222,6 +222,8 @@ struct SyncToWorker {
 				// bloat up if this end couldn't write to disk as quickly as the other end sent data.
 				prev_key = command.argument<ColumnValues>(1);
 				last_key = command.argument<ColumnValues>(2);
+
+				rows_commands++;
 
 				row_applier.stream_from_input(input, prev_key, last_key);
 
