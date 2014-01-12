@@ -98,7 +98,9 @@ struct TableRowApplier {
 	TableRowApplier(DatabaseClient &client, const Table &table):
 		client(client),
 		table(table),
+		primary_key_columns(columns_list(table.columns, table.primary_key_columns)),
 		insert_sql("INSERT INTO " + table.name + " VALUES\n(", ")"),
+		delete_sql("DELETE FROM " + table.name + " WHERE\n(", ")"),
 		rows(0) {
 
 		// we will need to clear later rows that have our unique key values in order to insert
@@ -113,9 +115,11 @@ struct TableRowApplier {
 	void stream_from_input(Unpacker<InputStream> &input, const ColumnValues &matched_up_to_key, const ColumnValues &last_not_matching_key) {
 		// we're being sent the range of rows > matched_up_to_key and <= last_not_matching_key; apply them to our end
 
-		// for now, we clear and re-insert; matching up and using UPDATE statements is on the future list
-		string delete_sql = client.delete_rows_sql(table, matched_up_to_key, last_not_matching_key);
-		client.execute(delete_sql);
+		// for now, we clear and re-insert; testing matching up and using UPDATE statements is on the future list, though it would mean a lot more statements
+		delete_sql += client.where_sql(primary_key_columns, matched_up_to_key, last_not_matching_key, delete_sql.have_content() ? ")\nOR (" : "");
+		if (delete_sql.curr.size() > BaseSQL::MAX_SENSIBLE_DELETE_COMMAND_SIZE) {
+			delete_sql.apply(client);
+		}
 
 		NullableRow row;
 
@@ -159,12 +163,15 @@ struct TableRowApplier {
 	}
 
 	inline void apply() {
+		delete_sql.apply(client);
 		for (UniqueKeyClearer<DatabaseClient> &unique_key : unique_keys) unique_key.apply();
 		insert_sql.apply(client);
 	}
 
 	DatabaseClient &client;
 	const Table &table;
+	string primary_key_columns;
+	BaseSQL delete_sql;
 	BaseSQL insert_sql;
 	vector< UniqueKeyClearer<DatabaseClient> > unique_keys;
 	size_t rows;

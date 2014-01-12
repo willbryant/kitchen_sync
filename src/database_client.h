@@ -11,11 +11,10 @@ public:
 
 	string retrieve_rows_sql(const Table &table, const ColumnValues &prev_key, size_t row_count);
 	string retrieve_rows_sql(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key);
-	string   delete_rows_sql(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key);
+	string where_sql(const string &key_columns, const ColumnValues &prev_key, const ColumnValues &last_key, const char *prefix = " WHERE ");
 
 protected:
 	void index_database_tables();
-	string where_sql(const string &key_columns, const ColumnValues &prev_key, const ColumnValues &last_key);
 
 protected:
 	Database database;
