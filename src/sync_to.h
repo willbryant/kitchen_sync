@@ -50,6 +50,9 @@ struct SyncToWorker {
 			sync_tables();
 
 			client.commit_transaction();
+
+			// send a quit so the other end closes its output and terminates gracefully
+			send_quit();
 		} catch (const exception &e) {
 			// make sure all other workers terminate promptly, and if we are the first to fail, output the error
 			if (sync_queue.abort()) {
@@ -62,8 +65,8 @@ struct SyncToWorker {
 			}
 		}
 
-		// send a quit so the other end closes its output and terminates gracefully; note we do this both for normal completion and also errors
-		send_quit();
+		// eagerly close the streams so that the SSH session terminates promptly on aborts
+		output_stream.close();
 	}
 
 	void negotiate_protocol() {
@@ -252,7 +255,6 @@ struct SyncToWorker {
 		} catch (const exception &e) {
 			// we don't care if sending this command fails itself, we're already past the point where we could abort anyway
 		}
-		output_stream.close();
 	}
 
 	SyncQueue &sync_queue;
