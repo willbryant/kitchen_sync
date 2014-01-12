@@ -120,21 +120,3 @@ struct RowHasherAndLastKey: RowHasher<DatabaseRow>, RowLastKey<DatabaseRow> {
 		RowLastKey<DatabaseRow>::operator()(row);
 	}
 };
-
-template <typename DatabaseRow, typename OutputStream>
-struct RowHasherAndPacker: RowHasher<DatabaseRow> {
-	RowHasherAndPacker(Packer<OutputStream> &packer): packer(packer) {
-	}
-
-	~RowHasherAndPacker() {
-		// send [hash, number of rows found] to the other end.  ideally we'd use a named map
-		// here to make it easier to understand and extend, but this is the very core of the
-		// high-rate communications, so we need to keep it as minimal as possible and rely on the
-		// protocol version for future extensibility.
-		packer.pack_array_length(2);
-		packer << RowHasher<DatabaseRow>::finish();
-		packer << RowHasher<DatabaseRow>::row_count;
-	}
-
-	Packer<OutputStream> &packer;
-};
