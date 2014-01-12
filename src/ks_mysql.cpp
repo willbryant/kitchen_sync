@@ -152,6 +152,9 @@ MySQLClient::MySQLClient(
 	if (!mysql_real_connect(&mysql, database_host, database_username, database_password, database_name, port, socket, 0)) {
 		throw runtime_error(mysql_error(&mysql));
 	}
+
+	// increase the timeouts so that the connection doesn't get killed while trying to write large rowsets to the client over slow pipes
+	execute("SET SESSION net_read_timeout = 300, net_write_timeout = 600");
 }
 
 MySQLClient::~MySQLClient() {
