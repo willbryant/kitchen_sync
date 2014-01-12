@@ -68,13 +68,13 @@ public:
 		const char *database_password);
 	~MySQLClient();
 
-	template <typename RowPacker>
-	void retrieve_rows(const Table &table, const ColumnValues &prev_key, size_t row_count, RowPacker &row_packer) {
+	template <typename RowReceiver>
+	void retrieve_rows(const Table &table, const ColumnValues &prev_key, size_t row_count, RowReceiver &row_packer) {
 		query(retrieve_rows_sql(table, prev_key, row_count), row_packer, false /* as above */);
 	}
 
-	template <typename RowPacker>
-	void retrieve_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, RowPacker &row_packer) {
+	template <typename RowReceiver>
+	void retrieve_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, RowReceiver &row_packer) {
 		query(retrieve_rows_sql(table, prev_key, last_key), row_packer, false /* nb. n_tuples won't work, which is ok since we send rows individually */);
 	}
 
