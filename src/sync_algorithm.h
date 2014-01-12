@@ -17,23 +17,23 @@ size_t check_hash_and_choose_next_range(DatabaseClient &client, const Table &tab
 		rows_to_hash = 1;
 	} else {
 		// the other end has given us their hash for the key range (prev_key, last_key], calculate our hash
-		RowHasher<typename DatabaseClient::RowType> hasher_for_their_rows;
-		client.retrieve_rows(table, prev_key, last_key, hasher_for_their_rows);
+		RowHasher<typename DatabaseClient::RowType> hasher_for_their_range;
+		client.retrieve_rows(table, prev_key, last_key, hasher_for_their_range);
 
-		if (hasher_for_their_rows.finish() == hash) {
+		if (hasher_for_their_range.finish() == hash) {
 			// match, move on to the next set of rows, and optimistically double the row count
 			prev_key = last_key;
-			rows_to_hash = hasher_for_their_rows.row_count*2;
+			rows_to_hash = hasher_for_their_range.row_count*2;
 
-		} else if (hasher_for_their_rows.row_count > 1) {
+		} else if (hasher_for_their_range.row_count > 1) {
 			// no match, try again starting at the same row for a smaller set of rows
-			rows_to_hash = hasher_for_their_rows.row_count/2;
+			rows_to_hash = hasher_for_their_range.row_count/2;
 
 		} else {
 			// rows don't match, and there's only 0 or 1 rows in that range on our side, so it's time to send
 			// rows instead of trading hashes; don't advance prev_key or change last_key, so we send that range
 			hash.clear();
-			return hasher_for_their_rows.row_count;
+			return hasher_for_their_range.row_count;
 		}
 	}
 
