@@ -9,7 +9,7 @@ struct sync_error: public runtime_error {
 };
 
 template <typename DatabaseClient>
-void check_hash_and_choose_next_range(DatabaseClient &client, const Table &table, ColumnValues &prev_key, ColumnValues &last_key, string &hash) {
+size_t check_hash_and_choose_next_range(DatabaseClient &client, const Table &table, ColumnValues &prev_key, ColumnValues &last_key, string &hash) {
 	size_t rows_to_hash;
 
 	if (last_key.empty()) {
@@ -33,7 +33,7 @@ void check_hash_and_choose_next_range(DatabaseClient &client, const Table &table
 			// rows don't match, and there's only 0 or 1 rows in that range on our side, so it's time to send
 			// rows instead of trading hashes; don't advance prev_key or change last_key, so we send that range
 			hash.clear();
-			return;
+			return hasher_for_their_rows.row_count;
 		}
 	}
 
@@ -49,6 +49,7 @@ void check_hash_and_choose_next_range(DatabaseClient &client, const Table &table
 		// found some rows, send the new key range and the new hash to the other end
 		hash = hasher_for_our_rows.finish().to_string();
 	}
+	return hasher_for_our_rows.row_count;
 }
 
 #endif

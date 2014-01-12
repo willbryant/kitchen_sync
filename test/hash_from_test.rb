@@ -114,8 +114,9 @@ class HashFromTest < KitchenSync::EndpointTestCase
     assert_equal @rows[1], unpacker.read
     assert_equal       [], unpacker.read # indicates end - see rows_from_test.rb
 
-    assert_equal(["rows", "secondtbl", @keys[0], ["aa", "101"]],
+    assert_equal(["rows", "secondtbl", @keys[0], ["aa", "968116383"]],
         send_hash_command("secondtbl", @keys[0], ["aa", "101"], hash_of(@rows[1..1])))
-    assert_equal       [], unpacker.read # no rows (in fact in this case it wouldn't be stupid if it gave us the next row instead, but that isn't implemented)
+    assert_equal @rows[1], unpacker.read
+    assert_equal       [], unpacker.read
   end
 end

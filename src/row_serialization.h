@@ -94,15 +94,12 @@ struct RowHasher {
 };
 
 template <typename DatabaseRow>
-struct RowHasherAndLastKey: RowHasher<DatabaseRow> {
-	RowHasherAndLastKey(const vector<size_t> &primary_key_columns): primary_key_columns(primary_key_columns) {
+struct RowLastKey {
+	RowLastKey(const vector<size_t> &primary_key_columns): primary_key_columns(primary_key_columns) {
 	}
 
 	inline void operator()(const DatabaseRow &row) {
-		// hash the row
-		RowHasher<DatabaseRow>::operator()(row);
-
-		// and keep its primary key, in case this turns out to be the last row, in which case we'll need to send it to the other end
+		// keep its primary key, in case this turns out to be the last row, in which case we'll need to send it to the other end
 		last_key.resize(primary_key_columns.size());
 		for (size_t i = 0; i < primary_key_columns.size(); i++) {
 			last_key[i] = row.string_at(primary_key_columns[i]);
@@ -111,6 +108,17 @@ struct RowHasherAndLastKey: RowHasher<DatabaseRow> {
 
 	const vector<size_t> &primary_key_columns;
 	vector<string> last_key;
+};
+
+template <typename DatabaseRow>
+struct RowHasherAndLastKey: RowHasher<DatabaseRow>, RowLastKey<DatabaseRow> {
+	RowHasherAndLastKey(const vector<size_t> &primary_key_columns): RowLastKey<DatabaseRow>(primary_key_columns) {
+	}
+
+	inline void operator()(const DatabaseRow &row) {
+		RowHasher<DatabaseRow>::operator()(row);
+		RowLastKey<DatabaseRow>::operator()(row);
+	}
 };
 
 template <typename DatabaseRow, typename OutputStream>

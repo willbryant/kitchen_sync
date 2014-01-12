@@ -12,15 +12,29 @@ void handle_rows_command(DatabaseClient &client, Packer<OutputStream> &output, c
 	client.retrieve_rows(table, prev_key, last_key, row_packer);
 }
 
+template <typename DatabaseClient>
+void extend_last_key(DatabaseClient &client, const Table &table, ColumnValues &last_key) {
+	RowLastKey<typename DatabaseClient::RowType> row_last_key(table.primary_key_columns);
+	client.retrieve_rows(table, last_key, 1, row_last_key);
+	last_key = row_last_key.last_key; // may be empty if we have no more rows
+}
+
 template <typename DatabaseClient, typename OutputStream>
 void handle_hash_command(DatabaseClient &client, Packer<OutputStream> &output, const string &table_name, ColumnValues &prev_key, ColumnValues &last_key, string &hash) { // mutable as we allow check_hash_and_choose_next_range to update the values; caller has no use for the original values once passed
 	const Table &table(client.table_by_name(table_name));
 
-	check_hash_and_choose_next_range(client, table, prev_key, last_key, hash);
+	size_t row_count = check_hash_and_choose_next_range(client, table, prev_key, last_key, hash);
 
 	if (hash.empty()) {
+		if (row_count == 0 && !last_key.empty()) {
+			// rows don't match, and there's no rows in that range at our end; to avoid pathologically poor performance when our end has
+			// deleted a range of keys, we need to expand our search range, as otherwise they'll keep requesting deleted rows one-by-one
+			// we extend it to include the next row (arguably the hypothetical key value before that row's would be better)
+			extend_last_key(client, table, last_key);
+		}
+
 		// rows don't match, and there's only one or no rows left, so send it straight across, as if they had given the rows command
-		handle_rows_command(client, output, table_name, prev_key, last_key /* empty, meaning to the end of the table */);
+		handle_rows_command(client, output, table_name, prev_key, last_key);
 		
 	} else {
 		// tell the other end to check its hash of the same rows, using key ranges rather than a count to improve the chances of a match.
