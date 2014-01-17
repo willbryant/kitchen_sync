@@ -26,13 +26,14 @@ int main(int argc, char *argv[]) {
 		bool verbose = false;
 		bool partial = false;
 		bool rollback = false;
-		string ignore;
+		string ignore, only;
 		desc.add_options()
 			("from",    value<DbUrl>(&from)->required(),        "The URL of the database to copy data from.  Required.\n")
 			("to",      value<DbUrl>(&to)->required(),          "The URL of the database to copy data to.  Required.\n")
 			("via",     value<string>(&via),                    "The server to run the 'from' end on (instead of accessing the database server directly).  Optional; useful whenever the network link to the 'from' database server is a bottleneck, which will definitely be the case if it is at another datacentre, and may be the case even on local LANs if you have very fast disks.\n")
 			("workers", value<int>(&workers)->default_value(1), "The number of concurrent workers to use at each end.\n")
-			("ignore",  value<string>(&ignore),                "Comma-separated list of tables to ignore.\n")
+			("ignore",  value<string>(&ignore),                 "Comma-separated list of tables to ignore.\n")
+			("only",    value<string>(&only),                   "Comma-separated list of tables to process (making all others ignored).\n")
 			("partial", "Attempt to commit changes even if some workers hit errors.\n")
 			("rollback-after", "Roll back afterwards, for benchmarking.\n")
 			("verbose", "Log more information as the program works.\n");
@@ -72,7 +73,7 @@ int main(int argc, char *argv[]) {
 
 		const char *from_args[] = { ssh_binary.c_str(), "-C", "-c", "blowfish", via.c_str(),
 									from_binary.c_str(), "from", from.host.c_str(), from.port.c_str(), from.database.c_str(), from.username.c_str(), from.password.c_str(), NULL };
-		const char *  to_args[] = {   to_binary.c_str(),   "to",   to.host.c_str(),   to.port.c_str(),   to.database.c_str(),   to.username.c_str(),   to.password.c_str(), ignore.c_str(), workers_str.c_str(), startfd_str.c_str(), verbose ? "1" : "0", partial ? "1" : "0", rollback ? "1" : "0", NULL };
+		const char *  to_args[] = {   to_binary.c_str(),   "to",   to.host.c_str(),   to.port.c_str(),   to.database.c_str(),   to.username.c_str(),   to.password.c_str(), ignore.c_str(), only.c_str(), workers_str.c_str(), startfd_str.c_str(), verbose ? "1" : "0", partial ? "1" : "0", rollback ? "1" : "0", NULL };
 		const char **applicable_from_args = (via.empty() ? from_args + 5 : from_args);
 
 		vector<pid_t> child_pids;
