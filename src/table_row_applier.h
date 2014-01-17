@@ -61,7 +61,7 @@ struct TableRowApplier {
 		}
 
 		NullableRow row;
-		size_t rows_sent = 0;
+		size_t rows_changed = 0;
 
 		while (true) {
 			// the rows command is unusual.  to avoid needing to know the number of results in advance,
@@ -69,48 +69,53 @@ struct TableRowApplier {
 			// an empty row (which is not valid data, so is unambiguous).
 			input >> row;
 			if (row.size() == 0) break;
-			rows_sent++;
 
 			if (last_not_matching_key.empty()) {
 				// if we're inserting the range to the end of the table, we know we need to insert this row
 				// since there can be no later rows, we don't need to clear unique keys these rows use
 				add_to_insert(row);
+				rows_changed++;
 			} else {
 				// otherwise, if we don't have this row or if our row is different, we need replace our row
-				consider_replace(existing_rows, row);
+				if (consider_replace(existing_rows, row)) {
+					rows_changed++;
+				}
 			}
 		}
 
+		// clear any remaining rows the other end didn't have
 		for (RowsByPrimaryKey::const_iterator it = existing_rows.begin(); it != existing_rows.end(); ++it) {
 			add_to_primary_key_clearer(it->second);
 		}
+		rows_changed += existing_rows.size();
 
-		rows += rows_sent;
-		return rows_sent;
+		rows += rows_changed;
+		return rows_changed;
 	}
 
-	void consider_replace(RowsByPrimaryKey &existing_rows, const NullableRow &row) {
+	bool consider_replace(RowsByPrimaryKey &existing_rows, const NullableRow &row) {
 		RowsByPrimaryKey::iterator existing_row = existing_rows.find(primary_key(row));
 
-		if (existing_row == existing_rows.end()) {
-			// we don't have this row, so we need to insert it
-			add_to_unique_keys_clearers(row);
-			add_to_insert(row);
-
-		} else {
-			// we have this row, see if the data is the same
-			if (existing_row->second != row) {
-				// row is different, so we need to delete it and insert it
-				if (client.need_primary_key_clearer_to_replace()) {
-					add_to_primary_key_clearer(row);
-				}
-				add_to_unique_keys_clearers(row);
-				add_to_insert(row);
-			}
+		// if we don't have this row, we need to insert it
+		if (existing_row != existing_rows.end()) {
+			// we do have the row, but if it's changed we need to replace it
+			bool matches = (existing_row->second == row);
 
 			// don't want to delete this row later
 			existing_rows.erase(existing_row);
+
+			if (matches) return false;
+
+			// row is different, so we need to delete it and insert it
+			if (client.need_primary_key_clearer_to_replace()) {
+				add_to_primary_key_clearer(row);
+			}
 		}
+
+		add_to_unique_keys_clearers(row);
+		add_to_insert(row);
+
+		return true;
 	}
 
 	ColumnValues primary_key(const NullableRow &row) {

@@ -243,7 +243,7 @@ struct SyncToWorker {
 
 				rows_commands++;
 
-				size_t rows_sent = row_applier.stream_from_input(input, prev_key, last_key);
+				size_t rows_changed = row_applier.stream_from_input(input, prev_key, last_key);
 
 				// if the range extends to the end of their table, that means we're done with this table
 				if (last_key.empty()) {
@@ -252,7 +252,7 @@ struct SyncToWorker {
 					if (verbose) {
 						time_t now = time(NULL);
 						boost::unique_lock<boost::mutex> lock(sync_queue.mutex);
-						cout << "finished " << table.name << " in " << (now - started) << "s using " << hash_commands << " hash commands and " << rows_commands << " rows commands sending " << row_applier.rows << " rows" << endl << flush;
+						cout << "finished " << table.name << " in " << (now - started) << "s using " << hash_commands << " hash commands and " << rows_commands << " rows commands changing " << row_applier.rows << " rows" << endl << flush;
 					}
 					return;
 				}
@@ -260,8 +260,8 @@ struct SyncToWorker {
 				// if it doesn't, that means they have more rows after these ones, so more work to do;
 				// since we failed to match last time, don't increase the row count.
 				prev_key = last_key;
-				if (!rows_sent) rows_sent = 1;
-				find_hash_of_next_range(client, table, rows_sent, prev_key, last_key, hash);
+				if (!rows_changed) rows_changed = 1;
+				find_hash_of_next_range(client, table, rows_changed, prev_key, last_key, hash);
 
 			} else {
 				throw command_error("Unknown command " + command.name);
