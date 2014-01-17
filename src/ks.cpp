@@ -86,6 +86,11 @@ int main(int argc, char *argv[]) {
 
 		child_pids.push_back(Process::fork_and_exec(to_binary, to_args));
 
+		for (int worker = 0; worker < workers; ++worker) {
+			::close(to_descriptor_list_start + worker);
+			::close(to_descriptor_list_start + worker + workers);
+		}
+
 		bool success = true;
 		for (vector<pid_t>::const_iterator ppid = child_pids.begin(); ppid != child_pids.end(); ++ppid) {
 			success &= Process::wait_for_and_check(*ppid);
