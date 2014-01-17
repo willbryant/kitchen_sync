@@ -188,9 +188,12 @@ struct SyncToWorker {
 			cout << "starting " << table.name << endl << flush;
 		}
 
+		// start with 1 row of the table; find its hash, and set its key as the key range
+		// if there are no rows, this will return a blank hash, which is handled in the loop
+		find_hash_of_next_range(client, table, 1, prev_key, last_key, hash);
+
 		while (true) {
 			ColumnValues matched_up_to_key;
-			check_hash_and_choose_next_range(client, table, prev_key, last_key, hash);
 
 			if (hash.empty()) {
 				// ask the other end to send their rows in this range.
@@ -226,6 +229,8 @@ struct SyncToWorker {
 
 				hash_commands++;
 
+				check_hash_and_choose_next_range(client, table, prev_key, last_key, hash);
+
 			} else if (command.name == "rows") {
 				if (command.argument<string>(0) != table.name) throw command_error("Received response on table " + command.argument<string>(0) + " but request was for " + table.name);
 
@@ -238,7 +243,7 @@ struct SyncToWorker {
 
 				rows_commands++;
 
-				row_applier.stream_from_input(input, prev_key, last_key);
+				size_t rows_sent = row_applier.stream_from_input(input, prev_key, last_key);
 
 				// if the range extends to the end of their table, that means we're done with this table
 				if (last_key.empty()) {
@@ -255,8 +260,8 @@ struct SyncToWorker {
 				// if it doesn't, that means they have more rows after these ones, so more work to do;
 				// since we failed to match last time, don't increase the row count.
 				prev_key = last_key;
-				last_key = ColumnValues();
-				hash     = string();
+				if (!rows_sent) rows_sent = 1;
+				find_hash_of_next_range(client, table, rows_sent, prev_key, last_key, hash);
 
 			} else {
 				throw command_error("Unknown command " + command.name);

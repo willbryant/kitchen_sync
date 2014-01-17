@@ -19,13 +19,14 @@ struct TableRowApplier {
 	}
 
 	template <typename InputStream>
-	void stream_from_input(Unpacker<InputStream> &input, const ColumnValues &matched_up_to_key, const ColumnValues &last_not_matching_key) {
+	size_t stream_from_input(Unpacker<InputStream> &input, const ColumnValues &matched_up_to_key, const ColumnValues &last_not_matching_key) {
 		// we're being sent the range of rows > matched_up_to_key and <= last_not_matching_key; apply them to our end
 
 		// for now, we clear and re-insert; testing matching up and using UPDATE statements is on the future list, though it would mean a lot more statements
 		add_to_delete_range(matched_up_to_key, last_not_matching_key);
 
 		NullableRow row;
+		size_t rows_sent = 0;
 
 		while (true) {
 			// the rows command is unusual.  to avoid needing to know the number of results in advance,
@@ -33,7 +34,7 @@ struct TableRowApplier {
 			// an empty row (which is not valid data, so is unambiguous).
 			input >> row;
 			if (row.size() == 0) break;
-			rows++;
+			rows_sent++;
 
 			// we also have to clear any later rows with the same unique key values so that we can
 			// insert our rows first; if there can be no later rows, we can skip this bit
@@ -46,6 +47,9 @@ struct TableRowApplier {
 			// built a string of rows to insert as we go
 			add_to_insert(row);
 		}
+
+		rows += rows_sent;
+		return rows_sent;
 	}
 
 	void add_to_insert(const NullableRow &row) {
