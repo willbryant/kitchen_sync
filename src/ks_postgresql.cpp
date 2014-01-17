@@ -89,11 +89,13 @@ public:
 
 	inline const char* replace_sql_prefix() { return "INSERT INTO "; }
 
+	inline bool need_primary_key_clearer_to_replace() { return true; }
+
 	template <typename UniqueKeyClearerClass>
 	void add_replace_clearers(vector<UniqueKeyClearerClass> &unique_key_clearers, const Table &table) {
 		for (const Key &key : table.keys) {
 			if (key.unique) {
-				unique_key_clearers.push_back(UniqueKeyClearerClass(*this, table, key));
+				unique_key_clearers.push_back(UniqueKeyClearerClass(*this, table, key.columns));
 			}
 		}
 	}

@@ -92,6 +92,8 @@ public:
 
 	inline const char* replace_sql_prefix() { return "REPLACE INTO "; }
 
+	inline bool need_primary_key_clearer_to_replace() { return false; /* not needed since we support REPLACE */ }
+
 	template <typename UniqueKeyClearerClass>
 	inline void add_replace_clearers(vector<UniqueKeyClearerClass> &unique_key_clearers, const Table &table) { /* not needed since we support REPLACE */ }
 

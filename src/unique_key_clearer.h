@@ -6,10 +6,10 @@
 
 template <typename DatabaseClient>
 struct UniqueKeyClearer {
-	UniqueKeyClearer(DatabaseClient &client, const Table &table, const Key &key):
+	UniqueKeyClearer(DatabaseClient &client, const Table &table, const ColumnIndices &key_columns):
 		client(&client),
 		table(&table),
-		columns(&key.columns),
+		columns(&key_columns),
 		delete_sql("DELETE FROM " + table.name + " WHERE (", ")") {
 	}
 
