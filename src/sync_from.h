@@ -57,6 +57,8 @@ int negotiate_protocol_version(Unpacker<InputStream> &input, Packer<OutputStream
 	// tell the other end what version was selected
 	output << protocol;
 	output.flush();
+	
+	return protocol;
 }
 
 template<class DatabaseClient>
