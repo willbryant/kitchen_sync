@@ -8,6 +8,10 @@ struct Nullable {
 	inline Nullable(): null(true) {}
 	inline Nullable(ValueType value): null(false), value(value) {}
 
+	inline bool operator == (const Nullable &other) const {
+		return (other.null == null && other.value == value);
+	}
+
 	bool null;
 	ValueType value;
 };
