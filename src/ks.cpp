@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
 		DbUrl from, to;
 		string via;
 		int workers;
-		bool verbose = false;
+		int verbose = 0;
 		bool partial = false;
 		bool rollback = false;
 		string ignore, only;
@@ -36,7 +36,8 @@ int main(int argc, char *argv[]) {
 			("only",    value<string>(&only),                   "Comma-separated list of tables to process (making all others ignored).\n")
 			("partial", "Attempt to commit changes even if some workers hit errors.\n")
 			("rollback-after", "Roll back afterwards, for benchmarking.\n")
-			("verbose", "Log more information as the program works.\n");
+			("verbose", "Log more information as the program works.\n")
+			("debug", "Log debugging information as the program works.\n");
 		variables_map vm;
 
 		try {
@@ -48,9 +49,9 @@ int main(int argc, char *argv[]) {
 			cerr << e.what() << endl;
 			return help(desc);
 		}
-
 		if (vm.count("help")) return help(desc);
-		if (vm.count("verbose")) verbose = true;
+		if (vm.count("verbose")) verbose = 1;
+		if (vm.count("debug"))   verbose = 2;
 		if (vm.count("partial")) partial = true;
 		if (vm.count("rollback-after")) rollback = true;
 
@@ -61,6 +62,7 @@ int main(int argc, char *argv[]) {
 		string   to_binary(Process::related_binary_path(self_binary, this_program_name, "ks_" +   to.protocol));
 		string  ssh_binary("/usr/bin/ssh");
 		string workers_str(to_string(workers));
+		string verbose_str(to_string(verbose));
 		string startfd_str(to_string(to_descriptor_list_start));
 
 		// unfortunately when we transport program arguments over SSH it flattens them into a string and so empty arguments get lost; we work around by using "-"
@@ -73,7 +75,7 @@ int main(int argc, char *argv[]) {
 
 		const char *from_args[] = { ssh_binary.c_str(), "-C", "-c", "blowfish", via.c_str(),
 									from_binary.c_str(), "from", from.host.c_str(), from.port.c_str(), from.database.c_str(), from.username.c_str(), from.password.c_str(), NULL };
-		const char *  to_args[] = {   to_binary.c_str(),   "to",   to.host.c_str(),   to.port.c_str(),   to.database.c_str(),   to.username.c_str(),   to.password.c_str(), ignore.c_str(), only.c_str(), workers_str.c_str(), startfd_str.c_str(), verbose ? "1" : "0", partial ? "1" : "0", rollback ? "1" : "0", NULL };
+		const char *  to_args[] = {   to_binary.c_str(),   "to",   to.host.c_str(),   to.port.c_str(),   to.database.c_str(),   to.username.c_str(),   to.password.c_str(), ignore.c_str(), only.c_str(), workers_str.c_str(), startfd_str.c_str(), verbose_str.c_str(), partial ? "1" : "0", rollback ? "1" : "0", NULL };
 		const char **applicable_from_args = (via.empty() ? from_args + 5 : from_args);
 
 		vector<pid_t> child_pids;

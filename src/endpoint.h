@@ -31,7 +31,7 @@ int endpoint_main(int argc, char *argv[]) {
 			const char *only = argc > 8 ? argv[8] : "";
 			int workers = argc > 9 ? atoi(argv[9]) : 1;
 			int startfd = argc > 10 ? atoi(argv[10]) : STDIN_FILENO;
-			bool verbose = argc > 11 ? atoi(argv[11]) : false;
+			int verbose = argc > 11 ? atoi(argv[11]) : false;
 			bool partial = argc > 12 ? atoi(argv[12]) : false;
 			bool rollback_after = argc > 13 ? atoi(argv[13]) : false;
 			sync_to<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, ignore, only, workers, startfd, verbose, partial, rollback_after);

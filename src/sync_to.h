@@ -8,6 +8,8 @@
 
 using namespace std;
 
+#define VERY_VERBOSE 2
+
 set<string> split_list(const string &str) {
 	set<string> result;
 	boost::split(result, str, boost::is_any_of(", "));
@@ -20,7 +22,7 @@ struct SyncToWorker {
 	SyncToWorker(
 		SyncQueue &sync_queue,
 		const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password,
-		const char *ignore, const char *only, int read_from_descriptor, int write_to_descriptor, bool leader, bool verbose, bool partial, bool rollback_after):
+		const char *ignore, const char *only, int read_from_descriptor, int write_to_descriptor, bool leader, int verbose, bool partial, bool rollback_after):
 			sync_queue(sync_queue),
 			client(database_host, database_port, database_name, database_username, database_password),
 			ignore_tables(split_list(ignore)),
@@ -192,10 +194,12 @@ struct SyncToWorker {
 
 			if (hash.empty()) {
 				// ask the other end to send their rows in this range.
+				if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
 				send_command(output, "rows", table.name, prev_key, last_key);
 
 			} else {
 				// tell the other end to check its hash of the same rows, using key ranges rather than a count to improve the chances of a match.
+				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
 				send_command(output, "hash", table.name, prev_key, last_key, hash);
 
 				// unlike 'rows', this is an independent command (which implies the last hash command was successfully matched), so count it
@@ -218,6 +222,7 @@ struct SyncToWorker {
 				prev_key = command.argument<ColumnValues>(1);
 				last_key = command.argument<ColumnValues>(2);
 				hash     = command.argument<string>(3);
+				if (verbose >= VERY_VERBOSE) cout << "<- hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
 
 				hash_commands++;
 
@@ -229,6 +234,7 @@ struct SyncToWorker {
 				// bloat up if this end couldn't write to disk as quickly as the other end sent data.
 				prev_key = command.argument<ColumnValues>(1);
 				last_key = command.argument<ColumnValues>(2);
+				if (verbose >= VERY_VERBOSE) cout << "<- rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
 
 				rows_commands++;
 
@@ -275,7 +281,7 @@ struct SyncToWorker {
 	Unpacker<FDReadStream> input;
 	Packer<FDWriteStream> output;
 	bool leader;
-	bool verbose;
+	int verbose;
 	bool partial;
 	bool rollback_after;
 	int protocol_version;
@@ -283,7 +289,7 @@ struct SyncToWorker {
 };
 
 template <typename DatabaseClient>
-void sync_to(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, const char *ignore, const char *only, int num_workers, int startfd, bool verbose, bool partial, bool rollback_after) {
+void sync_to(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, const char *ignore, const char *only, int num_workers, int startfd, int verbose, bool partial, bool rollback_after) {
 	SyncQueue sync_queue(num_workers);
 	vector<SyncToWorker<DatabaseClient>*> workers;
 
