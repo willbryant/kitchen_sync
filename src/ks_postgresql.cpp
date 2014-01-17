@@ -84,6 +84,7 @@ public:
 	void start_read_transaction();
 	void start_write_transaction();
 	void commit_transaction();
+	void rollback_transaction();
 	string escape_value(const string &value);
 
 	inline const char* replace_sql_prefix() { return "INSERT INTO "; }
@@ -182,6 +183,10 @@ void PostgreSQLClient::start_write_transaction() {
 
 void PostgreSQLClient::commit_transaction() {
 	execute("COMMIT");
+}
+
+void PostgreSQLClient::rollback_transaction() {
+	execute("ROLLBACK");
 }
 
 string PostgreSQLClient::export_snapshot() {

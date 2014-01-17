@@ -19,7 +19,7 @@ struct SyncToWorker {
 	SyncToWorker(
 		SyncQueue &sync_queue,
 		const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password,
-		const char *ignore, int read_from_descriptor, int write_to_descriptor, bool leader, bool verbose, bool partial):
+		const char *ignore, int read_from_descriptor, int write_to_descriptor, bool leader, bool verbose, bool partial, bool rollback_after):
 			sync_queue(sync_queue),
 			client(database_host, database_port, database_name, database_username, database_password),
 			ignore_tables(split_list(ignore)),
@@ -29,6 +29,7 @@ struct SyncToWorker {
 			output(output_stream),
 			leader(leader),
 			verbose(verbose),
+			rollback_after(rollback_after),
 			partial(partial),
 			protocol_version(0),
 			worker_thread(boost::ref(*this)) {
@@ -49,7 +50,11 @@ struct SyncToWorker {
 			enqueue_tables();
 			sync_tables();
 
-			client.commit_transaction();
+			if (rollback_after) {
+				client.rollback_transaction();
+			} else {
+				client.commit_transaction();
+			}
 
 			// send a quit so the other end closes its output and terminates gracefully
 			send_quit();
@@ -269,12 +274,13 @@ struct SyncToWorker {
 	bool leader;
 	bool verbose;
 	bool partial;
+	bool rollback_after;
 	int protocol_version;
 	boost::thread worker_thread;
 };
 
 template <typename DatabaseClient>
-void sync_to(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, const char *ignore, int num_workers, int startfd, bool verbose, bool partial) {
+void sync_to(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, const char *ignore, int num_workers, int startfd, bool verbose, bool partial, bool rollback_after) {
 	SyncQueue sync_queue(num_workers);
 	vector<SyncToWorker<DatabaseClient>*> workers;
 
@@ -284,7 +290,7 @@ void sync_to(const char *database_host, const char *database_port, const char *d
 		bool leader = (worker == 0);
 		int read_from_descriptor = startfd + worker;
 		int write_to_descriptor = startfd + worker + num_workers;
-		workers[worker] = new SyncToWorker<DatabaseClient>(sync_queue, database_host, database_port, database_name, database_username, database_password, ignore, read_from_descriptor, write_to_descriptor, leader, verbose, partial);
+		workers[worker] = new SyncToWorker<DatabaseClient>(sync_queue, database_host, database_port, database_name, database_username, database_password, ignore, read_from_descriptor, write_to_descriptor, leader, verbose, partial, rollback_after);
 	}
 
 	for (typename vector<SyncToWorker<DatabaseClient>*>::const_iterator it = workers.begin(); it != workers.end(); ++it) delete *it;

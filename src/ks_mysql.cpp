@@ -87,6 +87,7 @@ public:
 	void start_read_transaction();
 	void start_write_transaction();
 	void commit_transaction();
+	void rollback_transaction();
 	string escape_value(const string &value);
 
 	inline const char* replace_sql_prefix() { return "REPLACE INTO "; }
@@ -181,6 +182,10 @@ void MySQLClient::start_write_transaction() {
 
 void MySQLClient::commit_transaction() {
 	execute("COMMIT");
+}
+
+void MySQLClient::rollback_transaction() {
+	execute("ROLLBACK");
 }
 
 string MySQLClient::export_snapshot() {

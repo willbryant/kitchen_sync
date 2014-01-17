@@ -25,6 +25,7 @@ int main(int argc, char *argv[]) {
 		int workers;
 		bool verbose = false;
 		bool partial = false;
+		bool rollback = false;
 		string ignore;
 		desc.add_options()
 			("from",    value<DbUrl>(&from)->required(),        "The URL of the database to copy data from.  Required.\n")
@@ -33,6 +34,7 @@ int main(int argc, char *argv[]) {
 			("workers", value<int>(&workers)->default_value(1), "The number of concurrent workers to use at each end.\n")
 			("ignore",  value<string>(&ignore),                "Comma-separated list of tables to ignore.\n")
 			("partial", "Attempt to commit changes even if some workers hit errors.\n")
+			("rollback-after", "Roll back afterwards, for benchmarking.\n")
 			("verbose", "Log more information as the program works.\n");
 		variables_map vm;
 
@@ -49,6 +51,7 @@ int main(int argc, char *argv[]) {
 		if (vm.count("help")) return help(desc);
 		if (vm.count("verbose")) verbose = true;
 		if (vm.count("partial")) partial = true;
+		if (vm.count("rollback-after")) rollback = true;
 
 		cout << "Kitchen Sync" << endl;
 
@@ -69,7 +72,7 @@ int main(int argc, char *argv[]) {
 
 		const char *from_args[] = { ssh_binary.c_str(), "-C", "-c", "blowfish", via.c_str(),
 									from_binary.c_str(), "from", from.host.c_str(), from.port.c_str(), from.database.c_str(), from.username.c_str(), from.password.c_str(), NULL };
-		const char *  to_args[] = {   to_binary.c_str(),   "to",   to.host.c_str(),   to.port.c_str(),   to.database.c_str(),   to.username.c_str(),   to.password.c_str(), ignore.c_str(), workers_str.c_str(), startfd_str.c_str(), verbose ? "1" : "0", partial ? "1" : "0", NULL };
+		const char *  to_args[] = {   to_binary.c_str(),   "to",   to.host.c_str(),   to.port.c_str(),   to.database.c_str(),   to.username.c_str(),   to.password.c_str(), ignore.c_str(), workers_str.c_str(), startfd_str.c_str(), verbose ? "1" : "0", partial ? "1" : "0", rollback ? "1" : "0", NULL };
 		const char **applicable_from_args = (via.empty() ? from_args + 5 : from_args);
 
 		vector<pid_t> child_pids;
