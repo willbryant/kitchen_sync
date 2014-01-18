@@ -38,7 +38,7 @@ struct TableRowApplier {
 		primary_key_columns(columns_list(table.columns, table.primary_key_columns)),
 		primary_key_clearer(client, table, table.primary_key_columns),
 		insert_sql(client.replace_sql_prefix() + table.name + " VALUES\n(", ")"),
-		rows(0) {
+		rows_changed(0) {
 
 		// if the client doesn't support REPLACE, we will need to delete rows with the PKs we want to
 		// insert, and also clear later rows that have our unique key values in order to insert
@@ -61,7 +61,7 @@ struct TableRowApplier {
 		}
 
 		NullableRow row;
-		size_t rows_changed = 0;
+		size_t rows_in_range = 0;
 
 		while (true) {
 			// the rows command is unusual.  to avoid needing to know the number of results in advance,
@@ -69,6 +69,7 @@ struct TableRowApplier {
 			// an empty row (which is not valid data, so is unambiguous).
 			input >> row;
 			if (row.size() == 0) break;
+			rows_in_range++;
 
 			if (last_not_matching_key.empty()) {
 				// if we're inserting the range to the end of the table, we know we need to insert this row
@@ -88,9 +89,9 @@ struct TableRowApplier {
 			add_to_primary_key_clearer(it->second);
 		}
 		rows_changed += existing_rows.size();
+		rows_in_range    += existing_rows.size();
 
-		rows += rows_changed;
-		return rows_changed;
+		return rows_in_range;
 	}
 
 	bool consider_replace(RowsByPrimaryKey &existing_rows, const NullableRow &row) {
@@ -180,7 +181,7 @@ struct TableRowApplier {
 	UniqueKeyClearer<DatabaseClient> primary_key_clearer;
 	vector< UniqueKeyClearer<DatabaseClient> > unique_keys_clearers;
 	BaseSQL insert_sql;
-	size_t rows;
+	size_t rows_changed;
 };
 
 #endif
