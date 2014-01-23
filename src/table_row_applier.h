@@ -35,7 +35,7 @@ struct TableRowApplier {
 	TableRowApplier(DatabaseClient &client, const Table &table):
 		client(client),
 		table(table),
-		primary_key_columns(columns_list(table.columns, table.primary_key_columns)),
+		primary_key_columns(columns_list(table.columns, table.primary_key_columns, client.quote_identifiers_with())),
 		primary_key_clearer(client, table, table.primary_key_columns),
 		insert_sql(client.replace_sql_prefix() + table.name + " VALUES\n(", ")"),
 		rows_changed(0) {

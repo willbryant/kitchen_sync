@@ -24,6 +24,10 @@ class PGconn
   def tables
     query("SELECT tablename FROM pg_tables WHERE schemaname = ANY (current_schemas(false))").collect {|row| row["tablename"]}
   end
+
+  def quote_ident(name)
+    self.class.quote_ident(name)
+  end
 end
 
 class Mysql2::Client
@@ -33,6 +37,10 @@ class Mysql2::Client
 
   def tables
     query("SHOW TABLES").collect {|row| row.values.first}
+  end
+
+  def quote_ident(name)
+    "`#{name}`"
   end
 end
 

@@ -1,6 +1,6 @@
 #include "sql_functions.h"
 
-string columns_list(const vector<string> &column_names) {
+string columns_list(const vector<string> &column_names, char quote_identifiers_with) {
 	if (column_names.empty()) {
 		return "(NULL)";
 	}
@@ -9,13 +9,15 @@ string columns_list(const vector<string> &column_names) {
 	result.append(*column_names.begin());
 	for (vector<string>::const_iterator column_name = column_names.begin() + 1; column_name != column_names.end(); ++column_name) {
 		result.append(", ");
+		if (quote_identifiers_with) result += quote_identifiers_with;
 		result.append(*column_name);
+		if (quote_identifiers_with) result += quote_identifiers_with;
 	}
 	result.append(")");
 	return result;
 }
 
-string columns_list(const Columns &columns, const ColumnIndices &column_indices){
+string columns_list(const Columns &columns, const ColumnIndices &column_indices, char quote_identifiers_with){
 	if (column_indices.empty()) {
 		return "(NULL)";
 	}
@@ -24,7 +26,9 @@ string columns_list(const Columns &columns, const ColumnIndices &column_indices)
 	result.append(columns[*column_indices.begin()].name);
 	for (ColumnIndices::const_iterator column_index = column_indices.begin() + 1; column_index != column_indices.end(); ++column_index) {
 		result.append(", ");
+		if (quote_identifiers_with) result += quote_identifiers_with;
 		result.append(columns[*column_index].name);
+		if (quote_identifiers_with) result += quote_identifiers_with;
 	}
 	result.append(")");
 	return result;

@@ -67,12 +67,12 @@ public:
 
 	template <typename RowReceiver>
 	void retrieve_rows(const Table &table, const ColumnValues &prev_key, size_t row_count, RowReceiver &row_packer) {
-		query(retrieve_rows_sql(table, prev_key, row_count), row_packer);
+		query(retrieve_rows_sql(table, prev_key, row_count, '"'), row_packer);
 	}
 
 	template <typename RowReceiver>
 	void retrieve_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, RowReceiver &row_packer) {
-		query(retrieve_rows_sql(table, prev_key, last_key), row_packer);
+		query(retrieve_rows_sql(table, prev_key, last_key, '"'), row_packer);
 	}
 
 	void execute(const string &sql);
@@ -88,6 +88,7 @@ public:
 	string escape_value(const string &value);
 
 	inline const char* replace_sql_prefix() { return "INSERT INTO "; }
+	inline char quote_identifiers_with() { return '"'; }
 
 	inline bool need_primary_key_clearer_to_replace() { return true; }
 

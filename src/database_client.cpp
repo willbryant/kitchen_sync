@@ -5,13 +5,15 @@
 #include "sql_functions.h"
 #include "to_string.h"
 
-string DatabaseClient::retrieve_rows_sql(const Table &table, const ColumnValues &prev_key, size_t row_count) {
-	string key_columns(columns_list(table.columns, table.primary_key_columns));
+string DatabaseClient::retrieve_rows_sql(const Table &table, const ColumnValues &prev_key, size_t row_count, char quote_identifiers_with) {
+	string key_columns(columns_list(table.columns, table.primary_key_columns, quote_identifiers_with));
 
 	string result("SELECT ");
 	for (Columns::const_iterator column = table.columns.begin(); column != table.columns.end(); ++column) {
 		if (column != table.columns.begin()) result += ", ";
+		if (quote_identifiers_with) result += quote_identifiers_with;
 		result += column->name;
+		if (quote_identifiers_with) result += quote_identifiers_with;
 	}
 	result += " FROM ";
 	result += table.name;
@@ -23,13 +25,15 @@ string DatabaseClient::retrieve_rows_sql(const Table &table, const ColumnValues 
 	return result;
 }
 
-string DatabaseClient::retrieve_rows_sql(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
-	string key_columns(columns_list(table.columns, table.primary_key_columns));
+string DatabaseClient::retrieve_rows_sql(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, char quote_identifiers_with) {
+	string key_columns(columns_list(table.columns, table.primary_key_columns, quote_identifiers_with));
 
 	string result("SELECT ");
 	for (Columns::const_iterator column = table.columns.begin(); column != table.columns.end(); ++column) {
 		if (column != table.columns.begin()) result += ", ";
+		if (quote_identifiers_with) result += quote_identifiers_with;
 		result += column->name;
+		if (quote_identifiers_with) result += quote_identifiers_with;
 	}
 	result += " FROM ";
 	result += table.name;

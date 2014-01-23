@@ -86,4 +86,12 @@ class RowsFromTest < KitchenSync::EndpointTestCase
     assert_equal([["2349174", "xy", "1", "2"]],
                  send_rows_command("secondtbl", ["xy", "1"], ["xy", "10000000"]))
   end
+
+  test_each "supports reserved-word column names" do
+    clear_schema
+    create_reservedtbl
+    send_handshake_commands
+
+    assert_equal([], send_rows_command("reservedtbl", [], []))
+  end
 end

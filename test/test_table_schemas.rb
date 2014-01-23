@@ -121,4 +121,24 @@ SQL
   def some_table_defs
     [footbl_def, secondtbl_def]
   end
+
+  def create_reservedtbl
+    execute(<<-SQL)
+      CREATE TABLE reservedtbl (
+        col1 INT NOT NULL,
+        #{connection.quote_ident 'int'} INT,
+        #{connection.quote_ident 'varchar'} INT,
+        PRIMARY KEY(col1))
+SQL
+  end
+
+  def reservedtbl_def
+    { "name"    => "reservedtbl",
+      "columns" => [
+        {"name" => "col1"},
+        {"name" => "int"},
+        {"name" => "varchar"}],
+      "primary_key_columns" => [0],
+      "keys" => [] }
+  end
 end
