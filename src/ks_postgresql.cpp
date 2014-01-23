@@ -157,6 +157,9 @@ PostgreSQLClient::PostgreSQLClient(
 	if (PQstatus(conn) != CONNECTION_OK) {
 		throw runtime_error(PQerrorMessage(conn));
 	}
+	if (PQsetClientEncoding(conn, "SQL_ASCII")) {
+		throw runtime_error(PQerrorMessage(conn));
+	}
 }
 
 PostgreSQLClient::~PostgreSQLClient() {
