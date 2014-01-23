@@ -22,7 +22,7 @@ struct SyncToWorker {
 	SyncToWorker(
 		SyncQueue &sync_queue,
 		const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password,
-		const char *ignore, const char *only, int read_from_descriptor, int write_to_descriptor, bool leader, int verbose, bool partial, bool rollback_after):
+		const char *ignore, const char *only, int read_from_descriptor, int write_to_descriptor, bool leader, int verbose, bool snapshot, bool partial, bool rollback_after):
 			sync_queue(sync_queue),
 			client(database_host, database_port, database_name, database_username, database_password),
 			ignore_tables(split_list(ignore)),
@@ -33,6 +33,7 @@ struct SyncToWorker {
 			output(output_stream),
 			leader(leader),
 			verbose(verbose),
+			snapshot(snapshot),
 			rollback_after(rollback_after),
 			partial(partial),
 			protocol_version(0),
@@ -90,7 +91,7 @@ struct SyncToWorker {
 	}
 
 	void share_snapshot() {
-		if (sync_queue.workers > 1) {
+		if (sync_queue.workers > 1 && snapshot) {
 			// although some databases (such as postgresql) can share & adopt snapshots with no penalty
 			// to other transactions, those that don't have an actual snapshot adoption mechanism (mysql)
 			// need us to use blocking locks to prevent other transactions changing the data while they
@@ -287,6 +288,7 @@ struct SyncToWorker {
 	Packer<FDWriteStream> output;
 	bool leader;
 	int verbose;
+	bool snapshot;
 	bool partial;
 	bool rollback_after;
 	int protocol_version;
@@ -294,7 +296,7 @@ struct SyncToWorker {
 };
 
 template <typename DatabaseClient>
-void sync_to(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, const char *ignore, const char *only, int num_workers, int startfd, int verbose, bool partial, bool rollback_after) {
+void sync_to(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, const char *ignore, const char *only, int num_workers, int startfd, int verbose, bool snapshot, bool partial, bool rollback_after) {
 	SyncQueue sync_queue(num_workers);
 	vector<SyncToWorker<DatabaseClient>*> workers;
 
@@ -304,7 +306,7 @@ void sync_to(const char *database_host, const char *database_port, const char *d
 		bool leader = (worker == 0);
 		int read_from_descriptor = startfd + worker;
 		int write_to_descriptor = startfd + worker + num_workers;
-		workers[worker] = new SyncToWorker<DatabaseClient>(sync_queue, database_host, database_port, database_name, database_username, database_password, ignore, only, read_from_descriptor, write_to_descriptor, leader, verbose, partial, rollback_after);
+		workers[worker] = new SyncToWorker<DatabaseClient>(sync_queue, database_host, database_port, database_name, database_username, database_password, ignore, only, read_from_descriptor, write_to_descriptor, leader, verbose, snapshot, partial, rollback_after);
 	}
 
 	for (typename vector<SyncToWorker<DatabaseClient>*>::const_iterator it = workers.begin(); it != workers.end(); ++it) delete *it;
