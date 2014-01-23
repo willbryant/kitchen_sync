@@ -164,7 +164,7 @@ struct TableRowApplier {
 	}
 
 	void delete_range(const ColumnValues &matched_up_to_key, const ColumnValues &last_not_matching_key) {
-		client.execute("DELETE FROM " + table.name + client.where_sql(primary_key_columns, matched_up_to_key, last_not_matching_key));
+		client.execute("DELETE FROM " + table.name + where_sql(primary_key_columns, matched_up_to_key, last_not_matching_key));
 	}
 
 	inline void apply() {

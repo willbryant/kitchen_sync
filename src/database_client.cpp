@@ -38,15 +38,6 @@ string DatabaseClient::retrieve_rows_sql(const Table &table, const ColumnValues 
 	return result;
 }
 
-string DatabaseClient::where_sql(const string &key_columns, const ColumnValues &prev_key, const ColumnValues &last_key, const char *prefix) {
-	string result;
-	if (!prev_key.empty() || !last_key.empty())	result += prefix;
-	if (!prev_key.empty())						result += key_columns + " > " + non_binary_string_values_list(prev_key);
-	if (!prev_key.empty() && !last_key.empty())	result += " AND ";
-	if (!last_key.empty()) 						result += key_columns + " <= " + non_binary_string_values_list(last_key);
-	return result;
-}
-
 void DatabaseClient::index_database_tables() {
 	for (Tables::const_iterator table = database.tables.begin(); table != database.tables.end(); ++table) {
 		tables_by_name[table->name] = table;

@@ -54,3 +54,12 @@ string non_binary_string_values_list(const vector<string> &values) {
 	result.append("')");
 	return result;
 }
+
+string where_sql(const string &key_columns, const ColumnValues &prev_key, const ColumnValues &last_key, const char *prefix) {
+	string result;
+	if (!prev_key.empty() || !last_key.empty())	result += prefix;
+	if (!prev_key.empty())						result += key_columns + " > " + non_binary_string_values_list(prev_key);
+	if (!prev_key.empty() && !last_key.empty())	result += " AND ";
+	if (!last_key.empty()) 						result += key_columns + " <= " + non_binary_string_values_list(last_key);
+	return result;
+}
