@@ -24,6 +24,14 @@ class HashFromTest < KitchenSync::EndpointTestCase
     send_handshake_commands
   end
 
+  def assert_next_hash_command(table, prev_key)
+    command = unpacker.read
+    assert_equal "hash", command[0]
+    assert_equal table, command[1]
+    assert_equal prev_key, command[2]
+    assert_not_equal prev_key, command[3]
+  end
+
   test_each "calculates the hash of all the rows whose key is greater than the first argument and not greater than the last argument, and if it matches, responds likewise with the hash of the next rows (doubling the count of rows hashed)" do
     setup_with_footbl
 
@@ -75,11 +83,13 @@ class HashFromTest < KitchenSync::EndpointTestCase
         send_hash_command("footbl", @keys[0], @keys[1], hash_of(@rows[1..1]).reverse))
     assert_equal @rows[1], unpacker.read
     assert_equal       [], unpacker.read # indicates end - see rows_from_test.rb
+    assert_next_hash_command("footbl", @keys[1]) # see rows_from_test
 
     assert_equal(["rows", "footbl", [], @keys[0]],
         send_hash_command("footbl", [], @keys[0], hash_of(@rows[0..0]).reverse))
     assert_equal @rows[0], unpacker.read
     assert_equal       [], unpacker.read # as above
+    assert_next_hash_command("footbl", @keys[0]) # see rows_from_test
   end
 
   test_each "supports composite keys" do
@@ -113,10 +123,12 @@ class HashFromTest < KitchenSync::EndpointTestCase
         send_hash_command("secondtbl", @keys[0], @keys[1], hash_of(@rows[1..1]).reverse))
     assert_equal @rows[1], unpacker.read
     assert_equal       [], unpacker.read # indicates end - see rows_from_test.rb
+    assert_next_hash_command("secondtbl", @keys[1]) # see rows_from_test
 
     assert_equal(["rows", "secondtbl", @keys[0], ["aa", "968116383"]],
         send_hash_command("secondtbl", @keys[0], ["aa", "101"], hash_of(@rows[1..1])))
     assert_equal @rows[1], unpacker.read
     assert_equal       [], unpacker.read
+    assert_next_hash_command("secondtbl", ["aa", "968116383"]) # see rows_from_test
   end
 end

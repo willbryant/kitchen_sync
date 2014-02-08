@@ -215,24 +215,7 @@ struct SyncToWorker {
 			Command command;
 			input >> command;
 
-			if (command.name == "hash") {
-				if (command.argument<string>(0) != table.name) throw command_error("Received response on table " + command.argument<string>(0) + " but request was for " + table.name);
-
-				// they've sent us back a hash for a set of rows, which will happen if:
-				// - the last hash we sent them matched, and so they've moved on to the next set of rows; or
-				// - the last hash we sent them didn't match, so they've reduced the key range and sent us back
-				//   the hash for a smaller set of rows (but not so small that they sent back the data instead)
-				// we don't need to know which case it is; simply loop around and carry on
-				prev_key = command.argument<ColumnValues>(1);
-				last_key = command.argument<ColumnValues>(2);
-				hash     = command.argument<string>(3);
-				if (verbose >= VERY_VERBOSE) cout << "<- hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
-
-				hash_commands++;
-
-				check_hash_and_choose_next_range(client, table, prev_key, last_key, hash);
-
-			} else if (command.name == "rows") {
+			if (command.name == "rows") {
 				if (command.argument<string>(0) != table.name) throw command_error("Received response on table " + command.argument<string>(0) + " but request was for " + table.name);
 
 				// we're being sent a range of rows; apply them to our end.  we do this in-context to
@@ -258,11 +241,26 @@ struct SyncToWorker {
 					return;
 				}
 
-				// if it doesn't, that means they have more rows after these ones, so more work to do;
-				// since we failed to match last time, don't increase the row count.
-				prev_key = last_key;
-				if (!rows_in_range) rows_in_range = 1;
-				find_hash_of_next_range(client, table, rows_in_range, prev_key, last_key, hash);
+				// otherwise, rows commands are immediately followed by a hash command
+				input >> command;
+			}
+
+			if (command.name == "hash") {
+				if (command.argument<string>(0) != table.name) throw command_error("Received response on table " + command.argument<string>(0) + " but request was for " + table.name);
+
+				// they've sent us back a hash for a set of rows, which will happen if:
+				// - the last hash we sent them matched, and so they've moved on to the next set of rows; or
+				// - the last hash we sent them didn't match, so they've reduced the key range and sent us back
+				//   the hash for a smaller set of rows (but not so small that they sent back the data instead)
+				// we don't need to know which case it is; simply loop around and carry on
+				prev_key = command.argument<ColumnValues>(1);
+				last_key = command.argument<ColumnValues>(2);
+				hash     = command.argument<string>(3);
+				if (verbose >= VERY_VERBOSE) cout << "<- hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
+
+				hash_commands++;
+
+				check_hash_and_choose_next_range(client, table, prev_key, last_key, hash);
 
 			} else {
 				throw command_error("Unknown command " + command.name);

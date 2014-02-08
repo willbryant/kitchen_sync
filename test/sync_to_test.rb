@@ -79,9 +79,10 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expects(:schema).with().
       returns([{"tables" => [footbl_def]}])
     expects(:hash).with("footbl", [], @keys[0], hash_of([["2", "10", "different"]])).
-      returns([["rows", "footbl", [], @keys[0]], @rows[0], []])
-    expects(:hash).with("footbl", @keys[0], @keys[1], hash_of(@rows[1..1])).
-      returns([["hash", "footbl", @keys[1], @keys[-1], hash_of(@rows[2..-1])]])
+      returns([["rows", "footbl", [], @keys[0]], @rows[0], [],
+               ["hash", "footbl", @keys[0], @keys[1], hash_of(@rows[1..1])]])
+    expects(:hash).with("footbl", @keys[1], @keys[3], hash_of(@rows[2..3])).
+      returns([["hash", "footbl", @keys[3], @keys[-1], hash_of(@rows[4..-1])]])
     expects(:rows).with("footbl", @keys[-1], []).
       returns([["rows", "footbl", @keys[-1], []], []])
     expects(:quit)
@@ -106,10 +107,9 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expects(:hash).with("footbl", @keys[2], @keys[3], hash_of(@rows[3..3])).
       returns([["hash", "footbl", @keys[3], @keys[5], hash_of(@rows[4..5])]]) # (not ideal, since really we know by now @rows[4] is the issue)
     expects(:hash).with("footbl", @keys[3], @keys[4], hash_of([["101", "0", "different"]])).
-      returns([["rows", "footbl", @keys[3], @keys[4]], @rows[4], []])
-    expects(:hash).with("footbl", @keys[4], @keys[5], hash_of(@rows[5..5])).
-      returns([["hash", "footbl", @keys[5], @keys[6], hash_of(@rows[6..6])]])
-    expects(:rows).with("footbl", @keys[-1], []).
+      returns([["rows", "footbl", @keys[3], @keys[4]], @rows[4], [],
+               ["hash", "footbl", @keys[4], @keys[5], hash_of(@rows[5..5])]])
+    expects(:hash).with("footbl", @keys[5], @keys[6], hash_of(@rows[6..6])).
       returns([["rows", "footbl", @keys[-1], []], []])
     expects(:quit)
     receive_commands
@@ -212,17 +212,14 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expects(:schema).with().
       returns([{"tables" => [footbl_def.merge("keys" => [{"name" => "unique_key", "unique" => true, "columns" => [2]}])]}])
     expects(:hash).with("footbl", [], @keys[0], hash_of([["2", "10", "test"]])).
-      returns([["rows", "footbl", [], @keys[0]], @rows[0], []])
-    expects(:hash).with("footbl", @keys[0], @keys[1], hash_of(@rows[1..1])).
-      returns([["hash", "footbl", @keys[1], @keys[3], hash_of(@rows[2..3])]])
-    expects(:hash).with("footbl", @keys[3], @keys[6], hash_of(@orig_rows[4..6])).
-      returns([["hash", "footbl", @keys[3], @keys[4], hash_of(@rows[4..4])]])
-    expects(:hash).with("footbl", @keys[4], @keys[6], hash_of(@orig_rows[5..6])).
-      returns([["rows", "footbl", @keys[4], @keys[5]], @rows[5], []])
-    expects(:hash).with("footbl", @keys[5], @keys[-1], hash_of(@orig_rows[6..-1])).
-      returns([["rows", "footbl", @keys[5], @keys[-1]], @rows[6], []])
-    expects(:rows).with("footbl", @keys[-1], []).
-      returns([["rows", "footbl", @keys[-1], []], []])
+      returns([["rows", "footbl", [], @keys[0]], @rows[0], [],
+               ["hash", "footbl", @keys[0], @keys[1], hash_of(@rows[1..1])]])
+    expects(:hash).with("footbl", @keys[1], @keys[3], hash_of(@rows[2..3])).
+      returns([["hash", "footbl", @keys[3], @keys[6], hash_of(@rows[4..6])]])
+    expects(:hash).with("footbl", @keys[3], @keys[4], hash_of(@orig_rows[4..4])).
+      returns([["hash", "footbl", @keys[4], @keys[6], hash_of(@orig_rows[5..6])]])
+    expects(:rows).with("footbl", @keys[6], []).
+      returns([["rows", "footbl", @keys[6], []], @rows[6], []])
     expects(:quit)
     receive_commands
 
