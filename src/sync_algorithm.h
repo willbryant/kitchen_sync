@@ -9,6 +9,13 @@ struct sync_error: public runtime_error {
 };
 
 template <typename DatabaseClient>
+void extend_last_key(DatabaseClient &client, const Table &table, ColumnValues &last_key) {
+	RowLastKey<typename DatabaseClient::RowType> row_last_key(table.primary_key_columns);
+	client.retrieve_rows(table, last_key, 1, row_last_key);
+	last_key = row_last_key.last_key; // may be empty if we have no more rows
+}
+
+template <typename DatabaseClient>
 size_t check_hash_and_choose_next_range(DatabaseClient &client, const Table &table, ColumnValues &prev_key, ColumnValues &last_key, string &hash) {
 	if (hash.empty()) throw logic_error("No hash to check given");
 	if (last_key.empty()) throw logic_error("No range end given");
@@ -21,17 +28,24 @@ size_t check_hash_and_choose_next_range(DatabaseClient &client, const Table &tab
 		// match, move on to the next set of rows, and optimistically double the row count
 		prev_key = last_key;
 		return find_hash_of_next_range(client, table, hasher_for_their_range.row_count*2, prev_key, last_key, hash);
+	}
 
-	} else if (hasher_for_their_range.row_count > 1) {
+	if (hasher_for_their_range.row_count > 1) {
 		// no match, try again starting at the same row for a smaller set of rows
 		return find_hash_of_next_range(client, table, hasher_for_their_range.row_count/2, prev_key, last_key, hash);
-
-	} else {
-		// rows don't match, and there's only 0 or 1 rows in that range on our side, so it's time to send
-		// rows instead of trading hashes; don't advance prev_key or change last_key, so we send that range
-		hash.clear();
-		return hasher_for_their_range.row_count;
 	}
+
+	// rows don't match, and there's only 0 or 1 rows in that range on our side, so it's time to send
+	// rows instead of trading hashes; don't advance prev_key, but if there were no rows in the range,
+	// extend last_key to avoid pathologically poor performance when our end has deleted a range of
+	// keys, as otherwise they'll keep requesting deleted rows one-by-one.  we extend it to include
+	// the next row (arguably the hypothetical key value before that row's would be better).
+	if (hasher_for_their_range.row_count == 0 && !last_key.empty()) {
+		extend_last_key(client, table, last_key);
+	}
+
+	hash.clear();
+	return hasher_for_their_range.row_count;
 }
 
 template <typename DatabaseClient>
