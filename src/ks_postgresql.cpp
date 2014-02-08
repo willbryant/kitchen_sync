@@ -108,32 +108,32 @@ protected:
 
 	template <typename RowFunction>
 	void query(const string &sql, RowFunction &row_handler) {
-	    PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, NULL, NULL, NULL, NULL, 0 /* text-format results only */));
+		PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, NULL, NULL, NULL, NULL, 0 /* text-format results only */));
 
-	    if (res.status() != PGRES_TUPLES_OK) {
+		if (res.status() != PGRES_TUPLES_OK) {
 			backtrace();
 			throw runtime_error(PQerrorMessage(conn) + string("\n") + sql);
-	    }
+		}
 
-	    for (int row_number = 0; row_number < res.n_tuples(); row_number++) {
-	    	PostgreSQLRow row(res, row_number);
-	    	row_handler(row);
-	    }
+		for (int row_number = 0; row_number < res.n_tuples(); row_number++) {
+			PostgreSQLRow row(res, row_number);
+			row_handler(row);
+		}
 	}
 
 	string select_one(const string &sql) {
-	    PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, NULL, NULL, NULL, NULL, 0 /* text-format results only */));
+		PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, NULL, NULL, NULL, NULL, 0 /* text-format results only */));
 
-	    if (res.status() != PGRES_TUPLES_OK) {
+		if (res.status() != PGRES_TUPLES_OK) {
 			backtrace();
 			throw runtime_error(PQerrorMessage(conn) + string("\n") + sql);
-	    }
+		}
 
-	    if (res.n_tuples() != 1 || res.n_columns() != 1) {
-	    	throw runtime_error("Expected query to return only one row with only one column\n" + sql);
-	    }
-	    
-	    return PostgreSQLRow(res, 0).string_at(0);
+		if (res.n_tuples() != 1 || res.n_columns() != 1) {
+			throw runtime_error("Expected query to return only one row with only one column\n" + sql);
+		}
+		
+		return PostgreSQLRow(res, 0).string_at(0);
 	}
 
 private:
