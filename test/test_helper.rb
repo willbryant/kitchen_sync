@@ -131,6 +131,10 @@ module KitchenSync
       expects(:without_snapshot).returns([nil])
     end
 
+    def unpack_next
+      spawner.unpack_next
+    end
+
     def receive_commands(*args)
       spawner.receive_commands(*args) do |command|
         verb = Verbs[command[0]]

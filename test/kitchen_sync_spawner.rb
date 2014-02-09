@@ -90,9 +90,17 @@ class KitchenSyncSpawner
     @unpacker ||= MessagePack::Unpacker.new(@program_stdout)
   end
 
+  def unpack_next
+    unpacker.read.tap do |result|
+      if result.is_a?(Array)
+        result.each_with_index {|argument, i| result[i] = argument.force_encoding("ASCII-8BIT") if argument.is_a?(String)}
+      end
+    end
+  end
+
   def send_command(*args)
     @program_stdin.write(args.to_msgpack)
-    unpacker.read
+    unpack_next
   ensure
     if stderr_contents && stderr_contents != "" && !@expected_stderr_contents
       fail "Unexpected stderr output: #{stderr_contents.inspect}"
@@ -105,7 +113,7 @@ class KitchenSyncSpawner
 
   def receive_commands(*args)
     loop do
-      command = unpacker.read.collect {|argument| argument.is_a?(String) ? argument.force_encoding("ASCII-8BIT") : argument}
+      command = unpack_next.collect {|argument| argument.is_a?(String) ? argument.force_encoding("ASCII-8BIT") : argument}
       results = yield command
       break if command == [Commands::QUIT]
       send_results(results)
