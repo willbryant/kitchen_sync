@@ -7,10 +7,6 @@ class HashFromTest < KitchenSync::EndpointTestCase
     :from
   end
 
-  def send_hash_command(*args)
-    send_command(Commands::HASH, *args)
-  end
-
   def setup_with_footbl
     clear_schema
     create_footbl
@@ -36,10 +32,10 @@ class HashFromTest < KitchenSync::EndpointTestCase
     assert_equal nil, send_command(Commands::OPEN, "footbl")
 
     assert_equal([Commands::HASH, @keys[1], @keys[3], hash_of(@rows[2..3])],
-      send_hash_command(@keys[0], @keys[1], hash_of(@rows[1..1])))
+     send_command(Commands::HASH, @keys[0], @keys[1], hash_of(@rows[1..1])))
 
     assert_equal([Commands::HASH, @keys[2], @keys[4], hash_of(@rows[3..4])],
-      send_hash_command(@keys[0], @keys[2], hash_of(@rows[1..2])))
+     send_command(Commands::HASH, @keys[0], @keys[2], hash_of(@rows[1..2])))
   end
 
   test_each "starts from the first row if an empty array is given as the first argument" do
@@ -47,10 +43,10 @@ class HashFromTest < KitchenSync::EndpointTestCase
     assert_equal nil, send_command(Commands::OPEN, "footbl")
 
     assert_equal([Commands::HASH, @keys[0], @keys[2], hash_of(@rows[1..2])],
-      send_hash_command([], @keys[0], hash_of(@rows[0..0])))
+     send_command(Commands::HASH, [], @keys[0], hash_of(@rows[0..0])))
 
     assert_equal([Commands::HASH, @keys[1], @keys[4], hash_of(@rows[2..4])],
-      send_hash_command([], @keys[1], hash_of(@rows[0..1])))
+     send_command(Commands::HASH, [], @keys[1], hash_of(@rows[0..1])))
   end
 
   test_each "sends back an empty rowset for the key range greater than the last row's key if the hash of the last row is given and matches" do
@@ -58,7 +54,7 @@ class HashFromTest < KitchenSync::EndpointTestCase
     assert_equal nil, send_command(Commands::OPEN, "footbl")
 
     assert_equal([Commands::ROWS, @keys[-1], []],
-      send_hash_command(@keys[-2], @keys[-1], hash_of(@rows[-1..-1])))
+     send_command(Commands::HASH, @keys[-2], @keys[-1], hash_of(@rows[-1..-1])))
   end
 
   test_each "sends back an empty rowset for the key range greater than the last row's key if the hash of the last set of rows is given and matches" do
@@ -66,7 +62,7 @@ class HashFromTest < KitchenSync::EndpointTestCase
     assert_equal nil, send_command(Commands::OPEN, "footbl")
 
     assert_equal([Commands::ROWS, @keys[-1], []],
-      send_hash_command(@keys[-4], @keys[-1], hash_of(@rows[-3..-1])))
+     send_command(Commands::HASH, @keys[-4], @keys[-1], hash_of(@rows[-3..-1])))
   end
 
   test_each "sends back its hash of half as many rows if the hash of multiple rows is given and it doesn't match" do
@@ -74,10 +70,10 @@ class HashFromTest < KitchenSync::EndpointTestCase
     assert_equal nil, send_command(Commands::OPEN, "footbl")
 
     assert_equal([Commands::HASH, @keys[0], @keys[1], hash_of(@rows[1..1])],
-      send_hash_command(@keys[0], @keys[2], hash_of(@rows[1..2]).reverse))
+     send_command(Commands::HASH, @keys[0], @keys[2], hash_of(@rows[1..2]).reverse))
 
     assert_equal([Commands::HASH, @keys[0], @keys[2], hash_of(@rows[1..2])],
-      send_hash_command(@keys[0], @keys[4], hash_of(@rows[1..4]).reverse))
+     send_command(Commands::HASH, @keys[0], @keys[4], hash_of(@rows[1..4]).reverse))
   end
 
   test_each "sends back the row instead if the hash of only one is given and it doesn't match" do
@@ -85,13 +81,13 @@ class HashFromTest < KitchenSync::EndpointTestCase
     assert_equal nil, send_command(Commands::OPEN, "footbl")
 
     assert_equal([Commands::ROWS, @keys[0], @keys[1]],
-      send_hash_command(@keys[0], @keys[1], hash_of(@rows[1..1]).reverse))
+     send_command(Commands::HASH, @keys[0], @keys[1], hash_of(@rows[1..1]).reverse))
     assert_equal @rows[1], unpack_next
     assert_equal       [], unpack_next # indicates end - see rows_from_test.rb
     assert_next_hash_command(@keys[1]) # see rows_from_test
 
     assert_equal([Commands::ROWS, [], @keys[0]],
-      send_hash_command([], @keys[0], hash_of(@rows[0..0]).reverse))
+     send_command(Commands::HASH, [], @keys[0], hash_of(@rows[0..0]).reverse))
     assert_equal @rows[0], unpack_next
     assert_equal       [], unpack_next # as above
     assert_next_hash_command(@keys[0]) # see rows_from_test
@@ -111,28 +107,28 @@ class HashFromTest < KitchenSync::EndpointTestCase
     assert_equal nil, send_command(Commands::OPEN, "secondtbl")
 
     assert_equal([Commands::HASH, @keys[0], @keys[2], hash_of(@rows[1..2])],
-      send_hash_command(      [], @keys[0], hash_of(@rows[0..0])))
+     send_command(Commands::HASH,       [], @keys[0], hash_of(@rows[0..0])))
 
     assert_equal([Commands::HASH, @keys[1], @keys[3], hash_of(@rows[2..3])],
-      send_hash_command(["aa", "101"], @keys[1], hash_of(@rows[1..1])))
+     send_command(Commands::HASH, ["aa", "101"], @keys[1], hash_of(@rows[1..1])))
 
     assert_equal([Commands::HASH, ["aa", "101"], @keys[2], hash_of(@rows[1..2])],
-      send_hash_command(      [], ["aa", "101"], hash_of(@rows[0..0])))
+     send_command(Commands::HASH,       [], ["aa", "101"], hash_of(@rows[0..0])))
 
     assert_equal([Commands::HASH, @keys[1], @keys[3], hash_of(@rows[2..3])],
-      send_hash_command(@keys[0], @keys[1], hash_of(@rows[1..1])))
+     send_command(Commands::HASH, @keys[0], @keys[1], hash_of(@rows[1..1])))
 
     assert_equal([Commands::HASH, @keys[2], @keys[3], hash_of(@rows[3..3])],
-      send_hash_command(@keys[0], @keys[2], hash_of(@rows[1..2])))
+     send_command(Commands::HASH, @keys[0], @keys[2], hash_of(@rows[1..2])))
 
     assert_equal([Commands::ROWS, @keys[0], @keys[1]],
-      send_hash_command(@keys[0], @keys[1], hash_of(@rows[1..1]).reverse))
+     send_command(Commands::HASH, @keys[0], @keys[1], hash_of(@rows[1..1]).reverse))
     assert_equal @rows[1], unpack_next
     assert_equal       [], unpack_next # indicates end - see rows_from_test.rb
     assert_next_hash_command(@keys[1]) # see rows_from_test
 
     assert_equal([Commands::ROWS, @keys[0], ["aa", "968116383"]],
-      send_hash_command(@keys[0], ["aa", "101"], hash_of(@rows[1..1])))
+     send_command(Commands::HASH, @keys[0], ["aa", "101"], hash_of(@rows[1..1])))
     assert_equal @rows[1], unpack_next
     assert_equal       [], unpack_next
     assert_next_hash_command(["aa", "968116383"]) # see rows_from_test
