@@ -45,6 +45,10 @@ struct TableRowApplier {
 		client.add_replace_clearers(unique_keys_clearers, table);
 	}
 
+	~TableRowApplier() {
+		apply();
+	}
+
 	template <typename InputStream>
 	size_t stream_from_input(Unpacker<InputStream> &input, const ColumnValues &matched_up_to_key, const ColumnValues &last_not_matching_key) {
 		// we're being sent the range of rows > matched_up_to_key and <= last_not_matching_key; apply them to our end

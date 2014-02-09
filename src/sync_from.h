@@ -40,10 +40,29 @@ void handle_rows_command(DatabaseClient &client, Packer<OutputStream> &output, c
 }
 
 template <typename DatabaseClient, typename OutputStream>
+void handle_open_command(DatabaseClient &client, Packer<OutputStream> &output, const string &table_name) { // mutable as we allow check_hash_and_choose_next_range to update the values; caller has no use for the original values once passed
+	const Table &table(client.table_by_name(table_name));
+
+	ColumnValues prev_key;
+	ColumnValues last_key;
+	string hash;
+	find_hash_of_next_range(client, table, 1, prev_key, last_key, hash);
+
+	if (hash.empty()) {
+		// rows don't match, and there's only one or no rows left, so send it straight across, as if they had given the rows command
+		handle_rows_command(client, output, table_name, prev_key, last_key);
+		
+	} else {
+		// tell the other end to check its hash of the same rows, using key ranges rather than a count to improve the chances of a match.
+		send_hash_response(output, table_name, prev_key, last_key, hash);
+	}
+}
+
+template <typename DatabaseClient, typename OutputStream>
 void handle_hash_command(DatabaseClient &client, Packer<OutputStream> &output, const string &table_name, ColumnValues &prev_key, ColumnValues &last_key, string &hash) { // mutable as we allow check_hash_and_choose_next_range to update the values; caller has no use for the original values once passed
 	const Table &table(client.table_by_name(table_name));
 
-	size_t row_count = check_hash_and_choose_next_range(client, table, prev_key, last_key, hash);
+	check_hash_and_choose_next_range(client, table, prev_key, last_key, hash);
 
 	if (hash.empty()) {
 		// rows don't match, and there's only one or no rows left, so send it straight across, as if they had given the rows command
@@ -96,7 +115,7 @@ void sync_from(const char *database_host, const char *database_port, const char 
 
 			if (command.verb == Commands::OPEN) {
 				current_table_name = command.argument<string>(0);
-				output.pack_nil(); // arbitrary
+				handle_open_command(client, output, current_table_name);
 
 			} else if (command.verb == Commands::HASH) {
 				if (current_table_name.empty()) throw command_error("Expected a table command before hash command");

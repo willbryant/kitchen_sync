@@ -29,7 +29,8 @@ class HashFromTest < KitchenSync::EndpointTestCase
 
   test_each "calculates the hash of all the rows whose key is greater than the first argument and not greater than the last argument, and if it matches, responds likewise with the hash of the next rows (doubling the count of rows hashed)" do
     setup_with_footbl
-    assert_equal nil, send_command(Commands::OPEN, "footbl")
+    assert_equal [Commands::HASH, [], @keys[0], hash_of(@rows[0..0])],
+     send_command(Commands::OPEN, "footbl")
 
     assert_equal([Commands::HASH, @keys[1], @keys[3], hash_of(@rows[2..3])],
      send_command(Commands::HASH, @keys[0], @keys[1], hash_of(@rows[1..1])))
@@ -40,7 +41,8 @@ class HashFromTest < KitchenSync::EndpointTestCase
 
   test_each "starts from the first row if an empty array is given as the first argument" do
     setup_with_footbl
-    assert_equal nil, send_command(Commands::OPEN, "footbl")
+    assert_equal [Commands::HASH, [], @keys[0], hash_of(@rows[0..0])],
+     send_command(Commands::OPEN, "footbl")
 
     assert_equal([Commands::HASH, @keys[0], @keys[2], hash_of(@rows[1..2])],
      send_command(Commands::HASH, [], @keys[0], hash_of(@rows[0..0])))
@@ -51,7 +53,8 @@ class HashFromTest < KitchenSync::EndpointTestCase
 
   test_each "sends back an empty rowset for the key range greater than the last row's key if the hash of the last row is given and matches" do
     setup_with_footbl
-    assert_equal nil, send_command(Commands::OPEN, "footbl")
+    assert_equal [Commands::HASH, [], @keys[0], hash_of(@rows[0..0])],
+     send_command(Commands::OPEN, "footbl")
 
     assert_equal([Commands::ROWS, @keys[-1], []],
      send_command(Commands::HASH, @keys[-2], @keys[-1], hash_of(@rows[-1..-1])))
@@ -59,7 +62,8 @@ class HashFromTest < KitchenSync::EndpointTestCase
 
   test_each "sends back an empty rowset for the key range greater than the last row's key if the hash of the last set of rows is given and matches" do
     setup_with_footbl
-    assert_equal nil, send_command(Commands::OPEN, "footbl")
+    assert_equal [Commands::HASH, [], @keys[0], hash_of(@rows[0..0])],
+     send_command(Commands::OPEN, "footbl")
 
     assert_equal([Commands::ROWS, @keys[-1], []],
      send_command(Commands::HASH, @keys[-4], @keys[-1], hash_of(@rows[-3..-1])))
@@ -67,7 +71,8 @@ class HashFromTest < KitchenSync::EndpointTestCase
 
   test_each "sends back its hash of half as many rows if the hash of multiple rows is given and it doesn't match" do
     setup_with_footbl
-    assert_equal nil, send_command(Commands::OPEN, "footbl")
+    assert_equal [Commands::HASH, [], @keys[0], hash_of(@rows[0..0])],
+     send_command(Commands::OPEN, "footbl")
 
     assert_equal([Commands::HASH, @keys[0], @keys[1], hash_of(@rows[1..1])],
      send_command(Commands::HASH, @keys[0], @keys[2], hash_of(@rows[1..2]).reverse))
@@ -78,7 +83,8 @@ class HashFromTest < KitchenSync::EndpointTestCase
 
   test_each "sends back the row instead if the hash of only one is given and it doesn't match" do
     setup_with_footbl
-    assert_equal nil, send_command(Commands::OPEN, "footbl")
+    assert_equal [Commands::HASH, [], @keys[0], hash_of(@rows[0..0])],
+     send_command(Commands::OPEN, "footbl")
 
     assert_equal([Commands::ROWS, @keys[0], @keys[1]],
      send_command(Commands::HASH, @keys[0], @keys[1], hash_of(@rows[1..1]).reverse))
@@ -104,7 +110,8 @@ class HashFromTest < KitchenSync::EndpointTestCase
     # note that the primary key columns are in reverse order to the table definition; the command arguments need to be given in the key order, but the column order for the results is unrelated
     @keys = @rows.collect {|row| [row[1], row[0]]}
     send_handshake_commands
-    assert_equal nil, send_command(Commands::OPEN, "secondtbl")
+    assert_equal [Commands::HASH, [], @keys[0], hash_of(@rows[0..0])],
+     send_command(Commands::OPEN, "secondtbl")
 
     assert_equal([Commands::HASH, @keys[0], @keys[2], hash_of(@rows[1..2])],
      send_command(Commands::HASH,       [], @keys[0], hash_of(@rows[0..0])))

@@ -190,28 +190,9 @@ struct SyncToWorker {
 		}
 
 		send_command(output, Commands::OPEN, table.name);
-		input.next_nil(); // arbitrary like earlier one-way commands
-
-		// start with 1 row of the table; find its hash, and set its key as the key range
-		// if there are no rows, this will return a blank hash, which is handled in the loop
-		find_hash_of_next_range(client, table, 1, prev_key, last_key, hash);
 
 		while (true) {
-			if (hash.empty()) {
-				// ask the other end to send their rows in this range.
-				if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
-				send_command(output, Commands::ROWS, prev_key, last_key);
-
-			} else {
-				// tell the other end to check its hash of the same rows, using key ranges rather than a count to improve the chances of a match.
-				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
-				send_command(output, Commands::HASH, prev_key, last_key, hash);
-
-				// unlike 'rows', this is an independent command, so count it
-				hash_commands++;
-			}
-
-			sync_queue.check_aborted(); // rather than wait until the end of the current table; we do it here since it's likely we'll have no work to do for a short while
+			sync_queue.check_aborted(); // check each iteration, rather than wait until the end of the current table; this is a good place to do it since it's likely we'll have no work to do for a short while
 
 			Command command;
 			input >> command;
@@ -223,28 +204,15 @@ struct SyncToWorker {
 				prev_key = command.argument<ColumnValues>(0);
 				last_key = command.argument<ColumnValues>(1);
 				if (verbose >= VERY_VERBOSE) cout << "<- rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
-
 				rows_commands++;
 
-				size_t rows_in_range = row_applier.stream_from_input(input, prev_key, last_key);
+				row_applier.stream_from_input(input, prev_key, last_key);
 
-				// if the range extends to the end of their table, that means we're done with this table
-				if (last_key.empty()) {
-					// apply any pending updates
-					row_applier.apply();
-					if (verbose) {
-						time_t now = time(NULL);
-						boost::unique_lock<boost::mutex> lock(sync_queue.mutex);
-						cout << "finished " << table.name << " in " << (now - started) << "s using " << hash_commands << " hash commands and " << rows_commands << " rows commands changing " << row_applier.rows_changed << " rows" << endl << flush;
-					}
-					return;
-				}
-
-				// otherwise, rows commands are immediately followed by a hash command
-				input >> command;
-			}
-
-			if (command.verb == Commands::HASH) {
+				// if the range extends to the end of their table, that means we're done with this table;
+				// otherwise, rows commands are immediately followed by another command
+				if (last_key.empty()) break;
+				
+			} else if (command.verb == Commands::HASH) {
 				// they've sent us back a hash for a set of rows, which will happen if:
 				// - the last hash we sent them matched, and so they've moved on to the next set of rows; or
 				// - the last hash we sent them didn't match, so they've reduced the key range and sent us back
@@ -254,14 +222,36 @@ struct SyncToWorker {
 				last_key = command.argument<ColumnValues>(1);
 				hash     = command.argument<string>(2);
 				if (verbose >= VERY_VERBOSE) cout << "<- hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
-
 				hash_commands++;
 
+				// after each hash command received it's our turn to send the next command
 				check_hash_and_choose_next_range(client, table, prev_key, last_key, hash);
+				if (send_hash_or_rows_command(table, prev_key, last_key, hash)) hash_commands++;
 
 			} else {
 				throw command_error("Unknown command " + to_string(command.verb));
 			}
+		}
+
+		if (verbose) {
+			time_t now = time(NULL);
+			boost::unique_lock<boost::mutex> lock(sync_queue.mutex);
+			cout << "finished " << table.name << " in " << (now - started) << "s using " << hash_commands << " hash commands and " << rows_commands << " rows commands changing " << row_applier.rows_changed << " rows" << endl << flush;
+		}
+	}
+
+	bool send_hash_or_rows_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
+		if (hash.empty()) {
+			// ask the other end to send their rows in this range.
+			if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
+			send_command(output, Commands::ROWS, prev_key, last_key);
+			return false;
+
+		} else {
+			// tell the other end to check its hash of the same rows, using key ranges rather than a count to improve the chances of a match.
+			if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
+			send_command(output, Commands::HASH, prev_key, last_key, hash);
+			return true;
 		}
 	}
 

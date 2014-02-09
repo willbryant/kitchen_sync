@@ -26,13 +26,9 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_secondtbl
 
     expects(:schema).with().returns([{"tables" => [footbl_def, middletbl_def, secondtbl_def]}])
-    expects(:open).with("footbl").returns([nil])
-    expects(:open).with("middletbl").returns([nil])
-    expects(:open).with("secondtbl").returns([nil])
-    expects(:rows).times(3).returns(
-      [[Commands::ROWS, [], []], []],
-      [[Commands::ROWS, [], []], []],
-      [[Commands::ROWS, [], []], []])
+    expects(:open).with("footbl").returns([[Commands::ROWS, [], []], []])
+    expects(:open).with("middletbl").returns([[Commands::ROWS, [], []], []])
+    expects(:open).with("secondtbl").returns([[Commands::ROWS, [], []], []])
     expects(:quit)
     receive_commands
   end
@@ -142,11 +138,8 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_secondtbl
 
     expects(:schema).with().returns([{"tables" => [footbl_def, middletbl_def, secondtbl_def]}])
-    expects(:open).with("middletbl").returns([nil])
-    expects(:open).with("secondtbl").returns([nil])
-    expects(:rows).times(2).returns(
-      [[Commands::ROWS, [], []], []],
-      [[Commands::ROWS, [], []], []])
+    expects(:open).with("middletbl").returns([[Commands::ROWS, [], []], []])
+    expects(:open).with("secondtbl").returns([[Commands::ROWS, [], []], []])
     expects(:quit)
     receive_commands
   end
@@ -158,11 +151,8 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_secondtbl
 
     expects(:schema).with().returns([{"tables" => [footbl_def, middletbl_def, secondtbl_def]}])
-    expects(:open).with("footbl").returns([nil])
-    expects(:open).with("secondtbl").returns([nil])
-    expects(:rows).times(2).returns(
-      [[Commands::ROWS, [], []], []],
-      [[Commands::ROWS, [], []], []])
+    expects(:open).with("footbl").returns([[Commands::ROWS, [], []], []])
+    expects(:open).with("secondtbl").returns([[Commands::ROWS, [], []], []])
     expects(:quit)
     receive_commands
   end
@@ -174,11 +164,8 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_middletbl
 
     expects(:schema).with().returns([{"tables" => [footbl_def, middletbl_def, secondtbl_def]}])
-    expects(:open).with("footbl").returns([nil])
-    expects(:open).with("middletbl").returns([nil])
-    expects(:rows).times(2).returns(
-      [[Commands::ROWS, [], []], []],
-      [[Commands::ROWS, [], []], []])
+    expects(:open).with("footbl").returns([[Commands::ROWS, [], []], []])
+    expects(:open).with("middletbl").returns([[Commands::ROWS, [], []], []])
     expects(:quit)
     receive_commands
   end
@@ -191,11 +178,8 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_secondtbl
 
     expects(:schema).with().returns([{"tables" => [middletbl_def, secondtbl_def]}])
-    expects(:open).with("middletbl").returns([nil])
-    expects(:open).with("secondtbl").returns([nil])
-    expects(:rows).times(2).returns(
-      [[Commands::ROWS, [], []], []],
-      [[Commands::ROWS, [], []], []])
+    expects(:open).with("middletbl").returns([[Commands::ROWS, [], []], []])
+    expects(:open).with("secondtbl").returns([[Commands::ROWS, [], []], []])
     expects(:quit)
     receive_commands
   end
@@ -208,11 +192,8 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_secondtbl
 
     expects(:schema).with().returns([{"tables" => [footbl_def, secondtbl_def]}])
-    expects(:open).with("footbl").returns([nil])
-    expects(:open).with("secondtbl").returns([nil])
-    expects(:rows).times(2).returns(
-      [[Commands::ROWS, [], []], []],
-      [[Commands::ROWS, [], []], []])
+    expects(:open).with("footbl").returns([[Commands::ROWS, [], []], []])
+    expects(:open).with("secondtbl").returns([[Commands::ROWS, [], []], []])
     expects(:quit)
     receive_commands
   end
@@ -225,11 +206,8 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_secondtbl
 
     expects(:schema).with().returns([{"tables" => [footbl_def, middletbl_def]}])
-    expects(:open).with("footbl").returns([nil])
-    expects(:open).with("middletbl").returns([nil])
-    expects(:rows).times(2).returns(
-      [[Commands::ROWS, [], []], []],
-      [[Commands::ROWS, [], []], []])
+    expects(:open).with("footbl").returns([[Commands::ROWS, [], []], []])
+    expects(:open).with("middletbl").returns([[Commands::ROWS, [], []], []])
     expects(:quit)
     receive_commands
   end
