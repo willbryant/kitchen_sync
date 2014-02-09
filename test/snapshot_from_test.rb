@@ -1,6 +1,6 @@
 require File.expand_path(File.join(File.dirname(__FILE__), 'test_helper'))
 
-class SchemaFromTest < KitchenSync::EndpointTestCase
+class SnapshotFromTest < KitchenSync::EndpointTestCase
   include TestTableSchemas
 
   def from_or_to
