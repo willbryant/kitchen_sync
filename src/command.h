@@ -57,8 +57,9 @@ struct command_error: public runtime_error {
 };
 
 namespace Commands {
-	const uint32_t ROWS = 1;
-	const uint32_t HASH = 2;
+	const uint32_t OPEN = 1;
+	const uint32_t ROWS = 2;
+	const uint32_t HASH = 3;
 
 	const uint32_t PROTOCOL = 32;
 	const uint32_t EXPORT_SNAPSHOT  = 33;

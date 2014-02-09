@@ -68,8 +68,9 @@ ENDPOINT_DATABASES = {
 }
 
 module Commands
-  ROWS = 1
-  HASH = 2
+  OPEN = 1
+  ROWS = 2
+  HASH = 3
 
   PROTOCOL = 32
   EXPORT_SNAPSHOT  = 33

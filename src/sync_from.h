@@ -5,12 +5,12 @@
 
 template <typename OutputStream>
 inline void send_hash_response(Packer<OutputStream> &output, const string &table_name, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
-	send_command(output, Commands::HASH, table_name, prev_key, last_key, hash);
+	send_command(output, Commands::HASH, prev_key, last_key, hash);
 }
 
 template <typename DatabaseClient, typename OutputStream>
 inline void send_rows_response(DatabaseClient &client, Packer<OutputStream> &output, const Table &table, ColumnValues &prev_key, ColumnValues &last_key) {
-	send_command(output, Commands::ROWS, table.name, prev_key, last_key);
+	send_command(output, Commands::ROWS, prev_key, last_key);
 	RowPacker<typename DatabaseClient::RowType, OutputStream> row_packer(output);
 	client.retrieve_rows(table, prev_key, last_key, row_packer);
 }
@@ -86,24 +86,30 @@ void sync_from(const char *database_host, const char *database_port, const char 
 
 	int protocol = negotiate_protocol_version(input, output, PROTOCOL_VERSION_SUPPORTED);
 
+	string current_table_name;
+
 	try {
 		Command command;
 
 		while (true) {
 			input >> command;
 
-			if (command.verb == Commands::HASH) {
-				string     table_name(command.argument<string>(0));
-				ColumnValues prev_key(command.argument<ColumnValues>(1));
-				ColumnValues last_key(command.argument<ColumnValues>(2));
-				string           hash(command.argument<string>(3));
-				handle_hash_command(client, output, table_name, prev_key, last_key, hash);
+			if (command.verb == Commands::OPEN) {
+				current_table_name = command.argument<string>(0);
+				output.pack_nil(); // arbitrary
+
+			} else if (command.verb == Commands::HASH) {
+				if (current_table_name.empty()) throw command_error("Expected a table command before hash command");
+				ColumnValues prev_key(command.argument<ColumnValues>(0));
+				ColumnValues last_key(command.argument<ColumnValues>(1));
+				string           hash(command.argument<string>(2));
+				handle_hash_command(client, output, current_table_name, prev_key, last_key, hash);
 
 			} else if (command.verb == Commands::ROWS) {
-				string     table_name(command.argument<string>(0));
-				ColumnValues prev_key(command.argument<ColumnValues>(1));
-				ColumnValues last_key(command.argument<ColumnValues>(2));
-				handle_rows_command(client, output, table_name, prev_key, last_key);
+				if (current_table_name.empty()) throw command_error("Expected a table command before rows command");
+				ColumnValues prev_key(command.argument<ColumnValues>(0));
+				ColumnValues last_key(command.argument<ColumnValues>(1));
+				handle_rows_command(client, output, current_table_name, prev_key, last_key);
 
 			} else if (command.verb == Commands::EXPORT_SNAPSHOT) {
 				output << client.export_snapshot();

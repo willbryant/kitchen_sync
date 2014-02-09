@@ -189,6 +189,9 @@ struct SyncToWorker {
 			cout << "starting " << table.name << endl << flush;
 		}
 
+		send_command(output, Commands::OPEN, table.name);
+		input.next_nil(); // arbitrary like earlier one-way commands
+
 		// start with 1 row of the table; find its hash, and set its key as the key range
 		// if there are no rows, this will return a blank hash, which is handled in the loop
 		find_hash_of_next_range(client, table, 1, prev_key, last_key, hash);
@@ -199,12 +202,12 @@ struct SyncToWorker {
 			if (hash.empty()) {
 				// ask the other end to send their rows in this range.
 				if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
-				send_command(output, Commands::ROWS, table.name, prev_key, last_key);
+				send_command(output, Commands::ROWS, prev_key, last_key);
 
 			} else {
 				// tell the other end to check its hash of the same rows, using key ranges rather than a count to improve the chances of a match.
 				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
-				send_command(output, Commands::HASH, table.name, prev_key, last_key, hash);
+				send_command(output, Commands::HASH, prev_key, last_key, hash);
 
 				// unlike 'rows', this is an independent command, so count it
 				hash_commands++;
@@ -216,13 +219,11 @@ struct SyncToWorker {
 			input >> command;
 
 			if (command.verb == Commands::ROWS) {
-				if (command.argument<string>(0) != table.name) throw command_error("Received response on table " + command.argument<string>(0) + " but request was for " + table.name);
-
 				// we're being sent a range of rows; apply them to our end.  we do this in-context to
 				// provide flow control - if we buffered and used a separate apply thread, we would
 				// bloat up if this end couldn't write to disk as quickly as the other end sent data.
-				prev_key = command.argument<ColumnValues>(1);
-				last_key = command.argument<ColumnValues>(2);
+				prev_key = command.argument<ColumnValues>(0);
+				last_key = command.argument<ColumnValues>(1);
 				if (verbose >= VERY_VERBOSE) cout << "<- rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
 
 				rows_commands++;
@@ -246,16 +247,14 @@ struct SyncToWorker {
 			}
 
 			if (command.verb == Commands::HASH) {
-				if (command.argument<string>(0) != table.name) throw command_error("Received response on table " + command.argument<string>(0) + " but request was for " + table.name);
-
 				// they've sent us back a hash for a set of rows, which will happen if:
 				// - the last hash we sent them matched, and so they've moved on to the next set of rows; or
 				// - the last hash we sent them didn't match, so they've reduced the key range and sent us back
 				//   the hash for a smaller set of rows (but not so small that they sent back the data instead)
 				// we don't need to know which case it is; simply loop around and carry on
-				prev_key = command.argument<ColumnValues>(1);
-				last_key = command.argument<ColumnValues>(2);
-				hash     = command.argument<string>(3);
+				prev_key = command.argument<ColumnValues>(0);
+				last_key = command.argument<ColumnValues>(1);
+				hash     = command.argument<string>(2);
 				if (verbose >= VERY_VERBOSE) cout << "<- hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
 
 				hash_commands++;
