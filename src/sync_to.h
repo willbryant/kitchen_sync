@@ -197,8 +197,6 @@ struct SyncToWorker {
 		find_hash_of_next_range(client, table, 1, prev_key, last_key, hash);
 
 		while (true) {
-			ColumnValues matched_up_to_key;
-
 			if (hash.empty()) {
 				// ask the other end to send their rows in this range.
 				if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
