@@ -206,7 +206,7 @@ struct SyncToWorker {
 				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
 				send_command(output, Commands::HASH, table.name, prev_key, last_key, hash);
 
-				// unlike 'rows', this is an independent command (which implies the last hash command was successfully matched), so count it
+				// unlike 'rows', this is an independent command, so count it
 				hash_commands++;
 			}
 
