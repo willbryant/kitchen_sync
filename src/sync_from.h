@@ -61,7 +61,7 @@ int negotiate_protocol_version(Unpacker<InputStream> &input, Packer<OutputStream
 	Command command;
 	input >> command;
 	if (command.verb != Commands::PROTOCOL) {
-		throw command_error("Expected a protocol command before " + command.verb);
+		throw command_error("Expected a protocol command before " + to_string(command.verb));
 	}
 
 	// the usable protocol is the highest out of those supported by the two ends
@@ -128,7 +128,7 @@ void sync_from(const char *database_host, const char *database_port, const char 
 				break;
 
 			} else {
-				throw command_error("Unknown command " + command.verb);
+				throw command_error("Unknown command " + to_string(command.verb));
 			}
 
 			output.flush();

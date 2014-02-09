@@ -263,7 +263,7 @@ struct SyncToWorker {
 				check_hash_and_choose_next_range(client, table, prev_key, last_key, hash);
 
 			} else {
-				throw command_error("Unknown command " + command.verb);
+				throw command_error("Unknown command " + to_string(command.verb));
 			}
 		}
 	}

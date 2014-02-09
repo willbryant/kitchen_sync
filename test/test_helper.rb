@@ -68,17 +68,19 @@ ENDPOINT_DATABASES = {
 }
 
 module Commands
-  ROWS = "rows"
-  HASH = "hash"
+  ROWS = 1
+  HASH = 2
 
-  PROTOCOL = "protocol"
-  EXPORT_SNAPSHOT  = "export_snapshot"
-  IMPORT_SNAPSHOT  = "import_snapshot"
-  UNHOLD_SNAPSHOT  = "unhold_snapshot"
-  WITHOUT_SNAPSHOT = "without_snapshot"
-  SCHEMA = "schema"
-  QUIT = "quit"
+  PROTOCOL = 32
+  EXPORT_SNAPSHOT  = 33
+  IMPORT_SNAPSHOT  = 34
+  UNHOLD_SNAPSHOT  = 35
+  WITHOUT_SNAPSHOT = 36
+  SCHEMA = 37
+  QUIT = 0
 end
+
+Verbs = Commands.constants.each_with_object({}) {|k, results| results[Commands.const_get(k)] = k.to_s.downcase}.freeze
 
 module KitchenSync
   class TestCase < Test::Unit::TestCase
@@ -130,7 +132,8 @@ module KitchenSync
 
     def receive_commands(*args)
       spawner.receive_commands(*args) do |command|
-        send(*command)
+        verb = Verbs[command[0]]
+        send(verb, *command[1..-1])
       end
     end
 
