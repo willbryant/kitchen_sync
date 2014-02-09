@@ -67,6 +67,19 @@ ENDPOINT_DATABASES = {
   }
 }
 
+module Commands
+  ROWS = "rows"
+  HASH = "hash"
+
+  PROTOCOL = "protocol"
+  EXPORT_SNAPSHOT  = "export_snapshot"
+  IMPORT_SNAPSHOT  = "import_snapshot"
+  UNHOLD_SNAPSHOT  = "unhold_snapshot"
+  WITHOUT_SNAPSHOT = "without_snapshot"
+  SCHEMA = "schema"
+  QUIT = "quit"
+end
+
 module KitchenSync
   class TestCase < Test::Unit::TestCase
     CURRENT_PROTOCOL_VERSION = 1
@@ -100,11 +113,11 @@ module KitchenSync
     end
 
     def send_protocol_command
-      assert_equal CURRENT_PROTOCOL_VERSION, send_command("protocol", CURRENT_PROTOCOL_VERSION)
+      assert_equal CURRENT_PROTOCOL_VERSION, send_command(Commands::PROTOCOL, CURRENT_PROTOCOL_VERSION)
     end
 
     def send_without_snapshot_command
-      assert_equal nil, send_command("without_snapshot")
+      assert_equal nil, send_command(Commands::WITHOUT_SNAPSHOT)
     end
 
     def expect_handshake_commands

@@ -5,12 +5,12 @@
 
 template <typename OutputStream>
 inline void send_hash_response(Packer<OutputStream> &output, const string &table_name, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
-	send_command(output, "hash", table_name, prev_key, last_key, hash);
+	send_command(output, Commands::HASH, table_name, prev_key, last_key, hash);
 }
 
 template <typename DatabaseClient, typename OutputStream>
 inline void send_rows_response(DatabaseClient &client, Packer<OutputStream> &output, const Table &table, ColumnValues &prev_key, ColumnValues &last_key) {
-	send_command(output, "rows", table.name, prev_key, last_key);
+	send_command(output, Commands::ROWS, table.name, prev_key, last_key);
 	RowPacker<typename DatabaseClient::RowType, OutputStream> row_packer(output);
 	client.retrieve_rows(table, prev_key, last_key, row_packer);
 }
@@ -57,11 +57,11 @@ void handle_hash_command(DatabaseClient &client, Packer<OutputStream> &output, c
 
 template <typename InputStream, typename OutputStream>
 int negotiate_protocol_version(Unpacker<InputStream> &input, Packer<OutputStream> &output, int protocol_version_supported) {
-	// all conversations must start with a "protocol" command to establish the language to be used
+	// all conversations must start with a Commands::PROTOCOL command to establish the language to be used
 	Command command;
 	input >> command;
-	if (command.name != "protocol") {
-		throw command_error("Expected a protocol command before " + command.name);
+	if (command.verb != Commands::PROTOCOL) {
+		throw command_error("Expected a protocol command before " + command.verb);
 	}
 
 	// the usable protocol is the highest out of those supported by the two ends
@@ -92,43 +92,43 @@ void sync_from(const char *database_host, const char *database_port, const char 
 		while (true) {
 			input >> command;
 
-			if (command.name == "hash") {
+			if (command.verb == Commands::HASH) {
 				string     table_name(command.argument<string>(0));
 				ColumnValues prev_key(command.argument<ColumnValues>(1));
 				ColumnValues last_key(command.argument<ColumnValues>(2));
 				string           hash(command.argument<string>(3));
 				handle_hash_command(client, output, table_name, prev_key, last_key, hash);
 
-			} else if (command.name == "rows") {
+			} else if (command.verb == Commands::ROWS) {
 				string     table_name(command.argument<string>(0));
 				ColumnValues prev_key(command.argument<ColumnValues>(1));
 				ColumnValues last_key(command.argument<ColumnValues>(2));
 				handle_rows_command(client, output, table_name, prev_key, last_key);
 
-			} else if (command.name == "export_snapshot") {
+			} else if (command.verb == Commands::EXPORT_SNAPSHOT) {
 				output << client.export_snapshot();
 
-			} else if (command.name == "import_snapshot") {
+			} else if (command.verb == Commands::IMPORT_SNAPSHOT) {
 				string snapshot(command.argument<string>(0));
 				client.import_snapshot(snapshot);
 				output.pack_nil(); // arbitrary, sent to indicate we've started our transaction
 
-			} else if (command.name == "unhold_snapshot") {
+			} else if (command.verb == Commands::UNHOLD_SNAPSHOT) {
 				client.unhold_snapshot();
 				output.pack_nil(); // similarly arbitrary
 
-			} else if (command.name == "without_snapshot") {
+			} else if (command.verb == Commands::WITHOUT_SNAPSHOT) {
 				client.start_read_transaction();
 				output.pack_nil(); // similarly arbitrary
 
-			} else if (command.name == "schema") {
+			} else if (command.verb == Commands::SCHEMA) {
 				output << client.database_schema();
 
-			} else if (command.name == "quit") {
+			} else if (command.verb == Commands::QUIT) {
 				break;
 
 			} else {
-				throw command_error("Unknown command " + command.name);
+				throw command_error("Unknown command " + command.verb);
 			}
 
 			output.flush();

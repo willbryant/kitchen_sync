@@ -27,9 +27,9 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expects(:schema).with().returns([{"tables" => [footbl_def, middletbl_def, secondtbl_def]}])
     expects(:rows).times(3).returns(
-      [["rows", "footbl", [], []], []],
-      [["rows", "middletbl", [], []], []],
-      [["rows", "secondtbl", [], []], []])
+      [[Commands::ROWS, "footbl", [], []], []],
+      [[Commands::ROWS, "middletbl", [], []], []],
+      [[Commands::ROWS, "secondtbl", [], []], []])
     expects(:quit)
     receive_commands
   end
@@ -140,8 +140,8 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expects(:schema).with().returns([{"tables" => [footbl_def, middletbl_def, secondtbl_def]}])
     expects(:rows).times(2).returns(
-      [["rows", "middletbl", [], []], []],
-      [["rows", "secondtbl", [], []], []])
+      [[Commands::ROWS, "middletbl", [], []], []],
+      [[Commands::ROWS, "secondtbl", [], []], []])
     expects(:quit)
     receive_commands
   end
@@ -154,8 +154,8 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expects(:schema).with().returns([{"tables" => [footbl_def, middletbl_def, secondtbl_def]}])
     expects(:rows).times(2).returns(
-      [["rows", "footbl", [], []], []],
-      [["rows", "secondtbl", [], []], []])
+      [[Commands::ROWS, "footbl", [], []], []],
+      [[Commands::ROWS, "secondtbl", [], []], []])
     expects(:quit)
     receive_commands
   end
@@ -168,8 +168,8 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expects(:schema).with().returns([{"tables" => [footbl_def, middletbl_def, secondtbl_def]}])
     expects(:rows).times(2).returns(
-      [["rows", "footbl", [], []], []],
-      [["rows", "middletbl", [], []], []])
+      [[Commands::ROWS, "footbl", [], []], []],
+      [[Commands::ROWS, "middletbl", [], []], []])
     expects(:quit)
     receive_commands
   end
@@ -183,8 +183,8 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expects(:schema).with().returns([{"tables" => [middletbl_def, secondtbl_def]}])
     expects(:rows).times(2).returns(
-      [["rows", "middletbl", [], []], []],
-      [["rows", "secondtbl", [], []], []])
+      [[Commands::ROWS, "middletbl", [], []], []],
+      [[Commands::ROWS, "secondtbl", [], []], []])
     expects(:quit)
     receive_commands
   end
@@ -198,8 +198,8 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expects(:schema).with().returns([{"tables" => [footbl_def, secondtbl_def]}])
     expects(:rows).times(2).returns(
-      [["rows", "footbl", [], []], []],
-      [["rows", "secondtbl", [], []], []])
+      [[Commands::ROWS, "footbl", [], []], []],
+      [[Commands::ROWS, "secondtbl", [], []], []])
     expects(:quit)
     receive_commands
   end
@@ -213,8 +213,8 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expects(:schema).with().returns([{"tables" => [footbl_def, middletbl_def]}])
     expects(:rows).times(2).returns(
-      [["rows", "footbl", [], []], []],
-      [["rows", "middletbl", [], []], []])
+      [[Commands::ROWS, "footbl", [], []], []],
+      [[Commands::ROWS, "middletbl", [], []], []])
     expects(:quit)
     receive_commands
   end

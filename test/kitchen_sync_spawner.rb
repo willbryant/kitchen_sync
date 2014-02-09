@@ -107,7 +107,7 @@ class KitchenSyncSpawner
     loop do
       command = unpacker.read.collect {|argument| argument.is_a?(String) ? argument.force_encoding("ASCII-8BIT") : argument}
       results = yield command
-      break if command == ["quit"]
+      break if command == [Commands::QUIT]
       send_results(results)
     end
 
@@ -123,6 +123,6 @@ class KitchenSyncSpawner
   end
 
   def quit
-    send_command("quit")
+    send_command(Commands::QUIT)
   end
 end

@@ -83,7 +83,7 @@ struct SyncToWorker {
 		const int PROTOCOL_VERSION_SUPPORTED = 1;
 
 		// tell the other end what version of the protocol we can speak, and have them tell us which version we're able to converse in
-		send_command(output, "protocol", PROTOCOL_VERSION_SUPPORTED);
+		send_command(output, Commands::PROTOCOL, PROTOCOL_VERSION_SUPPORTED);
 
 		// read the response to the protocol_version command that the output thread sends when it starts
 		// this is currently unused, but the command's semantics need to be in place for it to be useful in the future...
@@ -103,14 +103,14 @@ struct SyncToWorker {
 
 			// now, request the lock or snapshot from the leader's peer.
 			if (leader) {
-				send_command(output, "export_snapshot");
+				send_command(output, Commands::EXPORT_SNAPSHOT);
 				sync_queue.snapshot = input.next<string>();
 			}
 			sync_queue.wait_at_barrier();
 
 			// as soon as it has responded, adopt the snapshot/start the transaction in each of the other workers.
 			if (!leader) {
-				send_command(output, "import_snapshot", sync_queue.snapshot);
+				send_command(output, Commands::IMPORT_SNAPSHOT, sync_queue.snapshot);
 				input.next_nil(); // arbitrary; sent by the other end once they've started their transaction
 			}
 			sync_queue.wait_at_barrier();
@@ -118,11 +118,11 @@ struct SyncToWorker {
 			// those databases that use locking instead of snapshot adoption can release the locks once
 			// all the workers have started their transactions.
 			if (leader) {
-				send_command(output, "unhold_snapshot");
+				send_command(output, Commands::UNHOLD_SNAPSHOT);
 				input.next_nil(); // similarly arbitrary
 			}
 		} else {
-			send_command(output, "without_snapshot");
+			send_command(output, Commands::WITHOUT_SNAPSHOT);
 			input.next_nil(); // similarly arbitrary
 		}
 	}
@@ -131,7 +131,7 @@ struct SyncToWorker {
 		// we could do this in all workers, but there's no need, and it'd waste a bit of traffic/time
 		if (leader) {
 			// get its schema
-			send_command(output, "schema");
+			send_command(output, Commands::SCHEMA);
 
 			// read the response to the schema command that the output thread sends when it starts
 			Database from_database;
@@ -199,12 +199,12 @@ struct SyncToWorker {
 			if (hash.empty()) {
 				// ask the other end to send their rows in this range.
 				if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
-				send_command(output, "rows", table.name, prev_key, last_key);
+				send_command(output, Commands::ROWS, table.name, prev_key, last_key);
 
 			} else {
 				// tell the other end to check its hash of the same rows, using key ranges rather than a count to improve the chances of a match.
 				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
-				send_command(output, "hash", table.name, prev_key, last_key, hash);
+				send_command(output, Commands::HASH, table.name, prev_key, last_key, hash);
 
 				// unlike 'rows', this is an independent command (which implies the last hash command was successfully matched), so count it
 				hash_commands++;
@@ -215,7 +215,7 @@ struct SyncToWorker {
 			Command command;
 			input >> command;
 
-			if (command.name == "rows") {
+			if (command.verb == Commands::ROWS) {
 				if (command.argument<string>(0) != table.name) throw command_error("Received response on table " + command.argument<string>(0) + " but request was for " + table.name);
 
 				// we're being sent a range of rows; apply them to our end.  we do this in-context to
@@ -245,7 +245,7 @@ struct SyncToWorker {
 				input >> command;
 			}
 
-			if (command.name == "hash") {
+			if (command.verb == Commands::HASH) {
 				if (command.argument<string>(0) != table.name) throw command_error("Received response on table " + command.argument<string>(0) + " but request was for " + table.name);
 
 				// they've sent us back a hash for a set of rows, which will happen if:
@@ -263,14 +263,14 @@ struct SyncToWorker {
 				check_hash_and_choose_next_range(client, table, prev_key, last_key, hash);
 
 			} else {
-				throw command_error("Unknown command " + command.name);
+				throw command_error("Unknown command " + command.verb);
 			}
 		}
 	}
 
 	void send_quit() {
 		try {
-			send_command(output, "quit");
+			send_command(output, Commands::QUIT);
 		} catch (const exception &e) {
 			// we don't care if sending this command fails itself, we're already past the point where we could abort anyway
 		}
