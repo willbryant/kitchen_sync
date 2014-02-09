@@ -19,23 +19,24 @@ template <typename DatabaseClient, typename OutputStream>
 void handle_rows_command(DatabaseClient &client, Packer<OutputStream> &output, const string &table_name, ColumnValues &prev_key, ColumnValues &last_key) { // mutable as we allow find_hash_of_next_range to update the values; caller has no use for the original values once passed
 	const Table &table(client.table_by_name(table_name));
 
-	if (last_key.empty()) {
-		// send all remaining rows and we're done
-		send_rows_response(client, output, table, prev_key, last_key);
-	} else {
-		// find out what comes after the requested range
-		ColumnValues following_last_key;
-		string hash;
-		find_hash_of_next_range(client, table, 1, last_key, following_last_key, hash);
+	// send the requested rows
+	send_rows_response(client, output, table, prev_key, last_key);
 
-		if (following_last_key.empty()) {
-			// if there's no more rows, we can simply extend the requested range to the end of the table and return it
-			send_rows_response(client, output, table, prev_key, following_last_key);
-		} else {
-			// send the rows in the given range, and then immediately follow on with the hash of the subsequent range
-			send_rows_response(client, output, table, prev_key, last_key);
-			send_hash_response(output, table_name, last_key, following_last_key, hash);
-		}
+	// if that range extended to the end of the table, we're done
+	if (last_key.empty()) return;
+
+	// and then follow up straight away with the next command
+	prev_key = last_key;
+	string hash;
+	find_hash_of_next_range(client, table, 1, prev_key, last_key, hash);
+
+	if (hash.empty()) {
+		// there's only one or no rows left, so send it straight across, as if they had given the rows command
+		send_rows_response(client, output, table, prev_key, last_key);
+
+	} else {
+		// tell the other end to check its hash of the same rows, using key ranges rather than a count to improve the chances of a match.
+		send_hash_response(output, table_name, prev_key, last_key, hash);
 	}
 }
 
@@ -49,7 +50,7 @@ void handle_open_command(DatabaseClient &client, Packer<OutputStream> &output, c
 	find_hash_of_next_range(client, table, 1, prev_key, last_key, hash);
 
 	if (hash.empty()) {
-		// rows don't match, and there's only one or no rows left, so send it straight across, as if they had given the rows command
+		// there's only one or no rows left, so send it straight across, as if they had given the rows command
 		handle_rows_command(client, output, table_name, prev_key, last_key);
 		
 	} else {

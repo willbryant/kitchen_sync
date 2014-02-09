@@ -62,7 +62,7 @@ struct SyncToWorker {
 			}
 
 			// send a quit so the other end closes its output and terminates gracefully
-			send_quit();
+			send_quit_command();
 		} catch (const exception &e) {
 			// make sure all other workers terminate promptly, and if we are the first to fail, output the error
 			if (sync_queue.abort()) {
@@ -255,7 +255,7 @@ struct SyncToWorker {
 		}
 	}
 
-	void send_quit() {
+	void send_quit_command() {
 		try {
 			send_command(output, Commands::QUIT);
 		} catch (const exception &e) {
