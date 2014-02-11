@@ -171,7 +171,11 @@ void MySQLClient::execute(const string &sql) {
 
 void MySQLClient::start_read_transaction() {
 	execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
-	execute(mysql_get_server_version(&mysql) >= MYSQL_5_6_5 ? "START TRANSACTION READ ONLY WITH CONSISTENT SNAPSHOT" : "START TRANSACTION WITH CONSISTENT SNAPSHOT");
+	if (mysql_get_server_version(&mysql) >= MYSQL_5_6_5 && strstr(mysql_get_server_info(&mysql), "MariaDB") == NULL) {
+		execute("START TRANSACTION READ ONLY WITH CONSISTENT SNAPSHOT");
+	} else {
+		execute("START TRANSACTION WITH CONSISTENT SNAPSHOT");
+	}
 	populate_database_schema();
 }
 
