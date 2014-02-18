@@ -225,8 +225,7 @@ struct SyncToWorker {
 				hash_commands++;
 
 				// after each hash command received it's our turn to send the next command
-				check_hash_and_choose_next_range(client, table, prev_key, last_key, hash);
-				if (send_hash_or_rows_command(table, prev_key, last_key, hash)) hash_commands++;
+				check_hash_and_choose_next_range(*this, client, table, prev_key, last_key, hash);
 
 			} else {
 				throw command_error("Unknown command " + to_string(command.verb));
@@ -240,19 +239,15 @@ struct SyncToWorker {
 		}
 	}
 
-	bool send_hash_or_rows_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
-		if (hash.empty()) {
-			// ask the other end to send their rows in this range.
-			if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
-			send_command(output, Commands::ROWS, prev_key, last_key);
-			return false;
+	inline void send_hash_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
+		if (verbose >= VERY_VERBOSE) cout << "<- hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
+		send_command(output, Commands::HASH, prev_key, last_key, hash);
+		// hash_commands++; TODO
+	}
 
-		} else {
-			// tell the other end to check its hash of the same rows, using key ranges rather than a count to improve the chances of a match.
-			if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
-			send_command(output, Commands::HASH, prev_key, last_key, hash);
-			return true;
-		}
+	inline void send_rows_command(const Table &table, ColumnValues &prev_key, ColumnValues &last_key) {
+		if (verbose >= VERY_VERBOSE) cout << "<- rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
+		send_command(output, Commands::ROWS, prev_key, last_key);
 	}
 
 	void send_quit_command() {

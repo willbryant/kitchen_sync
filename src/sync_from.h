@@ -10,7 +10,8 @@ struct SyncFromWorker {
 		in(read_from_descriptor),
 		input(in),
 		out(write_to_descriptor),
-		output(out) {
+		output(out),
+		row_packer(output) {
 	}
 
 	void operator()() {
@@ -76,71 +77,42 @@ struct SyncFromWorker {
 		}
 	}
 
-	inline void send_hash_response(const string &table_name, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
+	inline void send_hash_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
 		send_command(output, Commands::HASH, prev_key, last_key, hash);
 	}
 
-	inline void send_rows_response(const Table &table, ColumnValues &prev_key, ColumnValues &last_key) {
+	inline void send_rows_command(const Table &table, ColumnValues &prev_key, ColumnValues &last_key) {
 		send_command(output, Commands::ROWS, prev_key, last_key);
-		RowPacker<typename DatabaseClient::RowType, FDWriteStream> row_packer(output);
 		client.retrieve_rows(table, prev_key, last_key, row_packer);
-	}
-
-	void handle_rows_command(const string &table_name, ColumnValues &prev_key, ColumnValues &last_key) { // mutable as we allow find_hash_of_next_range to update the values; caller has no use for the original values once passed
-		const Table &table(client.table_by_name(table_name));
-
-		// send the requested rows
-		send_rows_response(table, prev_key, last_key);
+		row_packer.pack_end();
 
 		// if that range extended to the end of the table, we're done
 		if (last_key.empty()) return;
 
 		// and then follow up straight away with the next command
 		prev_key = last_key;
-		string hash;
-		find_hash_of_next_range(client, table, 1, prev_key, last_key, hash);
-
-		if (hash.empty()) {
-			// there's only one or no rows left, so send it straight across, as if they had given the rows command
-			send_rows_response(table, prev_key, last_key);
-
-		} else {
-			// tell the other end to check its hash of the same rows, using key ranges rather than a count to improve the chances of a match.
-			send_hash_response(table_name, prev_key, last_key, hash);
-		}
+		find_hash_of_next_range(*this, client, table, 1, prev_key, last_key);
 	}
 
-	void handle_open_command(const string &table_name) { // mutable as we allow check_hash_and_choose_next_range to update the values; caller has no use for the original values once passed
+	void handle_rows_command(const string &table_name, ColumnValues &prev_key, ColumnValues &last_key) { // mutable as we allow find_hash_of_next_range to update the values; caller has no use for the original values once passed
+		const Table &table(client.table_by_name(table_name));
+
+		// send the requested rows
+		send_rows_command(table, prev_key, last_key);
+	}
+
+	void handle_open_command(const string &table_name) {
 		const Table &table(client.table_by_name(table_name));
 
 		ColumnValues prev_key;
 		ColumnValues last_key;
-		string hash;
-		find_hash_of_next_range(client, table, 1, prev_key, last_key, hash);
-
-		if (hash.empty()) {
-			// there's only one or no rows left, so send it straight across, as if they had given the rows command
-			handle_rows_command(table_name, prev_key, last_key);
-			
-		} else {
-			// tell the other end to check its hash of the same rows, using key ranges rather than a count to improve the chances of a match.
-			send_hash_response(table_name, prev_key, last_key, hash);
-		}
+		find_hash_of_next_range(*this, client, table, 1, prev_key, last_key);
 	}
 
 	void handle_hash_command(const string &table_name, ColumnValues &prev_key, ColumnValues &last_key, string &hash) { // mutable as we allow check_hash_and_choose_next_range to update the values; caller has no use for the original values once passed
 		const Table &table(client.table_by_name(table_name));
 
-		check_hash_and_choose_next_range(client, table, prev_key, last_key, hash);
-
-		if (hash.empty()) {
-			// rows don't match, and there's only one or no rows left, so send it straight across, as if they had given the rows command
-			handle_rows_command(table_name, prev_key, last_key);
-			
-		} else {
-			// tell the other end to check its hash of the same rows, using key ranges rather than a count to improve the chances of a match.
-			send_hash_response(table_name, prev_key, last_key, hash);
-		}
+		check_hash_and_choose_next_range(*this, client, table, prev_key, last_key, hash);
 	}
 
 	void negotiate_protocol_version() {
@@ -166,6 +138,7 @@ struct SyncFromWorker {
 	Unpacker<FDReadStream> input;
 	FDWriteStream out;
 	Packer<FDWriteStream> output;
+	RowPacker<typename DatabaseClient::RowType, FDWriteStream> row_packer;
 
 	int protocol;
 };

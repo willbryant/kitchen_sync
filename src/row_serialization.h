@@ -6,7 +6,7 @@ template <typename DatabaseRow, typename OutputStream>
 struct RowPacker {
 	RowPacker(Packer<OutputStream> &packer): packer(packer) {}
 
-	~RowPacker() {
+	void pack_end() {
 		// we use an empty array to indicate the end of the rowset
 		packer.pack_array_length(0);
 	}
