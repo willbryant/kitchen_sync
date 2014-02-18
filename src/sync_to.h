@@ -177,9 +177,6 @@ struct SyncToWorker {
 
 	void sync_table(const Table &table) {
 		TableRowApplier<DatabaseClient> row_applier(client, table);
-		ColumnValues prev_key;
-		ColumnValues last_key;
-		string hash;
 		size_t hash_commands = 0;
 		size_t rows_commands = 0;
 		time_t started = time(NULL);
@@ -197,13 +194,28 @@ struct SyncToWorker {
 			Command command;
 			input >> command;
 
-			if (command.verb == Commands::ROWS) {
+			if (command.verb == Commands::HASH) {
+				// they've sent us back a hash for a set of rows, which will happen if:
+				// - the last hash we sent them matched, and so they've moved on to the next set of rows; or
+				// - the last hash we sent them didn't match, so they've reduced the key range and sent us back
+				//   the hash for a smaller set of rows (but not so small that they sent back the data instead)
+				// we don't need to know which case it is; simply loop around and carry on
+				ColumnValues prev_key = command.argument<ColumnValues>(0);
+				ColumnValues last_key = command.argument<ColumnValues>(1);
+				string       hash     = command.argument<string>(2);
+				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
+				hash_commands++;
+
+				// after each hash command received it's our turn to send the next command
+				check_hash_and_choose_next_range(*this, client, table, prev_key, last_key, hash);
+
+			} else if (command.verb == Commands::ROWS) {
 				// we're being sent a range of rows; apply them to our end.  we do this in-context to
 				// provide flow control - if we buffered and used a separate apply thread, we would
 				// bloat up if this end couldn't write to disk as quickly as the other end sent data.
-				prev_key = command.argument<ColumnValues>(0);
-				last_key = command.argument<ColumnValues>(1);
-				if (verbose >= VERY_VERBOSE) cout << "<- rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
+				ColumnValues prev_key = command.argument<ColumnValues>(0);
+				ColumnValues last_key = command.argument<ColumnValues>(1);
+				if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
 				rows_commands++;
 
 				row_applier.stream_from_input(input, prev_key, last_key);
@@ -212,20 +224,22 @@ struct SyncToWorker {
 				// otherwise, rows commands are immediately followed by another command
 				if (last_key.empty()) break;
 				
-			} else if (command.verb == Commands::HASH) {
-				// they've sent us back a hash for a set of rows, which will happen if:
-				// - the last hash we sent them matched, and so they've moved on to the next set of rows; or
-				// - the last hash we sent them didn't match, so they've reduced the key range and sent us back
-				//   the hash for a smaller set of rows (but not so small that they sent back the data instead)
-				// we don't need to know which case it is; simply loop around and carry on
-				prev_key = command.argument<ColumnValues>(0);
-				last_key = command.argument<ColumnValues>(1);
-				hash     = command.argument<string>(2);
-				if (verbose >= VERY_VERBOSE) cout << "<- hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
+			} else if (command.verb == Commands::ROWS_AND_HASH) {
+				// combo of the above two commands
+				ColumnValues prev_key = command.argument<ColumnValues>(0);
+				ColumnValues last_key = command.argument<ColumnValues>(1);
+				ColumnValues next_key = command.argument<ColumnValues>(2);
+				string       hash     = command.argument<string>(3);
+				if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " +" << endl;
+				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(last_key) << ' ' << non_binary_string_values_list(next_key) << endl;
 				hash_commands++;
 
+				row_applier.stream_from_input(input, prev_key, last_key);
+
+				// nb. it's implied last_key is not [], as we would have been sent back a plain rows command for the combined range if that was needed
+
 				// after each hash command received it's our turn to send the next command
-				check_hash_and_choose_next_range(*this, client, table, prev_key, last_key, hash);
+				check_hash_and_choose_next_range(*this, client, table, last_key, next_key, hash);
 
 			} else {
 				throw command_error("Unknown command " + to_string(command.verb));
@@ -248,6 +262,12 @@ struct SyncToWorker {
 	inline void send_rows_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
 		if (verbose >= VERY_VERBOSE) cout << "<- rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
 		send_command(output, Commands::ROWS, prev_key, last_key);
+	}
+
+	inline void send_rows_and_hash_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &next_key, const string &hash) {
+		if (verbose >= VERY_VERBOSE) cout << "<- rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " +" << endl;
+		if (verbose >= VERY_VERBOSE) cout << "<- hash " << table.name << ' ' << non_binary_string_values_list(last_key) << ' ' << non_binary_string_values_list(next_key) << endl;
+		send_command(output, Commands::ROWS_AND_HASH, prev_key, last_key, next_key, hash);
 	}
 
 	void send_quit_command() {

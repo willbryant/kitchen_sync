@@ -71,6 +71,7 @@ module Commands
   OPEN = 1
   ROWS = 2
   HASH = 3
+  ROWS_AND_HASH = 4
 
   PROTOCOL = 32
   EXPORT_SNAPSHOT  = 33

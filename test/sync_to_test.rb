@@ -73,7 +73,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
                  query("SELECT * FROM footbl ORDER BY col1")
   end
 
-  test_each "requests and applies the row if we send a different hash for a single row, and then carries on with the hash sent after that" do
+  test_each "requests and applies the row if we send a different hash for a single row, and gives the hash after that" do
     setup_with_footbl
     execute "UPDATE footbl SET col3 = 'different' WHERE col1 = 2"
 
@@ -81,10 +81,9 @@ class SyncToTest < KitchenSync::EndpointTestCase
       returns([{"tables" => [footbl_def]}])
     expects(:open).with("footbl").
       returns([[Commands::HASH, [], @keys[0], hash_of(@rows[0..0])]])
-    expects(:rows).with([], @keys[0]).
-      returns([[Commands::ROWS, [], @keys[0]], @rows[0], []])
-    expects(:hash).with(@keys[0], @keys[1], hash_of(@rows[1..1])).
-      returns([[Commands::HASH, @keys[1], @keys[3], hash_of(@rows[2..3])]])
+    expects(:rows_and_hash).with([], @keys[0], @keys[1], hash_of(@rows[1..1])).
+      returns([[Commands::ROWS, [], @keys[0]], @rows[0], [], # we could combo this and do a rows_and_hash back, but that wouldn't always be possible - we might need a rows PLUS a rows_and_hash (if they next hash they'd given didn't match), and we might need a rows plus a gap plus a hash, so we haven't implemented that
+               [Commands::HASH, @keys[1], @keys[3], hash_of(@rows[2..3])]])
     expects(:hash).with(@keys[3], @keys[-1], hash_of(@rows[4..-1])).
       returns([[Commands::ROWS, @keys[-1], []], []])
     expects(:quit)
@@ -231,10 +230,9 @@ class SyncToTest < KitchenSync::EndpointTestCase
       returns([{"tables" => [footbl_def.merge("keys" => [{"name" => "unique_key", "unique" => true, "columns" => [2]}])]}])
     expects(:open).with("footbl").
       returns([[Commands::HASH, [], @keys[0], hash_of(@rows[0..0])]])
-    expects(:rows).with([], @keys[0]).
-      returns([[Commands::ROWS, [], @keys[0]], @rows[0], []])
-    expects(:hash).with(@keys[0], @keys[1], hash_of(@orig_rows[1..1])).
-      returns([[Commands::HASH, @keys[1], @keys[3], hash_of(@rows[2..3])]])
+    expects(:rows_and_hash).with([], @keys[0], @keys[1], hash_of(@orig_rows[1..1])).
+      returns([[Commands::ROWS, [], @keys[0]], @rows[0], [],
+               [Commands::HASH, @keys[1], @keys[3], hash_of(@rows[2..3])]])
     expects(:hash).with(@keys[3], @keys[6], hash_of(@orig_rows[4..6])).
       returns([[Commands::HASH, @keys[3], @keys[4], hash_of(@rows[4..4])]])
     expects(:hash).with(@keys[4], @keys[6], hash_of(@orig_rows[5..6])).

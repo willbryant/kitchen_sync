@@ -46,11 +46,24 @@ void check_hash_and_choose_next_range(Worker &worker, DatabaseClient &client, co
 			extended_last_key = last_key;
 		}
 
-		// send the rows.  then, if that range extended to the end of the table, we're done; otherwise,
-		// follow up straight away with the next command.
-		worker.send_rows_command(table, prev_key, extended_last_key);
-		if (!extended_last_key.empty()) {
-			find_hash_of_next_range(worker, client, table, 1, extended_last_key);
+		// if that range extended to the end of the table, we just need to send the rows and we're done.
+		// otherwise, we want to follow up straight away with the next command.  we combo the two together
+		// to allow the other end to start looking at the hash while it's still receiving the rows off the
+		// network.
+		if (extended_last_key.empty()) {
+			worker.send_rows_command(table, prev_key, extended_last_key);
+		} else {
+			RowHasherAndLastKey<typename DatabaseClient::RowType> hasher(table.primary_key_columns);
+			worker.client.retrieve_rows(table, extended_last_key, 1 /* rows to hash */, hasher);
+
+			if (hasher.row_count == 0) {
+				// we've reached the end of the table, so we can simply extend the range we were going to send
+				worker.send_rows_command(table, prev_key, hasher.last_key /* will be [] */);
+			} else {
+				// found some rows, send the new key range and the new hash to the other end, plus the rows
+				// for the current range which didn't match
+				worker.send_rows_and_hash_command(table, prev_key, extended_last_key, hasher.last_key, hasher.finish().to_string());
+			}
 		}
 	}
 }
@@ -59,17 +72,16 @@ template <typename Worker, typename DatabaseClient>
 void find_hash_of_next_range(Worker &worker, DatabaseClient &client, const Table &table, size_t rows_to_hash, const ColumnValues &prev_key) {
 	if (!rows_to_hash) throw logic_error("Can't hash 0 rows");
 	
-	RowHasherAndLastKey<typename DatabaseClient::RowType> hasher_for_our_rows(table.primary_key_columns);
-	worker.client.retrieve_rows(table, prev_key, rows_to_hash, hasher_for_our_rows);
+	RowHasherAndLastKey<typename DatabaseClient::RowType> hasher(table.primary_key_columns);
+	worker.client.retrieve_rows(table, prev_key, rows_to_hash, hasher);
 
-	if (hasher_for_our_rows.row_count == 0) {
+	if (hasher.row_count == 0) {
 		// we've reached the end of the table, so we just need to do a rows command for the range after the
 		// previously—matched key, to clear out any extra entries at the 'to' end
-		worker.send_rows_command(table, prev_key, hasher_for_our_rows.last_key /* will be [] */);
+		worker.send_rows_command(table, prev_key, hasher.last_key /* will be [] */);
 	} else {
 		// found some rows, send the new key range and the new hash to the other end
-		string hash = hasher_for_our_rows.finish().to_string();
-		worker.send_hash_command(table, prev_key, hasher_for_our_rows.last_key, hash);
+		worker.send_hash_command(table, prev_key, hasher.last_key, hasher.finish().to_string());
 	}
 }
 

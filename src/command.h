@@ -62,6 +62,7 @@ namespace Commands {
 	const verb_t OPEN = 1;
 	const verb_t ROWS = 2;
 	const verb_t HASH = 3;
+	const verb_t ROWS_AND_HASH = 4;
 
 	const verb_t PROTOCOL = 32;
 	const verb_t EXPORT_SNAPSHOT  = 33;
