@@ -234,12 +234,17 @@ struct SyncToWorker {
 				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(last_key) << ' ' << non_binary_string_values_list(next_key) << endl;
 				hash_commands++;
 
-				row_applier.stream_from_input(input, prev_key, last_key);
-
-				// nb. it's implied last_key is not [], as we would have been sent back a plain rows command for the combined range if that was needed
-
-				// after each hash command received it's our turn to send the next command
+				// after each hash command received it's our turn to send the next command; we check
+				// the hash and send the command *before* we stream in the rows that we're being sent
+				// with this command as a simple form of pipelining - our next hash is going back
+				// over the network at the same time as we are receiving rows.  we need to be able to
+				// fit the command we send back in the kernel send buffer to guarantee there is no
+				// deadlock; it's never been smaller than a page on any supported OS, and has been
+				// defaulted to much larger values for some years.
 				check_hash_and_choose_next_range(*this, client, table, last_key, next_key, hash);
+
+				row_applier.stream_from_input(input, prev_key, last_key);
+				// nb. it's implied last_key is not [], as we would have been sent back a plain rows command for the combined range if that was needed
 
 			} else {
 				throw command_error("Unknown command " + to_string(command.verb));
