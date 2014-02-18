@@ -45,6 +45,13 @@ void check_hash_and_choose_next_range(Worker &worker, DatabaseClient &client, co
 		}
 
 		worker.send_rows_command(table, prev_key, last_key);
+
+		// if that range extended to the end of the table, we're done; otherwise, follow up straight away
+		// with the next command
+		if (!last_key.empty()) {
+			prev_key = last_key;
+			find_hash_of_next_range(worker, client, table, 1, prev_key, last_key);
+		}
 	}
 }
 

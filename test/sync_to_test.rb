@@ -82,11 +82,10 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expects(:open).with("footbl").
       returns([[Commands::HASH, [], @keys[0], hash_of(@rows[0..0])]])
     expects(:rows).with([], @keys[0]).
-      returns([[Commands::ROWS, [], @keys[0]], @rows[0], [],
-               [Commands::HASH, @keys[0], @keys[1], hash_of(@rows[1..1])]])
-    expects(:hash).with(@keys[1], @keys[3], hash_of(@rows[2..3])).
-      returns([[Commands::HASH, @keys[3], @keys[-1], hash_of(@rows[4..-1])]])
-    expects(:rows).with(@keys[-1], []).
+      returns([[Commands::ROWS, [], @keys[0]], @rows[0], []])
+    expects(:hash).with(@keys[0], @keys[1], hash_of(@rows[1..1])).
+      returns([[Commands::HASH, @keys[1], @keys[3], hash_of(@rows[2..3])]])
+    expects(:hash).with(@keys[3], @keys[-1], hash_of(@rows[4..-1])).
       returns([[Commands::ROWS, @keys[-1], []], []])
     expects(:quit)
     receive_commands
@@ -233,13 +232,12 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expects(:open).with("footbl").
       returns([[Commands::HASH, [], @keys[0], hash_of(@rows[0..0])]])
     expects(:rows).with([], @keys[0]).
-      returns([[Commands::ROWS, [], @keys[0]], @rows[0], [],
-               [Commands::HASH, @keys[0], @keys[1], hash_of(@rows[1..1])]])
-    expects(:hash).with(@keys[1], @keys[3], hash_of(@rows[2..3])).
-      returns([[Commands::HASH, @keys[3], @keys[6], hash_of(@rows[4..6])]])
-    expects(:hash).with(@keys[3], @keys[4], hash_of(@orig_rows[4..4])).
-      returns([[Commands::HASH, @keys[4], @keys[6], hash_of(@orig_rows[5..6])]])
-    expects(:rows).with(@keys[6], []).
+      returns([[Commands::ROWS, [], @keys[0]], @rows[0], []])
+    expects(:hash).with(@keys[0], @keys[1], hash_of(@orig_rows[1..1])).
+      returns([[Commands::HASH, @keys[1], @keys[3], hash_of(@rows[2..3])]])
+    expects(:hash).with(@keys[3], @keys[6], hash_of(@orig_rows[4..6])).
+      returns([[Commands::HASH, @keys[3], @keys[4], hash_of(@rows[4..4])]])
+    expects(:hash).with(@keys[4], @keys[6], hash_of(@orig_rows[5..6])).
       returns([[Commands::ROWS, @keys[6], []], @rows[6], []])
     expects(:quit)
     receive_commands
