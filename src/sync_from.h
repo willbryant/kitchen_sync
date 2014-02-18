@@ -81,13 +81,13 @@ struct SyncFromWorker {
 		send_command(output, Commands::HASH, prev_key, last_key, hash);
 	}
 
-	inline void send_rows_command(const Table &table, ColumnValues &prev_key, ColumnValues &last_key) {
+	inline void send_rows_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
 		send_command(output, Commands::ROWS, prev_key, last_key);
 		client.retrieve_rows(table, prev_key, last_key, row_packer);
 		row_packer.pack_end();
 	}
 
-	void handle_rows_command(const string &table_name, ColumnValues &prev_key, ColumnValues &last_key) { // mutable as we allow find_hash_of_next_range to update the values; caller has no use for the original values once passed
+	void handle_rows_command(const string &table_name, const ColumnValues &prev_key, const ColumnValues &last_key) {
 		const Table &table(client.table_by_name(table_name));
 
 		// send the requested rows
@@ -97,12 +97,10 @@ struct SyncFromWorker {
 	void handle_open_command(const string &table_name) {
 		const Table &table(client.table_by_name(table_name));
 
-		ColumnValues prev_key;
-		ColumnValues last_key;
-		find_hash_of_next_range(*this, client, table, 1, prev_key, last_key);
+		find_hash_of_next_range(*this, client, table, 1, ColumnValues());
 	}
 
-	void handle_hash_command(const string &table_name, ColumnValues &prev_key, ColumnValues &last_key, string &hash) { // mutable as we allow check_hash_and_choose_next_range to update the values; caller has no use for the original values once passed
+	void handle_hash_command(const string &table_name, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
 		const Table &table(client.table_by_name(table_name));
 
 		check_hash_and_choose_next_range(*this, client, table, prev_key, last_key, hash);

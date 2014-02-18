@@ -245,7 +245,7 @@ struct SyncToWorker {
 		// hash_commands++; TODO
 	}
 
-	inline void send_rows_command(const Table &table, ColumnValues &prev_key, ColumnValues &last_key) {
+	inline void send_rows_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
 		if (verbose >= VERY_VERBOSE) cout << "<- rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
 		send_command(output, Commands::ROWS, prev_key, last_key);
 	}
