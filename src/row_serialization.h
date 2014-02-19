@@ -2,7 +2,7 @@
 
 #define DIGEST_NAME "md5"
 
-template <typename DatabaseRow, typename OutputStream>
+template <typename OutputStream>
 struct RowPacker {
 	RowPacker(Packer<OutputStream> &packer): packer(packer) {}
 
@@ -11,6 +11,7 @@ struct RowPacker {
 		packer.pack_array_length(0);
 	}
 
+	template <typename DatabaseRow>
 	void operator()(const DatabaseRow &row) {
 		packer.pack_array_length(row.n_columns());
 
@@ -50,7 +51,6 @@ struct InitOpenSSL {
 
 static InitOpenSSL init_open_ssl;
 
-template <typename DatabaseRow>
 struct RowHasher {
 	RowHasher(): row_count(0), row_packer(*this) {
 		const EVP_MD *md = EVP_get_digestbyname(DIGEST_NAME);
@@ -68,6 +68,7 @@ struct RowHasher {
 		return hash;
 	}
 
+	template <typename DatabaseRow>
 	void operator()(const DatabaseRow &row) {
 		row_count++;
 		
@@ -93,11 +94,11 @@ struct RowHasher {
 	Hash hash;
 };
 
-template <typename DatabaseRow>
 struct RowLastKey {
 	RowLastKey(const vector<size_t> &primary_key_columns): primary_key_columns(primary_key_columns) {
 	}
 
+	template <typename DatabaseRow>
 	inline void operator()(const DatabaseRow &row) {
 		// keep its primary key, in case this turns out to be the last row, in which case we'll need to send it to the other end
 		last_key.resize(primary_key_columns.size());
@@ -110,13 +111,13 @@ struct RowLastKey {
 	vector<string> last_key;
 };
 
-template <typename DatabaseRow>
-struct RowHasherAndLastKey: RowHasher<DatabaseRow>, RowLastKey<DatabaseRow> {
-	RowHasherAndLastKey(const vector<size_t> &primary_key_columns): RowLastKey<DatabaseRow>(primary_key_columns) {
+struct RowHasherAndLastKey: RowHasher, RowLastKey {
+	RowHasherAndLastKey(const vector<size_t> &primary_key_columns): RowLastKey(primary_key_columns) {
 	}
 
+	template <typename DatabaseRow>
 	inline void operator()(const DatabaseRow &row) {
-		RowHasher<DatabaseRow>::operator()(row);
-		RowLastKey<DatabaseRow>::operator()(row);
+		RowHasher::operator()(row);
+		RowLastKey::operator()(row);
 	}
 };

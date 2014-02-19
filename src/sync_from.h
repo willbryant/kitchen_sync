@@ -112,13 +112,13 @@ struct SyncFromWorker {
 	void handle_open_command(const string &table_name) {
 		const Table &table(client.table_by_name(table_name));
 
-		find_hash_of_next_range(*this, client, table, 1, ColumnValues());
+		find_hash_of_next_range(*this, table, 1, ColumnValues());
 	}
 
 	void handle_hash_command(const string &table_name, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
 		const Table &table(client.table_by_name(table_name));
 
-		check_hash_and_choose_next_range(*this, client, table, prev_key, last_key, hash);
+		check_hash_and_choose_next_range(*this, table, prev_key, last_key, hash);
 	}
 
 	void negotiate_protocol_version() {
@@ -144,7 +144,7 @@ struct SyncFromWorker {
 	Unpacker<FDReadStream> input;
 	FDWriteStream out;
 	Packer<FDWriteStream> output;
-	RowPacker<typename DatabaseClient::RowType, FDWriteStream> row_packer;
+	RowPacker<FDWriteStream> row_packer;
 
 	int protocol;
 };
