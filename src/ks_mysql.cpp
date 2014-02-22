@@ -78,6 +78,10 @@ public:
 		query(retrieve_rows_sql(table, prev_key, last_key, '`'), row_packer, false /* nb. n_tuples won't work, which is ok since we send rows individually */);
 	}
 
+	string count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
+		return select_one(count_rows_sql(table, prev_key, last_key, '`'));
+	}
+
 	void execute(const string &sql);
 	void disable_referential_integrity();
 	void enable_referential_integrity();
@@ -124,6 +128,21 @@ protected:
 			backtrace();
 			throw runtime_error(mysql_error(&mysql) + string("\n") + sql);
 		}
+	}
+
+	string select_one(const string &sql) {
+		if (mysql_real_query(&mysql, sql.c_str(), sql.length())) {
+			backtrace();
+			throw runtime_error(mysql_error(&mysql) + string("\n") + sql);
+		}
+
+		MySQLRes res(mysql, true);
+
+		if (res.n_tuples() != 1 || res.n_columns() != 1) {
+			throw runtime_error("Expected query to return only one row with only one column\n" + sql);
+		}
+
+		return MySQLRow(res, mysql_fetch_row(res.res())).string_at(0);
 	}
 
 private:

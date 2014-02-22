@@ -10,7 +10,7 @@ struct sync_error: public runtime_error {
 };
 
 template <typename Worker>
-void check_hash_and_choose_next_range(Worker &worker, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
+void check_hash_and_choose_next_range(Worker &worker, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues *failed_last_key, const string &hash) {
 	if (hash.empty()) throw logic_error("No hash to check given");
 	if (last_key.empty()) throw logic_error("No range end given");
 
@@ -19,52 +19,43 @@ void check_hash_and_choose_next_range(Worker &worker, const Table &table, const 
 	worker.client.retrieve_rows(table, prev_key, last_key, hasher_for_their_range);
 
 	if (hasher_for_their_range.finish() == hash) {
-		// match, move on to the next set of rows, and optimistically double the row count
-		find_hash_of_next_range(worker, table, hasher_for_their_range.row_count*2, last_key);
+		if (!failed_last_key) {
+			// match, move on to the next set of rows, and optimistically double the row count
+			hash_next_range(worker, table, hasher_for_their_range.row_count*2, last_key);
+		} else {
+			// this range matched but somewhere > last_key & <= failed_last_key there is a mismatch, so subdivide that range
+			size_t rows_to_failure = atoi(worker.client.count_rows(table, last_key, *failed_last_key).c_str());
+
+			if (rows_to_failure > 1) {
+				// subdivide the range containing the failure, starting at the next row
+				hash_failed_range(worker, table, rows_to_failure/2, last_key, *failed_last_key);
+			} else {
+				// there's only 0 or 1 rows in that range on our side, so it's time to send rows instead of trading hashes
+				rows_and_next_hash(worker, table, last_key, *failed_last_key, !rows_to_failure);
+			}
+		}
 
 	} else if (hasher_for_their_range.row_count > 1) {
-		// no match, try again starting at the same row for a smaller set of rows
-		find_hash_of_next_range(worker, table, hasher_for_their_range.row_count/2, prev_key);
+		// no match, subdivide the range starting at the same row
+		hash_failed_range(worker, table, hasher_for_their_range.row_count/2, prev_key, last_key);
 
 	} else {
 		// rows don't match, and there's only 0 or 1 rows in that range on our side, so it's time to send
-		// rows instead of trading hashes; don't advance prev_key, but if there were no rows in the range,
-		// extend last_key to avoid pathologically poor performance when our end has deleted a range of
-		// keys, as otherwise they'll keep requesting deleted rows one-by-one.  we extend it to include
-		// the next row (arguably the hypothetical key value before that row's would be better).
-		ColumnValues extended_last_key;
-		if (hasher_for_their_range.row_count == 0 && !last_key.empty()) {
-			RowLastKey row_last_key(table.primary_key_columns);
-			worker.client.retrieve_rows(table, last_key, 1, row_last_key);
-			extended_last_key = row_last_key.last_key; // may still be empty if we have no more rows
-		} else {
-			extended_last_key = last_key;
-		}
-
-		// if that range extended to the end of the table, we just need to send the rows and we're done.
-		// otherwise, we want to follow up straight away with the next command.  we combo the two together
-		// to allow the other end to start looking at the hash while it's still receiving the rows off the
-		// network.
-		if (extended_last_key.empty()) {
-			worker.send_rows_command(table, prev_key, extended_last_key);
-		} else {
-			RowHasherAndLastKey hasher(table.primary_key_columns);
-			worker.client.retrieve_rows(table, extended_last_key, 1 /* rows to hash */, hasher);
-
-			if (hasher.row_count == 0) {
-				// we've reached the end of the table, so we can simply extend the range we were going to send
-				worker.send_rows_command(table, prev_key, hasher.last_key /* will be [] */);
-			} else {
-				// found some rows, send the new key range and the new hash to the other end, plus the rows
-				// for the current range which didn't match
-				worker.send_rows_and_hash_command(table, prev_key, extended_last_key, hasher.last_key, hasher.finish().to_string());
-			}
-		}
+		// rows instead of trading hashes
+		rows_and_next_hash(worker, table, prev_key, last_key, !hasher_for_their_range.row_count);
 	}
 }
 
 template <typename Worker>
-void find_hash_of_next_range(Worker &worker, const Table &table, size_t rows_to_hash, const ColumnValues &prev_key) {
+void hash_failed_range(Worker &worker, const Table &table, size_t rows_to_hash, const ColumnValues &prev_key, const ColumnValues &failed_last_key) {
+	if (!rows_to_hash) throw logic_error("Can't hash 0 rows");
+	RowHasherAndLastKey hasher(table.primary_key_columns);
+	worker.client.retrieve_rows(table, prev_key, rows_to_hash, hasher);
+	worker.send_hash_fail_command(table, prev_key, hasher.last_key, failed_last_key, hasher.finish().to_string());
+}
+
+template <typename Worker>
+void hash_next_range(Worker &worker, const Table &table, size_t rows_to_hash, const ColumnValues &prev_key) {
 	if (!rows_to_hash) throw logic_error("Can't hash 0 rows");
 	
 	RowHasherAndLastKey hasher(table.primary_key_columns);
@@ -76,7 +67,45 @@ void find_hash_of_next_range(Worker &worker, const Table &table, size_t rows_to_
 		worker.send_rows_command(table, prev_key, hasher.last_key /* will be [] */);
 	} else {
 		// found some rows, send the new key range and the new hash to the other end
-		worker.send_hash_command(table, prev_key, hasher.last_key, hasher.finish().to_string());
+		worker.send_hash_next_command(table, prev_key, hasher.last_key, hasher.finish().to_string());
+	}
+}
+
+template <typename Worker>
+void hash_first_range(Worker &worker, const Table &table) {
+	hash_next_range(worker, table, 1, ColumnValues());
+}
+
+template <typename Worker>
+void rows_and_next_hash(Worker &worker, const Table &table, const ColumnValues &prev_key, ColumnValues last_key, bool extend_last_key) {
+	// if there were no rows in the range, we need to extend last_key forward to avoid
+	// pathologically poor performance when our end has deleted a range of keys, as otherwise
+	// they'll keep requesting deleted rows one-by-one.  we extend it to include the next row
+	// (the hypothetical key value before that row's would be preferrable if we could find it).
+	if (extend_last_key && !last_key.empty()) {
+		RowLastKey row_last_key(table.primary_key_columns);
+		worker.client.retrieve_rows(table, last_key, 1, row_last_key);
+		last_key = row_last_key.last_key; // may still be empty if we have no more rows
+	}
+
+	// if that range extended to the end of the table, we just need to send the rows and we're done.
+	// otherwise, we want to follow up straight away with the next command.  we combo the two together
+	// to allow the other end to start looking at the hash while it's still receiving the rows off the
+	// network.
+	if (last_key.empty()) {
+		worker.send_rows_command(table, prev_key, last_key /* will be [] */);
+	} else {
+		// find the hash for the range *after* the rows that we will send
+		RowHasherAndLastKey hasher(table.primary_key_columns);
+		worker.client.retrieve_rows(table, last_key, 1 /* rows to hash */, hasher);
+
+		if (hasher.row_count == 0) {
+			// we've reached the end of the table, so we can simply extend the range we were going to send
+			worker.send_rows_command(table, prev_key, hasher.last_key /* will be [] */);
+		} else {
+			// send the new key range and the new hash to the other end, plus the rows for the current range which didn't match
+			worker.send_rows_and_hash_command(table, prev_key, last_key, hasher.last_key, hasher.finish().to_string());
+		}
 	}
 }
 

@@ -45,7 +45,7 @@ class RowsFromTest < KitchenSync::EndpointTestCase
     @keys = @rows.collect {|row| [row[0]]}
     send_handshake_commands
 
-    assert_equal [Commands::HASH, [], ["2"], hash_of(@rows[0..0])],
+    assert_equal [Commands::HASH_NEXT, [], ["2"], hash_of(@rows[0..0])],
      send_command(Commands::OPEN, "footbl")
 
     assert_equal [Commands::ROWS, ["1"], ["2"]],
@@ -100,7 +100,7 @@ class RowsFromTest < KitchenSync::EndpointTestCase
     @keys = @rows.collect {|row| [row[0]]}
     send_handshake_commands
 
-    assert_equal [Commands::HASH, [], @keys[0], hash_of(@rows[0..0])],
+    assert_equal [Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])],
      send_command(Commands::OPEN, "footbl")
 
     assert_equal [Commands::ROWS, [], @keys[0]],
@@ -128,7 +128,7 @@ class RowsFromTest < KitchenSync::EndpointTestCase
 
     # note when reading these that the primary key columns are in reverse order to the table definition; the command arguments need to be given in the key order, but the column order for the results is unrelated
 
-    assert_equal [Commands::HASH, [], ["aa", "100"], hash_of([["100", "aa", "100", "100"]])],
+    assert_equal [Commands::HASH_NEXT, [], ["aa", "100"], hash_of([["100", "aa", "100", "100"]])],
      send_command(Commands::OPEN, "secondtbl")
 
     assert_equal [Commands::ROWS, ["aa", "1"], ["zz", "2147483647"]],

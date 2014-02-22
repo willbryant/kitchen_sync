@@ -61,9 +61,9 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expects(:schema).with().
       returns([{"tables" => [footbl_def]}])
     expects(:open).with("footbl").
-      returns([[Commands::HASH, [], @keys[0], hash_of(@rows[0..0])]])
-    expects(:hash).with(@keys[0], @keys[2], hash_of(@rows[1..2])).
-      returns([[Commands::HASH, @keys[2], @keys[6], hash_of(@rows[3..6])]])
+      returns([[Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])]])
+    expects(:hash_next).with(@keys[0], @keys[2], hash_of(@rows[1..2])).
+      returns([[Commands::HASH_NEXT, @keys[2], @keys[6], hash_of(@rows[3..6])]])
     expects(:rows).with(@keys[-1], []).
       returns([[Commands::ROWS, @keys[-1], []], []])
     expects(:quit)
@@ -80,11 +80,11 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expects(:schema).with().
       returns([{"tables" => [footbl_def]}])
     expects(:open).with("footbl").
-      returns([[Commands::HASH, [], @keys[0], hash_of(@rows[0..0])]])
+      returns([[Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])]])
     expects(:rows_and_hash).with([], @keys[0], @keys[1], hash_of(@rows[1..1])).
       returns([[Commands::ROWS, [], @keys[0]], @rows[0], [], # we could combo this and do a rows_and_hash back, but that wouldn't always be possible - we might need a rows PLUS a rows_and_hash (if they next hash they'd given didn't match), and we might need a rows plus a gap plus a hash, so we haven't implemented that
-               [Commands::HASH, @keys[1], @keys[3], hash_of(@rows[2..3])]])
-    expects(:hash).with(@keys[3], @keys[-1], hash_of(@rows[4..-1])).
+               [Commands::HASH_NEXT, @keys[1], @keys[3], hash_of(@rows[2..3])]])
+    expects(:hash_next).with(@keys[3], @keys[-1], hash_of(@rows[4..-1])).
       returns([[Commands::ROWS, @keys[-1], []], []])
     expects(:quit)
     receive_commands
@@ -100,17 +100,15 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expects(:schema).with().
       returns([{"tables" => [footbl_def]}])
     expects(:open).with("footbl").
-      returns([[Commands::HASH, [], @keys[0], hash_of(@rows[0..0])]])
-    expects(:hash).with(@keys[0], @keys[2], hash_of(@rows[1..2])).
-      returns([[Commands::HASH, @keys[2], @keys[6], hash_of(@rows[3..6])]])
-    expects(:hash).with(@keys[2], @keys[4], hash_of([@rows[3], ["101", "0", "different"]])).
-      returns([[Commands::HASH, @keys[2], @keys[4], hash_of(@rows[3..4])]]) # same
-    expects(:hash).with(@keys[2], @keys[3], hash_of(@rows[3..3])).
-      returns([[Commands::HASH, @keys[3], @keys[5], hash_of(@rows[4..5])]]) # (not ideal, since really we know by now @rows[4] is the issue)
-    expects(:hash).with(@keys[3], @keys[4], hash_of([["101", "0", "different"]])).
+      returns([[Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])]])
+    expects(:hash_next).with(@keys[0], @keys[2], hash_of(@rows[1..2])).
+      returns([[Commands::HASH_NEXT, @keys[2], @keys[6], hash_of(@rows[3..6])]])
+    expects(:hash_fail).with(@keys[2], @keys[4], @keys[6], hash_of([@rows[3], ["101", "0", "different"]])).
+      returns([[Commands::HASH_FAIL, @keys[2], @keys[3], @keys[4], hash_of(@rows[3..3])]])
+    expects(:rows_and_hash).with(@keys[3], @keys[4], @keys[5], hash_of(@rows[5..5])). # note that the other end hash deduced that rows[4] is the problem, so it is requesting that directly rather than giving its hash
       returns([[Commands::ROWS, @keys[3], @keys[4]], @rows[4], [],
-               [Commands::HASH, @keys[4], @keys[5], hash_of(@rows[5..5])]])
-    expects(:hash).with(@keys[5], @keys[6], hash_of(@rows[6..6])).
+               [Commands::HASH_NEXT, @keys[4], @keys[5], hash_of(@rows[5..5])]])
+    expects(:hash_next).with(@keys[5], @keys[6], hash_of(@rows[6..6])).
       returns([[Commands::ROWS, @keys[-1], []], []])
     expects(:quit)
     receive_commands
@@ -146,8 +144,8 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expects(:schema).with().
       returns([{"tables" => [texttbl_def]}])
     expects(:open).with("texttbl").
-      returns([[Commands::HASH, [], @keys[0], hash_of(@rows[0..0])]])
-    expects(:hash).in_sequence.with(@keys[0], @keys[1], hash_of(@rows[1..1])).
+      returns([[Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])]])
+    expects(:hash_next).in_sequence.with(@keys[0], @keys[1], hash_of(@rows[1..1])).
       returns([[Commands::ROWS, @keys[1], []], []])
     expects(:quit)
     receive_commands
@@ -166,7 +164,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expects(:schema).with().
       returns([{"tables" => [texttbl_def]}])
     expects(:open).with("texttbl").
-      returns([[Commands::HASH, [], @keys[0], hash_of(@rows[0..0])]])
+      returns([[Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])]])
     expects(:rows).in_sequence.with([], []).
       returns([[Commands::ROWS, [], []], @rows[0], []])
     expects(:quit)
@@ -188,8 +186,8 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expects(:schema).with().
       returns([{"tables" => [texttbl_def]}])
     expects(:open).with("texttbl").
-      returns([[Commands::HASH, [], @keys[0], hash_of(@rows[0..0])]])
-    expects(:hash).in_sequence.with(@keys[0], @keys[1], hash_of(@rows[1..1])).
+      returns([[Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])]])
+    expects(:hash_next).in_sequence.with(@keys[0], @keys[1], hash_of(@rows[1..1])).
       returns([[Commands::ROWS, @keys[1], []], []])
     expects(:quit)
     receive_commands
@@ -208,7 +206,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expects(:schema).with().
       returns([{"tables" => [texttbl_def]}])
     expects(:open).with("texttbl").
-      returns([[Commands::HASH, [], @keys[0], hash_of(@rows[0..0])]])
+      returns([[Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])]])
     expects(:rows).in_sequence.with([], []).
       returns([[Commands::ROWS, [], []], @rows[0], []])
     expects(:quit)
@@ -229,13 +227,13 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expects(:schema).with().
       returns([{"tables" => [footbl_def.merge("keys" => [{"name" => "unique_key", "unique" => true, "columns" => [2]}])]}])
     expects(:open).with("footbl").
-      returns([[Commands::HASH, [], @keys[0], hash_of(@rows[0..0])]])
+      returns([[Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])]])
     expects(:rows_and_hash).with([], @keys[0], @keys[1], hash_of(@orig_rows[1..1])).
       returns([[Commands::ROWS, [], @keys[0]], @rows[0], [],
-               [Commands::HASH, @keys[1], @keys[3], hash_of(@rows[2..3])]])
-    expects(:hash).with(@keys[3], @keys[6], hash_of(@orig_rows[4..6])).
-      returns([[Commands::HASH, @keys[3], @keys[4], hash_of(@rows[4..4])]])
-    expects(:hash).with(@keys[4], @keys[6], hash_of(@orig_rows[5..6])).
+               [Commands::HASH_NEXT, @keys[1], @keys[3], hash_of(@rows[2..3])]])
+    expects(:hash_next).with(@keys[3], @keys[6], hash_of(@orig_rows[4..6])).
+      returns([[Commands::HASH_NEXT, @keys[3], @keys[4], hash_of(@rows[4..4])]])
+    expects(:hash_next).with(@keys[4], @keys[6], hash_of(@orig_rows[5..6])).
       returns([[Commands::ROWS, @keys[6], []], @rows[6], []])
     expects(:quit)
     receive_commands

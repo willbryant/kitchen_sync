@@ -17,7 +17,7 @@ struct SyncFromWorker {
 	void operator()() {
 		negotiate_protocol_version();
 
-		string current_table_name;
+		const Table *table;
 
 		try {
 			Command command;
@@ -26,30 +26,39 @@ struct SyncFromWorker {
 				input >> command;
 
 				if (command.verb == Commands::OPEN) {
-					current_table_name = command.argument<string>(0);
-					handle_open_command(current_table_name);
+					string table_name = command.argument<string>(0);
+					table = &client.table_by_name(table_name);
+					hash_first_range(*this, *table);
 
-				} else if (command.verb == Commands::HASH) {
-					if (current_table_name.empty()) throw command_error("Expected a table command before hash command");
-					ColumnValues prev_key(command.argument<ColumnValues>(0));
-					ColumnValues last_key(command.argument<ColumnValues>(1));
-					string           hash(command.argument<string>(2));
-					handle_hash_command(current_table_name, prev_key, last_key, hash);
+				} else if (command.verb == Commands::HASH_NEXT) {
+					if (!table) throw command_error("Expected a table command before hash command");
+					ColumnValues   prev_key(command.argument<ColumnValues>(0));
+					ColumnValues   last_key(command.argument<ColumnValues>(1));
+					string             hash(command.argument<string>(2));
+					check_hash_and_choose_next_range(*this, *table, prev_key, last_key, NULL, hash);
+
+				} else if (command.verb == Commands::HASH_FAIL) {
+					if (!table) throw command_error("Expected a table command before hash command");
+					ColumnValues        prev_key(command.argument<ColumnValues>(0));
+					ColumnValues        last_key(command.argument<ColumnValues>(1));
+					ColumnValues failed_last_key(command.argument<ColumnValues>(2));
+					string                  hash(command.argument<string>(3));
+					check_hash_and_choose_next_range(*this, *table, prev_key, last_key, &failed_last_key, hash);
 
 				} else if (command.verb == Commands::ROWS) {
-					if (current_table_name.empty()) throw command_error("Expected a table command before rows command");
+					if (!table) throw command_error("Expected a table command before rows command");
 					ColumnValues prev_key(command.argument<ColumnValues>(0));
 					ColumnValues last_key(command.argument<ColumnValues>(1));
-					handle_rows_command(current_table_name, prev_key, last_key);
+					send_rows_command(*table, prev_key, last_key);
 
 				} else if (command.verb == Commands::ROWS_AND_HASH) {
-					if (current_table_name.empty()) throw command_error("Expected a table command before rows+hash command");
+					if (!table) throw command_error("Expected a table command before rows+hash command");
 					ColumnValues prev_key(command.argument<ColumnValues>(0));
 					ColumnValues last_key(command.argument<ColumnValues>(1));
 					ColumnValues next_key(command.argument<ColumnValues>(2));
 					string           hash(command.argument<string>(3));
-					handle_rows_command(current_table_name, prev_key, last_key);
-					handle_hash_command(current_table_name, last_key, next_key, hash);
+					send_rows_command(*table, prev_key, last_key);
+					check_hash_and_choose_next_range(*this, *table, last_key, next_key, NULL, hash);
 
 				} else if (command.verb == Commands::EXPORT_SNAPSHOT) {
 					output << client.export_snapshot();
@@ -86,8 +95,12 @@ struct SyncFromWorker {
 		}
 	}
 
-	inline void send_hash_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
-		send_command(output, Commands::HASH, prev_key, last_key, hash);
+	inline void send_hash_next_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
+		send_command(output, Commands::HASH_NEXT, prev_key, last_key, hash);
+	}
+
+	inline void send_hash_fail_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &failed_last_key, const string &hash) {
+		send_command(output, Commands::HASH_FAIL, prev_key, last_key, failed_last_key, hash);
 	}
 
 	inline void send_rows_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
@@ -100,25 +113,6 @@ struct SyncFromWorker {
 		send_command(output, Commands::ROWS_AND_HASH, prev_key, last_key, next_key, hash);
 		client.retrieve_rows(table, prev_key, last_key, row_packer);
 		row_packer.pack_end();
-	}
-
-	void handle_rows_command(const string &table_name, const ColumnValues &prev_key, const ColumnValues &last_key) {
-		const Table &table(client.table_by_name(table_name));
-
-		// send the requested rows
-		send_rows_command(table, prev_key, last_key);
-	}
-
-	void handle_open_command(const string &table_name) {
-		const Table &table(client.table_by_name(table_name));
-
-		find_hash_of_next_range(*this, table, 1, ColumnValues());
-	}
-
-	void handle_hash_command(const string &table_name, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
-		const Table &table(client.table_by_name(table_name));
-
-		check_hash_and_choose_next_range(*this, table, prev_key, last_key, hash);
 	}
 
 	void negotiate_protocol_version() {

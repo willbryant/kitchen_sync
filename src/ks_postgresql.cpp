@@ -75,6 +75,10 @@ public:
 		query(retrieve_rows_sql(table, prev_key, last_key, '"'), row_packer);
 	}
 
+	string count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
+		return select_one(count_rows_sql(table, prev_key, last_key, '`'));
+	}
+
 	void execute(const string &sql);
 	void disable_referential_integrity();
 	void enable_referential_integrity();

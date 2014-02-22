@@ -104,3 +104,12 @@ string retrieve_rows_sql(const Table &table, const ColumnValues &prev_key, const
 	result += + " ORDER BY " + key_columns.substr(1, key_columns.size() - 2);
 	return result;
 }
+
+string count_rows_sql(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, char quote_identifiers_with) {
+	string key_columns(columns_list(table.columns, table.primary_key_columns, quote_identifiers_with));
+
+	string result("SELECT COUNT(*) FROM ");
+	result += table.name;
+	result += where_sql(key_columns, prev_key, last_key);
+	return result;
+}

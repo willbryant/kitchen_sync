@@ -194,27 +194,36 @@ struct SyncToWorker {
 			Command command;
 			input >> command;
 
-			if (command.verb == Commands::HASH) {
-				// they've sent us back a hash for a set of rows, which will happen if:
-				// - the last hash we sent them matched, and so they've moved on to the next set of rows; or
-				// - the last hash we sent them didn't match, so they've reduced the key range and sent us back
-				//   the hash for a smaller set of rows (but not so small that they sent back the data instead)
-				// we don't need to know which case it is; simply loop around and carry on
-				ColumnValues prev_key = command.argument<ColumnValues>(0);
-				ColumnValues last_key = command.argument<ColumnValues>(1);
-				string       hash     = command.argument<string>(2);
+			if (command.verb == Commands::HASH_NEXT) {
+				// the last hash we sent them matched, and so they've moved on to the next set of rows and sent us the hash
+				ColumnValues   prev_key(command.argument<ColumnValues>(0));
+				ColumnValues   last_key(command.argument<ColumnValues>(1));
+				string             hash(command.argument<string>(2));
 				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
 				hash_commands++;
 
 				// after each hash command received it's our turn to send the next command
-				check_hash_and_choose_next_range(*this, table, prev_key, last_key, hash);
+				check_hash_and_choose_next_range(*this, table, prev_key, last_key, NULL, hash);
+
+			} else if (command.verb == Commands::HASH_FAIL) {
+				// the last hash we sent them didn't match, so they've reduced the key range and sent us back
+				// the hash for a smaller set of rows (but not so small that they sent back the data instead)
+				ColumnValues        prev_key(command.argument<ColumnValues>(0));
+				ColumnValues        last_key(command.argument<ColumnValues>(1));
+				ColumnValues failed_last_key(command.argument<ColumnValues>(2));
+				string                  hash(command.argument<string>(3));
+				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " last-failure " << non_binary_string_values_list(failed_last_key) << endl;
+				hash_commands++;
+
+				// after each hash command received it's our turn to send the next command
+				check_hash_and_choose_next_range(*this, table, prev_key, last_key, &failed_last_key, hash);
 
 			} else if (command.verb == Commands::ROWS) {
 				// we're being sent a range of rows; apply them to our end.  we do this in-context to
 				// provide flow control - if we buffered and used a separate apply thread, we would
 				// bloat up if this end couldn't write to disk as quickly as the other end sent data.
-				ColumnValues prev_key = command.argument<ColumnValues>(0);
-				ColumnValues last_key = command.argument<ColumnValues>(1);
+				ColumnValues prev_key(command.argument<ColumnValues>(0));
+				ColumnValues last_key(command.argument<ColumnValues>(1));
 				if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
 				rows_commands++;
 
@@ -226,10 +235,10 @@ struct SyncToWorker {
 				
 			} else if (command.verb == Commands::ROWS_AND_HASH) {
 				// combo of the above two commands
-				ColumnValues prev_key = command.argument<ColumnValues>(0);
-				ColumnValues last_key = command.argument<ColumnValues>(1);
-				ColumnValues next_key = command.argument<ColumnValues>(2);
-				string       hash     = command.argument<string>(3);
+				ColumnValues prev_key(command.argument<ColumnValues>(0));
+				ColumnValues last_key(command.argument<ColumnValues>(1));
+				ColumnValues next_key(command.argument<ColumnValues>(2));
+				string           hash(command.argument<string>(3));
 				if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " +" << endl;
 				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(last_key) << ' ' << non_binary_string_values_list(next_key) << endl;
 				hash_commands++;
@@ -241,7 +250,7 @@ struct SyncToWorker {
 				// fit the command we send back in the kernel send buffer to guarantee there is no
 				// deadlock; it's never been smaller than a page on any supported OS, and has been
 				// defaulted to much larger values for some years.
-				check_hash_and_choose_next_range(*this, table, last_key, next_key, hash);
+				check_hash_and_choose_next_range(*this, table, last_key, next_key, NULL, hash);
 
 				row_applier.stream_from_input(input, prev_key, last_key);
 				// nb. it's implied last_key is not [], as we would have been sent back a plain rows command for the combined range if that was needed
@@ -258,9 +267,15 @@ struct SyncToWorker {
 		}
 	}
 
-	inline void send_hash_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
+	inline void send_hash_next_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
 		if (verbose >= VERY_VERBOSE) cout << "<- hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
-		send_command(output, Commands::HASH, prev_key, last_key, hash);
+		send_command(output, Commands::HASH_NEXT, prev_key, last_key, hash);
+		// hash_commands++; TODO
+	}
+
+	inline void send_hash_fail_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &failed_last_key, const string &hash) {
+		if (verbose >= VERY_VERBOSE) cout << "<- hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " last-failure " << non_binary_string_values_list(failed_last_key) << endl;
+		send_command(output, Commands::HASH_FAIL, prev_key, last_key, failed_last_key, hash);
 		// hash_commands++; TODO
 	}
 
