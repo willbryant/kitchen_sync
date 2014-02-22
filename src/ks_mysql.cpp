@@ -15,15 +15,18 @@ public:
 	~MySQLRes();
 
 	inline MYSQL_RES *res() { return _res; }
+	inline int n_tuples() const { return _n_tuples; }
 	inline int n_columns() const { return _n_columns; }
 
 private:
 	MYSQL_RES *_res;
+	int _n_tuples;
 	int _n_columns;
 };
 
 MySQLRes::MySQLRes(MYSQL &mysql, bool buffer) {
 	_res = buffer ? mysql_store_result(&mysql) : mysql_use_result(&mysql);
+	_n_tuples = mysql_num_rows(_res);
 	_n_columns = mysql_num_fields(_res);
 }
 
