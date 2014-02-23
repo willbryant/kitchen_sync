@@ -263,7 +263,7 @@ struct SyncToWorker {
 				ColumnValues failed_last_key(command.argument<ColumnValues>(3));
 				string                  hash(command.argument<string>(4));
 				if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " +" << endl;
-				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " last-failure " << non_binary_string_values_list(failed_last_key) << endl;
+				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(last_key) << ' ' << non_binary_string_values_list(next_key) << " last-failure " << non_binary_string_values_list(failed_last_key) << endl;
 				hash_commands++;
 				rows_commands++;
 
@@ -286,13 +286,11 @@ struct SyncToWorker {
 	inline void send_hash_next_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
 		if (verbose >= VERY_VERBOSE) cout << "<- hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
 		send_command(output, Commands::HASH_NEXT, prev_key, last_key, hash);
-		// hash_commands++; TODO
 	}
 
 	inline void send_hash_fail_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &failed_last_key, const string &hash) {
 		if (verbose >= VERY_VERBOSE) cout << "<- hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " last-failure " << non_binary_string_values_list(failed_last_key) << endl;
 		send_command(output, Commands::HASH_FAIL, prev_key, last_key, failed_last_key, hash);
-		// hash_commands++; TODO
 	}
 
 	inline void send_rows_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
