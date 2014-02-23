@@ -51,13 +51,22 @@ struct SyncFromWorker {
 					ColumnValues last_key(command.argument<ColumnValues>(1));
 					send_rows_command(*table, prev_key, last_key);
 
-				} else if (command.verb == Commands::ROWS_AND_HASH) {
+				} else if (command.verb == Commands::ROWS_AND_HASH_NEXT) {
 					if (!table) throw command_error("Expected a table command before rows+hash command");
 					ColumnValues prev_key(command.argument<ColumnValues>(0));
 					ColumnValues last_key(command.argument<ColumnValues>(1));
 					ColumnValues next_key(command.argument<ColumnValues>(2));
 					string           hash(command.argument<string>(3));
 					check_hash_and_choose_next_range(*this, *table, &prev_key, last_key, next_key, NULL, hash);
+
+				} else if (command.verb == Commands::ROWS_AND_HASH_FAIL) {
+					if (!table) throw command_error("Expected a table command before rows+hash command");
+					ColumnValues        prev_key(command.argument<ColumnValues>(0));
+					ColumnValues        last_key(command.argument<ColumnValues>(1));
+					ColumnValues        next_key(command.argument<ColumnValues>(2));
+					ColumnValues failed_last_key(command.argument<ColumnValues>(3));
+					string                  hash(command.argument<string>(4));
+					check_hash_and_choose_next_range(*this, *table, &prev_key, last_key, next_key, &failed_last_key, hash);
 
 				} else if (command.verb == Commands::EXPORT_SNAPSHOT) {
 					output << client.export_snapshot();
@@ -108,8 +117,14 @@ struct SyncFromWorker {
 		row_packer.pack_end();
 	}
 
-	inline void send_rows_and_hash_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &next_key, const string &hash) {
-		send_command(output, Commands::ROWS_AND_HASH, prev_key, last_key, next_key, hash);
+	inline void send_rows_and_hash_next_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &next_key, const string &hash) {
+		send_command(output, Commands::ROWS_AND_HASH_NEXT, prev_key, last_key, next_key, hash);
+		client.retrieve_rows(table, prev_key, last_key, row_packer);
+		row_packer.pack_end();
+	}
+
+	inline void send_rows_and_hash_fail_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &next_key, const ColumnValues &failed_last_key, const string &hash) {
+		send_command(output, Commands::ROWS_AND_HASH_FAIL, prev_key, last_key, next_key, failed_last_key, hash);
 		client.retrieve_rows(table, prev_key, last_key, row_packer);
 		row_packer.pack_end();
 	}

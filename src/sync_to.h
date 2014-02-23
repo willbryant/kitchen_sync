@@ -233,8 +233,8 @@ struct SyncToWorker {
 				// otherwise, rows commands are immediately followed by another command
 				if (last_key.empty()) break;
 				
-			} else if (command.verb == Commands::ROWS_AND_HASH) {
-				// combo of the above two commands
+			} else if (command.verb == Commands::ROWS_AND_HASH_NEXT) {
+				// combo of the above ROWS and HASH_NEXT commands
 				ColumnValues prev_key(command.argument<ColumnValues>(0));
 				ColumnValues last_key(command.argument<ColumnValues>(1));
 				ColumnValues next_key(command.argument<ColumnValues>(2));
@@ -251,9 +251,23 @@ struct SyncToWorker {
 				// deadlock; it's never been smaller than a page on any supported OS, and has been
 				// defaulted to much larger values for some years.
 				check_hash_and_choose_next_range(*this, table, NULL, last_key, next_key, NULL, hash);
-
 				row_applier.stream_from_input(input, prev_key, last_key);
 				// nb. it's implied last_key is not [], as we would have been sent back a plain rows command for the combined range if that was needed
+
+			} else if (command.verb == Commands::ROWS_AND_HASH_FAIL) {
+				// combo of the above ROWS and HASH_FAIL commands
+				ColumnValues        prev_key(command.argument<ColumnValues>(0));
+				ColumnValues        last_key(command.argument<ColumnValues>(1));
+				ColumnValues        next_key(command.argument<ColumnValues>(2));
+				ColumnValues failed_last_key(command.argument<ColumnValues>(3));
+				string                  hash(command.argument<string>(4));
+				if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " +" << endl;
+				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " last-failure " << non_binary_string_values_list(failed_last_key) << endl;
+				hash_commands++;
+
+				// same pipelining as the previous case
+				check_hash_and_choose_next_range(*this, table, NULL, last_key, next_key, &failed_last_key, hash);
+				row_applier.stream_from_input(input, prev_key, last_key);
 
 			} else {
 				throw command_error("Unknown command " + to_string(command.verb));
@@ -284,10 +298,16 @@ struct SyncToWorker {
 		send_command(output, Commands::ROWS, prev_key, last_key);
 	}
 
-	inline void send_rows_and_hash_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &next_key, const string &hash) {
+	inline void send_rows_and_hash_next_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &next_key, const string &hash) {
 		if (verbose >= VERY_VERBOSE) cout << "<- rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " +" << endl;
 		if (verbose >= VERY_VERBOSE) cout << "<- hash " << table.name << ' ' << non_binary_string_values_list(last_key) << ' ' << non_binary_string_values_list(next_key) << endl;
-		send_command(output, Commands::ROWS_AND_HASH, prev_key, last_key, next_key, hash);
+		send_command(output, Commands::ROWS_AND_HASH_NEXT, prev_key, last_key, next_key, hash);
+	}
+
+	inline void send_rows_and_hash_fail_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &next_key, const ColumnValues &failed_last_key, const string &hash) {
+		if (verbose >= VERY_VERBOSE) cout << "<- rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " +" << endl;
+		if (verbose >= VERY_VERBOSE) cout << "<- hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " last-failure " << non_binary_string_values_list(failed_last_key) << endl;
+		send_command(output, Commands::ROWS_AND_HASH_FAIL, prev_key, last_key, next_key, failed_last_key, hash);
 	}
 
 	void send_quit_command() {

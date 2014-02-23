@@ -79,12 +79,12 @@ class HashFromTest < KitchenSync::EndpointTestCase
     assert_equal [Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])],
      send_command(Commands::OPEN, "footbl")
 
-    assert_equal([Commands::ROWS_AND_HASH, @keys[0], @keys[1], @keys[2], hash_of(@rows[2..2])],
+    assert_equal([Commands::ROWS_AND_HASH_NEXT, @keys[0], @keys[1], @keys[2], hash_of(@rows[2..2])],
      send_command(Commands::HASH_NEXT, @keys[0], @keys[1], hash_of(@rows[1..1]).reverse))
     assert_equal @rows[1], unpack_next
     assert_equal       [], unpack_next # indicates end - see rows_from_test.rb
 
-    assert_equal([Commands::ROWS_AND_HASH, [], @keys[0], @keys[1], hash_of(@rows[1..1])],
+    assert_equal([Commands::ROWS_AND_HASH_NEXT, [], @keys[0], @keys[1], hash_of(@rows[1..1])],
      send_command(Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0]).reverse))
     assert_equal @rows[0], unpack_next
     assert_equal       [], unpack_next # as above
@@ -119,12 +119,12 @@ class HashFromTest < KitchenSync::EndpointTestCase
     assert_equal([Commands::HASH_NEXT, @keys[2], @keys[3], hash_of(@rows[3..3])],
      send_command(Commands::HASH_NEXT, @keys[0], @keys[2], hash_of(@rows[1..2])))
 
-    assert_equal([Commands::ROWS_AND_HASH, @keys[0], @keys[1], @keys[2], hash_of(@rows[2..2])],
+    assert_equal([Commands::ROWS_AND_HASH_NEXT, @keys[0], @keys[1], @keys[2], hash_of(@rows[2..2])],
      send_command(Commands::HASH_NEXT, @keys[0], @keys[1], hash_of(@rows[1..1]).reverse))
     assert_equal @rows[1], unpack_next
     assert_equal       [], unpack_next # indicates end - see rows_from_test.rb
 
-    assert_equal([Commands::ROWS_AND_HASH, @keys[0], @keys[1], @keys[2], hash_of(@rows[2..2])],
+    assert_equal([Commands::ROWS_AND_HASH_NEXT, @keys[0], @keys[1], @keys[2], hash_of(@rows[2..2])],
      send_command(Commands::HASH_NEXT, @keys[0], ["aa", "101"], hash_of(@rows[1..1])))
     assert_equal @rows[1], unpack_next
     assert_equal       [], unpack_next

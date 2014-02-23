@@ -34,7 +34,7 @@ void check_hash_and_choose_next_range(Worker &worker, const Table &table, const 
 
 			if (rows_to_failure > 1) {
 				// subdivide the range containing the failure, starting at the next row
-				hash_failed_range(worker, table, rows_to_failure/2, last_key, *failed_last_key);
+				hash_failed_range(worker, table, rows_to_failure/2, NULL, last_key, *failed_last_key);
 			} else {
 				// there's only 0 or 1 rows in that range on our side, so it's time to send rows instead of trading hashes
 				rows_and_next_hash(worker, table, last_key, *failed_last_key, !rows_to_failure);
@@ -42,12 +42,8 @@ void check_hash_and_choose_next_range(Worker &worker, const Table &table, const 
 		}
 
 	} else if (hasher_for_their_range.row_count > 1) {
-		// no match; send the previously-requested rows if any, then subdivide the range starting at the same row
-		if (failed_prev_key) {
-			// send the previously-requested rows; we could combine these two together if we had a ROWS_AND_HASH_FAIL command...
-			worker.send_rows_command(table, *failed_prev_key, prev_key);
-		}
-		hash_failed_range(worker, table, hasher_for_their_range.row_count/2, prev_key, last_key);
+		// no match; send the previously-requested rows if any, and subdivide the range starting at the same row
+		hash_failed_range(worker, table, hasher_for_their_range.row_count/2, failed_prev_key, prev_key, last_key);
 
 	} else {
 		// rows don't match, and there's only 0 or 1 rows in that range on our side, so it's time to send
@@ -57,11 +53,15 @@ void check_hash_and_choose_next_range(Worker &worker, const Table &table, const 
 }
 
 template <typename Worker>
-void hash_failed_range(Worker &worker, const Table &table, size_t rows_to_hash, const ColumnValues &prev_key, const ColumnValues &failed_last_key) {
+void hash_failed_range(Worker &worker, const Table &table, size_t rows_to_hash, const ColumnValues *failed_prev_key, const ColumnValues &prev_key, const ColumnValues &failed_last_key) {
 	if (!rows_to_hash) throw logic_error("Can't hash 0 rows");
 	RowHasherAndLastKey hasher(table.primary_key_columns);
 	worker.client.retrieve_rows(table, prev_key, rows_to_hash, hasher);
-	worker.send_hash_fail_command(table, prev_key, hasher.last_key, failed_last_key, hasher.finish().to_string());
+	if (failed_prev_key) {
+		worker.send_rows_and_hash_fail_command(table, *failed_prev_key, prev_key, hasher.last_key, failed_last_key, hasher.finish().to_string());
+	} else {
+		worker.send_hash_fail_command(table, prev_key, hasher.last_key, failed_last_key, hasher.finish().to_string());
+	}
 }
 
 template <typename Worker>
@@ -73,7 +73,7 @@ void hash_next_range(Worker &worker, const Table &table, size_t rows_to_hash, co
 
 	if (hasher.row_count == 0) {
 		// we've reached the end of the table, so we just need to do a rows command for the range after the
-		// previously—matched key, to clear out any extra entries at the 'to' end
+		// previously—matched key, to get/clear out any extra entries at the other end
 		worker.send_rows_command(table, prev_key, hasher.last_key /* will be [] */);
 	} else {
 		// found some rows, send the new key range and the new hash to the other end
@@ -114,7 +114,7 @@ void rows_and_next_hash(Worker &worker, const Table &table, const ColumnValues &
 			worker.send_rows_command(table, prev_key, hasher.last_key /* will be [] */);
 		} else {
 			// send the new key range and the new hash to the other end, plus the rows for the current range which didn't match
-			worker.send_rows_and_hash_command(table, prev_key, last_key, hasher.last_key, hasher.finish().to_string());
+			worker.send_rows_and_hash_next_command(table, prev_key, last_key, hasher.last_key, hasher.finish().to_string());
 		}
 	}
 }
