@@ -242,6 +242,7 @@ struct SyncToWorker {
 				if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " +" << endl;
 				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(last_key) << ' ' << non_binary_string_values_list(next_key) << endl;
 				hash_commands++;
+				rows_commands++;
 
 				// after each hash command received it's our turn to send the next command; we check
 				// the hash and send the command *before* we stream in the rows that we're being sent
@@ -264,6 +265,7 @@ struct SyncToWorker {
 				if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " +" << endl;
 				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " last-failure " << non_binary_string_values_list(failed_last_key) << endl;
 				hash_commands++;
+				rows_commands++;
 
 				// same pipelining as the previous case
 				check_hash_and_choose_next_range(*this, table, NULL, last_key, next_key, &failed_last_key, hash);
