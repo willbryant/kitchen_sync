@@ -35,7 +35,7 @@ struct SyncFromWorker {
 					ColumnValues   prev_key(command.argument<ColumnValues>(0));
 					ColumnValues   last_key(command.argument<ColumnValues>(1));
 					string             hash(command.argument<string>(2));
-					check_hash_and_choose_next_range(*this, *table, prev_key, last_key, NULL, hash);
+					check_hash_and_choose_next_range(*this, *table, NULL, prev_key, last_key, NULL, hash);
 
 				} else if (command.verb == Commands::HASH_FAIL) {
 					if (!table) throw command_error("Expected a table command before hash command");
@@ -43,7 +43,7 @@ struct SyncFromWorker {
 					ColumnValues        last_key(command.argument<ColumnValues>(1));
 					ColumnValues failed_last_key(command.argument<ColumnValues>(2));
 					string                  hash(command.argument<string>(3));
-					check_hash_and_choose_next_range(*this, *table, prev_key, last_key, &failed_last_key, hash);
+					check_hash_and_choose_next_range(*this, *table, NULL, prev_key, last_key, &failed_last_key, hash);
 
 				} else if (command.verb == Commands::ROWS) {
 					if (!table) throw command_error("Expected a table command before rows command");
@@ -57,8 +57,7 @@ struct SyncFromWorker {
 					ColumnValues last_key(command.argument<ColumnValues>(1));
 					ColumnValues next_key(command.argument<ColumnValues>(2));
 					string           hash(command.argument<string>(3));
-					send_rows_command(*table, prev_key, last_key);
-					check_hash_and_choose_next_range(*this, *table, last_key, next_key, NULL, hash);
+					check_hash_and_choose_next_range(*this, *table, &prev_key, last_key, next_key, NULL, hash);
 
 				} else if (command.verb == Commands::EXPORT_SNAPSHOT) {
 					output << client.export_snapshot();

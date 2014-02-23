@@ -10,7 +10,7 @@ struct sync_error: public runtime_error {
 };
 
 template <typename Worker>
-void check_hash_and_choose_next_range(Worker &worker, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues *failed_last_key, const string &hash) {
+void check_hash_and_choose_next_range(Worker &worker, const Table &table, const ColumnValues *failed_prev_key, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues *failed_last_key, const string &hash) {
 	if (hash.empty()) throw logic_error("No hash to check given");
 	if (last_key.empty()) throw logic_error("No range end given");
 
@@ -19,6 +19,12 @@ void check_hash_and_choose_next_range(Worker &worker, const Table &table, const 
 	worker.client.retrieve_rows(table, prev_key, last_key, hasher_for_their_range);
 
 	if (hasher_for_their_range.finish() == hash) {
+		if (failed_prev_key) {
+			// send the previously-requested rows, since there's a span of successful rows after it
+			// we don't want to combine the next hash command.
+			worker.send_rows_command(table, *failed_prev_key, prev_key);
+		}
+
 		if (!failed_last_key) {
 			// match, move on to the next set of rows, and optimistically double the row count
 			hash_next_range(worker, table, hasher_for_their_range.row_count*2, last_key);
@@ -36,13 +42,17 @@ void check_hash_and_choose_next_range(Worker &worker, const Table &table, const 
 		}
 
 	} else if (hasher_for_their_range.row_count > 1) {
-		// no match, subdivide the range starting at the same row
+		// no match; send the previously-requested rows if any, then subdivide the range starting at the same row
+		if (failed_prev_key) {
+			// send the previously-requested rows; we could combine these two together if we had a ROWS_AND_HASH_FAIL command...
+			worker.send_rows_command(table, *failed_prev_key, prev_key);
+		}
 		hash_failed_range(worker, table, hasher_for_their_range.row_count/2, prev_key, last_key);
 
 	} else {
 		// rows don't match, and there's only 0 or 1 rows in that range on our side, so it's time to send
-		// rows instead of trading hashes
-		rows_and_next_hash(worker, table, prev_key, last_key, !hasher_for_their_range.row_count);
+		// rows instead of trading hashes.  if the other end requested preceding rows, combine the request.
+		rows_and_next_hash(worker, table, failed_prev_key ? *failed_prev_key : prev_key, last_key, !hasher_for_their_range.row_count);
 	}
 }
 

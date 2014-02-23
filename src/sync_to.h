@@ -203,7 +203,7 @@ struct SyncToWorker {
 				hash_commands++;
 
 				// after each hash command received it's our turn to send the next command
-				check_hash_and_choose_next_range(*this, table, prev_key, last_key, NULL, hash);
+				check_hash_and_choose_next_range(*this, table, NULL, prev_key, last_key, NULL, hash);
 
 			} else if (command.verb == Commands::HASH_FAIL) {
 				// the last hash we sent them didn't match, so they've reduced the key range and sent us back
@@ -216,7 +216,7 @@ struct SyncToWorker {
 				hash_commands++;
 
 				// after each hash command received it's our turn to send the next command
-				check_hash_and_choose_next_range(*this, table, prev_key, last_key, &failed_last_key, hash);
+				check_hash_and_choose_next_range(*this, table, NULL, prev_key, last_key, &failed_last_key, hash);
 
 			} else if (command.verb == Commands::ROWS) {
 				// we're being sent a range of rows; apply them to our end.  we do this in-context to
@@ -250,7 +250,7 @@ struct SyncToWorker {
 				// fit the command we send back in the kernel send buffer to guarantee there is no
 				// deadlock; it's never been smaller than a page on any supported OS, and has been
 				// defaulted to much larger values for some years.
-				check_hash_and_choose_next_range(*this, table, last_key, next_key, NULL, hash);
+				check_hash_and_choose_next_range(*this, table, NULL, last_key, next_key, NULL, hash);
 
 				row_applier.stream_from_input(input, prev_key, last_key);
 				// nb. it's implied last_key is not [], as we would have been sent back a plain rows command for the combined range if that was needed
