@@ -81,6 +81,7 @@ module Commands
   UNHOLD_SNAPSHOT  = 35
   WITHOUT_SNAPSHOT = 36
   SCHEMA = 37
+  TARGET_BLOCK_SIZE = 38
   QUIT = 0
 end
 
@@ -113,9 +114,10 @@ module KitchenSync
       spawner.send_command(*args)
     end
 
-    def send_handshake_commands
+    def send_handshake_commands(target_block_size = 1)
       send_protocol_command
       send_without_snapshot_command
+      send_target_block_size_command(target_block_size)
     end
 
     def send_protocol_command
@@ -126,9 +128,16 @@ module KitchenSync
       assert_equal nil, send_command(Commands::WITHOUT_SNAPSHOT)
     end
 
-    def expect_handshake_commands
+    def send_target_block_size_command(target_block_size = 1)
+      assert_equal target_block_size, send_command(Commands::TARGET_BLOCK_SIZE, target_block_size)
+    end
+
+    def expect_handshake_commands(target_block_size = 1)
       # checking how protocol versions are handled is covered in protocol_versions_test; here we just need to get past that to get on to the commands we want to test
       expects(:protocol).with(CURRENT_PROTOCOL_VERSION).returns([CURRENT_PROTOCOL_VERSION])
+
+      # we force the block size down to 1 by default so we can test out our algorithms row-by-row, but real runs would use a bigger size
+      expects(:target_block_size).with(anything).returns([target_block_size])
 
       # since we haven't asked for multiple workers, we'll always get sent the snapshot-less start command
       expects(:without_snapshot).returns([nil])

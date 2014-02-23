@@ -52,7 +52,7 @@ struct InitOpenSSL {
 static InitOpenSSL init_open_ssl;
 
 struct RowHasher {
-	RowHasher(): row_count(0), row_packer(*this) {
+	RowHasher(): row_count(0), size(0), row_packer(*this) {
 		const EVP_MD *md = EVP_get_digestbyname(DIGEST_NAME);
 		if (!md) throw runtime_error("Unknown message digest " DIGEST_NAME);
 		mdctx = EVP_MD_CTX_create();
@@ -86,10 +86,12 @@ struct RowHasher {
 
 	inline void write(const uint8_t *buf, size_t bytes) {
 		EVP_DigestUpdate(mdctx, buf, bytes);
+		size += bytes;
 	}
 
 	EVP_MD_CTX *mdctx;
 	size_t row_count;
+	size_t size;
 	Packer<RowHasher> row_packer;
 	Hash hash;
 };

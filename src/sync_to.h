@@ -47,6 +47,7 @@ struct SyncToWorker {
 	void operator()() {
 		try {
 			negotiate_protocol();
+			negotiate_target_block_size();
 			share_snapshot();
 
 			client.start_write_transaction();
@@ -88,6 +89,15 @@ struct SyncToWorker {
 		// read the response to the protocol_version command that the output thread sends when it starts
 		// this is currently unused, but the command's semantics need to be in place for it to be useful in the future...
 		input >> protocol_version;
+	}
+
+	void negotiate_target_block_size() {
+		const size_t DEFAULT_MINIMUM_BLOCK_SIZE = 256*1024; // arbitrary, but needs to be big enough to cope with a moderate amount of latency
+
+		send_command(output, Commands::TARGET_BLOCK_SIZE, DEFAULT_MINIMUM_BLOCK_SIZE);
+
+		// the real app always accepts the block size we request, but the test suite uses smaller block sizes to make it easier to set up different scenarios
+		input >> target_block_size;
 	}
 
 	void share_snapshot() {
@@ -203,7 +213,7 @@ struct SyncToWorker {
 				hash_commands++;
 
 				// after each hash command received it's our turn to send the next command
-				check_hash_and_choose_next_range(*this, table, NULL, prev_key, last_key, NULL, hash);
+				check_hash_and_choose_next_range(*this, table, NULL, prev_key, last_key, NULL, hash, target_block_size);
 
 			} else if (command.verb == Commands::HASH_FAIL) {
 				// the last hash we sent them didn't match, so they've reduced the key range and sent us back
@@ -216,7 +226,7 @@ struct SyncToWorker {
 				hash_commands++;
 
 				// after each hash command received it's our turn to send the next command
-				check_hash_and_choose_next_range(*this, table, NULL, prev_key, last_key, &failed_last_key, hash);
+				check_hash_and_choose_next_range(*this, table, NULL, prev_key, last_key, &failed_last_key, hash, target_block_size);
 
 			} else if (command.verb == Commands::ROWS) {
 				// we're being sent a range of rows; apply them to our end.  we do this in-context to
@@ -251,7 +261,7 @@ struct SyncToWorker {
 				// fit the command we send back in the kernel send buffer to guarantee there is no
 				// deadlock; it's never been smaller than a page on any supported OS, and has been
 				// defaulted to much larger values for some years.
-				check_hash_and_choose_next_range(*this, table, NULL, last_key, next_key, NULL, hash);
+				check_hash_and_choose_next_range(*this, table, NULL, last_key, next_key, NULL, hash, target_block_size);
 				row_applier.stream_from_input(input, prev_key, last_key);
 				// nb. it's implied last_key is not [], as we would have been sent back a plain rows command for the combined range if that was needed
 
@@ -268,7 +278,7 @@ struct SyncToWorker {
 				rows_commands++;
 
 				// same pipelining as the previous case
-				check_hash_and_choose_next_range(*this, table, NULL, last_key, next_key, &failed_last_key, hash);
+				check_hash_and_choose_next_range(*this, table, NULL, last_key, next_key, &failed_last_key, hash, target_block_size);
 				row_applier.stream_from_input(input, prev_key, last_key);
 
 			} else {
@@ -332,6 +342,7 @@ struct SyncToWorker {
 	bool partial;
 	bool rollback_after;
 	int protocol_version;
+	size_t target_block_size;
 	boost::thread worker_thread;
 };
 

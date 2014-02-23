@@ -66,17 +66,17 @@ public:
 	~PostgreSQLClient();
 
 	template <typename RowReceiver>
-	void retrieve_rows(const Table &table, const ColumnValues &prev_key, size_t row_count, RowReceiver &row_packer) {
-		query(retrieve_rows_sql(table, prev_key, row_count, '"'), row_packer);
+	size_t retrieve_rows(const Table &table, const ColumnValues &prev_key, size_t row_count, RowReceiver &row_packer) {
+		return query(retrieve_rows_sql(table, prev_key, row_count, '"'), row_packer);
 	}
 
 	template <typename RowReceiver>
-	void retrieve_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, RowReceiver &row_packer) {
-		query(retrieve_rows_sql(table, prev_key, last_key, '"'), row_packer);
+	size_t retrieve_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, RowReceiver &row_packer) {
+		return query(retrieve_rows_sql(table, prev_key, last_key, '"'), row_packer);
 	}
 
-	string count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
-		return select_one(count_rows_sql(table, prev_key, last_key, '`'));
+	size_t count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
+		return atoi(select_one(count_rows_sql(table, prev_key, last_key, '`')).c_str());
 	}
 
 	void execute(const string &sql);
@@ -111,7 +111,7 @@ protected:
 	void populate_database_schema();
 
 	template <typename RowFunction>
-	void query(const string &sql, RowFunction &row_handler) {
+	size_t query(const string &sql, RowFunction &row_handler) {
 		PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, NULL, NULL, NULL, NULL, 0 /* text-format results only */));
 
 		if (res.status() != PGRES_TUPLES_OK) {
@@ -123,6 +123,8 @@ protected:
 			PostgreSQLRow row(res, row_number);
 			row_handler(row);
 		}
+
+		return res.n_tuples();
 	}
 
 	string select_one(const string &sql) {

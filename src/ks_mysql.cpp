@@ -15,7 +15,7 @@ public:
 	~MySQLRes();
 
 	inline MYSQL_RES *res() { return _res; }
-	inline int n_tuples() const { return _n_tuples; }
+	inline int n_tuples() const { return mysql_num_rows(_res); }
 	inline int n_columns() const { return _n_columns; }
 
 private:
@@ -26,7 +26,6 @@ private:
 
 MySQLRes::MySQLRes(MYSQL &mysql, bool buffer) {
 	_res = buffer ? mysql_store_result(&mysql) : mysql_use_result(&mysql);
-	_n_tuples = mysql_num_rows(_res);
 	_n_columns = mysql_num_fields(_res);
 }
 
@@ -69,17 +68,17 @@ public:
 	~MySQLClient();
 
 	template <typename RowReceiver>
-	void retrieve_rows(const Table &table, const ColumnValues &prev_key, size_t row_count, RowReceiver &row_packer) {
-		query(retrieve_rows_sql(table, prev_key, row_count, '`'), row_packer, false /* as above */);
+	size_t retrieve_rows(const Table &table, const ColumnValues &prev_key, size_t row_count, RowReceiver &row_packer) {
+		return query(retrieve_rows_sql(table, prev_key, row_count, '`'), row_packer, false /* as above */);
 	}
 
 	template <typename RowReceiver>
-	void retrieve_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, RowReceiver &row_packer) {
-		query(retrieve_rows_sql(table, prev_key, last_key, '`'), row_packer, false /* nb. n_tuples won't work, which is ok since we send rows individually */);
+	size_t retrieve_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, RowReceiver &row_packer) {
+		return query(retrieve_rows_sql(table, prev_key, last_key, '`'), row_packer, false /* nb. n_tuples won't work, which is ok since we send rows individually */);
 	}
 
-	string count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
-		return select_one(count_rows_sql(table, prev_key, last_key, '`'));
+	size_t count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
+		return atoi(select_one(count_rows_sql(table, prev_key, last_key, '`')).c_str());
 	}
 
 	void execute(const string &sql);
@@ -108,7 +107,7 @@ protected:
 	void populate_database_schema();
 
 	template <typename RowFunction>
-	void query(const string &sql, RowFunction &row_handler, bool buffer) {
+	size_t query(const string &sql, RowFunction &row_handler, bool buffer) {
 		if (mysql_real_query(&mysql, sql.c_str(), sql.length())) {
 			backtrace();
 			throw runtime_error(mysql_error(&mysql) + string("\n") + sql);
@@ -128,6 +127,8 @@ protected:
 			backtrace();
 			throw runtime_error(mysql_error(&mysql) + string("\n") + sql);
 		}
+
+		return res.n_tuples();
 	}
 
 	string select_one(const string &sql) {

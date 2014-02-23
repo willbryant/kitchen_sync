@@ -11,7 +11,8 @@ struct SyncFromWorker {
 		input(in),
 		out(write_to_descriptor),
 		output(out),
-		row_packer(output) {
+		row_packer(output),
+		target_block_size(1) {
 	}
 
 	void operator()() {
@@ -28,14 +29,14 @@ struct SyncFromWorker {
 				if (command.verb == Commands::OPEN) {
 					string table_name = command.argument<string>(0);
 					table = &client.table_by_name(table_name);
-					hash_first_range(*this, *table);
+					hash_first_range(*this, *table, target_block_size);
 
 				} else if (command.verb == Commands::HASH_NEXT) {
 					if (!table) throw command_error("Expected a table command before hash command");
 					ColumnValues   prev_key(command.argument<ColumnValues>(0));
 					ColumnValues   last_key(command.argument<ColumnValues>(1));
 					string             hash(command.argument<string>(2));
-					check_hash_and_choose_next_range(*this, *table, NULL, prev_key, last_key, NULL, hash);
+					check_hash_and_choose_next_range(*this, *table, NULL, prev_key, last_key, NULL, hash, target_block_size);
 
 				} else if (command.verb == Commands::HASH_FAIL) {
 					if (!table) throw command_error("Expected a table command before hash command");
@@ -43,7 +44,7 @@ struct SyncFromWorker {
 					ColumnValues        last_key(command.argument<ColumnValues>(1));
 					ColumnValues failed_last_key(command.argument<ColumnValues>(2));
 					string                  hash(command.argument<string>(3));
-					check_hash_and_choose_next_range(*this, *table, NULL, prev_key, last_key, &failed_last_key, hash);
+					check_hash_and_choose_next_range(*this, *table, NULL, prev_key, last_key, &failed_last_key, hash, target_block_size);
 
 				} else if (command.verb == Commands::ROWS) {
 					if (!table) throw command_error("Expected a table command before rows command");
@@ -57,7 +58,7 @@ struct SyncFromWorker {
 					ColumnValues last_key(command.argument<ColumnValues>(1));
 					ColumnValues next_key(command.argument<ColumnValues>(2));
 					string           hash(command.argument<string>(3));
-					check_hash_and_choose_next_range(*this, *table, &prev_key, last_key, next_key, NULL, hash);
+					check_hash_and_choose_next_range(*this, *table, &prev_key, last_key, next_key, NULL, hash, target_block_size);
 
 				} else if (command.verb == Commands::ROWS_AND_HASH_FAIL) {
 					if (!table) throw command_error("Expected a table command before rows+hash command");
@@ -66,7 +67,7 @@ struct SyncFromWorker {
 					ColumnValues        next_key(command.argument<ColumnValues>(2));
 					ColumnValues failed_last_key(command.argument<ColumnValues>(3));
 					string                  hash(command.argument<string>(4));
-					check_hash_and_choose_next_range(*this, *table, &prev_key, last_key, next_key, &failed_last_key, hash);
+					check_hash_and_choose_next_range(*this, *table, &prev_key, last_key, next_key, &failed_last_key, hash, target_block_size);
 
 				} else if (command.verb == Commands::EXPORT_SNAPSHOT) {
 					output << client.export_snapshot();
@@ -86,6 +87,10 @@ struct SyncFromWorker {
 
 				} else if (command.verb == Commands::SCHEMA) {
 					output << client.database_schema();
+
+				} else if (command.verb == Commands::TARGET_BLOCK_SIZE) {
+					target_block_size = command.argument<int64_t>(0); // strictly speaking this should use size_t, but unpack_any doesn't know about different numeric types
+					output << target_block_size; // we always accept the requested size, but the test suite doesn't
 
 				} else if (command.verb == Commands::QUIT) {
 					break;
@@ -140,10 +145,10 @@ struct SyncFromWorker {
 		}
 
 		// the usable protocol is the highest out of those supported by the two ends
-		protocol = min(PROTOCOL_VERSION_SUPPORTED, (int)command.argument<int64_t>(0));
+		protocol_version = min(PROTOCOL_VERSION_SUPPORTED, (int)command.argument<int64_t>(0));
 
 		// tell the other end what version was selected
-		output << protocol;
+		output << protocol_version;
 		output.flush();
 	}
 
@@ -154,7 +159,8 @@ struct SyncFromWorker {
 	Packer<FDWriteStream> output;
 	RowPacker<FDWriteStream> row_packer;
 
-	int protocol;
+	int protocol_version;
+	size_t target_block_size;
 };
 
 template<class DatabaseClient>

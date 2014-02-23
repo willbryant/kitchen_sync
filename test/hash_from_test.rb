@@ -90,6 +90,66 @@ class HashFromTest < KitchenSync::EndpointTestCase
     assert_equal       [], unpack_next # as above
   end
 
+  test_each "sends multiple initial rows if their data size is approximately between half and the full target block size" do
+    clear_schema
+    create_texttbl
+    execute "INSERT INTO texttbl VALUES (1, '#{'x'*30*1024}'), (2, '#{'x'*30*1024}'), (3, '#{'x'*30*1024}')"
+
+    @rows = [["1", "x"*30*1024],
+             ["2", "x"*30*1024],
+             ["3", "x"*30*1024]]
+    @keys = @rows.collect {|row| [row[0]]}
+
+    send_handshake_commands(64*1024)
+
+    assert_equal [Commands::HASH_NEXT, [], @keys[1], hash_of(@rows[0..1])],
+     send_command(Commands::OPEN, "texttbl")
+  end
+
+  test_each "sends single initial rows if its data size is approximately between half and the full target block size" do
+    clear_schema
+    create_texttbl
+    execute "INSERT INTO texttbl VALUES (1, '#{'x'*60*1024}'), (2, '#{'x'*60*1024}'), (3, '#{'x'*60*1024}')"
+
+    @rows = [["1", "x"*60*1024],
+             ["2", "x"*60*1024],
+             ["3", "x"*60*1024]]
+    @keys = @rows.collect {|row| [row[0]]}
+
+    send_handshake_commands(64*1024)
+
+    assert_equal [Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])],
+     send_command(Commands::OPEN, "texttbl")
+  end
+
+  test_each "sends back the rows instead of the hash of multiple rows is given and it doesn't match, but the range has less than approximately the target block size of data" do
+    clear_schema
+    create_texttbl
+    execute "INSERT INTO texttbl VALUES (1, '#{'x'*20*1024}'), (2, '#{'x'*20*1024}'), (3, '#{'x'*20*1024}'), (4, '#{'x'*20*1024}'), (5, '#{'x'*80*1024}'), (6, '#{'x'*80*1024}'), (7, '#{'x'*80*1024}')"
+
+    @rows = [["1", "x"*20*1024],
+             ["2", "x"*20*1024],
+             ["3", "x"*20*1024],
+             ["4", "x"*20*1024],
+             ["5", "x"*80*1024],
+             ["6", "x"*80*1024],
+             ["7", "x"*80*1024]]
+    @keys = @rows.collect {|row| [row[0]]}
+    send_handshake_commands(64*1024)
+
+    assert_equal [Commands::HASH_NEXT, [], @keys[1], hash_of(@rows[0..1])],
+     send_command(Commands::OPEN, "texttbl")
+
+    assert_equal([Commands::ROWS_AND_HASH_NEXT, @keys[1], @keys[3], @keys[4], hash_of(@rows[4..4])],
+     send_command(Commands::HASH_NEXT, @keys[1], @keys[3], hash_of(@rows[2..3]).reverse))
+    assert_equal @rows[2], unpack_next
+    assert_equal @rows[3], unpack_next
+    assert_equal       [], unpack_next
+
+    assert_equal([Commands::HASH_FAIL, @keys[4], @keys[5], @keys[6], hash_of(@rows[5..5])],
+     send_command(Commands::HASH_NEXT, @keys[4], @keys[6], hash_of(@rows[5..6]).reverse))
+  end
+
   test_each "supports composite keys" do
     clear_schema
     create_secondtbl
