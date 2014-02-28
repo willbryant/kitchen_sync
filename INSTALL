@@ -2,13 +2,12 @@ To compile Kitchen Sync, you will need:
 * cmake
 * boost program options library
 * boost regex library
-* boost thread and system libraries
 * openssl library headers
 * postgresql client library headers; and/or
 * mysql client library headers
 
 You can install these on Ubuntu using:
-  apt-get install build-essential cmake libboost-program-options-dev libboost-thread-dev libboost-system-dev libboost-regex-dev libssl-dev
+  apt-get install build-essential cmake libboost-program-options-dev libboost-regex-dev libssl-dev
 And one or both out of:
   apt-get install libpq-dev
   apt-get install libmysqlclient-dev

@@ -2,17 +2,26 @@ project(kitchen_sync CXX)
 
 cmake_minimum_required(VERSION 2.6)
 
-# suppress warnings about using c++0x features such as variadic templates
-if (CMAKE_COMPILER_IS_GNUCXX)
-    add_definitions(-std=gnu++0x)
+# suppress warnings about using c++11 features such as variadic templates
+include(CheckCXXCompilerFlag)
+CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+CHECK_CXX_COMPILER_FLAG("-stdlib=libc++" COMPILER_SUPPORTS_STDLIB)
+if(COMPILER_SUPPORTS_CXX11)
+	ADD_DEFINITIONS("-std=c++11")
+elseif(COMPILER_SUPPORTS_CXX0X)
+	ADD_DEFINITIONS("-std=c++0x")
+endif()
+if(COMPILER_SUPPORTS_STDLIB)
+	ADD_DEFINITIONS("-stdlib=libc++")
 endif()
 
 # where to look first for cmake modules, before ${CMAKE_ROOT}/Modules/ is checked
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
 
-# boost for program_options, regex, and threads (the system library is used by the thread library)
+# boost for program_options and regex
 set(Boost_USE_MULTITHREADED ON)
-find_package(Boost COMPONENTS program_options regex thread system REQUIRED)
+find_package(Boost COMPONENTS program_options regex REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 
 # the main program knows nothing but how to hook up the endpoints

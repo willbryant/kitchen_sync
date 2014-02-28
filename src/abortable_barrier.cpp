@@ -1,7 +1,7 @@
 #include "abortable_barrier.h"
 
 bool AbortableBarrier::wait_at_barrier() {
-	boost::unique_lock<boost::mutex> lock(mutex);
+	std::unique_lock<std::mutex> lock(mutex);
 	if (aborted) throw aborted_error();
 
 	if (--waiting_for_workers == 0) {
@@ -20,12 +20,12 @@ bool AbortableBarrier::wait_at_barrier() {
 }
 
 void AbortableBarrier::check_aborted() {
-	boost::unique_lock<boost::mutex> lock(mutex);
+	std::unique_lock<std::mutex> lock(mutex);
 	if (aborted) throw aborted_error();
 }
 
 bool AbortableBarrier::abort() {
-	boost::unique_lock<boost::mutex> lock(mutex);
+	std::unique_lock<std::mutex> lock(mutex);
 	if (aborted) return false;
 	aborted = true;
 	cond.notify_all();

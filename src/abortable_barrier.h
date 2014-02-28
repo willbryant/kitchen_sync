@@ -2,7 +2,9 @@
 #define ABORTABLE_BARRIER_H
 
 #include <stdexcept>
-#include <boost/thread.hpp>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 
 struct aborted_error: public std::runtime_error {
 	aborted_error(): runtime_error("Aborted") { }
@@ -15,8 +17,8 @@ struct AbortableBarrier {
 	void check_aborted();
 	bool abort();
 
-	boost::mutex mutex;
-	boost::condition_variable cond;
+	std::mutex mutex;
+	std::condition_variable cond;
 	size_t workers;
 	size_t waiting_for_workers;
 	size_t generation;

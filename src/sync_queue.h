@@ -2,10 +2,13 @@
 #define SYNC_QUEUE_H
 
 #include <queue>
+#include <list>
 #include <set>
 
 #include "abortable_barrier.h"
 #include "schema.h"
+
+using namespace std;
 
 struct SyncQueue: public AbortableBarrier {
 	SyncQueue(size_t workers): AbortableBarrier(workers) {}

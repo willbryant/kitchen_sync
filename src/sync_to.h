@@ -5,6 +5,7 @@
 #include "table_row_applier.h"
 #include "fdstream.h"
 #include <boost/algorithm/string.hpp>
+#include <thread>
 
 using namespace std;
 
@@ -37,7 +38,7 @@ struct SyncToWorker {
 			rollback_after(rollback_after),
 			partial(partial),
 			protocol_version(0),
-			worker_thread(boost::ref(*this)) {
+			worker_thread(std::ref(*this)) {
 	}
 
 	~SyncToWorker() {
@@ -192,7 +193,7 @@ struct SyncToWorker {
 		time_t started = time(NULL);
 
 		if (verbose) {
-			boost::unique_lock<boost::mutex> lock(sync_queue.mutex);
+			unique_lock<mutex> lock(sync_queue.mutex);
 			cout << "starting " << table.name << endl << flush;
 		}
 
@@ -288,7 +289,7 @@ struct SyncToWorker {
 
 		if (verbose) {
 			time_t now = time(NULL);
-			boost::unique_lock<boost::mutex> lock(sync_queue.mutex);
+			unique_lock<mutex> lock(sync_queue.mutex);
 			cout << "finished " << table.name << " in " << (now - started) << "s using " << hash_commands << " hash commands and " << rows_commands << " rows commands changing " << row_applier.rows_changed << " rows" << endl << flush;
 		}
 	}
@@ -343,7 +344,7 @@ struct SyncToWorker {
 	bool rollback_after;
 	int protocol_version;
 	size_t target_block_size;
-	boost::thread worker_thread;
+	std::thread worker_thread;
 };
 
 template <typename DatabaseClient>
