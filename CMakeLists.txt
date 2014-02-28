@@ -19,9 +19,9 @@ endif()
 # where to look first for cmake modules, before ${CMAKE_ROOT}/Modules/ is checked
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
 
-# boost for program_options and regex
+# boost for program_options
 set(Boost_USE_MULTITHREADED ON)
-find_package(Boost COMPONENTS program_options regex REQUIRED)
+find_package(Boost COMPONENTS program_options REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 
 # the main program knows nothing but how to hook up the endpoints

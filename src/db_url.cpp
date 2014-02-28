@@ -1,8 +1,8 @@
 #include "db_url.h"
 
-#include <boost/regex.hpp>
+#include <regex>
 
-using namespace boost;
+using namespace std;
 using namespace boost::program_options;
 
 inline int DbUrl::from_hex(char ch) { 
@@ -70,7 +70,7 @@ void validate(
 
 	smatch match;
 	if (regex_match(validators::get_single_string(values), match, r)) {
-		v = any(DbUrl(
+		v = boost::any(DbUrl(
 				DbUrl::urldecode(match[1]),
 				DbUrl::urldecode(match[2]),
 				DbUrl::urldecode(match[3]),
