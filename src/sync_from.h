@@ -72,24 +72,24 @@ struct SyncFromWorker {
 				} else if (command.verb == Commands::WITHOUT_SNAPSHOT) {
 					client.start_read_transaction();
 					output.pack_nil(); // similarly arbitrary
-					populate_tables_by_name();
+					populate_database_schema();
 
 				} else if (command.verb == Commands::EXPORT_SNAPSHOT) {
 					output << client.export_snapshot();
-					populate_tables_by_name();
+					populate_database_schema();
 
 				} else if (command.verb == Commands::IMPORT_SNAPSHOT) {
 					string snapshot(command.argument<string>(0));
 					client.import_snapshot(snapshot);
 					output.pack_nil(); // arbitrary, sent to indicate we've started our transaction
-					populate_tables_by_name();
+					populate_database_schema();
 
 				} else if (command.verb == Commands::UNHOLD_SNAPSHOT) {
 					client.unhold_snapshot();
 					output.pack_nil(); // similarly arbitrary
 
 				} else if (command.verb == Commands::SCHEMA) {
-					output << client.database_schema();
+					output << database;
 
 				} else if (command.verb == Commands::TARGET_BLOCK_SIZE) {
 					target_block_size = command.argument<int64_t>(0); // strictly speaking this should use size_t, but unpack_any doesn't know about different numeric types
@@ -155,13 +155,15 @@ struct SyncFromWorker {
 		output.flush();
 	}
 
-	void populate_tables_by_name() {
-		for (const Table &table : client.database_schema().tables) {
+	void populate_database_schema() {
+		client.populate_database_schema(database);
+		for (const Table &table : database.tables) {
 			tables_by_name[table.name] = &table;
 		}
 	}
 
 	DatabaseClient client;
+	Database database;
 	map<string, const Table*> tables_by_name;
 	FDReadStream in;
 	Unpacker<FDReadStream> input;

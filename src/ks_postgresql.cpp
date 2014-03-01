@@ -4,7 +4,7 @@
 #include <set>
 #include <libpq-fe.h>
 
-#include "database_client.h"
+#include "schema.h"
 #include "row_printer.h"
 
 class PostgreSQLRes {
@@ -53,7 +53,7 @@ private:
 };
 
 
-class PostgreSQLClient: public DatabaseClient {
+class PostgreSQLClient {
 public:
 	typedef PostgreSQLRow RowType;
 
@@ -89,6 +89,7 @@ public:
 	void start_write_transaction();
 	void commit_transaction();
 	void rollback_transaction();
+	void populate_database_schema(Database &database);
 	string escape_value(const string &value);
 
 	inline const char* replace_sql_prefix() { return "INSERT INTO "; }
@@ -107,8 +108,6 @@ public:
 
 protected:
 	friend class PostgreSQLTableLister;
-
-	void populate_database_schema();
 
 	template <typename RowFunction>
 	size_t query(const string &sql, RowFunction &row_handler) {
@@ -185,12 +184,10 @@ void PostgreSQLClient::execute(const string &sql) {
 
 void PostgreSQLClient::start_read_transaction() {
 	execute("START TRANSACTION READ ONLY ISOLATION LEVEL REPEATABLE READ");
-	populate_database_schema();
 }
 
 void PostgreSQLClient::start_write_transaction() {
 	execute("START TRANSACTION ISOLATION LEVEL READ COMMITTED");
-	populate_database_schema();
 }
 
 void PostgreSQLClient::commit_transaction() {
@@ -205,14 +202,12 @@ string PostgreSQLClient::export_snapshot() {
 	// postgresql has transactional DDL, so by starting our transaction before we've even looked at the tables,
 	// we'll get a 100% consistent view.
 	execute("START TRANSACTION READ ONLY ISOLATION LEVEL REPEATABLE READ");
-	populate_database_schema();
 	return select_one("SELECT pg_export_snapshot()");
 }
 
 void PostgreSQLClient::import_snapshot(const string &snapshot) {
 	execute("START TRANSACTION READ ONLY ISOLATION LEVEL REPEATABLE READ");
 	execute("SET TRANSACTION SNAPSHOT '" + escape_value(snapshot) + "'");
-	populate_database_schema();
 }
 
 void PostgreSQLClient::unhold_snapshot() {
@@ -301,7 +296,7 @@ struct PostgreSQLKeyLister {
 };
 
 struct PostgreSQLTableLister {
-	PostgreSQLTableLister(PostgreSQLClient &client): _client(client) {}
+	PostgreSQLTableLister(PostgreSQLClient &client, Database &database): _client(client), database(database) {}
 
 	void operator()(PostgreSQLRow &row) {
 		Table table(row.string_at(0));
@@ -353,14 +348,15 @@ struct PostgreSQLTableLister {
 			throw runtime_error("Couldn't find a primary or non-nullable unique key on table " + table.name);
 		}
 
-		_client.database.tables.push_back(table);
+		database.tables.push_back(table);
 	}
 
 	PostgreSQLClient &_client;
+	Database &database;
 };
 
-void PostgreSQLClient::populate_database_schema() {
-	PostgreSQLTableLister table_lister(*this);
+void PostgreSQLClient::populate_database_schema(Database &database) {
+	PostgreSQLTableLister table_lister(*this, database);
 	query("SELECT tablename "
 		    "FROM pg_tables "
 		   "WHERE schemaname = ANY (current_schemas(false)) "

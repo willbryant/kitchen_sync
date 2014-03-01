@@ -4,7 +4,7 @@
 #include <set>
 #include <mysql.h>
 
-#include "database_client.h"
+#include "schema.h"
 #include "row_printer.h"
 
 #define MYSQL_5_6_5 50605
@@ -55,7 +55,7 @@ private:
 };
 
 
-class MySQLClient: public DatabaseClient {
+class MySQLClient {
 public:
 	typedef MySQLRow RowType;
 
@@ -91,6 +91,7 @@ public:
 	void start_write_transaction();
 	void commit_transaction();
 	void rollback_transaction();
+	void populate_database_schema(Database &database);
 	string escape_value(const string &value);
 
 	inline const char* replace_sql_prefix() { return "REPLACE INTO "; }
@@ -103,8 +104,6 @@ public:
 
 protected:
 	friend class MySQLTableLister;
-
-	void populate_database_schema();
 
 	template <typename RowFunction>
 	size_t query(const string &sql, RowFunction &row_handler, bool buffer) {
@@ -199,13 +198,11 @@ void MySQLClient::start_read_transaction() {
 	} else {
 		execute("START TRANSACTION WITH CONSISTENT SNAPSHOT");
 	}
-	populate_database_schema();
 }
 
 void MySQLClient::start_write_transaction() {
 	execute("SET TRANSACTION ISOLATION LEVEL READ COMMITTED"); // use read committed instead of the default repeatable read - we don't want to take gap locks
 	execute("START TRANSACTION");
-	populate_database_schema();
 }
 
 void MySQLClient::commit_transaction() {
@@ -299,7 +296,7 @@ struct MySQLKeyLister {
 };
 
 struct MySQLTableLister {
-	inline MySQLTableLister(MySQLClient &client): _client(client) {}
+	inline MySQLTableLister(MySQLClient &client, Database &database): _client(client), database(database) {}
 
 	inline void operator()(MySQLRow &row) {
 		Table table(row.string_at(0));
@@ -323,15 +320,16 @@ struct MySQLTableLister {
 			throw runtime_error("Couldn't find a primary or non-nullable unique key on table " + table.name);
 		}
 
-		_client.database.tables.push_back(table);
+		database.tables.push_back(table);
 	}
 
 private:
 	MySQLClient &_client;
+	Database &database;
 };
 
-void MySQLClient::populate_database_schema() {
-	MySQLTableLister table_lister(*this);
+void MySQLClient::populate_database_schema(Database &database) {
+	MySQLTableLister table_lister(*this, database);
 	query("SELECT table_name FROM information_schema.tables WHERE table_schema = schema() ORDER BY data_length DESC, table_name ASC", table_lister, true /* buffer so we can make further queries during iteration */);
 }
 

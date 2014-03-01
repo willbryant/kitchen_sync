@@ -14,9 +14,10 @@ using namespace std;
 template <typename DatabaseClient>
 struct SyncToWorker {
 	SyncToWorker(
-		SyncQueue &sync_queue, bool leader, int read_from_descriptor, int write_to_descriptor,
+		Database &database, SyncQueue &sync_queue, bool leader, int read_from_descriptor, int write_to_descriptor,
 		const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password,
 		const set<string> &ignore_tables, const set<string> &only_tables, int verbose, bool snapshot, bool partial, bool rollback_after):
+			database(database),
 			sync_queue(sync_queue),
 			leader(leader),
 			input_stream(read_from_descriptor),
@@ -43,6 +44,7 @@ struct SyncToWorker {
 			negotiate_protocol();
 			negotiate_target_block_size();
 			share_snapshot();
+			populate_database_schema();
 
 			client.start_write_transaction();
 
@@ -131,6 +133,12 @@ struct SyncToWorker {
 		}
 	}
 
+	void populate_database_schema() {
+		if (leader) {
+			client.populate_database_schema(database);
+		}
+	}
+
 	void compare_schema() {
 		// we could do this in all workers, but there's no need, and it'd waste a bit of traffic/time
 		if (leader) {
@@ -142,14 +150,14 @@ struct SyncToWorker {
 			input >> from_database;
 
 			// check they match
-			check_schema_match(from_database, client.database_schema(), ignore_tables, only_tables);
+			check_schema_match(from_database, database, ignore_tables, only_tables);
 		}
 	}
 
 	void enqueue_tables() {
 		// queue up all the tables
 		if (leader) {
-			sync_queue.enqueue(client.database_schema().tables, ignore_tables, only_tables);
+			sync_queue.enqueue(database.tables, ignore_tables, only_tables);
 		}
 
 		// wait for the leader to do that (a barrier here is slightly excessive as we don't care if the other
@@ -322,6 +330,7 @@ struct SyncToWorker {
 		}
 	}
 
+	Database &database;
 	SyncQueue &sync_queue;
 	bool leader;
 	FDWriteStream output_stream;
@@ -344,6 +353,7 @@ struct SyncToWorker {
 
 template <typename DatabaseClient, typename... Options>
 void sync_to(int num_workers, int startfd, const Options &...options) {
+	Database database;
 	SyncQueue sync_queue(num_workers);
 	vector<SyncToWorker<DatabaseClient>*> workers;
 
@@ -353,7 +363,7 @@ void sync_to(int num_workers, int startfd, const Options &...options) {
 		bool leader = (worker == 0);
 		int read_from_descriptor = startfd + worker;
 		int write_to_descriptor = startfd + worker + num_workers;
-		workers[worker] = new SyncToWorker<DatabaseClient>(sync_queue, leader, read_from_descriptor, write_to_descriptor, options...);
+		workers[worker] = new SyncToWorker<DatabaseClient>(database, sync_queue, leader, read_from_descriptor, write_to_descriptor, options...);
 	}
 
 	for (typename vector<SyncToWorker<DatabaseClient>*>::const_iterator it = workers.begin(); it != workers.end(); ++it) delete *it;
