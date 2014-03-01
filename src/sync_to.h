@@ -21,9 +21,9 @@ set<string> split_list(const string &str) {
 template <typename DatabaseClient>
 struct SyncToWorker {
 	SyncToWorker(
-		SyncQueue &sync_queue,
+		SyncQueue &sync_queue, bool leader, int read_from_descriptor, int write_to_descriptor,
 		const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password,
-		const char *ignore, const char *only, int read_from_descriptor, int write_to_descriptor, bool leader, int verbose, bool snapshot, bool partial, bool rollback_after):
+		const char *ignore, const char *only, int verbose, bool snapshot, bool partial, bool rollback_after):
 			sync_queue(sync_queue),
 			client(database_host, database_port, database_name, database_username, database_password),
 			ignore_tables(split_list(ignore)),
@@ -347,8 +347,8 @@ struct SyncToWorker {
 	std::thread worker_thread;
 };
 
-template <typename DatabaseClient>
-void sync_to(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, const char *ignore, const char *only, int num_workers, int startfd, int verbose, bool snapshot, bool partial, bool rollback_after) {
+template <typename DatabaseClient, typename... Options>
+void sync_to(int num_workers, int startfd, const Options &...options) {
 	SyncQueue sync_queue(num_workers);
 	vector<SyncToWorker<DatabaseClient>*> workers;
 
@@ -358,7 +358,7 @@ void sync_to(const char *database_host, const char *database_port, const char *d
 		bool leader = (worker == 0);
 		int read_from_descriptor = startfd + worker;
 		int write_to_descriptor = startfd + worker + num_workers;
-		workers[worker] = new SyncToWorker<DatabaseClient>(sync_queue, database_host, database_port, database_name, database_username, database_password, ignore, only, read_from_descriptor, write_to_descriptor, leader, verbose, snapshot, partial, rollback_after);
+		workers[worker] = new SyncToWorker<DatabaseClient>(sync_queue, leader, read_from_descriptor, write_to_descriptor, options...);
 	}
 
 	for (typename vector<SyncToWorker<DatabaseClient>*>::const_iterator it = workers.begin(); it != workers.end(); ++it) delete *it;
