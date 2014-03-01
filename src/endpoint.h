@@ -4,6 +4,13 @@
 #include "sync_from.h"
 #include "sync_to.h"
 
+set<string> split_list(const string &str) {
+	set<string> result;
+	boost::split(result, str, boost::is_any_of(", "));
+	if (result.size() == 1 && *result.begin() == "") result.erase("");
+	return result;
+}
+
 template<class DatabaseClient>
 int endpoint_main(int argc, char *argv[]) {
 	if (argc < 7 || (argv[1] != string("from") && argv[1] != string("to"))) {
@@ -27,8 +34,8 @@ int endpoint_main(int argc, char *argv[]) {
 		if (from) {
 			sync_from<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, STDIN_FILENO, STDOUT_FILENO);
 		} else {
-			const char *ignore = argc > 7 ? argv[7] : "";
-			const char *only = argc > 8 ? argv[8] : "";
+			set <string> ignore(split_list(argc > 7 ? argv[7] : ""));
+			set <string> only(split_list(argc > 8 ? argv[8] : ""));
 			int workers = argc > 9 ? atoi(argv[9]) : 1;
 			int startfd = argc > 10 ? atoi(argv[10]) : STDIN_FILENO;
 			int verbose = argc > 11 ? atoi(argv[11]) : false;

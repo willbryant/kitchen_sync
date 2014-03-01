@@ -11,23 +11,16 @@ using namespace std;
 
 #define VERY_VERBOSE 2
 
-set<string> split_list(const string &str) {
-	set<string> result;
-	boost::split(result, str, boost::is_any_of(", "));
-	if (result.size() == 1 && *result.begin() == "") result.erase("");
-	return result;
-}
-
 template <typename DatabaseClient>
 struct SyncToWorker {
 	SyncToWorker(
 		SyncQueue &sync_queue, bool leader, int read_from_descriptor, int write_to_descriptor,
 		const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password,
-		const char *ignore, const char *only, int verbose, bool snapshot, bool partial, bool rollback_after):
+		const set<string> &ignore_tables, const set<string> &only_tables, int verbose, bool snapshot, bool partial, bool rollback_after):
 			sync_queue(sync_queue),
 			client(database_host, database_port, database_name, database_username, database_password),
-			ignore_tables(split_list(ignore)),
-			only_tables(split_list(only)),
+			ignore_tables(ignore_tables),
+			only_tables(only_tables),
 			input_stream(read_from_descriptor),
 			output_stream(write_to_descriptor),
 			input(input_stream),
@@ -331,8 +324,8 @@ struct SyncToWorker {
 
 	SyncQueue &sync_queue;
 	DatabaseClient client;
-	set<string> ignore_tables;
-	set<string> only_tables;
+	const set<string> ignore_tables;
+	const set<string> only_tables;
 	FDWriteStream output_stream;
 	FDReadStream input_stream;
 	Unpacker<FDReadStream> input;
