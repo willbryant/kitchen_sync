@@ -18,14 +18,14 @@ struct SyncToWorker {
 		const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password,
 		const set<string> &ignore_tables, const set<string> &only_tables, int verbose, bool snapshot, bool partial, bool rollback_after):
 			sync_queue(sync_queue),
-			client(database_host, database_port, database_name, database_username, database_password),
-			ignore_tables(ignore_tables),
-			only_tables(only_tables),
+			leader(leader),
 			input_stream(read_from_descriptor),
 			output_stream(write_to_descriptor),
 			input(input_stream),
 			output(output_stream),
-			leader(leader),
+			client(database_host, database_port, database_name, database_username, database_password),
+			ignore_tables(ignore_tables),
+			only_tables(only_tables),
 			verbose(verbose),
 			snapshot(snapshot),
 			rollback_after(rollback_after),
@@ -323,18 +323,20 @@ struct SyncToWorker {
 	}
 
 	SyncQueue &sync_queue;
-	DatabaseClient client;
-	const set<string> ignore_tables;
-	const set<string> only_tables;
+	bool leader;
 	FDWriteStream output_stream;
 	FDReadStream input_stream;
 	Unpacker<FDReadStream> input;
 	Packer<FDWriteStream> output;
-	bool leader;
+	DatabaseClient client;
+	
+	const set<string> ignore_tables;
+	const set<string> only_tables;
 	int verbose;
 	bool snapshot;
 	bool partial;
 	bool rollback_after;
+
 	int protocol_version;
 	size_t target_block_size;
 	std::thread worker_thread;
