@@ -296,16 +296,16 @@ struct MySQLKeyLister {
 };
 
 struct MySQLTableLister {
-	inline MySQLTableLister(MySQLClient &client, Database &database): _client(client), database(database) {}
+	inline MySQLTableLister(MySQLClient &client, Database &database): client(client), database(database) {}
 
 	inline void operator()(MySQLRow &row) {
 		Table table(row.string_at(0));
 
 		MySQLColumnLister column_lister(table);
-		_client.query("SHOW COLUMNS FROM " + table.name, column_lister, false);
+		client.query("SHOW COLUMNS FROM " + table.name, column_lister, false);
 
 		MySQLKeyLister key_lister(table);
-		_client.query("SHOW KEYS FROM " + table.name, key_lister, false);
+		client.query("SHOW KEYS FROM " + table.name, key_lister, false);
 
 		// if the table has no primary key, we need to find a unique key with no nullable columns to act as a surrogate primary key
 		sort(table.keys.begin(), table.keys.end()); // order is arbitrary for keys, but both ends must be consistent, so we sort the keys by name
@@ -324,7 +324,7 @@ struct MySQLTableLister {
 	}
 
 private:
-	MySQLClient &_client;
+	MySQLClient &client;
 	Database &database;
 };
 

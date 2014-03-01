@@ -296,13 +296,13 @@ struct PostgreSQLKeyLister {
 };
 
 struct PostgreSQLTableLister {
-	PostgreSQLTableLister(PostgreSQLClient &client, Database &database): _client(client), database(database) {}
+	PostgreSQLTableLister(PostgreSQLClient &client, Database &database): client(client), database(database) {}
 
 	void operator()(PostgreSQLRow &row) {
 		Table table(row.string_at(0));
 
 		PostgreSQLColumnLister column_lister(table);
-		_client.query(
+		client.query(
 			"SELECT attname "
 			  "FROM pg_attribute, pg_class "
 			 "WHERE attrelid = pg_class.oid AND "
@@ -313,7 +313,7 @@ struct PostgreSQLTableLister {
 			column_lister);
 
 		PostgreSQLPrimaryKeyLister primary_key_lister(table);
-		_client.query(
+		client.query(
 			"SELECT column_name "
 			  "FROM information_schema.table_constraints, "
 			       "information_schema.key_column_usage "
@@ -324,7 +324,7 @@ struct PostgreSQLTableLister {
 			primary_key_lister);
 
 		PostgreSQLKeyLister key_lister(table);
-		_client.query(
+		client.query(
 			"SELECT index_class.relname, pg_index.indisunique, attname, attnotnull "
 			  "FROM pg_class table_class, pg_index, pg_class index_class, generate_subscripts(indkey, 1) AS position, pg_attribute "
 			 "WHERE table_class.oid = pg_index.indrelid AND "
@@ -351,7 +351,7 @@ struct PostgreSQLTableLister {
 		database.tables.push_back(table);
 	}
 
-	PostgreSQLClient &_client;
+	PostgreSQLClient &client;
 	Database &database;
 };
 
