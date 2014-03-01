@@ -175,8 +175,8 @@ struct SyncFromWorker {
 	size_t target_block_size;
 };
 
-template<class DatabaseClient>
-void sync_from(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, int read_from_descriptor, int write_to_descriptor) {
-	SyncFromWorker<DatabaseClient> worker(database_host, database_port, database_name, database_username, database_password, read_from_descriptor, write_to_descriptor);
+template<class DatabaseClient, typename... Options>
+void sync_from(const Options &...options) {
+	SyncFromWorker<DatabaseClient> worker(options...);
 	worker();
 }
