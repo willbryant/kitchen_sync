@@ -1,12 +1,14 @@
 #include "command.h"
 #include "schema_serialization.h"
-#include "sync_algorithm.h"
+#include "filters.h"
 #include "fdstream.h"
+#include "sync_algorithm.h"
 
 template<class DatabaseClient>
 struct SyncFromWorker {
-	SyncFromWorker(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, int read_from_descriptor, int write_to_descriptor):
+	SyncFromWorker(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, const char *filter_file, int read_from_descriptor, int write_to_descriptor):
 		client(database_host, database_port, database_name, database_username, database_password),
+		filter_file(filter_file),
 		in(read_from_descriptor),
 		input(in),
 		out(write_to_descriptor),
@@ -157,14 +159,20 @@ struct SyncFromWorker {
 
 	void populate_database_schema() {
 		client.populate_database_schema(database);
-		for (const Table &table : database.tables) {
+
+		for (Table &table : database.tables) {
 			tables_by_name[table.name] = &table;
+		}
+
+		if (filter_file && *filter_file) {
+			load_filters(filter_file, tables_by_name);
 		}
 	}
 
 	DatabaseClient client;
 	Database database;
-	map<string, const Table*> tables_by_name;
+	map<string, Table*> tables_by_name;
+	const char *filter_file;
 	FDReadStream in;
 	Unpacker<FDReadStream> input;
 	FDWriteStream out;

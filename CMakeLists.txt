@@ -24,6 +24,13 @@ set(Boost_USE_MULTITHREADED ON)
 find_package(Boost COMPONENTS program_options REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 
+# yaml-cpp for filter files
+set(YAML_CPP_BUILD_TOOLS OFF)
+set(YAML_CPP_BUILD_CONTRIB OFF)
+add_subdirectory(src/yaml-cpp)
+include_directories(src/yaml-cpp/include)
+set(YamlCPP_LIBRARIES yaml-cpp)
+
 # the main program knows nothing but how to hook up the endpoints
 set(ks_SRCS src/ks.cpp src/db_url.cpp src/process.cpp src/unidirectional_pipe.cpp)
 add_executable(ks ${ks_SRCS})
@@ -34,8 +41,8 @@ find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIRS})
 
 # the endpoints do the actual work
-set(ks_endpoint_SRCS src/sql_functions.cpp src/schema.cpp src/schema_functions.cpp src/abortable_barrier.cpp src/sync_queue.cpp)
-set(ks_endpoint_LIBS ${OPENSSL_LIBRARIES})
+set(ks_endpoint_SRCS src/sql_functions.cpp src/schema.cpp src/schema_functions.cpp src/filters.cpp src/abortable_barrier.cpp src/sync_queue.cpp)
+set(ks_endpoint_LIBS ${OPENSSL_LIBRARIES} ${YamlCPP_LIBRARIES} ${Boost_LIBRARIES})
 
 # turn on debugging symbols
 set(CMAKE_BUILD_TYPE Debug)
@@ -47,7 +54,7 @@ if (MYSQL_FOUND)
 	include_directories(${MYSQL_INCLUDE_DIR})
 	set(ks_mysql_SRCS src/ks_mysql.cpp)
 	add_executable(ks_mysql ${ks_mysql_SRCS} ${ks_endpoint_SRCS})
-	target_link_libraries(ks_mysql ${MYSQL_LIBRARIES} ${ks_endpoint_LIBS} ${Boost_LIBRARIES})
+	target_link_libraries(ks_mysql ${MYSQL_LIBRARIES} ${ks_endpoint_LIBS})
 endif()
 
 # and one endpoint program for postgresql
@@ -59,5 +66,5 @@ if (PostgreSQL_FOUND)
 	include_directories(${PostgreSQL_INCLUDE_DIR})
 	set(ks_postgresql_SRCS src/ks_postgresql.cpp)
 	add_executable(ks_postgresql ${ks_postgresql_SRCS} ${ks_endpoint_SRCS})
-	target_link_libraries(ks_postgresql ${PostgreSQL_LIBRARIES} ${ks_endpoint_LIBS} ${Boost_LIBRARIES})
+	target_link_libraries(ks_postgresql ${PostgreSQL_LIBRARIES} ${ks_endpoint_LIBS})
 endif()

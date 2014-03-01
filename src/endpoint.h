@@ -32,7 +32,8 @@ int endpoint_main(int argc, char *argv[]) {
 		if (database_password == string("-")) database_password = "";
 		
 		if (from) {
-			sync_from<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, STDIN_FILENO, STDOUT_FILENO);
+			const char *filters_file = argc > 7 ? argv[7] : NULL;
+			sync_from<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, filters_file, STDIN_FILENO, STDOUT_FILENO);
 		} else {
 			set <string> ignore(split_list(argc > 7 ? argv[7] : ""));
 			set <string> only(split_list(argc > 8 ? argv[8] : ""));

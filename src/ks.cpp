@@ -21,6 +21,7 @@ int main(int argc, char *argv[]) {
 	{
 		options_description desc("Allowed options");
 		DbUrl from, to;
+		string filters;
 		string via;
 		int workers;
 		int verbose = 0;
@@ -35,6 +36,7 @@ int main(int argc, char *argv[]) {
 			("workers", value<int>(&workers)->default_value(1), "The number of concurrent workers to use at each end.\n")
 			("ignore",  value<string>(&ignore),                 "Comma-separated list of tables to ignore.\n")
 			("only",    value<string>(&only),                   "Comma-separated list of tables to process (making all others ignored).\n")
+			("filters",	value<string>(&filters),				"YAML file to read table/column filtering information from (at the 'from' end).\n")
 			("without-snapshot-export",                         "Don't attempt to export & use a consistent snapshot across multiple workers (which is normally a good thing, but requires version 9.2 or later for PostgreSQL and on MySQL uses FLUSH TABLES WITH READ LOCK which requires the RELOAD privilege and may have an impact on other connections); you will still get a consistent copy if the database is (perhaps temporarily) frozen when the workers start.\n")
 			("partial",                                         "Attempt to commit changes even if some workers hit errors.\n")
 			("rollback-after",                                  "Roll back afterwards, for benchmarking.\n")
@@ -77,7 +79,7 @@ int main(int argc, char *argv[]) {
 		if (to  .password.empty()) to  .password = "-";
 
 		const char *from_args[] = { ssh_binary.c_str(), "-C", "-c", "blowfish", via.c_str(),
-									from_binary.c_str(), "from", from.host.c_str(), from.port.c_str(), from.database.c_str(), from.username.c_str(), from.password.c_str(), NULL };
+									from_binary.c_str(), "from", from.host.c_str(), from.port.c_str(), from.database.c_str(), from.username.c_str(), from.password.c_str(), filters.c_str(), NULL };
 		const char *  to_args[] = {   to_binary.c_str(),   "to",   to.host.c_str(),   to.port.c_str(),   to.database.c_str(),   to.username.c_str(),   to.password.c_str(), ignore.c_str(), only.c_str(), workers_str.c_str(), startfd_str.c_str(), verbose_str.c_str(), snapshot ? "1" : "0", partial ? "1" : "0", rollback ? "1" : "0", NULL };
 		const char **applicable_from_args = (via.empty() ? from_args + 5 : from_args);
 

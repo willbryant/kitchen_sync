@@ -14,6 +14,9 @@ typedef vector<ColumnValues> Rows;
 struct Column {
 	string name;
 
+	// the following member isn't serialized currently (could be, but not required):
+	string filter_expression;
+
 	inline Column(const string &name): name(name) {}
 	inline Column() {}
 };
@@ -39,6 +42,9 @@ struct Table {
 	Columns columns;
 	ColumnIndices primary_key_columns;
 	Keys keys;
+
+	// the following member isn't serialized currently (could be, but not required):
+	string where_conditions;
 
 	inline Table(const string &name): name(name) {}
 	inline Table() {}

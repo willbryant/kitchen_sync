@@ -59,12 +59,28 @@ string non_binary_string_values_list(const vector<string> &values) {
 	return result;
 }
 
-string where_sql(const string &key_columns, const ColumnValues &prev_key, const ColumnValues &last_key, const char *prefix) {
+string where_sql(const string &key_columns, const ColumnValues &prev_key, const ColumnValues &last_key, const string &extra_where_conditions, const char *prefix) {
 	string result;
-	if (!prev_key.empty() || !last_key.empty())	result += prefix;
+	if (!prev_key.empty() || !last_key.empty() || !extra_where_conditions.empty()) result += prefix;
 	if (!prev_key.empty())						result += key_columns + " > " + non_binary_string_values_list(prev_key);
 	if (!prev_key.empty() && !last_key.empty())	result += " AND ";
 	if (!last_key.empty()) 						result += key_columns + " <= " + non_binary_string_values_list(last_key);
+	if (!extra_where_conditions.empty())		result += extra_where_conditions;
+	return result;
+}
+
+string select_columns_sql(const Table &table, char quote_identifiers_with) {
+	string result;
+	for (Columns::const_iterator column = table.columns.begin(); column != table.columns.end(); ++column) {
+		if (column != table.columns.begin()) result += ", ";
+		if (!column->filter_expression.empty()) {
+			result += column->filter_expression;
+			result += " AS ";
+		}
+		if (quote_identifiers_with) result += quote_identifiers_with;
+		result += column->name;
+		if (quote_identifiers_with) result += quote_identifiers_with;
+	}
 	return result;
 }
 
@@ -72,17 +88,10 @@ string retrieve_rows_sql(const Table &table, const ColumnValues &prev_key, size_
 	string key_columns(columns_list(table.columns, table.primary_key_columns, quote_identifiers_with));
 
 	string result("SELECT ");
-	for (Columns::const_iterator column = table.columns.begin(); column != table.columns.end(); ++column) {
-		if (column != table.columns.begin()) result += ", ";
-		if (quote_identifiers_with) result += quote_identifiers_with;
-		result += column->name;
-		if (quote_identifiers_with) result += quote_identifiers_with;
-	}
+	result += select_columns_sql(table, quote_identifiers_with);
 	result += " FROM ";
 	result += table.name;
-	if (!prev_key.empty()) {
-		result += " WHERE " + key_columns + " > " + non_binary_string_values_list(prev_key);
-	}
+	result += where_sql(key_columns, prev_key, ColumnValues(), table.where_conditions);
 	result += " ORDER BY " + key_columns.substr(1, key_columns.size() - 2);
 	result += " LIMIT " + to_string(row_count);
 	return result;
@@ -92,15 +101,10 @@ string retrieve_rows_sql(const Table &table, const ColumnValues &prev_key, const
 	string key_columns(columns_list(table.columns, table.primary_key_columns, quote_identifiers_with));
 
 	string result("SELECT ");
-	for (Columns::const_iterator column = table.columns.begin(); column != table.columns.end(); ++column) {
-		if (column != table.columns.begin()) result += ", ";
-		if (quote_identifiers_with) result += quote_identifiers_with;
-		result += column->name;
-		if (quote_identifiers_with) result += quote_identifiers_with;
-	}
+	result += select_columns_sql(table, quote_identifiers_with);
 	result += " FROM ";
 	result += table.name;
-	result += where_sql(key_columns, prev_key, last_key);
+	result += where_sql(key_columns, prev_key, last_key, table.where_conditions);
 	result += + " ORDER BY " + key_columns.substr(1, key_columns.size() - 2);
 	return result;
 }
@@ -110,6 +114,6 @@ string count_rows_sql(const Table &table, const ColumnValues &prev_key, const Co
 
 	string result("SELECT COUNT(*) FROM ");
 	result += table.name;
-	result += where_sql(key_columns, prev_key, last_key);
+	result += where_sql(key_columns, prev_key, last_key, table.where_conditions);
 	return result;
 }
