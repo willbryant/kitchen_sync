@@ -366,7 +366,6 @@ void PostgreSQLClient::populate_database_schema() {
 		   "WHERE schemaname = ANY (current_schemas(false)) "
 		   "ORDER BY pg_relation_size(tablename::text) DESC, tablename ASC",
 		  table_lister);
-	index_database_tables();
 }
 
 

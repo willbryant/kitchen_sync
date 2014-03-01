@@ -28,7 +28,7 @@ struct SyncFromWorker {
 
 				if (command.verb == Commands::OPEN) {
 					string table_name = command.argument<string>(0);
-					table = &client.table_by_name(table_name);
+					table = tables_by_name.at(table_name); // throws out_of_range if not present in the map
 					hash_first_range(*this, *table, target_block_size);
 
 				} else if (command.verb == Commands::HASH_NEXT) {
@@ -69,20 +69,23 @@ struct SyncFromWorker {
 					string                  hash(command.argument<string>(4));
 					check_hash_and_choose_next_range(*this, *table, &prev_key, last_key, next_key, &failed_last_key, hash, target_block_size);
 
+				} else if (command.verb == Commands::WITHOUT_SNAPSHOT) {
+					client.start_read_transaction();
+					output.pack_nil(); // similarly arbitrary
+					populate_tables_by_name();
+
 				} else if (command.verb == Commands::EXPORT_SNAPSHOT) {
 					output << client.export_snapshot();
+					populate_tables_by_name();
 
 				} else if (command.verb == Commands::IMPORT_SNAPSHOT) {
 					string snapshot(command.argument<string>(0));
 					client.import_snapshot(snapshot);
 					output.pack_nil(); // arbitrary, sent to indicate we've started our transaction
+					populate_tables_by_name();
 
 				} else if (command.verb == Commands::UNHOLD_SNAPSHOT) {
 					client.unhold_snapshot();
-					output.pack_nil(); // similarly arbitrary
-
-				} else if (command.verb == Commands::WITHOUT_SNAPSHOT) {
-					client.start_read_transaction();
 					output.pack_nil(); // similarly arbitrary
 
 				} else if (command.verb == Commands::SCHEMA) {
@@ -152,7 +155,14 @@ struct SyncFromWorker {
 		output.flush();
 	}
 
+	void populate_tables_by_name() {
+		for (const Table &table : client.database_schema().tables) {
+			tables_by_name[table.name] = &table;
+		}
+	}
+
 	DatabaseClient client;
+	map<string, const Table*> tables_by_name;
 	FDReadStream in;
 	Unpacker<FDReadStream> input;
 	FDWriteStream out;

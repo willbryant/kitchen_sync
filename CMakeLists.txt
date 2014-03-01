@@ -34,7 +34,7 @@ find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIRS})
 
 # the endpoints do the actual work
-set(ks_endpoint_SRCS src/sql_functions.cpp src/schema.cpp src/schema_functions.cpp src/database_client.cpp src/abortable_barrier.cpp src/sync_queue.cpp)
+set(ks_endpoint_SRCS src/sql_functions.cpp src/schema.cpp src/schema_functions.cpp src/abortable_barrier.cpp src/sync_queue.cpp)
 set(ks_endpoint_LIBS ${OPENSSL_LIBRARIES})
 
 # turn on debugging symbols

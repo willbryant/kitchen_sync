@@ -333,7 +333,6 @@ private:
 void MySQLClient::populate_database_schema() {
 	MySQLTableLister table_lister(*this);
 	query("SELECT table_name FROM information_schema.tables WHERE table_schema = schema() ORDER BY data_length DESC, table_name ASC", table_lister, true /* buffer so we can make further queries during iteration */);
-	index_database_tables();
 }
 
 
