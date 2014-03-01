@@ -69,16 +69,16 @@ public:
 
 	template <typename RowReceiver>
 	size_t retrieve_rows(const Table &table, const ColumnValues &prev_key, size_t row_count, RowReceiver &row_packer) {
-		return query(retrieve_rows_sql(table, prev_key, row_count, '`'), row_packer, false /* as above */);
+		return query(retrieve_rows_sql(table, prev_key, row_count, quote_identifiers_with()), row_packer, false /* as above */);
 	}
 
 	template <typename RowReceiver>
 	size_t retrieve_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, RowReceiver &row_packer) {
-		return query(retrieve_rows_sql(table, prev_key, last_key, '`'), row_packer, false /* nb. n_tuples won't work, which is ok since we send rows individually */);
+		return query(retrieve_rows_sql(table, prev_key, last_key, quote_identifiers_with()), row_packer, false /* nb. n_tuples won't work, which is ok since we send rows individually */);
 	}
 
 	size_t count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
-		return atoi(select_one(count_rows_sql(table, prev_key, last_key, '`')).c_str());
+		return atoi(select_one(count_rows_sql(table, prev_key, last_key, quote_identifiers_with())).c_str());
 	}
 
 	void execute(const string &sql);
@@ -94,10 +94,9 @@ public:
 	void populate_database_schema(Database &database);
 	string escape_value(const string &value);
 
-	inline const char* replace_sql_prefix() { return "REPLACE INTO "; }
-	inline char quote_identifiers_with() { return '`'; }
-
-	inline bool need_primary_key_clearer_to_replace() { return false; /* not needed since we support REPLACE */ }
+	inline char quote_identifiers_with() const { return '`'; }
+	inline const char* replace_sql_prefix() const { return "REPLACE INTO "; }
+	inline bool need_primary_key_clearer_to_replace() const { return false; /* not needed since we support REPLACE */ }
 
 	template <typename UniqueKeyClearerClass>
 	inline void add_replace_clearers(vector<UniqueKeyClearerClass> &unique_key_clearers, const Table &table) { /* not needed since we support REPLACE */ }
