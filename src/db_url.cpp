@@ -1,7 +1,5 @@
 #include "db_url.h"
 
-#include <regex>
-
 using namespace std;
 using namespace boost::program_options;
 
@@ -59,25 +57,39 @@ string DbUrl::urldecode(const string &str) {
 	return result;
 }
 
+pair<string, string> split_pair(const string &str, const string &separator, int pick_which_side) {
+	size_t pos = str.find(separator);
+	if (pos != string::npos) {
+		return pair<string, string>(str.substr(0, pos), str.substr(pos + separator.length()));
+	} else if (pick_which_side > 0) {
+		return pair<string, string>("", str);
+	} else if (pick_which_side < 0) {
+		return pair<string, string>(str, "");
+	} else {
+		throw validation_error(validation_error::invalid_option_value);
+	}
+}
+
 void validate(
 	boost::any& v, 
 	const vector<string>& values,
 	DbUrl* target_type,
 	int _dummy) {
-	// vendor://[user[:pass]@]hostname[:port]/database
-	static regex r("^(\\w+)://(?:([^:]+)(?::([^@]+))?@)?([^:/]+)(?::(.+))?/([^/]+)$");
 	validators::check_first_occurrence(v);
+	DbUrl result;
 
-	smatch match;
-	if (regex_match(validators::get_single_string(values), match, r)) {
-		v = boost::any(DbUrl(
-				DbUrl::urldecode(match[1]),
-				DbUrl::urldecode(match[2]),
-				DbUrl::urldecode(match[3]),
-				DbUrl::urldecode(match[4]),
-				DbUrl::urldecode(match[5]),
-				DbUrl::urldecode(match[6])));
-	} else {
-		throw validation_error(validation_error::invalid_option_value);
-	}
+	// vendor://[user[:pass]@]hostname[:port]/database
+	pair<string, string> protocol_and_rest = split_pair(validators::get_single_string(values), "://", 0);
+	pair<string, string> username_password_host_port_and_database = split_pair(protocol_and_rest.second, "/", 0);
+	pair<string, string> username_password_and_host_port = split_pair(username_password_host_port_and_database.first, "@", 1);
+	pair<string, string> username_password = split_pair(username_password_and_host_port.first, ":", -1);
+	pair<string, string> host_port = split_pair(username_password_and_host_port.second, ":", -1);
+	result.protocol = protocol_and_rest.first;
+	result.username = username_password.first;
+	result.password = username_password.second;
+	result.host = host_port.first;
+	result.port = host_port.second;
+	result.database = username_password_host_port_and_database.second;
+
+	v = boost::any(result);
 }
