@@ -61,11 +61,24 @@ string non_binary_string_values_list(const vector<string> &values) {
 
 string where_sql(const string &key_columns, const ColumnValues &prev_key, const ColumnValues &last_key, const string &extra_where_conditions, const char *prefix) {
 	string result;
-	if (!prev_key.empty() || !last_key.empty() || !extra_where_conditions.empty()) result += prefix;
-	if (!prev_key.empty())						result += key_columns + " > " + non_binary_string_values_list(prev_key);
-	if (!prev_key.empty() && !last_key.empty())	result += " AND ";
-	if (!last_key.empty()) 						result += key_columns + " <= " + non_binary_string_values_list(last_key);
-	if (!extra_where_conditions.empty())		result += extra_where_conditions;
+	if (!prev_key.empty()) {
+		result += prefix;
+		result += key_columns;
+		result += " > ";
+		result += non_binary_string_values_list(prev_key);
+		prefix = " AND ";
+	}
+	if (!last_key.empty()) {
+		result += prefix;
+		result += key_columns;
+		result += " <= ";
+		result += non_binary_string_values_list(last_key);
+		prefix = " AND ";
+	}
+	if (!extra_where_conditions.empty()) {
+		result += prefix;
+		result += extra_where_conditions;
+	}
 	return result;
 }
 

@@ -49,6 +49,17 @@ class FilterFromTest < KitchenSync::EndpointTestCase
       assert_equal @filtered_rows[0], unpack_next
       assert_equal @filtered_rows[1], unpack_next
       assert_equal                [], unpack_next
+
+      assert_equal [Commands::ROWS, ["4"], []],
+       send_command(Commands::ROWS, ["4"], [])
+      assert_equal @filtered_rows[1], unpack_next
+      assert_equal                [], unpack_next
+
+      assert_equal [Commands::ROWS, [], ["5"]],
+       send_command(Commands::ROWS, [], ["5"])
+      assert_equal @filtered_rows[0], unpack_next
+      assert_equal @filtered_rows[1], unpack_next
+      assert_equal                [], unpack_next
     end
   end
 
