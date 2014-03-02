@@ -2,7 +2,7 @@
 #define BASE_SQL_H
 
 struct BaseSQL {
-	static const size_t MAX_SENSIBLE_INSERT_COMMAND_SIZE = 8*1024*1024;
+	static const size_t MAX_SENSIBLE_INSERT_COMMAND_SIZE = 4*1024*1024;
 	static const size_t MAX_SENSIBLE_DELETE_COMMAND_SIZE =     16*1024;
 
 	inline BaseSQL(const string &prefix, const string &suffix): prefix(prefix), suffix(suffix) {
