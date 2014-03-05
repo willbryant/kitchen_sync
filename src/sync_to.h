@@ -53,9 +53,9 @@ struct SyncToWorker {
 			sync_tables();
 
 			if (rollback_after) {
-				client.rollback_transaction();
+				rollback();
 			} else {
-				client.commit_transaction();
+				commit();
 			}
 
 			// send a quit so the other end closes its output and terminates gracefully
@@ -66,7 +66,8 @@ struct SyncToWorker {
 				cerr << e.what() << endl;
 			}
 
-			// if the --partial option was used, try to commit the changes we've made, but ignore any errors
+			// if the --partial option was used, try to commit the changes we've made, but ignore any errors,
+			// and don't bother outputting timings
 			if (partial) {
 				try { client.commit_transaction(); } catch (...) {}
 			}
@@ -320,6 +321,30 @@ struct SyncToWorker {
 		if (verbose >= VERY_VERBOSE) cout << "<- rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " +" << endl;
 		if (verbose >= VERY_VERBOSE) cout << "<- hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " last-failure " << non_binary_string_values_list(failed_last_key) << endl;
 		send_command(output, Commands::ROWS_AND_HASH_FAIL, prev_key, last_key, next_key, failed_last_key, hash);
+	}
+
+	void commit() {
+		time_t started = time(NULL);
+
+		client.commit_transaction();
+
+		if (verbose) {
+			time_t now = time(NULL);
+			unique_lock<mutex> lock(sync_queue.mutex);
+			cout << "committed in " << (now - started) << "s" << endl << flush;
+		}
+	}
+
+	void rollback() {
+		time_t started = time(NULL);
+
+		client.rollback_transaction();
+
+		if (verbose) {
+			time_t now = time(NULL);
+			unique_lock<mutex> lock(sync_queue.mutex);
+			cout << "rolled back in " << (now - started) << "s" << endl << flush;
+		}
 	}
 
 	void send_quit_command() {
