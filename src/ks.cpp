@@ -9,7 +9,7 @@ using namespace std;
 using namespace boost::program_options;
 
 const string this_program_name("ks");
-const int to_descriptor_list_start = 1000; // arbitrary
+const int to_descriptor_list_start = 500; // arbitrary
 
 int help(options_description desc) {
     cout << desc << "\n";
