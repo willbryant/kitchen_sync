@@ -177,7 +177,7 @@ MySQLClient::MySQLClient(
 	}
 
 	// increase the timeouts so that the connection doesn't get killed while trying to write large rowsets to the client over slow pipes
-	execute("SET SESSION net_read_timeout = 300, net_write_timeout = 600");
+	execute("SET SESSION net_read_timeout = 300, net_write_timeout = 600, sql_mode = 'traditional,pipes_as_concat'");
 }
 
 MySQLClient::~MySQLClient() {
