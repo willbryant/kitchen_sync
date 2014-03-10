@@ -11,6 +11,12 @@ And one or both out of:
   apt-get install libpq-dev
   apt-get install libmysqlclient-dev
 
+Homebrew users can install these on OS X using:
+  brew install boost
+And one or both out of:
+  brew install postgresql
+  brew install mysql
+
 If you want to run the test suite, you'll also need Ruby and the following gems installed: mocha msgpack pg mysql2
 
 To build, change to the kitchen_sync directory where you checked out the files, then:
