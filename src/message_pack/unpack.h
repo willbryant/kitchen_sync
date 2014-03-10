@@ -2,7 +2,7 @@
 #define UNPACK_H
 
 #include "unistd.h"
-#include "stdint.h"
+#include <cstdint>
 #include <cerrno>
 #include <stdexcept>
 #include <string>
