@@ -12,7 +12,7 @@ void SyncQueue::enqueue(const Tables &tables, const set<string> &ignore_tables, 
 const Table* SyncQueue::pop() {
 	unique_lock<std::mutex> lock(mutex);
 	if (aborted) throw aborted_error();
-	if (queue.empty()) return NULL;
+	if (queue.empty()) return nullptr;
 	const Table *table = queue.front();
 	queue.pop_front();
 	return table;

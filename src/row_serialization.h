@@ -56,7 +56,7 @@ struct RowHasher {
 		const EVP_MD *md = EVP_get_digestbyname(DIGEST_NAME);
 		if (!md) throw runtime_error("Unknown message digest " DIGEST_NAME);
 		mdctx = EVP_MD_CTX_create();
-		EVP_DigestInit_ex(mdctx, md, NULL);
+		EVP_DigestInit_ex(mdctx, md, nullptr);
 	}
 
 	~RowHasher() {

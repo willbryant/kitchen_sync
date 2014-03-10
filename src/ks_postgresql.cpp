@@ -110,7 +110,7 @@ protected:
 
 	template <typename RowFunction>
 	size_t query(const string &sql, RowFunction &row_handler) {
-		PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, NULL, NULL, NULL, NULL, 0 /* text-format results only */));
+		PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, nullptr, nullptr, nullptr, nullptr, 0 /* text-format results only */));
 
 		if (res.status() != PGRES_TUPLES_OK) {
 			backtrace();
@@ -126,7 +126,7 @@ protected:
 	}
 
 	string select_one(const string &sql) {
-		PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, NULL, NULL, NULL, NULL, 0 /* text-format results only */));
+		PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, nullptr, nullptr, nullptr, nullptr, 0 /* text-format results only */));
 
 		if (res.status() != PGRES_TUPLES_OK) {
 			backtrace();
@@ -154,8 +154,8 @@ PostgreSQLClient::PostgreSQLClient(
 	const char *database_username,
 	const char *database_password) {
 
-	const char *keywords[] = { "host",        "port",        "dbname",      "user",            "password",        NULL };
-	const char *values[]   = { database_host, database_port, database_name, database_username, database_password, NULL };
+	const char *keywords[] = { "host",        "port",        "dbname",      "user",            "password",        nullptr };
+	const char *values[]   = { database_host, database_port, database_name, database_username, database_password, nullptr };
 
 	conn = PQconnectdbParams(keywords, values, 1 /* allow expansion */);
 
@@ -234,7 +234,7 @@ void PostgreSQLClient::enable_referential_integrity() {
 string PostgreSQLClient::escape_value(const string &value) {
 	string result;
 	result.resize(value.size()*2 + 1);
-	size_t result_length = PQescapeStringConn(conn, (char*)result.data(), value.c_str(), value.size(), NULL);
+	size_t result_length = PQescapeStringConn(conn, (char*)result.data(), value.c_str(), value.size(), nullptr);
 	result.resize(result_length);
 	return result;
 }

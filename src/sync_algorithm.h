@@ -44,7 +44,7 @@ void check_hash_and_choose_next_range(Worker &worker, const Table &table, const 
 			// data transfer - it would really only happen if the next lot are much bigger per row.
 			if (rows_to_failure > 1 && hasher.size > target_block_size) {
 				// yup, subdivide the range containing the failure, starting at the next row
-				hash_failed_range(worker, table, rows_to_failure/2, NULL, last_key, *failed_last_key);
+				hash_failed_range(worker, table, rows_to_failure/2, nullptr, last_key, *failed_last_key);
 			} else {
 				// nope, there's not enough in that range on our side, so it's time to send rows instead of trading hashes
 				rows_and_next_hash(worker, table, last_key, *failed_last_key, !rows_to_failure, target_block_size);

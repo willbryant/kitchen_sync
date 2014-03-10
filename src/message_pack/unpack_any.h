@@ -62,7 +62,7 @@ Unpacker<Stream> &operator >>(Unpacker<Stream> &unpacker, boost::any &obj) {
 	} else if (leader == MSGPACK_FALSE || leader == MSGPACK_TRUE) {
 		obj = unpacker.template next<bool>();
 
-	// nil - bit debateable how to handle these since they nil is not a real type in C++
+	// nil - bit debateable how to handle these, could hack in nullptr_t
 	} else if (leader == MSGPACK_NIL) {
 		unpacker.next_nil();
 		boost::optional<boost::any> value; // don't set to anything

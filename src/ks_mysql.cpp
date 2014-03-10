@@ -43,7 +43,7 @@ public:
 	inline const MySQLRes &results() const { return _res; }
 
 	inline         int n_columns() const { return _res.n_columns(); }
-	inline        bool   null_at(int column_number) const { return     _row[column_number] == NULL; }
+	inline        bool   null_at(int column_number) const { return     _row[column_number] == nullptr; }
 	inline const void *result_at(int column_number) const { return     _row[column_number]; }
 	inline         int length_of(int column_number) const { return _lengths[column_number]; }
 	inline      string string_at(int column_number) const { return string((char *)result_at(column_number), length_of(column_number)); }
@@ -160,7 +160,7 @@ MySQLClient::MySQLClient(
 
 	// mysql_real_connect takes separate params for numeric ports and unix domain sockets
 	int port = 0;
-	const char *socket = NULL;
+	const char *socket = nullptr;
 	if (database_port && *database_port) {
 		if (*database_port >= '0' && *database_port <= '9') {
 			port = atoi(database_port);
@@ -192,7 +192,7 @@ void MySQLClient::execute(const string &sql) {
 
 void MySQLClient::start_read_transaction() {
 	execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
-	if (mysql_get_server_version(&mysql) >= MYSQL_5_6_5 && strstr(mysql_get_server_info(&mysql), "MariaDB") == NULL) {
+	if (mysql_get_server_version(&mysql) >= MYSQL_5_6_5 && strstr(mysql_get_server_info(&mysql), "MariaDB") == nullptr) {
 		execute("START TRANSACTION READ ONLY WITH CONSISTENT SNAPSHOT");
 	} else {
 		execute("START TRANSACTION WITH CONSISTENT SNAPSHOT");

@@ -192,7 +192,7 @@ struct SyncToWorker {
 		TableRowApplier<DatabaseClient> row_applier(client, table);
 		size_t hash_commands = 0;
 		size_t rows_commands = 0;
-		time_t started = time(NULL);
+		time_t started = time(nullptr);
 
 		if (verbose) {
 			unique_lock<mutex> lock(sync_queue.mutex);
@@ -216,7 +216,7 @@ struct SyncToWorker {
 				hash_commands++;
 
 				// after each hash command received it's our turn to send the next command
-				check_hash_and_choose_next_range(*this, table, NULL, prev_key, last_key, NULL, hash, target_block_size);
+				check_hash_and_choose_next_range(*this, table, nullptr, prev_key, last_key, nullptr, hash, target_block_size);
 
 			} else if (command.verb == Commands::HASH_FAIL) {
 				// the last hash we sent them didn't match, so they've reduced the key range and sent us back
@@ -229,7 +229,7 @@ struct SyncToWorker {
 				hash_commands++;
 
 				// after each hash command received it's our turn to send the next command
-				check_hash_and_choose_next_range(*this, table, NULL, prev_key, last_key, &failed_last_key, hash, target_block_size);
+				check_hash_and_choose_next_range(*this, table, nullptr, prev_key, last_key, &failed_last_key, hash, target_block_size);
 
 			} else if (command.verb == Commands::ROWS) {
 				// we're being sent a range of rows; apply them to our end.  we do this in-context to
@@ -264,7 +264,7 @@ struct SyncToWorker {
 				// fit the command we send back in the kernel send buffer to guarantee there is no
 				// deadlock; it's never been smaller than a page on any supported OS, and has been
 				// defaulted to much larger values for some years.
-				check_hash_and_choose_next_range(*this, table, NULL, last_key, next_key, NULL, hash, target_block_size);
+				check_hash_and_choose_next_range(*this, table, nullptr, last_key, next_key, nullptr, hash, target_block_size);
 				row_applier.stream_from_input(input, prev_key, last_key);
 				// nb. it's implied last_key is not [], as we would have been sent back a plain rows command for the combined range if that was needed
 
@@ -281,7 +281,7 @@ struct SyncToWorker {
 				rows_commands++;
 
 				// same pipelining as the previous case
-				check_hash_and_choose_next_range(*this, table, NULL, last_key, next_key, &failed_last_key, hash, target_block_size);
+				check_hash_and_choose_next_range(*this, table, nullptr, last_key, next_key, &failed_last_key, hash, target_block_size);
 				row_applier.stream_from_input(input, prev_key, last_key);
 
 			} else {
@@ -290,7 +290,7 @@ struct SyncToWorker {
 		}
 
 		if (verbose) {
-			time_t now = time(NULL);
+			time_t now = time(nullptr);
 			unique_lock<mutex> lock(sync_queue.mutex);
 			cout << "finished " << table.name << " in " << (now - started) << "s using " << hash_commands << " hash commands and " << rows_commands << " rows commands changing " << row_applier.rows_changed << " rows" << endl << flush;
 		}
@@ -324,24 +324,24 @@ struct SyncToWorker {
 	}
 
 	void commit() {
-		time_t started = time(NULL);
+		time_t started = time(nullptr);
 
 		client.commit_transaction();
 
 		if (verbose) {
-			time_t now = time(NULL);
+			time_t now = time(nullptr);
 			unique_lock<mutex> lock(sync_queue.mutex);
 			cout << "committed in " << (now - started) << "s" << endl << flush;
 		}
 	}
 
 	void rollback() {
-		time_t started = time(NULL);
+		time_t started = time(nullptr);
 
 		client.rollback_transaction();
 
 		if (verbose) {
-			time_t now = time(NULL);
+			time_t now = time(nullptr);
 			unique_lock<mutex> lock(sync_queue.mutex);
 			cout << "rolled back in " << (now - started) << "s" << endl << flush;
 		}

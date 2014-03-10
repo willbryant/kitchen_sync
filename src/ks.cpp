@@ -79,8 +79,8 @@ int main(int argc, char *argv[]) {
 		if (to  .password.empty()) to  .password = "-";
 
 		const char *from_args[] = { ssh_binary.c_str(), "-C", "-c", "blowfish", via.c_str(),
-									from_binary.c_str(), "from", from.host.c_str(), from.port.c_str(), from.database.c_str(), from.username.c_str(), from.password.c_str(), filters.c_str(), NULL };
-		const char *  to_args[] = {   to_binary.c_str(),   "to",   to.host.c_str(),   to.port.c_str(),   to.database.c_str(),   to.username.c_str(),   to.password.c_str(), ignore.c_str(), only.c_str(), workers_str.c_str(), startfd_str.c_str(), verbose_str.c_str(), snapshot ? "1" : "0", partial ? "1" : "0", rollback ? "1" : "0", NULL };
+									from_binary.c_str(), "from", from.host.c_str(), from.port.c_str(), from.database.c_str(), from.username.c_str(), from.password.c_str(), filters.c_str(), nullptr };
+		const char *  to_args[] = {   to_binary.c_str(),   "to",   to.host.c_str(),   to.port.c_str(),   to.database.c_str(),   to.username.c_str(),   to.password.c_str(), ignore.c_str(), only.c_str(), workers_str.c_str(), startfd_str.c_str(), verbose_str.c_str(), snapshot ? "1" : "0", partial ? "1" : "0", rollback ? "1" : "0", nullptr };
 		const char **applicable_from_args = (via.empty() ? from_args + 5 : from_args);
 
 		vector<pid_t> child_pids;
