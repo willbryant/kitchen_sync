@@ -1,3 +1,6 @@
+Compiling Kitchen Sync
+======================
+
 To compile Kitchen Sync, you will need:
 * a C++11 compiler
 * cmake
@@ -22,12 +25,31 @@ To build, change to the kitchen_sync directory where you checked out the files, 
   cd build
   cmake .. && make
 
+
+Running the test suite
+======================
+
 If you want to run the test suite, you'll also need Ruby and the following gems installed:
   mocha msgpack pg mysql2
+
+You'll need to create some test databases for it to use:
+  mysqladmin -u root create ks_test
+  createdb --encoding unicode ks_test
+
+You can override these database names, and if necessary the usernames and passwords it will
+use, by setting the variables ENDPOINT_DATABASE_NAME, ENDPOINT_DATABASE_USERNAME, and
+ENDPOINT_DATABASE_PASSWORD.  If you need to use different usernames etc. for the two databases,
+you can instead use: MYSQL_DATABASE_NAME and POSTGRESQL_DATABASE_NAME; MYSQL_DATABASE_USERNAME
+and POSTGRESQL_DATABASE_USERNAME; and MYSQL_DATABASE_PASSWORD and POSTGRESQL_DATABASE_PASSWORD.
+You can also override the host or port that it uses if you want to test against a particular
+instance; see test_helper.rb for more.
+
 To run the suite, change to the kitchen_sync directory where you checked out the files, then:
   cd build
   cmake .. && make test
+
 The normal cmake behavior is to report failures without giving any actual information about
 them.  To get cmake to output on failures, use CTEST_OUTPUT_ON_FAILURE:
   cmake .. && CTEST_OUTPUT_ON_FAILURE=1 make test
+
 You can also inspect the full test output in Testing/Temporary/LastTest.log.
