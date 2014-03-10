@@ -68,3 +68,16 @@ if (PostgreSQL_FOUND)
 	add_executable(ks_postgresql ${ks_postgresql_SRCS} ${ks_endpoint_SRCS})
 	target_link_libraries(ks_postgresql ${PostgreSQL_LIBRARIES} ${ks_endpoint_LIBS})
 endif()
+
+# tests require ruby and various extra gems.  to run the suite, run
+#   cmake .. && CTEST_OUTPUT_ON_FAILURE=1 make test
+enable_testing()
+add_test(protocol_version_test ruby ../test/protocol_version_test.rb)
+add_test(snapshot_from_test ruby ../test/snapshot_from_test.rb)
+add_test(schema_from_test ruby ../test/schema_from_test.rb)
+add_test(schema_to_test ruby ../test/schema_to_test.rb)
+add_test(hash_from_test ruby ../test/hash_from_test.rb)
+add_test(rows_from_test ruby ../test/rows_from_test.rb)
+add_test(rows_and_hash_from_test ruby ../test/rows_and_hash_from_test.rb)
+add_test(filter_from_test ruby ../test/filter_from_test.rb)
+add_test(sync_to_test ruby ../test/sync_to_test.rb)

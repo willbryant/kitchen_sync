@@ -1,4 +1,5 @@
 To compile Kitchen Sync, you will need:
+* a C++11 compiler
 * cmake
 * boost program options library
 * openssl library headers
@@ -17,8 +18,16 @@ And one or both out of:
   brew install postgresql
   brew install mysql
 
-If you want to run the test suite, you'll also need Ruby and the following gems installed: mocha msgpack pg mysql2
-
 To build, change to the kitchen_sync directory where you checked out the files, then:
   cd build
   cmake .. && make
+
+If you want to run the test suite, you'll also need Ruby and the following gems installed:
+  mocha msgpack pg mysql2
+To run the suite, change to the kitchen_sync directory where you checked out the files, then:
+  cd build
+  cmake .. && make test
+The normal cmake behavior is to report failures without giving any actual information about
+them.  To get cmake to output on failures, use CTEST_OUTPUT_ON_FAILURE:
+  cmake .. && CTEST_OUTPUT_ON_FAILURE=1 make test
+You can also inspect the full test output in Testing/Temporary/LastTest.log.
