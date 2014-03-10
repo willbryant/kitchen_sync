@@ -391,7 +391,7 @@ void sync_to(int num_workers, int startfd, const Options &...options) {
 		workers[worker] = new SyncToWorker<DatabaseClient>(database, sync_queue, leader, read_from_descriptor, write_to_descriptor, options...);
 	}
 
-	for (typename vector<SyncToWorker<DatabaseClient>*>::const_iterator it = workers.begin(); it != workers.end(); ++it) delete *it;
+	for (SyncToWorker<DatabaseClient>* worker : workers) delete worker;
 
 	if (sync_queue.aborted) throw sync_error();
 }

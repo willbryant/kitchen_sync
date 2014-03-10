@@ -235,8 +235,8 @@ inline Packer<Stream> &operator <<(Packer<Stream> &packer, const std::string &ob
 template <typename Stream, typename T>
 Packer<Stream> &operator <<(Packer<Stream> &packer, const std::vector<T> &obj) {
 	packer.pack_array_length(obj.size());
-	for (typename std::vector<T>::const_iterator it = obj.begin(); it != obj.end(); ++it) {
-		packer << *it;
+	for (const T &t : obj) {
+		packer << t;
 	}
 	return packer;
 }
@@ -244,9 +244,9 @@ Packer<Stream> &operator <<(Packer<Stream> &packer, const std::vector<T> &obj) {
 template <typename Stream, typename K, typename V>
 Packer<Stream> &operator <<(Packer<Stream> &packer, const std::map<K, V> &obj) {
 	packer.pack_map_length(obj.size());
-	for (typename std::map<K, V>::const_iterator it = obj.begin(); it != obj.end(); ++it) {
-		packer << it->first;
-		packer << it->second;
+	for (const std::pair<const K, V> &pair : obj) {
+		packer << pair.first;
+		packer << pair.second;
 	}
 	return packer;
 }

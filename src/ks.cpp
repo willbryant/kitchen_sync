@@ -100,8 +100,8 @@ int main(int argc, char *argv[]) {
 		}
 
 		bool success = true;
-		for (vector<pid_t>::const_iterator ppid = child_pids.begin(); ppid != child_pids.end(); ++ppid) {
-			success &= Process::wait_for_and_check(*ppid);
+		for (pid_t pid : child_pids) {
+			success &= Process::wait_for_and_check(pid);
 		}
 		
 		if (success) {

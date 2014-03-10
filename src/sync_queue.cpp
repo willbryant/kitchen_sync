@@ -2,9 +2,9 @@
 
 void SyncQueue::enqueue(const Tables &tables, const set<string> &ignore_tables, const set<string> &only_tables) {
 	unique_lock<std::mutex> lock(mutex);
-	for (Tables::const_iterator from_table = tables.begin(); from_table != tables.end(); ++from_table) {
-		if (!ignore_tables.count(from_table->name) && (only_tables.empty() || only_tables.count(from_table->name))) {
-			queue.push_back(&*from_table);
+	for (const Table &from_table : tables) {
+		if (!ignore_tables.count(from_table.name) && (only_tables.empty() || only_tables.count(from_table.name))) {
+			queue.push_back(&from_table);
 		}
 	}
 }
