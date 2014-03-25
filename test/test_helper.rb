@@ -2,14 +2,11 @@ require 'rubygems'
 
 require 'test/unit'
 require 'fileutils'
-require 'mocha/setup'
 
 require 'msgpack'
 require 'pg'
 require 'mysql2'
 require 'openssl'
-
-require 'debugger' if ENV['DEBUG']
 
 require File.expand_path(File.join(File.dirname(__FILE__), 'kitchen_sync_spawner'))
 require File.expand_path(File.join(File.dirname(__FILE__), 'test_table_schemas'))
@@ -89,7 +86,7 @@ Verbs = Commands.constants.each_with_object({}) {|k, results| results[Commands.c
 
 module KitchenSync
   class TestCase < Test::Unit::TestCase
-    CURRENT_PROTOCOL_VERSION = 1
+    CURRENT_PROTOCOL_VERSION = 2
 
     undef_method :default_test if instance_methods.include? 'default_test' or
                                   instance_methods.include? :default_test
@@ -110,8 +107,22 @@ module KitchenSync
       spawner.unpacker
     end
 
+    def read_command
+      spawner.read_command
+    end
+
+    def expect_command(*args)
+      assert_equal args, read_command
+    rescue EOFError
+      fail "expected #{args.inspect} but the connection was closed; stderr: #{spawner.stderr_contents}"
+    end
+
     def send_command(*args)
       spawner.send_command(*args)
+    end
+
+    def send_results(*args)
+      spawner.send_results(*args)
     end
 
     def send_handshake_commands(target_block_size = 1)
@@ -121,37 +132,32 @@ module KitchenSync
     end
 
     def send_protocol_command
-      assert_equal CURRENT_PROTOCOL_VERSION, send_command(Commands::PROTOCOL, CURRENT_PROTOCOL_VERSION)
+      send_command   Commands::PROTOCOL, CURRENT_PROTOCOL_VERSION
+      expect_command Commands::PROTOCOL, [CURRENT_PROTOCOL_VERSION]
     end
 
     def send_without_snapshot_command
-      assert_equal nil, send_command(Commands::WITHOUT_SNAPSHOT)
+      send_command   Commands::WITHOUT_SNAPSHOT
+      expect_command Commands::WITHOUT_SNAPSHOT
     end
 
     def send_target_block_size_command(target_block_size = 1)
-      assert_equal target_block_size, send_command(Commands::TARGET_BLOCK_SIZE, target_block_size)
+      send_command   Commands::TARGET_BLOCK_SIZE, target_block_size
+      expect_command Commands::TARGET_BLOCK_SIZE, [target_block_size]
     end
 
     def expect_handshake_commands(target_block_size = 1)
       # checking how protocol versions are handled is covered in protocol_versions_test; here we just need to get past that to get on to the commands we want to test
-      expects(:protocol).with(CURRENT_PROTOCOL_VERSION).returns([CURRENT_PROTOCOL_VERSION])
+      expect_command Commands::PROTOCOL, [CURRENT_PROTOCOL_VERSION]
+      send_command   Commands::PROTOCOL, CURRENT_PROTOCOL_VERSION
 
       # we force the block size down to 1 by default so we can test out our algorithms row-by-row, but real runs would use a bigger size
-      expects(:target_block_size).with(anything).returns([target_block_size])
+      assert_equal   Commands::TARGET_BLOCK_SIZE, read_command.first
+      send_command   Commands::TARGET_BLOCK_SIZE, target_block_size
 
       # since we haven't asked for multiple workers, we'll always get sent the snapshot-less start command
-      expects(:without_snapshot).returns([nil])
-    end
-
-    def unpack_next
-      spawner.unpack_next
-    end
-
-    def receive_commands(*args)
-      spawner.receive_commands(*args) do |command|
-        verb = Verbs[command[0]]
-        send(verb, *command[1..-1])
-      end
+      expect_command Commands::WITHOUT_SNAPSHOT
+      send_command   Commands::WITHOUT_SNAPSHOT
     end
 
     def expect_stderr(contents)
@@ -224,7 +230,9 @@ module KitchenSync
           @database_settings = settings
           begin
             skip "pending" unless block
+            before if respond_to?(:before)
             instance_eval(&block)
+            after if respond_to?(:after)
           ensure
             @spawner.stop_binary if @spawner
             @spawner = nil

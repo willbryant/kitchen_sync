@@ -30,7 +30,7 @@ Running the test suite
 ======================
 
 If you want to run the test suite, you'll also need Ruby and the following gems installed:
-  mocha msgpack pg mysql2
+  msgpack pg mysql2
 
 You'll need to create some test databases for it to use:
   mysqladmin -u root create ks_test

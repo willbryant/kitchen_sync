@@ -98,36 +98,29 @@ class KitchenSyncSpawner
     end
   end
 
-  def send_command(*args)
-    @program_stdin.write(args.to_msgpack)
-    unpack_next
-  ensure
-    if stderr_contents && stderr_contents != "" && !@expected_stderr_contents
-      fail "Unexpected stderr output: #{stderr_contents.inspect}"
-    end
-  end
-
-  def send_results(results)
-    results.each {|result| @program_stdin.write(result.to_msgpack)}
-  end
-
-  def receive_commands(*args)
+  def read_command
+    results = [unpacker.read] # first we receive a verb
     loop do
-      command = unpack_next.collect {|argument| argument.is_a?(String) ? argument.force_encoding("ASCII-8BIT") : argument}
-      results = yield command
-      break if command == [Commands::QUIT]
-      send_results(results)
+      args = unpack_next # then 1 or more arrays
+      if args != [] # terminated by an empty array, which we don't need to return
+        results << args # we return all the other arrays
+      elsif stderr_contents && stderr_contents != "" && !@expected_stderr_contents # check stderr before returning the results
+        fail "Unexpected stderr output: #{stderr_contents.inspect} (results were #{results.inspect})"
+      else # all done
+        return results
+      end
     end
+  end
 
-    # to get meaningful test results, we have to wait until the program has committed its work, and we can't assume that till it's terminated
-    @program_stdin.close
-    wait
-  rescue EOFError
-    # ignore; the test case will use expects(:quit) if it expects a less abrupt end to the conversation
-  ensure
-    if stderr_contents != expected_stderr_contents
-      fail "Unexpected stderr output: #{stderr_contents.inspect} instead of #{expected_stderr_contents.inspect}"
-    end
+  def send_command(verb, *args)
+    @program_stdin.write(verb.to_msgpack)
+    @program_stdin.write(args.to_msgpack) unless args.empty?
+    @program_stdin.write([].to_msgpack)
+  end
+
+  def send_results(*results)
+    results.each {|result| @program_stdin.write(result.to_msgpack)}
+    @program_stdin.write([].to_msgpack)
   end
 
   def quit

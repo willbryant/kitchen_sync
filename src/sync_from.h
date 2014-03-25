@@ -23,85 +23,87 @@ struct SyncFromWorker {
 		const Table *table;
 
 		try {
-			Command command;
-
 			while (true) {
-				input >> command;
+				verb_t verb;
+				input >> verb;
 
-				if (command.verb == Commands::OPEN) {
-					string table_name = command.argument<string>(0);
+				if (verb == Commands::OPEN) {
+					string table_name;
+					read_all_arguments(input, table_name);
 					table = tables_by_name.at(table_name); // throws out_of_range if not present in the map
 					hash_first_range(*this, *table, target_block_size);
 
-				} else if (command.verb == Commands::HASH_NEXT) {
+				} else if (verb == Commands::HASH_NEXT) {
 					if (!table) throw command_error("Expected a table command before hash command");
-					ColumnValues   prev_key(command.argument<ColumnValues>(0));
-					ColumnValues   last_key(command.argument<ColumnValues>(1));
-					string             hash(command.argument<string>(2));
+					ColumnValues prev_key, last_key;
+					string hash;
+					read_all_arguments(input, prev_key, last_key, hash);
 					check_hash_and_choose_next_range(*this, *table, nullptr, prev_key, last_key, nullptr, hash, target_block_size);
 
-				} else if (command.verb == Commands::HASH_FAIL) {
+				} else if (verb == Commands::HASH_FAIL) {
 					if (!table) throw command_error("Expected a table command before hash command");
-					ColumnValues        prev_key(command.argument<ColumnValues>(0));
-					ColumnValues        last_key(command.argument<ColumnValues>(1));
-					ColumnValues failed_last_key(command.argument<ColumnValues>(2));
-					string                  hash(command.argument<string>(3));
+					ColumnValues prev_key, last_key, failed_last_key;
+					string hash;
+					read_all_arguments(input, prev_key, last_key, failed_last_key, hash);
 					check_hash_and_choose_next_range(*this, *table, nullptr, prev_key, last_key, &failed_last_key, hash, target_block_size);
 
-				} else if (command.verb == Commands::ROWS) {
+				} else if (verb == Commands::ROWS) {
 					if (!table) throw command_error("Expected a table command before rows command");
-					ColumnValues prev_key(command.argument<ColumnValues>(0));
-					ColumnValues last_key(command.argument<ColumnValues>(1));
+					ColumnValues prev_key, last_key;
+					read_all_arguments(input, prev_key, last_key);
 					send_rows_command(*table, prev_key, last_key);
 
-				} else if (command.verb == Commands::ROWS_AND_HASH_NEXT) {
+				} else if (verb == Commands::ROWS_AND_HASH_NEXT) {
 					if (!table) throw command_error("Expected a table command before rows+hash command");
-					ColumnValues prev_key(command.argument<ColumnValues>(0));
-					ColumnValues last_key(command.argument<ColumnValues>(1));
-					ColumnValues next_key(command.argument<ColumnValues>(2));
-					string           hash(command.argument<string>(3));
+					ColumnValues prev_key, last_key, next_key;
+					string hash;
+					read_all_arguments(input, prev_key, last_key, next_key, hash);
 					check_hash_and_choose_next_range(*this, *table, &prev_key, last_key, next_key, nullptr, hash, target_block_size);
 
-				} else if (command.verb == Commands::ROWS_AND_HASH_FAIL) {
+				} else if (verb == Commands::ROWS_AND_HASH_FAIL) {
 					if (!table) throw command_error("Expected a table command before rows+hash command");
-					ColumnValues        prev_key(command.argument<ColumnValues>(0));
-					ColumnValues        last_key(command.argument<ColumnValues>(1));
-					ColumnValues        next_key(command.argument<ColumnValues>(2));
-					ColumnValues failed_last_key(command.argument<ColumnValues>(3));
-					string                  hash(command.argument<string>(4));
+					ColumnValues prev_key, last_key, next_key, failed_last_key;
+					string hash;
+					read_all_arguments(input, prev_key, last_key, next_key, failed_last_key, hash);
 					check_hash_and_choose_next_range(*this, *table, &prev_key, last_key, next_key, &failed_last_key, hash, target_block_size);
 
-				} else if (command.verb == Commands::WITHOUT_SNAPSHOT) {
-					client.start_read_transaction();
-					output.pack_nil(); // similarly arbitrary
+				} else if (verb == Commands::EXPORT_SNAPSHOT) {
+					read_all_arguments(input);
+					send_command(output, verb, client.export_snapshot());
 					populate_database_schema();
 
-				} else if (command.verb == Commands::EXPORT_SNAPSHOT) {
-					output << client.export_snapshot();
-					populate_database_schema();
-
-				} else if (command.verb == Commands::IMPORT_SNAPSHOT) {
-					string snapshot(command.argument<string>(0));
+				} else if (verb == Commands::IMPORT_SNAPSHOT) {
+					string snapshot;
+					read_all_arguments(input, snapshot);
 					client.import_snapshot(snapshot);
-					output.pack_nil(); // arbitrary, sent to indicate we've started our transaction
+					send_command(output, verb); // just to indicate that we have completed the command
 					populate_database_schema();
 
-				} else if (command.verb == Commands::UNHOLD_SNAPSHOT) {
+				} else if (verb == Commands::UNHOLD_SNAPSHOT) {
+					read_all_arguments(input);
 					client.unhold_snapshot();
-					output.pack_nil(); // similarly arbitrary
+					send_command(output, verb); // just to indicate that we have completed the command
 
-				} else if (command.verb == Commands::SCHEMA) {
-					output << database;
+				} else if (verb == Commands::WITHOUT_SNAPSHOT) {
+					read_all_arguments(input);
+					client.start_read_transaction();
+					send_command(output, verb); // just to indicate that we have completed the command
+					populate_database_schema();
 
-				} else if (command.verb == Commands::TARGET_BLOCK_SIZE) {
-					target_block_size = command.argument<int64_t>(0); // strictly speaking this should use size_t, but unpack_any doesn't know about different numeric types
-					output << target_block_size; // we always accept the requested size, but the test suite doesn't
+				} else if (verb == Commands::SCHEMA) {
+					read_all_arguments(input);
+					send_command(output, verb, database);
 
-				} else if (command.verb == Commands::QUIT) {
+				} else if (verb == Commands::TARGET_BLOCK_SIZE) {
+					read_all_arguments(input, target_block_size);
+					send_command(output, verb, target_block_size); // we always accept the requested size and send it back (but the test suite doesn't)
+
+				} else if (verb == Commands::QUIT) {
+					read_all_arguments(input);
 					break;
 
 				} else {
-					throw command_error("Unknown command " + to_string(command.verb));
+					throw command_error("Unknown command " + to_string(verb));
 				}
 
 				output.flush();
@@ -122,39 +124,35 @@ struct SyncFromWorker {
 	}
 
 	inline void send_rows_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
-		send_command(output, Commands::ROWS, prev_key, last_key);
+		send_command_begin(output, Commands::ROWS, prev_key, last_key);
 		client.retrieve_rows(table, prev_key, last_key, row_packer);
-		row_packer.pack_end();
+		send_command_end(output);
 	}
 
 	inline void send_rows_and_hash_next_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &next_key, const string &hash) {
-		send_command(output, Commands::ROWS_AND_HASH_NEXT, prev_key, last_key, next_key, hash);
+		send_command_begin(output, Commands::ROWS_AND_HASH_NEXT, prev_key, last_key, next_key, hash);
 		client.retrieve_rows(table, prev_key, last_key, row_packer);
-		row_packer.pack_end();
+		send_command_end(output);
 	}
 
 	inline void send_rows_and_hash_fail_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &next_key, const ColumnValues &failed_last_key, const string &hash) {
-		send_command(output, Commands::ROWS_AND_HASH_FAIL, prev_key, last_key, next_key, failed_last_key, hash);
+		send_command_begin(output, Commands::ROWS_AND_HASH_FAIL, prev_key, last_key, next_key, failed_last_key, hash);
 		client.retrieve_rows(table, prev_key, last_key, row_packer);
-		row_packer.pack_end();
+		send_command_end(output);
 	}
 
 	void negotiate_protocol_version() {
-		const int PROTOCOL_VERSION_SUPPORTED = 1;
+		const int PROTOCOL_VERSION_SUPPORTED = 2;
 
 		// all conversations must start with a Commands::PROTOCOL command to establish the language to be used
-		Command command;
-		input >> command;
-		if (command.verb != Commands::PROTOCOL) {
-			throw command_error("Expected a protocol command before " + to_string(command.verb));
-		}
+		int their_protocol_version;
+		read_expected_command(input, Commands::PROTOCOL, their_protocol_version);
 
 		// the usable protocol is the highest out of those supported by the two ends
-		protocol_version = min(PROTOCOL_VERSION_SUPPORTED, (int)command.argument<int64_t>(0));
+		protocol_version = min(PROTOCOL_VERSION_SUPPORTED, their_protocol_version);
 
 		// tell the other end what version was selected
-		output << protocol_version;
-		output.flush();
+		send_command(output, Commands::PROTOCOL, protocol_version);
 	}
 
 	void populate_database_schema() {

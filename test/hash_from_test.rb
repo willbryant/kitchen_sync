@@ -22,72 +22,75 @@ class HashFromTest < KitchenSync::EndpointTestCase
 
   test_each "calculates the hash of all the rows whose key is greater than the first argument and not greater than the last argument, and if it matches, responds likewise with the hash of the next rows (doubling the count of rows hashed)" do
     setup_with_footbl
-    assert_equal [Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])],
-     send_command(Commands::OPEN, "footbl")
+    send_command   Commands::OPEN, "footbl"
+    expect_command Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
 
-    assert_equal([Commands::HASH_NEXT, @keys[1], @keys[3], hash_of(@rows[2..3])],
-     send_command(Commands::HASH_NEXT, @keys[0], @keys[1], hash_of(@rows[1..1])))
+    send_command   Commands::HASH_NEXT, @keys[0], @keys[1], hash_of(@rows[1..1])
+    expect_command Commands::HASH_NEXT, [@keys[1], @keys[3], hash_of(@rows[2..3])]
 
-    assert_equal([Commands::HASH_NEXT, @keys[2], @keys[4], hash_of(@rows[3..4])],
-     send_command(Commands::HASH_NEXT, @keys[0], @keys[2], hash_of(@rows[1..2])))
+    send_command   Commands::HASH_NEXT, @keys[0], @keys[2], hash_of(@rows[1..2])
+    expect_command Commands::HASH_NEXT, [@keys[2], @keys[4], hash_of(@rows[3..4])]
   end
 
   test_each "starts from the first row if an empty array is given as the first argument" do
     setup_with_footbl
-    assert_equal [Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])],
-     send_command(Commands::OPEN, "footbl")
 
-    assert_equal([Commands::HASH_NEXT, @keys[0], @keys[2], hash_of(@rows[1..2])],
-     send_command(Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])))
+    send_command   Commands::OPEN, "footbl"
+    expect_command Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
 
-    assert_equal([Commands::HASH_NEXT, @keys[1], @keys[4], hash_of(@rows[2..4])],
-     send_command(Commands::HASH_NEXT, [], @keys[1], hash_of(@rows[0..1])))
+    send_command   Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])
+    expect_command Commands::HASH_NEXT, [@keys[0], @keys[2], hash_of(@rows[1..2])]
+
+    send_command   Commands::HASH_NEXT, [], @keys[1], hash_of(@rows[0..1])
+    expect_command Commands::HASH_NEXT, [@keys[1], @keys[4], hash_of(@rows[2..4])]
   end
 
   test_each "sends back an empty rowset for the key range greater than the last row's key if the hash of the last row is given and matches" do
     setup_with_footbl
-    assert_equal [Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])],
-     send_command(Commands::OPEN, "footbl")
 
-    assert_equal([Commands::ROWS, @keys[-1], []],
-     send_command(Commands::HASH_NEXT, @keys[-2], @keys[-1], hash_of(@rows[-1..-1])))
+    send_command   Commands::OPEN, "footbl"
+    expect_command Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
+
+    send_command   Commands::HASH_NEXT, @keys[-2], @keys[-1], hash_of(@rows[-1..-1])
+    expect_command Commands::ROWS, [@keys[-1], []]
   end
 
   test_each "sends back an empty rowset for the key range greater than the last row's key if the hash of the last set of rows is given and matches" do
     setup_with_footbl
-    assert_equal [Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])],
-     send_command(Commands::OPEN, "footbl")
 
-    assert_equal([Commands::ROWS, @keys[-1], []],
-     send_command(Commands::HASH_NEXT, @keys[-4], @keys[-1], hash_of(@rows[-3..-1])))
+    send_command   Commands::OPEN, "footbl"
+    expect_command Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
+
+    send_command   Commands::HASH_NEXT, @keys[-4], @keys[-1], hash_of(@rows[-3..-1])
+    expect_command Commands::ROWS, [@keys[-1], []]
   end
 
   test_each "sends back its hash of half as many rows if the hash of multiple rows is given and it doesn't match, keeping track of the failed range end" do
     setup_with_footbl
-    assert_equal [Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])],
-     send_command(Commands::OPEN, "footbl")
 
-    assert_equal([Commands::HASH_FAIL, @keys[0], @keys[1], @keys[2], hash_of(@rows[1..1])],
-     send_command(Commands::HASH_NEXT, @keys[0], @keys[2], hash_of(@rows[1..2]).reverse))
+    send_command   Commands::OPEN, "footbl"
+    expect_command Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
 
-    assert_equal([Commands::HASH_FAIL, @keys[0], @keys[2], @keys[4], hash_of(@rows[1..2])],
-     send_command(Commands::HASH_NEXT, @keys[0], @keys[4], hash_of(@rows[1..4]).reverse))
+    send_command   Commands::HASH_NEXT, @keys[0], @keys[2], hash_of(@rows[1..2]).reverse
+    expect_command Commands::HASH_FAIL, [@keys[0], @keys[1], @keys[2], hash_of(@rows[1..1])]
+
+    send_command   Commands::HASH_NEXT, @keys[0], @keys[4], hash_of(@rows[1..4]).reverse
+    expect_command Commands::HASH_FAIL, [@keys[0], @keys[2], @keys[4], hash_of(@rows[1..2])]
   end
 
   test_each "sends back the row instead if the hash of only one is given and it doesn't match" do
     setup_with_footbl
-    assert_equal [Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])],
-     send_command(Commands::OPEN, "footbl")
 
-    assert_equal([Commands::ROWS_AND_HASH_NEXT, @keys[0], @keys[1], @keys[2], hash_of(@rows[2..2])],
-     send_command(Commands::HASH_NEXT, @keys[0], @keys[1], hash_of(@rows[1..1]).reverse))
-    assert_equal @rows[1], unpack_next
-    assert_equal       [], unpack_next # indicates end - see rows_from_test.rb
+    send_command   Commands::OPEN, "footbl"
+    expect_command Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
 
-    assert_equal([Commands::ROWS_AND_HASH_NEXT, [], @keys[0], @keys[1], hash_of(@rows[1..1])],
-     send_command(Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0]).reverse))
-    assert_equal @rows[0], unpack_next
-    assert_equal       [], unpack_next # as above
+    send_command   Commands::HASH_NEXT, @keys[0], @keys[1], hash_of(@rows[1..1]).reverse
+    expect_command Commands::ROWS_AND_HASH_NEXT, [@keys[0], @keys[1], @keys[2], hash_of(@rows[2..2])],
+                   @rows[1]
+
+    send_command   Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0]).reverse
+    expect_command Commands::ROWS_AND_HASH_NEXT, [[], @keys[0], @keys[1], hash_of(@rows[1..1])],
+                   @rows[0]
   end
 
   test_each "sends multiple initial rows if their data size is approximately between half and the full target block size" do
@@ -102,8 +105,8 @@ class HashFromTest < KitchenSync::EndpointTestCase
 
     send_handshake_commands(64*1024)
 
-    assert_equal [Commands::HASH_NEXT, [], @keys[1], hash_of(@rows[0..1])],
-     send_command(Commands::OPEN, "texttbl")
+    send_command   Commands::OPEN, "texttbl"
+    expect_command Commands::HASH_NEXT, [[], @keys[1], hash_of(@rows[0..1])]
   end
 
   test_each "sends single initial rows if its data size is approximately between half and the full target block size" do
@@ -118,8 +121,8 @@ class HashFromTest < KitchenSync::EndpointTestCase
 
     send_handshake_commands(64*1024)
 
-    assert_equal [Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])],
-     send_command(Commands::OPEN, "texttbl")
+    send_command   Commands::OPEN, "texttbl"
+    expect_command Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
   end
 
   test_each "sends back the rows instead of the hash of multiple rows is given and it doesn't match, but the range has less than approximately the target block size of data" do
@@ -137,17 +140,16 @@ class HashFromTest < KitchenSync::EndpointTestCase
     @keys = @rows.collect {|row| [row[0]]}
     send_handshake_commands(64*1024)
 
-    assert_equal [Commands::HASH_NEXT, [], @keys[1], hash_of(@rows[0..1])],
-     send_command(Commands::OPEN, "texttbl")
+    send_command   Commands::OPEN, "texttbl"
+    expect_command Commands::HASH_NEXT, [[], @keys[1], hash_of(@rows[0..1])]
 
-    assert_equal([Commands::ROWS_AND_HASH_NEXT, @keys[1], @keys[3], @keys[4], hash_of(@rows[4..4])],
-     send_command(Commands::HASH_NEXT, @keys[1], @keys[3], hash_of(@rows[2..3]).reverse))
-    assert_equal @rows[2], unpack_next
-    assert_equal @rows[3], unpack_next
-    assert_equal       [], unpack_next
+    send_command   Commands::HASH_NEXT, @keys[1], @keys[3], hash_of(@rows[2..3]).reverse
+    expect_command Commands::ROWS_AND_HASH_NEXT, [@keys[1], @keys[3], @keys[4], hash_of(@rows[4..4])],
+                   @rows[2],
+                   @rows[3]
 
-    assert_equal([Commands::HASH_FAIL, @keys[4], @keys[5], @keys[6], hash_of(@rows[5..5])],
-     send_command(Commands::HASH_NEXT, @keys[4], @keys[6], hash_of(@rows[5..6]).reverse))
+    send_command   Commands::HASH_NEXT, @keys[4], @keys[6], hash_of(@rows[5..6]).reverse
+    expect_command Commands::HASH_FAIL, [@keys[4], @keys[5], @keys[6], hash_of(@rows[5..5])]
   end
 
   test_each "supports composite keys" do
@@ -161,32 +163,31 @@ class HashFromTest < KitchenSync::EndpointTestCase
     # note that the primary key columns are in reverse order to the table definition; the command arguments need to be given in the key order, but the column order for the results is unrelated
     @keys = @rows.collect {|row| [row[1], row[0]]}
     send_handshake_commands
-    assert_equal [Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])],
-     send_command(Commands::OPEN, "secondtbl")
 
-    assert_equal([Commands::HASH_NEXT, @keys[0], @keys[2], hash_of(@rows[1..2])],
-     send_command(Commands::HASH_NEXT,       [], @keys[0], hash_of(@rows[0..0])))
+    send_command   Commands::OPEN, "secondtbl"
+    expect_command Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
 
-    assert_equal([Commands::HASH_NEXT, @keys[1], @keys[3], hash_of(@rows[2..3])],
-     send_command(Commands::HASH_NEXT, ["aa", "101"], @keys[1], hash_of(@rows[1..1])))
+    send_command   Commands::HASH_NEXT,       [], @keys[0], hash_of(@rows[0..0])
+    expect_command Commands::HASH_NEXT, [@keys[0], @keys[2], hash_of(@rows[1..2])]
 
-    assert_equal([Commands::HASH_NEXT, ["aa", "101"], @keys[2], hash_of(@rows[1..2])],
-     send_command(Commands::HASH_NEXT,       [], ["aa", "101"], hash_of(@rows[0..0])))
+    send_command   Commands::HASH_NEXT, ["aa", "101"], @keys[1], hash_of(@rows[1..1])
+    expect_command Commands::HASH_NEXT, [@keys[1], @keys[3], hash_of(@rows[2..3])]
 
-    assert_equal([Commands::HASH_NEXT, @keys[1], @keys[3], hash_of(@rows[2..3])],
-     send_command(Commands::HASH_NEXT, @keys[0], @keys[1], hash_of(@rows[1..1])))
+    send_command   Commands::HASH_NEXT,       [], ["aa", "101"], hash_of(@rows[0..0])
+    expect_command Commands::HASH_NEXT, [["aa", "101"], @keys[2], hash_of(@rows[1..2])]
 
-    assert_equal([Commands::HASH_NEXT, @keys[2], @keys[3], hash_of(@rows[3..3])],
-     send_command(Commands::HASH_NEXT, @keys[0], @keys[2], hash_of(@rows[1..2])))
+    send_command   Commands::HASH_NEXT, @keys[0], @keys[1], hash_of(@rows[1..1])
+    expect_command Commands::HASH_NEXT, [@keys[1], @keys[3], hash_of(@rows[2..3])]
 
-    assert_equal([Commands::ROWS_AND_HASH_NEXT, @keys[0], @keys[1], @keys[2], hash_of(@rows[2..2])],
-     send_command(Commands::HASH_NEXT, @keys[0], @keys[1], hash_of(@rows[1..1]).reverse))
-    assert_equal @rows[1], unpack_next
-    assert_equal       [], unpack_next # indicates end - see rows_from_test.rb
+    send_command   Commands::HASH_NEXT, @keys[0], @keys[2], hash_of(@rows[1..2])
+    expect_command Commands::HASH_NEXT, [@keys[2], @keys[3], hash_of(@rows[3..3])]
 
-    assert_equal([Commands::ROWS_AND_HASH_NEXT, @keys[0], @keys[1], @keys[2], hash_of(@rows[2..2])],
-     send_command(Commands::HASH_NEXT, @keys[0], ["aa", "101"], hash_of(@rows[1..1])))
-    assert_equal @rows[1], unpack_next
-    assert_equal       [], unpack_next
+    send_command   Commands::HASH_NEXT, @keys[0], @keys[1], hash_of(@rows[1..1]).reverse
+    expect_command Commands::ROWS_AND_HASH_NEXT, [@keys[0], @keys[1], @keys[2], hash_of(@rows[2..2])],
+                   @rows[1]
+
+    send_command   Commands::HASH_NEXT, @keys[0], ["aa", "101"], hash_of(@rows[1..1])
+    expect_command Commands::ROWS_AND_HASH_NEXT, [@keys[0], @keys[1], @keys[2], hash_of(@rows[2..2])],
+                   @rows[1]
   end
 end
