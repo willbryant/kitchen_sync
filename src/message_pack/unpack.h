@@ -4,10 +4,12 @@
 #include "unistd.h"
 #include <cstdint>
 #include <cerrno>
+#include <cstring>
 #include <stdexcept>
 #include <string>
 #include <vector>
 #include <map>
+#include <typeinfo>
 #include "endian.h"
 #include "type_codes.h"
 #include "../to_string.h"
