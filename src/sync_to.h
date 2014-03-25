@@ -193,6 +193,7 @@ struct SyncToWorker {
 		size_t hash_commands = 0;
 		size_t rows_commands = 0;
 		time_t started = time(nullptr);
+		bool finished = false;
 
 		if (verbose) {
 			unique_lock<mutex> lock(sync_queue.mutex);
@@ -201,87 +202,42 @@ struct SyncToWorker {
 
 		send_command(output, Commands::OPEN, table.name);
 
-		while (true) {
+		while (!finished) {
 			sync_queue.check_aborted(); // check each iteration, rather than wait until the end of the current table; this is a good place to do it since it's likely we'll have no work to do for a short while
 
 			verb_t verb;
 			input >> verb;
 
-			if (verb == Commands::HASH_NEXT) {
-				// the last hash we sent them matched, and so they've moved on to the next set of rows and sent us the hash
-				ColumnValues prev_key, last_key;
-				string hash;
-				read_all_arguments(input, prev_key, last_key, hash);
-				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
-				hash_commands++;
+			switch (verb) {
+				case Commands::HASH_NEXT:
+					handle_hash_next_command(table);
+					hash_commands++;
+					break;
 
-				// after each hash command received it's our turn to send the next command
-				check_hash_and_choose_next_range(*this, table, nullptr, prev_key, last_key, nullptr, hash, target_block_size);
+				case Commands::HASH_FAIL:
+					handle_hash_fail_command(table);
+					hash_commands++;
+					break;
 
-			} else if (verb == Commands::HASH_FAIL) {
-				// the last hash we sent them didn't match, so they've reduced the key range and sent us back
-				// the hash for a smaller set of rows (but not so small that they sent back the data instead)
-				ColumnValues prev_key, last_key, failed_last_key;
-				string hash;
-				read_all_arguments(input, prev_key, last_key, failed_last_key, hash);
-				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " last-failure " << non_binary_string_values_list(failed_last_key) << endl;
-				hash_commands++;
+				case Commands::ROWS:
+					finished = handle_rows_command(table, row_applier);
+					rows_commands++;
+					break;
 
-				// after each hash command received it's our turn to send the next command
-				check_hash_and_choose_next_range(*this, table, nullptr, prev_key, last_key, &failed_last_key, hash, target_block_size);
+				case Commands::ROWS_AND_HASH_NEXT:
+					handle_rows_and_hash_next_command(table, row_applier);
+					hash_commands++;
+					rows_commands++;
+					break;
 
-			} else if (verb == Commands::ROWS) {
-				// we're being sent a range of rows; apply them to our end.  we do this in-context to
-				// provide flow control - if we buffered and used a separate apply thread, we would
-				// bloat up if this end couldn't write to disk as quickly as the other end sent data.
-				ColumnValues prev_key, last_key;
-				read_array(input, prev_key, last_key); // the first array gives the range arguments, which is followed by one array for each row
-				if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
-				rows_commands++;
+				case Commands::ROWS_AND_HASH_FAIL:
+					handle_rows_and_hash_fail_command(table, row_applier);
+					hash_commands++;
+					rows_commands++;
+					break;
 
-				row_applier.stream_from_input(input, prev_key, last_key);
-
-				// if the range extends to the end of their table, that means we're done with this table;
-				// otherwise, rows commands are immediately followed by another command
-				if (last_key.empty()) break;
-				
-			} else if (verb == Commands::ROWS_AND_HASH_NEXT) {
-				// combo of the above ROWS and HASH_NEXT commands
-				ColumnValues prev_key, last_key, next_key;
-				string hash;
-				read_array(input, prev_key, last_key, next_key, hash); // the first array gives the range arguments and hash, which is followed by one array for each row
-				if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " +" << endl;
-				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(last_key) << ' ' << non_binary_string_values_list(next_key) << endl;
-				hash_commands++;
-				rows_commands++;
-
-				// after each hash command received it's our turn to send the next command; we check
-				// the hash and send the command *before* we stream in the rows that we're being sent
-				// with this command as a simple form of pipelining - our next hash is going back
-				// over the network at the same time as we are receiving rows.  we need to be able to
-				// fit the command we send back in the kernel send buffer to guarantee there is no
-				// deadlock; it's never been smaller than a page on any supported OS, and has been
-				// defaulted to much larger values for some years.
-				check_hash_and_choose_next_range(*this, table, nullptr, last_key, next_key, nullptr, hash, target_block_size);
-				row_applier.stream_from_input(input, prev_key, last_key);
-				// nb. it's implied last_key is not [], as we would have been sent back a plain rows command for the combined range if that was needed
-
-			} else if (verb == Commands::ROWS_AND_HASH_FAIL) {
-				// combo of the above ROWS and HASH_FAIL commands
-				ColumnValues prev_key, last_key, next_key, failed_last_key;
-				string hash;
-				read_array(input, prev_key, last_key, next_key, failed_last_key, hash); // the first array gives the range arguments, which is followed by one array for each row
-				if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " +" << endl;
-				if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(last_key) << ' ' << non_binary_string_values_list(next_key) << " last-failure " << non_binary_string_values_list(failed_last_key) << endl;
-				hash_commands++;
-				rows_commands++;
-
-				// same pipelining as the previous case
-				check_hash_and_choose_next_range(*this, table, nullptr, last_key, next_key, &failed_last_key, hash, target_block_size);
-				row_applier.stream_from_input(input, prev_key, last_key);
-
-			} else {
-				throw command_error("Unknown command " + to_string(verb));
+				default:
+					throw command_error("Unknown command " + to_string(verb));
 			}
 		}
 
@@ -290,6 +246,77 @@ struct SyncToWorker {
 			unique_lock<mutex> lock(sync_queue.mutex);
 			cout << "finished " << table.name << " in " << (now - started) << "s using " << hash_commands << " hash commands and " << rows_commands << " rows commands changing " << row_applier.rows_changed << " rows" << endl << flush;
 		}
+	}
+
+	void handle_hash_next_command(const Table &table) {
+		// the last hash we sent them matched, and so they've moved on to the next set of rows and sent us the hash
+		ColumnValues prev_key, last_key;
+		string hash;
+		read_all_arguments(input, prev_key, last_key, hash);
+		if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
+
+		// after each hash command received it's our turn to send the next command
+		check_hash_and_choose_next_range(*this, table, nullptr, prev_key, last_key, nullptr, hash, target_block_size);
+	}
+
+	void handle_hash_fail_command(const Table &table) {
+		// the last hash we sent them didn't match, so they've reduced the key range and sent us back
+		// the hash for a smaller set of rows (but not so small that they sent back the data instead)
+		ColumnValues prev_key, last_key, failed_last_key;
+		string hash;
+		read_all_arguments(input, prev_key, last_key, failed_last_key, hash);
+		if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " last-failure " << non_binary_string_values_list(failed_last_key) << endl;
+
+		// after each hash command received it's our turn to send the next command
+		check_hash_and_choose_next_range(*this, table, nullptr, prev_key, last_key, &failed_last_key, hash, target_block_size);
+	}
+
+	bool handle_rows_command(const Table &table, TableRowApplier<DatabaseClient> &row_applier) {
+		// we're being sent a range of rows; apply them to our end.  we do this in-context to
+		// provide flow control - if we buffered and used a separate apply thread, we would
+		// bloat up if this end couldn't write to disk as quickly as the other end sent data.
+		ColumnValues prev_key, last_key;
+		read_array(input, prev_key, last_key); // the first array gives the range arguments, which is followed by one array for each row
+		if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << endl;
+
+		row_applier.stream_from_input(input, prev_key, last_key);
+
+		// if the range extends to the end of their table, that means we're done with this table;
+		// otherwise, rows commands are immediately followed by another command
+		return (last_key.empty());
+	}
+
+	void handle_rows_and_hash_next_command(const Table &table, TableRowApplier<DatabaseClient> &row_applier) {
+		// combo of the above ROWS and HASH_NEXT commands
+		ColumnValues prev_key, last_key, next_key;
+		string hash;
+		read_array(input, prev_key, last_key, next_key, hash); // the first array gives the range arguments and hash, which is followed by one array for each row
+		if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " +" << endl;
+		if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(last_key) << ' ' << non_binary_string_values_list(next_key) << endl;
+
+		// after each hash command received it's our turn to send the next command; we check
+		// the hash and send the command *before* we stream in the rows that we're being sent
+		// with this command as a simple form of pipelining - our next hash is going back
+		// over the network at the same time as we are receiving rows.  we need to be able to
+		// fit the command we send back in the kernel send buffer to guarantee there is no
+		// deadlock; it's never been smaller than a page on any supported OS, and has been
+		// defaulted to much larger values for some years.
+		check_hash_and_choose_next_range(*this, table, nullptr, last_key, next_key, nullptr, hash, target_block_size);
+		row_applier.stream_from_input(input, prev_key, last_key);
+		// nb. it's implied last_key is not [], as we would have been sent back a plain rows command for the combined range if that was needed
+	}
+
+	void handle_rows_and_hash_fail_command(const Table &table, TableRowApplier<DatabaseClient> &row_applier) {
+		// combo of the above ROWS and HASH_FAIL commands
+		ColumnValues prev_key, last_key, next_key, failed_last_key;
+		string hash;
+		read_array(input, prev_key, last_key, next_key, failed_last_key, hash); // the first array gives the range arguments, which is followed by one array for each row
+		if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << non_binary_string_values_list(prev_key) << ' ' << non_binary_string_values_list(last_key) << " +" << endl;
+		if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << non_binary_string_values_list(last_key) << ' ' << non_binary_string_values_list(next_key) << " last-failure " << non_binary_string_values_list(failed_last_key) << endl;
+
+		// same pipelining as the previous case
+		check_hash_and_choose_next_range(*this, table, nullptr, last_key, next_key, &failed_last_key, hash, target_block_size);
+		row_applier.stream_from_input(input, prev_key, last_key);
 	}
 
 	inline void send_hash_next_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
