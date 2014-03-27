@@ -3,7 +3,7 @@ module TestTableSchemas
     execute(<<-SQL)
       CREATE TABLE footbl (
         col1 INT NOT NULL,
-        another_col INT,
+        another_col SMALLINT,
         col3 VARCHAR(10),
         PRIMARY KEY(col1))
 SQL
@@ -12,9 +12,9 @@ SQL
   def footbl_def
     { "name"    => "footbl",
       "columns" => [
-        {"name" => "col1"},
-        {"name" => "another_col"},
-        {"name" => "col3"}],
+        {"name" => "col1",        "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false},
+        {"name" => "another_col", "column_type" => ColumnTypes::SINT, "size" =>  2},
+        {"name" => "col3",        "column_type" => ColumnTypes::VCHR, "size" => 10}],
       "primary_key_columns" => [0],
       "keys" => [] }
   end
@@ -25,7 +25,7 @@ SQL
         pri1 INT NOT NULL,
         pri2 CHAR(2) NOT NULL,
         sec INT,
-        tri INT,
+        tri BIGINT,
         PRIMARY KEY(pri2, pri1))
 SQL
     execute(<<-SQL)
@@ -36,10 +36,10 @@ SQL
   def secondtbl_def
     { "name"    => "secondtbl",
       "columns" => [
-        {"name" => "pri1"},
-        {"name" => "pri2"},
-        {"name" => "sec"},
-        {"name" => "tri"}],
+        {"name" => "pri1", "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
+        {"name" => "pri2", "column_type" => ColumnTypes::FCHR, "size" => 2, "nullable" => false},
+        {"name" => "sec",  "column_type" => ColumnTypes::SINT, "size" => 4},
+        {"name" => "tri",  "column_type" => ColumnTypes::SINT, "size" => 8}],
       "primary_key_columns" => [1, 0], # note order is that listed in the key, not the index of the column in the table
       "keys" => [
         {"name" => "secidx", "unique" => false, "columns" => [2]}] }
@@ -56,7 +56,7 @@ SQL
   def middletbl_def
     { "name"    => "middletbl",
       "columns" => [
-        {"name" => "pri"}],
+        {"name" => "pri", "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false}],
       "primary_key_columns" => [0],
       "keys" => [] }
   end
@@ -73,8 +73,38 @@ SQL
   def texttbl_def
     { "name"    => "texttbl",
       "columns" => [
-        {"name" => "pri"},
-        {"name" => "textfield"}],
+        {"name" => "pri",       "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
+        {"name" => "textfield", "column_type" => ColumnTypes::TEXT}],
+      "primary_key_columns" => [0],
+      "keys" => [] }
+  end
+
+  def create_misctbl
+    execute(<<-SQL)
+      CREATE TABLE misctbl (
+        pri INT NOT NULL,
+        datefield DATE,
+        timefield TIME,
+        datetimefield #{@database_server == 'postgresql' ? 'timestamp' : 'DATETIME'},
+        floatfield #{@database_server == 'postgresql' ? 'real' : 'FLOAT'},
+        doublefield DOUBLE PRECISION,
+        decimalfield DECIMAL(10, 4),
+        blobfield #{@database_server == 'postgresql' ? 'bytea' : 'BLOB'}#{'(268435456)' if @database_server == 'mysql'},
+        PRIMARY KEY(pri))
+SQL
+  end
+
+  def misctbl_def
+    { "name"    => "misctbl",
+      "columns" => [
+        {"name" => "pri",       "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
+        {"name" => "datefield", "column_type" => ColumnTypes::DATE},
+        {"name" => "timefield", "column_type" => ColumnTypes::TIME},
+        {"name" => "datetimefield", "column_type" => ColumnTypes::DTTM},
+        {"name" => "floatfield", "column_type" => ColumnTypes::REAL, "size" => 4},
+        {"name" => "doublefield", "column_type" => ColumnTypes::REAL, "size" => 8},
+        {"name" => "decimalfield", "column_type" => ColumnTypes::DECI, "size" => 10, "scale" => 4},
+        {"name" => "blobfield", "column_type" => ColumnTypes::BLOB}],
       "primary_key_columns" => [0],
       "keys" => [] }
   end
@@ -98,10 +128,10 @@ SQL
   def noprimarytbl_def
     { "name" => "noprimarytbl",
       "columns" => [
-        {"name" => "nullable"},
-        {"name" => "version"},
-        {"name" => "name"},
-        {"name" => "non_nullable"}],
+        {"name" => "nullable",     "column_type" => ColumnTypes::SINT, "size" =>   4},
+        {"name" => "version",      "column_type" => ColumnTypes::VCHR, "size" => 255, "nullable" => false},
+        {"name" => "name",         "column_type" => ColumnTypes::VCHR, "size" => 255},
+        {"name" => "non_nullable", "column_type" => ColumnTypes::SINT, "size" =>   4, "nullable" => false}],
       "primary_key_columns" => [1],
       "keys" => [ # sorted in uniqueness then alphabetic name order, but otherwise a transcription of the above create index statements
         {"name" => "correct_key",          "unique" => true,  "columns" => [1]},

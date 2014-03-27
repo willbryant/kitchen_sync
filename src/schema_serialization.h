@@ -6,9 +6,27 @@
 
 template <typename OutputStream>
 void operator << (Packer<OutputStream> &packer, const Column &column) {
-	packer.pack_map_length(1);
+	int fields = 2;
+	if (column.size) fields++;
+	if (column.scale) fields++;
+	if (!column.nullable) fields++;
+	packer.pack_map_length(fields);
 	packer << string("name");
 	packer << column.name;
+	packer << string("column_type");
+	packer << column.column_type;
+	if (column.size) {
+		packer << string("size");
+		packer << column.size;
+	}
+	if (column.scale) {
+		packer << string("scale");
+		packer << column.scale;
+	}
+	if (!column.nullable) {
+		packer << string("nullable");
+		packer << column.nullable;
+	}
 }
 
 template <typename OutputStream>
@@ -51,6 +69,14 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 
 		if (attr_key == "name") {
 			unpacker >> column.name;
+		} else if (attr_key == "column_type") {
+			unpacker >> column.column_type;
+		} else if (attr_key == "size") {
+			unpacker >> column.size;
+		} else if (attr_key == "scale") {
+			unpacker >> column.scale;
+		} else if (attr_key == "nullable") {
+			unpacker >> column.nullable;
 		} // ignore anything else, for forward compatibility
 	}
 }

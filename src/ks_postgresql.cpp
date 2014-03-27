@@ -243,8 +243,53 @@ struct PostgreSQLColumnLister {
 	inline PostgreSQLColumnLister(Table &table): table(table) {}
 
 	inline void operator()(PostgreSQLRow &row) {
-		Column column(row.string_at(0));
-		table.columns.push_back(column);
+		string name(row.string_at(0));
+		string db_type(row.string_at(1));
+		bool nullable(row.string_at(2) == "f");
+
+		if (db_type == "bool)") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::BOOL);
+		} else if (db_type == "smallint") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::SINT, 2);
+		} else if (db_type == "integer") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::SINT, 4);
+		} else if (db_type == "real") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::REAL, 4);
+		} else if (db_type == "double precision") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::REAL, 8);
+		} else if (db_type == "bigint") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::SINT, 8);
+		} else if (db_type.substr(0, 8) == "numeric(") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::DECI, extract_length(db_type), extract_scale(db_type));
+		} else if (db_type.substr(0, 18) == "character varying(") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::VCHR, extract_length(db_type));
+		} else if (db_type.substr(0, 10) == "character(") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::FCHR, extract_length(db_type));
+		} else if (db_type == "text") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::TEXT);
+		} else if (db_type == "bytea") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::BLOB);
+		} else if (db_type == "date") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::DATE);
+		} else if (db_type == "time without time zone") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::TIME);
+		} else if (db_type == "timestamp without time zone") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::DTTM);
+		} else {
+			throw runtime_error("Don't know how to represent postgresql type of " + table.name + '.' + name + " (" + db_type + ")");
+		}
+	}
+
+	inline int extract_length(const string &db_type) {
+		size_t pos = db_type.find('(');
+		if (pos >= db_type.length() - 1) throw runtime_error("Couldn't find length in type specification " + db_type);
+		return atoi(db_type.c_str() + pos + 1);
+	}
+
+	inline int extract_scale(const string &db_type) {
+		size_t pos = db_type.find(',');
+		if (pos >= db_type.length() - 1) throw runtime_error("Couldn't find scale in type specification " + db_type);
+		return atoi(db_type.c_str() + pos + 1);
 	}
 
 	Table &table;
@@ -302,9 +347,10 @@ struct PostgreSQLTableLister {
 
 		PostgreSQLColumnLister column_lister(table);
 		client.query(
-			"SELECT attname "
-			  "FROM pg_attribute, pg_class "
+			"SELECT attname, format_type(atttypid, atttypmod), attnotnull "
+			  "FROM pg_attribute, pg_type, pg_class "
 			 "WHERE attrelid = pg_class.oid AND "
+			       "atttypid = pg_type.oid AND "
 			       "attnum > 0 AND "
 			       "NOT attisdropped AND "
 			       "relname = '" + table.name + "' "

@@ -64,6 +64,21 @@ ENDPOINT_DATABASES = {
   }
 }
 
+module ColumnTypes
+  BLOB = "BLOB"
+  TEXT = "TEXT"
+  VCHR = "VARCHAR"
+  FCHR = "CHAR"
+  BOOL = "BOOL"
+  SINT = "INT"
+  UINT = "INT UNSIGNED"
+  REAL = "REAL"
+  DECI = "DECIMAL"
+  DATE = "DATE"
+  TIME = "TIME"
+  DTTM = "DATETIME"
+end
+
 module Commands
   OPEN = 1
   ROWS = 2
@@ -112,7 +127,9 @@ module KitchenSync
     end
 
     def expect_command(*args)
-      assert_equal args, read_command
+      command = read_command
+      assert_equal args, command
+      # raise "expected command #{args.inspect} but received #{command.inspect}" unless args == command # use this instead of assert_equal so we get the backtrace
     rescue EOFError
       fail "expected #{args.inspect} but the connection was closed; stderr: #{spawner.stderr_contents}"
     end

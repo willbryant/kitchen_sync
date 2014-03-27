@@ -333,6 +333,33 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   end
 
 
+  test_each "complains about column types not matching" do
+    clear_schema
+    create_footbl
+    execute({"mysql" => "ALTER TABLE footbl MODIFY another_col VARCHAR(11)", "postgresql" => "ALTER TABLE footbl ALTER COLUMN another_col TYPE VARCHAR(11)"}[@database_server])
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    expect_stderr("Column another_col on table footbl should be INT but was VARCHAR") do
+      send_command Commands::SCHEMA, "tables" => [footbl_def]
+      unpacker.read rescue nil      
+    end
+  end
+
+  test_each "complains about column nullability not matching" do
+    clear_schema
+    create_footbl
+    execute({"mysql" => "ALTER TABLE footbl MODIFY another_col SMALLINT NOT NULL", "postgresql" => "ALTER TABLE footbl ALTER COLUMN another_col SET NOT NULL"}[@database_server])
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    expect_stderr("Column another_col on table footbl should be nullable but was not nullable") do
+      send_command Commands::SCHEMA, "tables" => [footbl_def]
+      unpacker.read rescue nil      
+    end
+  end
+
+
   test_each "complains if the primary key column order doesn't match" do
     clear_schema
     create_secondtbl

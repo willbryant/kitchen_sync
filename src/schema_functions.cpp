@@ -23,7 +23,16 @@ void report_schema_mismatch(const string &error) {
 }
 
 void check_column_match(const Table &table, const Column &from_column, const Column &to_column) {
-	// FUTURE: check column type, collation etc.
+	// FUTURE: check collation etc.
+	if (from_column.column_type != to_column.column_type) {
+		report_schema_mismatch("Column " + from_column.name + " on table " + table.name + " should be " + from_column.column_type + " but was " + to_column.column_type);
+	}
+	if (from_column.size != to_column.size) {
+		report_schema_mismatch("Column " + from_column.name + " on table " + table.name + " should have size " + to_string(from_column.size) + " but was " + to_string(to_column.size));
+	}
+	if (from_column.nullable != to_column.nullable) {
+		report_schema_mismatch("Column " + from_column.name + " on table " + table.name + " should be " + (from_column.nullable ? "nullable" : "not nullable") + " but was " + (to_column.nullable ? "nullable" : "not nullable"));
+	}
 }
 
 void check_columns_match(const Table &table, const Columns &from_columns, const Columns &to_columns) {

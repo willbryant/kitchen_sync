@@ -20,11 +20,13 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
     clear_schema
     create_footbl
     create_secondtbl
+    create_texttbl
+    create_misctbl
     send_handshake_commands
     
     send_command   Commands::SCHEMA
     expect_command Commands::SCHEMA,
-                   [{"tables" => [footbl_def, secondtbl_def]}]
+                   [{"tables" => [footbl_def, misctbl_def, secondtbl_def, texttbl_def]}]
   end
 
   test_each "selects the first unique key with no nullable columns if there is no primary key" do

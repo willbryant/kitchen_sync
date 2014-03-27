@@ -250,8 +250,66 @@ struct MySQLColumnLister {
 	inline MySQLColumnLister(Table &table): table(table) {}
 
 	inline void operator()(MySQLRow &row) {
-		Column column(row.string_at(0));
-		table.columns.push_back(column);
+		string name(row.string_at(0));
+		string db_type(row.string_at(1));
+		bool nullable(row.string_at(2) == "YES");
+		bool unsign(db_type.length() > 8 && db_type.substr(db_type.length() - 8, 8) == "unsigned");
+
+		if (db_type == "tinyint(1)") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::BOOL);
+		} else if (db_type.substr(0, 9) == "smallint(") {
+			table.columns.emplace_back(name, nullable, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 2);
+		} else if (db_type.substr(0, 4) == "int(") {
+			table.columns.emplace_back(name, nullable, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 4);
+		} else if (db_type.substr(0, 7) == "bigint(") {
+			table.columns.emplace_back(name, nullable, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 8);
+		} else if (db_type.substr(0, 8) == "decimal(") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::DECI, extract_length(db_type), extract_scale(db_type));
+		} else if (db_type == "float") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::REAL, 4);
+		} else if (db_type == "double") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::REAL, 8);
+		} else if (db_type.substr(0, 8) == "varchar(") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::VCHR, extract_length(db_type));
+		} else if (db_type.substr(0, 5) == "char(") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::FCHR, extract_length(db_type));
+		} else if (db_type == "tinytext") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::TEXT, 1);
+		} else if (db_type == "text") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::TEXT, 2);
+		} else if (db_type == "mediumtext") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::TEXT, 3);
+		} else if (db_type == "longtext") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::TEXT); // no specific size for compatibility, but 4 in current mysql
+		} else if (db_type == "tinyblob") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::BLOB, 1);
+		} else if (db_type == "blob") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::BLOB, 2);
+		} else if (db_type == "mediumblob") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::BLOB, 3);
+		} else if (db_type == "longblob") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::BLOB); // no specific size for compatibility, but 4 in current mysql
+		} else if (db_type == "date") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::DATE);
+		} else if (db_type == "time") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::TIME);
+		} else if (db_type == "datetime") {
+			table.columns.emplace_back(name, nullable, ColumnTypes::DTTM);
+		} else {
+			throw runtime_error("Don't know how to represent mysql type of " + table.name + '.' + name + " (" + db_type + ")");
+		}
+	}
+
+	inline int extract_length(const string &db_type) {
+		size_t pos = db_type.find('(');
+		if (pos >= db_type.length() - 1) throw runtime_error("Couldn't find length in type specification " + db_type);
+		return atoi(db_type.c_str() + pos + 1);
+	}
+
+	inline int extract_scale(const string &db_type) {
+		size_t pos = db_type.find(',');
+		if (pos >= db_type.length() - 1) throw runtime_error("Couldn't find scale in type specification " + db_type);
+		return atoi(db_type.c_str() + pos + 1);
 	}
 
 	Table &table;

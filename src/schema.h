@@ -11,14 +11,34 @@ typedef vector<size_t> ColumnIndices;
 typedef vector<string> ColumnValues;
 typedef vector<ColumnValues> Rows;
 
+namespace ColumnTypes {
+	const string BLOB = "BLOB";
+	const string TEXT = "TEXT";
+	const string VCHR = "VARCHAR";
+	const string FCHR = "CHAR";
+	const string BOOL = "BOOL";
+	const string SINT = "INT";
+	const string UINT = "INT UNSIGNED";
+	const string REAL = "REAL";
+	const string DECI = "DECIMAL";
+	const string DATE = "DATE";
+	const string TIME = "TIME";
+	const string DTTM = "DATETIME";
+}
+
 struct Column {
 	string name;
+	bool nullable;
+	string column_type;
+	size_t size;
+	size_t scale;
+	vector<string> labels;
 
 	// the following member isn't serialized currently (could be, but not required):
 	string filter_expression;
 
-	inline Column(const string &name): name(name) {}
-	inline Column() {}
+	inline Column(const string &name, bool nullable, string column_type, size_t size = 0, size_t scale = 0): name(name), nullable(nullable), column_type(column_type), size(size), scale(scale) {}
+	inline Column(): size(0), scale(0), nullable(true) {}
 };
 
 typedef vector<Column> Columns;
