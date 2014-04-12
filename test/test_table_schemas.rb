@@ -83,6 +83,7 @@ SQL
     execute(<<-SQL)
       CREATE TABLE misctbl (
         pri INT NOT NULL,
+        boolfield BOOL,
         datefield DATE,
         timefield TIME,
         datetimefield #{@database_server == 'postgresql' ? 'timestamp' : 'DATETIME'},
@@ -98,6 +99,7 @@ SQL
     { "name"    => "misctbl",
       "columns" => [
         {"name" => "pri",       "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
+        {"name" => "boolfield", "column_type" => ColumnTypes::BOOL},
         {"name" => "datefield", "column_type" => ColumnTypes::DATE},
         {"name" => "timefield", "column_type" => ColumnTypes::TIME},
         {"name" => "datetimefield", "column_type" => ColumnTypes::DTTM},

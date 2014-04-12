@@ -262,7 +262,7 @@ struct PostgreSQLColumnLister {
 		string db_type(row.string_at(1));
 		bool nullable(row.string_at(2) == "f");
 
-		if (db_type == "bool)") {
+		if (db_type == "boolean") {
 			table.columns.emplace_back(name, nullable, ColumnTypes::BOOL);
 		} else if (db_type == "smallint") {
 			table.columns.emplace_back(name, nullable, ColumnTypes::SINT, 2);
