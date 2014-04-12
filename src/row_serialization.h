@@ -15,15 +15,7 @@ struct RowPacker {
 
 	template <typename DatabaseRow>
 	void operator()(const DatabaseRow &row) {
-		packer.pack_array_length(row.n_columns());
-
-		for (size_t i = 0; i < row.n_columns(); i++) {
-			if (row.null_at(i)) {
-				packer.pack_nil();
-			} else {
-				packer << row.string_at(i);
-			}
-		}
+		packer << row;
 	}
 
 	Packer<OutputStream> &packer;
@@ -61,17 +53,7 @@ struct RowHasher {
 	template <typename DatabaseRow>
 	void operator()(const DatabaseRow &row) {
 		row_count++;
-		
-		// pack the row to get a byte stream, and hash it as it is written
-		row_packer.pack_array_length(row.n_columns());
-
-		for (size_t i = 0; i < row.n_columns(); i++) {
-			if (row.null_at(i)) {
-				row_packer.pack_nil();
-			} else {
-				row_packer << row.string_at(i);
-			}
-		}
+		row_packer << row;
 	}
 
 	inline void write(const uint8_t *buf, size_t bytes) {

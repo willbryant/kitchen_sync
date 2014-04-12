@@ -107,6 +107,12 @@ protected:
 };
 
 template <typename Stream>
+Packer<Stream> &operator <<(Packer<Stream> &packer, const nullptr_t &obj) {
+	packer.pack_nil();
+	return packer;
+}
+
+template <typename Stream>
 Packer<Stream> &operator <<(Packer<Stream> &packer, const long long &obj) {
 	if (obj > 0xffffffff) {
 		packer.write_raw(MSGPACK_UINT64);
