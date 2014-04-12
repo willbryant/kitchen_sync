@@ -1,6 +1,4 @@
-#include <openssl/evp.h>
-
-#define DIGEST_NAME "md5"
+#include <openssl/md5.h>
 
 template <typename OutputStream>
 struct RowPacker {
@@ -22,11 +20,13 @@ struct RowPacker {
 	Packer<OutputStream> &packer;
 };
 
+#define MAX_DIGEST_LENGTH MD5_DIGEST_LENGTH
+
 struct Hash {
 	inline std::string to_string() const { return string(md_value, md_value + md_len); }
 
 	unsigned int md_len;
-	unsigned char md_value[EVP_MAX_MD_SIZE];
+	unsigned char md_value[MAX_DIGEST_LENGTH];
 };
 
 template <typename OutputStream>
@@ -38,28 +38,14 @@ inline bool operator == (const Hash &hash, const string &str) {
 	return (hash.md_len == str.length() && memcmp(str.c_str(), hash.md_value, hash.md_len) == 0);
 }
 
-struct InitOpenSSL {
-	InitOpenSSL() {
-		OpenSSL_add_all_digests();
-	}
-};
-
-static InitOpenSSL init_open_ssl;
-
 struct RowHasher {
 	RowHasher(): row_count(0), size(0), row_packer(*this) {
-		const EVP_MD *md = EVP_get_digestbyname(DIGEST_NAME);
-		if (!md) throw runtime_error("Unknown message digest " DIGEST_NAME);
-		mdctx = EVP_MD_CTX_create();
-		EVP_DigestInit_ex(mdctx, md, nullptr);
-	}
-
-	~RowHasher() {
-		EVP_MD_CTX_destroy(mdctx);
+		MD5_Init(&mdctx);
 	}
 
 	const Hash &finish() {
-		EVP_DigestFinal_ex(mdctx, hash.md_value, &hash.md_len);
+		hash.md_len = MD5_DIGEST_LENGTH;
+		MD5_Final(hash.md_value, &mdctx);
 		return hash;
 	}
 
@@ -80,11 +66,11 @@ struct RowHasher {
 	}
 
 	inline void write(const uint8_t *buf, size_t bytes) {
-		EVP_DigestUpdate(mdctx, buf, bytes);
+		MD5_Update(&mdctx, buf, bytes);
 		size += bytes;
 	}
 
-	EVP_MD_CTX *mdctx;
+	MD5_CTX mdctx;
 	size_t row_count;
 	size_t size;
 	Packer<RowHasher> row_packer;
