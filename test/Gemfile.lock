@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/willbryant/ruby-pg.git
-  revision: 166cb6c820d4e9ad7da02531b78023174f6fb7a7
+  revision: cbec7ca80370601a6e5070da8ebcd894431b23c0
   specs:
     pg (0.16.0)
 

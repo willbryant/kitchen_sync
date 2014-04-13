@@ -13,6 +13,18 @@ require File.expand_path(File.join(File.dirname(__FILE__), 'test_table_schemas')
 
 FileUtils.mkdir_p(File.join(File.dirname(__FILE__), 'tmp'))
 
+class Date
+  def to_s
+    strftime("%Y-%m-%d") # make the standard input format the output format
+  end
+end
+
+class Time
+  def to_s
+    strftime("%Y-%m-%d %H:%M:%S") # not interested in %z for tests
+  end
+end
+
 class PGconn
   def execute(sql)
     async_exec(sql)
@@ -50,7 +62,7 @@ ENDPOINT_DATABASES = {
       nil,
       name,
       username,
-      password)
+      password).tap {|conn| conn.type_mapping = PG::BasicTypeMapping.new(conn)}
     }
   },
   "mysql" => {
@@ -59,7 +71,8 @@ ENDPOINT_DATABASES = {
       :port     => port.to_i,
       :database => name,
       :username => username,
-      :password => password)
+      :password => password,
+      :cast_booleans => true)
     }
   }
 }
@@ -224,7 +237,7 @@ module KitchenSync
     end
 
     def query(sql)
-      connection.query(sql).collect {|row| row.values.collect {|value| value.to_s unless value.nil?}} # one adapter returns strings, the other casts.  for now, we use the lowest common denominator.
+      connection.query(sql).collect {|row| row.values.collect {|value| value.to_s unless value.nil?}} # for now, ks mostly uses strings
     end
 
     def clear_schema

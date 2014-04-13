@@ -83,4 +83,6 @@ add_test(hash_from_test          env BUNDLE_GEMFILE=../test/Gemfile bundle exec 
 add_test(rows_from_test          env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/rows_from_test.rb)
 add_test(rows_and_hash_from_test env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/rows_and_hash_from_test.rb)
 add_test(filter_from_test        env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/filter_from_test.rb)
+add_test(column_types_to_test    env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/column_types_to_test.rb)
+add_test(column_types_from_test  env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/column_types_from_test.rb)
 add_test(sync_to_test            env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/sync_to_test.rb)

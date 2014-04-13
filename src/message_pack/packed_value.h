@@ -67,7 +67,9 @@ struct PackedValue {
 	inline uint8_t leader() const { return (used ? *encoded_bytes : 0); }
 	inline const uint8_t *data() const { return encoded_bytes; }
 
-	inline bool is_nil() const { return (leader() == MSGPACK_NIL); }
+	inline bool is_nil()   const { return (leader() == MSGPACK_NIL); }
+	inline bool is_false() const { return (leader() == MSGPACK_FALSE); }
+	inline bool is_true()  const { return (leader() == MSGPACK_TRUE); }
 
 	inline bool operator == (const PackedValue &other) const {
 		return (used == other.used && memcmp(encoded_bytes, other.encoded_bytes, used) == 0);

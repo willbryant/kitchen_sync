@@ -17,16 +17,23 @@ public:
 	inline MYSQL_RES *res() { return _res; }
 	inline int n_tuples() const { return mysql_num_rows(_res); }
 	inline int n_columns() const { return _n_columns; }
+	inline enum_field_types type_of(int column_number) const { return types[column_number]; }
 
 private:
 	MYSQL_RES *_res;
 	int _n_tuples;
 	int _n_columns;
+	vector<enum_field_types> types;
 };
 
 MySQLRes::MySQLRes(MYSQL &mysql, bool buffer) {
 	_res = buffer ? mysql_store_result(&mysql) : mysql_use_result(&mysql);
 	_n_columns = mysql_num_fields(_res);
+
+	types.resize(_n_columns);
+	for (size_t i = 0; i < _n_columns; i++) {
+		types[i] = mysql_fetch_field(_res)->type;
+	}
 }
 
 MySQLRes::~MySQLRes() {
@@ -43,17 +50,26 @@ public:
 	inline const MySQLRes &results() const { return _res; }
 
 	inline         int n_columns() const { return _res.n_columns(); }
+
 	inline        bool   null_at(int column_number) const { return     _row[column_number] == nullptr; }
 	inline const void *result_at(int column_number) const { return     _row[column_number]; }
 	inline         int length_of(int column_number) const { return _lengths[column_number]; }
 	inline      string string_at(int column_number) const { return string((char *)result_at(column_number), length_of(column_number)); }
+	inline        bool   bool_at(int column_number) const { return (strcmp((const char *)result_at(column_number), "1") == 0); }
 
 	template <typename Packer>
 	inline void pack_column_into(Packer &packer, int column_number) const {
 		if (null_at(column_number)) {
 			packer << nullptr;
 		} else {
-			packer << string_at(column_number);
+			switch (_res.type_of(column_number)) {
+				case MYSQL_TYPE_TINY:
+					packer << bool_at(column_number);
+					break;
+
+				default:
+					packer << string_at(column_number);
+			}
 		}
 	}
 

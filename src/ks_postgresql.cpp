@@ -16,17 +16,25 @@ public:
 	inline ExecStatusType status() { return PQresultStatus(_res); }
 	inline int n_tuples() const  { return _n_tuples; }
 	inline int n_columns() const { return _n_columns; }
+	inline Oid type_of(int column_number) const { return types[column_number]; }
 
 private:
 	PGresult *_res;
 	int _n_tuples;
 	int _n_columns;
+	vector<Oid> types;
 };
 
 PostgreSQLRes::PostgreSQLRes(PGresult *res) {
 	_res = res;
+
 	_n_tuples = PQntuples(_res);
 	_n_columns = PQnfields(_res);
+
+	types.resize(_n_columns);
+	for (size_t i = 0; i < _n_columns; i++) {
+		types[i] = PQftype(_res, i);
+	}
 }
 
 PostgreSQLRes::~PostgreSQLRes() {
@@ -36,23 +44,42 @@ PostgreSQLRes::~PostgreSQLRes() {
 }
 
 
+// from pg_type.h, which isn't available/working on all distributions.
+#define BOOLOID			16
+#define BYTEAOID		17
+
 class PostgreSQLRow {
 public:
 	inline PostgreSQLRow(PostgreSQLRes &res, int row_number): _res(res), _row_number(row_number) { }
 	inline const PostgreSQLRes &results() const { return _res; }
 
 	inline         int n_columns() const { return _res.n_columns(); }
+
 	inline        bool   null_at(int column_number) const { return PQgetisnull(_res.res(), _row_number, column_number); }
 	inline const void *result_at(int column_number) const { return PQgetvalue (_res.res(), _row_number, column_number); }
 	inline         int length_of(int column_number) const { return PQgetlength(_res.res(), _row_number, column_number); }
-	inline      string string_at(int column_number) const { return string((char *)result_at(column_number), length_of(column_number)); }
+	inline      string string_at(int column_number) const { return string((const char *)result_at(column_number), length_of(column_number)); }
+	inline        bool   bool_at(int column_number) const { return (strcmp((const char *)result_at(column_number), "t") == 0); }
+
+	string decoded_byte_string_at(int column_number) const;
 
 	template <typename Packer>
 	inline void pack_column_into(Packer &packer, int column_number) const {
 		if (null_at(column_number)) {
 			packer << nullptr;
 		} else {
-			packer << string_at(column_number);
+			switch (_res.type_of(column_number)) {
+				case BOOLOID:
+					packer << bool_at(column_number);
+					break;
+
+				case BYTEAOID:
+					packer << decoded_byte_string_at(column_number);
+					break;
+
+				default:
+					packer << string_at(column_number);
+			}
 		}
 	}
 
@@ -69,6 +96,15 @@ private:
 	PostgreSQLRes &_res;
 	int _row_number;
 };
+
+string PostgreSQLRow::decoded_byte_string_at(int column_number) const {
+	const unsigned char *value = (const unsigned char *)result_at(column_number);
+	size_t decoded_length;
+	const unsigned char *decoded = PQunescapeBytea(value, &decoded_length);
+	string result(decoded, decoded + decoded_length);
+	PQfreemem((void *)decoded);
+	return result;
+}
 
 
 class PostgreSQLClient {
