@@ -22,10 +22,6 @@ class Packer {
 public:
 	Packer(Stream &stream): stream(stream) {}
 
-	inline void pack_nil() {
-		write_raw(MSGPACK_NIL);
-	}
-
 	inline void pack_raw(const uint8_t *buf, size_t bytes) {
 		pack_raw_length(bytes);
 		write_raw_bytes(buf, bytes);
@@ -103,7 +99,7 @@ protected:
 
 template <typename Stream>
 Packer<Stream> &operator <<(Packer<Stream> &packer, const nullptr_t &obj) {
-	packer.pack_nil();
+	packer.write_raw(MSGPACK_NIL);
 	return packer;
 }
 
