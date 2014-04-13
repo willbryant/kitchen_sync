@@ -47,25 +47,28 @@ public:
 	inline         int length_of(int column_number) const { return PQgetlength(_res.res(), _row_number, column_number); }
 	inline      string string_at(int column_number) const { return string((char *)result_at(column_number), length_of(column_number)); }
 
+	template <typename Packer>
+	inline void pack_column_into(Packer &packer, int column_number) const {
+		if (null_at(column_number)) {
+			packer << nullptr;
+		} else {
+			packer << string_at(column_number);
+		}
+	}
+
+	template <typename Packer>
+	void pack_row_into(Packer &packer) const {
+		pack_array_length(packer, n_columns());
+
+		for (size_t column_number = 0; column_number < n_columns(); column_number++) {
+			pack_column_into(packer, column_number);
+		}
+	}
+
 private:
 	PostgreSQLRes &_res;
 	int _row_number;
 };
-
-template <typename Packer>
-Packer &operator <<(Packer &packer, const PostgreSQLRow &row) {
-	pack_array_length(packer, row.n_columns());
-
-	for (size_t i = 0; i < row.n_columns(); i++) {
-		if (row.null_at(i)) {
-			packer << nullptr;
-		} else {
-			packer << row.string_at(i);
-		}
-	}
-
-	return packer;
-}
 
 
 class PostgreSQLClient {

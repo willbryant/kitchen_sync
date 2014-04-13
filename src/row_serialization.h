@@ -15,7 +15,7 @@ struct RowPacker {
 
 	template <typename DatabaseRow>
 	void operator()(const DatabaseRow &row) {
-		packer << row;
+		row.pack_row_into(packer);
 	}
 
 	Packer<OutputStream> &packer;
@@ -53,7 +53,7 @@ struct RowHasher {
 	template <typename DatabaseRow>
 	void operator()(const DatabaseRow &row) {
 		row_count++;
-		row_packer << row;
+		row.pack_row_into(row_packer);
 	}
 
 	inline void write(const uint8_t *buf, size_t bytes) {
