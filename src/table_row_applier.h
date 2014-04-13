@@ -92,8 +92,8 @@ struct TableRowApplier {
 		for (RowsByPrimaryKey::const_iterator it = existing_rows.begin(); it != existing_rows.end(); ++it) {
 			add_to_primary_key_clearer(it->second);
 		}
-		rows_changed += existing_rows.size();
-		rows_in_range    += existing_rows.size();
+		rows_changed  += existing_rows.size();
+		rows_in_range += existing_rows.size();
 
 		return rows_in_range;
 	}
