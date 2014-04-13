@@ -68,9 +68,8 @@ struct TableRowApplier {
 		size_t rows_in_range = 0;
 
 		while (true) {
-			// the rows command is unusual.  to avoid needing to know the number of results in advance,
-			// instead of a single response object, there's one response object per row, terminated by
-			// an empty row (which is not valid data, so is unambiguous).
+			// command responses are a series of arrays, terminated by an empty array.  this avoids having
+			// to know the number of results in advance; an empty row is not valid, so it's unambiguous.
 			input >> row;
 			if (row.size() == 0) break;
 			rows_in_range++;
