@@ -56,7 +56,7 @@ private:
 
 template <typename Packer>
 Packer &operator <<(Packer &packer, const MySQLRow &row) {
-	packer.pack_array_length(row.n_columns());
+	pack_array_length(packer, row.n_columns());
 
 	for (size_t i = 0; i < row.n_columns(); i++) {
 		if (row.null_at(i)) {

@@ -10,7 +10,7 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	if (column.size) fields++;
 	if (column.scale) fields++;
 	if (!column.nullable) fields++;
-	packer.pack_map_length(fields);
+	pack_map_length(packer, fields);
 	packer << string("name");
 	packer << column.name;
 	packer << string("column_type");
@@ -31,7 +31,7 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 
 template <typename OutputStream>
 void operator << (Packer<OutputStream> &packer, const Key &key) {
-	packer.pack_map_length(3);
+	pack_map_length(packer, 3);
 	packer << string("name");
 	packer << key.name;
 	packer << string("unique");
@@ -42,7 +42,7 @@ void operator << (Packer<OutputStream> &packer, const Key &key) {
 
 template <typename OutputStream>
 void operator << (Packer<OutputStream> &packer, const Table &table) {
-	packer.pack_map_length(4);
+	pack_map_length(packer, 4);
 	packer << string("name");
 	packer << table.name;
 	packer << string("columns");
@@ -55,7 +55,7 @@ void operator << (Packer<OutputStream> &packer, const Table &table) {
 
 template <typename OutputStream>
 void operator << (Packer<OutputStream> &packer, const Database &database) {
-	packer.pack_map_length(1);
+	pack_map_length(packer, 1);
 	packer << string("tables");
 	packer << database.tables;
 }

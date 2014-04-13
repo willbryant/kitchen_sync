@@ -62,7 +62,7 @@ inline void send_values(Packer<OutputStream> &packer, const T &arg0, const Value
 
 template <typename OutputStream, typename... Values>
 inline void send_array(Packer<OutputStream> &packer, const Values &...args) {
-	packer.pack_array_length(sizeof...(Values)); /* number of args */
+	pack_array_length(packer, sizeof...(Values)); /* number of args */
 	send_values(packer, args...);
 }
 
@@ -74,7 +74,7 @@ inline void send_command_begin(Packer<OutputStream> &packer, verb_t verb, const 
 
 template <typename OutputStream>
 inline void send_command_end(Packer<OutputStream> &packer) {
-	packer.pack_array_length(0); // each command is terminated by an array of length 0
+	pack_array_length(packer, 0); // each command is terminated by an array of length 0
 	packer.flush();
 }
 

@@ -22,62 +22,6 @@ class Packer {
 public:
 	Packer(Stream &stream): stream(stream) {}
 
-	inline void pack_raw(const uint8_t *buf, size_t bytes) {
-		pack_raw_length(bytes);
-		write_raw_bytes(buf, bytes);
-	}
-
-	void pack_raw_length(size_t size) {
-		if (size <= MSGPACK_FIXRAW_MAX - MSGPACK_FIXRAW_MIN) {
-			write_raw((uint8_t) (MSGPACK_FIXRAW_MIN + size));
-
-		} else if (size <= 0xffff) {
-			write_raw(MSGPACK_RAW16);
-			write_raw((uint16_t) htons(size));
-
-		} else if (size <= 0xffffffff) {
-			write_raw(MSGPACK_RAW32);
-			write_raw((uint32_t) htonl(size));
-
-		} else {
-			throw runtime_error("String too large to serialize");
-		}
-	}
-
-	void pack_array_length(size_t size) {
-		if (size <= MSGPACK_FIXARRAY_MAX - MSGPACK_FIXARRAY_MIN) {
-			write_raw((uint8_t) (MSGPACK_FIXARRAY_MIN + size));
-
-		} else if (size <= 0xffff) {
-			write_raw(MSGPACK_ARRAY16);
-			write_raw((uint16_t) htons(size));
-
-		} else if (size <= 0xffffffff) {
-			write_raw(MSGPACK_ARRAY32);
-			write_raw((uint32_t) htonl(size));
-
-		} else {
-			throw runtime_error("Array too large to serialize");
-		}
-	}
-
-	void pack_map_length(size_t size) {
-		if (size <= MSGPACK_FIXMAP_MAX - MSGPACK_FIXMAP_MIN) {
-			write_raw((uint8_t) (MSGPACK_FIXMAP_MIN + size));
-
-		} else if (size <= 0xffff) {
-			write_raw(MSGPACK_MAP16);
-			write_raw((uint16_t) htons(size));
-
-		} else if (size <= 0xffffffff) {
-			write_raw(MSGPACK_MAP32);
-			write_raw((uint32_t) htonl(size));
-
-		} else {
-			throw runtime_error("Map too large to serialize");
-		}
-	}
-
 	// writes the selected type as raw bytes to the data stream, without byte order conversion or type marshalling
 	template <typename T>
 	inline void write_raw(const T &obj) {
@@ -224,18 +168,78 @@ inline Packer<Stream> &operator <<(Packer<Stream> &packer, const double &obj) {
 }
 
 template <typename Stream>
+void pack_raw_length(Packer<Stream> &packer, size_t size) {
+	if (size <= MSGPACK_FIXRAW_MAX - MSGPACK_FIXRAW_MIN) {
+		packer.write_raw((uint8_t) (MSGPACK_FIXRAW_MIN + size));
+
+	} else if (size <= 0xffff) {
+		packer.write_raw(MSGPACK_RAW16);
+		packer.write_raw((uint16_t) htons(size));
+
+	} else if (size <= 0xffffffff) {
+		packer.write_raw(MSGPACK_RAW32);
+		packer.write_raw((uint32_t) htonl(size));
+
+	} else {
+		throw runtime_error("String too large to serialize");
+	}
+}
+
+template <typename Stream>
+inline void pack_raw(Packer<Stream> &packer, const uint8_t *buf, size_t bytes) {
+	pack_raw_length(packer, bytes);
+	packer.write_raw_bytes(buf, bytes);
+}
+
+template <typename Stream>
 inline Packer<Stream> &operator <<(Packer<Stream> &packer, const std::string &obj) {
-	packer.pack_raw((const uint8_t *)obj.data(), obj.size());
+	pack_raw(packer, (const uint8_t *)obj.data(), obj.size());
 	return packer;
+}
+
+template <typename Stream>
+void pack_array_length(Packer<Stream> &packer, size_t size) {
+	if (size <= MSGPACK_FIXARRAY_MAX - MSGPACK_FIXARRAY_MIN) {
+		packer.write_raw((uint8_t) (MSGPACK_FIXARRAY_MIN + size));
+
+	} else if (size <= 0xffff) {
+		packer.write_raw(MSGPACK_ARRAY16);
+		packer.write_raw((uint16_t) htons(size));
+
+	} else if (size <= 0xffffffff) {
+		packer.write_raw(MSGPACK_ARRAY32);
+		packer.write_raw((uint32_t) htonl(size));
+
+	} else {
+		throw runtime_error("Array too large to serialize");
+	}
 }
 
 template <typename Stream, typename T>
 Packer<Stream> &operator <<(Packer<Stream> &packer, const std::vector<T> &obj) {
-	packer.pack_array_length(obj.size());
+	pack_array_length(packer, obj.size());
 	for (const T &t : obj) {
 		packer << t;
 	}
 	return packer;
+}
+
+template <typename Stream>
+void pack_map_length(Packer<Stream> &packer, size_t size) {
+	if (size <= MSGPACK_FIXMAP_MAX - MSGPACK_FIXMAP_MIN) {
+		packer.write_raw((uint8_t) (MSGPACK_FIXMAP_MIN + size));
+
+	} else if (size <= 0xffff) {
+		packer.write_raw(MSGPACK_MAP16);
+		packer.write_raw((uint16_t) htons(size));
+
+	} else if (size <= 0xffffffff) {
+		packer.write_raw(MSGPACK_MAP32);
+		packer.write_raw((uint32_t) htonl(size));
+
+	} else {
+		throw runtime_error("Map too large to serialize");
+	}
 }
 
 template <typename Stream, typename K, typename V>
