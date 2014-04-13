@@ -20,7 +20,7 @@ struct packer_error: public std::runtime_error {
 template <typename Stream>
 class Packer {
 public:
-	Packer(Stream &stream): stream(stream) {}
+	inline Packer(Stream &stream): stream(stream) {}
 
 	// writes the selected type as raw bytes to the data stream, without byte order conversion or type marshalling
 	template <typename T>

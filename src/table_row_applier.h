@@ -4,26 +4,25 @@
 #include "sql_functions.h"
 #include "unique_key_clearer.h"
 
-typedef map<ColumnValues, NullableRow> RowsByPrimaryKey;
+typedef map<PackedRow, PackedRow> RowsByPrimaryKey;
+
+PackedRow primary_key(const Table &table, const PackedRow &row) {
+	PackedRow primary_key;
+	primary_key.reserve(table.primary_key_columns.size());
+	for (size_t column_number : table.primary_key_columns) {
+		primary_key.push_back(row[column_number]);
+	}
+	return primary_key;
+}
 
 template <typename DatabaseClient>
 struct RowLoader {
 	RowLoader(const Table &table, RowsByPrimaryKey &rows): table(table), rows(rows) {}
 
 	void operator()(const typename DatabaseClient::RowType &database_row) {
-		ColumnValues primary_key;
-		primary_key.resize(table.primary_key_columns.size());
-		for (size_t column = 0; column < table.primary_key_columns.size(); column++) {
-			primary_key[column] = database_row.string_at(table.primary_key_columns[column]);
-		}
-
-		NullableRow &row(rows[primary_key]);
-		row.resize(database_row.n_columns());
-		for (size_t column = 0; column < database_row.n_columns(); column++) {
-			if (!database_row.null_at(column)) {
-				row[column] = database_row.string_at(column);
-			}
-		}
+		PackedRow row;
+		database_row.pack_row_into(row);
+		rows[primary_key(table, row)] = row;
 	}
 
 	const Table &table;
@@ -64,7 +63,7 @@ struct TableRowApplier {
 			client.retrieve_rows(table, matched_up_to_key, last_not_matching_key, row_loader);
 		}
 
-		NullableRow row;
+		PackedRow row;
 		size_t rows_in_range = 0;
 
 		while (true) {
@@ -97,8 +96,8 @@ struct TableRowApplier {
 		return rows_in_range;
 	}
 
-	bool consider_replace(RowsByPrimaryKey &existing_rows, const NullableRow &row) {
-		RowsByPrimaryKey::iterator existing_row = existing_rows.find(primary_key(row));
+	bool consider_replace(RowsByPrimaryKey &existing_rows, const PackedRow &row) {
+		RowsByPrimaryKey::iterator existing_row = existing_rows.find(primary_key(table, row));
 
 		// if we don't have this row, we need to insert it
 		if (existing_row != existing_rows.end()) {
@@ -122,28 +121,13 @@ struct TableRowApplier {
 		return true;
 	}
 
-	ColumnValues primary_key(const NullableRow &row) {
-		ColumnValues primary_key;
-		primary_key.resize(table.primary_key_columns.size());
-		for (size_t column = 0; column < table.primary_key_columns.size(); column++) {
-			primary_key[column] = row[table.primary_key_columns[column]].value; // note that primary key columns cannot be null
-		}
-		return primary_key;
-	}
-
-	void add_to_insert(const NullableRow &row) {
+	void add_to_insert(const PackedRow &row) {
 		if (insert_sql.have_content()) insert_sql += "),\n(";
 		for (size_t n = 0; n < row.size(); n++) {
 			if (n > 0) {
 				insert_sql += ',';
 			}
-			if (row[n].null) {
-				insert_sql += "NULL";
-			} else {
-				insert_sql += '\'';
-				insert_sql += client.escape_value(row[n].value);
-				insert_sql += '\'';
-			}
+			insert_sql += encode(client, row[n]);
 		}
 
 		// to reduce the trips to the database server, we don't execute a statement for each row -
@@ -153,11 +137,11 @@ struct TableRowApplier {
 		}
 	}
 
-	void add_to_primary_key_clearer(const NullableRow &row) {
+	void add_to_primary_key_clearer(const PackedRow &row) {
 		primary_key_clearer.row(row);
 	}
 
-	void add_to_unique_keys_clearers(const NullableRow &row) {
+	void add_to_unique_keys_clearers(const PackedRow &row) {
 		// before we can insert our rows we also have to first clear any later rows with the same
 		// unique key values - unless the database supports REPLACE in which case the constructor
 		// will have left unique_keys_clearers empty.

@@ -2,7 +2,7 @@
 #define UNIQUE_KEY_CLEARER_H
 
 #include "base_sql.h"
-#include "nullable_row.h"
+#include "encode_packed.h"
 
 template <typename DatabaseClient>
 struct UniqueKeyClearer {
@@ -13,14 +13,14 @@ struct UniqueKeyClearer {
 		delete_sql("DELETE FROM " + table.name + " WHERE (", ")") {
 	}
 
-	bool key_enforceable(const NullableRow &row) {
+	bool key_enforceable(const PackedRow &row) {
 		for (size_t n = 0; n < key_columns->size(); n++) {
-			if (row[(*key_columns)[n]].null) return false;
+			if (row[(*key_columns)[n]].is_nil()) return false;
 		}
 		return true;
 	}
 
-	void row(const NullableRow &row) {
+	void row(const PackedRow &row) {
 		// rows with any NULL values won't enforce a uniqueness constraint, so we don't need to clear them
 		if (!key_enforceable(row)) return;
 
@@ -33,9 +33,7 @@ struct UniqueKeyClearer {
 			size_t column = (*key_columns)[n];
 			delete_sql += table->columns[column].name;
 			delete_sql += '=';
-			delete_sql += '\'';
-			delete_sql += client->escape_value(row[column].value);
-			delete_sql += '\'';
+			delete_sql += encode(*client, row[column]);
 		}
 
 		if (delete_sql.curr.size() > BaseSQL::MAX_SENSIBLE_DELETE_COMMAND_SIZE) {
