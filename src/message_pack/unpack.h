@@ -24,11 +24,6 @@ class Unpacker {
 public:
 	inline Unpacker(Stream &stream): stream(stream) {}
 
-	// determines if the next value is nil, but doesn't read it - call \next_nil() to do that.
-	bool next_is_nil() {
-		return (peek() == MSGPACK_NIL);
-	}
-
 	// reads the next value of the selected type from the data stream, detecting the encoding format and converting
 	// to the type, applying byte order conversion if necessary.
 	template <typename T>
@@ -36,16 +31,6 @@ public:
 		T value;
 		*this >> value;
 		return value;
-	}
-
-	// reads and discards the nil that is next in the data stream - raising an exception if that is not the case.
-	// necessary after a next_is_nil() call to get past the nil.
-	void next_nil() {
-		uint8_t leader = read_raw<uint8_t>();
-		if (leader != MSGPACK_NIL) {
-			backtrace();
-			throw unpacker_error("Don't know how to convert MessagePack type " + to_string((int)leader) + " to nil");
-		}
 	}
 
 	size_t next_array_length() {
@@ -95,11 +80,6 @@ public:
 		T obj;
 		read_raw_bytes((uint8_t *)&obj, sizeof(obj));
 		return obj;
-	}
-
-	// gets but does not consume the next raw byte from the data stream
-	inline uint8_t peek() {
-		return stream.peek();
 	}
 
 	// reads the given number of raw bytes from the data stream, without byte order conversion or type unmarshalling

@@ -26,12 +26,6 @@ struct FDReadStream {
 		}
 	}
 
-	// gets but does not consume the next raw byte from the data stream
-	inline uint8_t peek() {
-		if (!buf_avail) fill_buf();
-		return buf[buf_pos];
-	}
-
 	// reads the given number of raw bytes from the data stream
 	inline void read(uint8_t *dest, size_t bytes) {
 		while (bytes > buf_avail) {
