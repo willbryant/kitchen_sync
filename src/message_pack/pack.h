@@ -22,11 +22,6 @@ class Packer {
 public:
 	Packer(Stream &stream): stream(stream) {}
 
-	template <typename T>
-	inline void pack(const T &value) {
-		*this << value;
-	}
-
 	inline void pack_nil() {
 		write_raw(MSGPACK_NIL);
 	}
