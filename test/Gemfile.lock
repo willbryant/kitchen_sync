@@ -1,0 +1,19 @@
+GIT
+  remote: https://github.com/willbryant/ruby-pg.git
+  revision: 166cb6c820d4e9ad7da02531b78023174f6fb7a7
+  specs:
+    pg (0.16.0)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    msgpack (0.5.8)
+    mysql2 (0.3.15)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  msgpack
+  mysql2
+  pg!
