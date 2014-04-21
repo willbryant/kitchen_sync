@@ -2,6 +2,7 @@ require 'rubygems'
 
 require 'test/unit'
 require 'fileutils'
+require 'time'
 
 require 'msgpack'
 require 'pg'
@@ -17,11 +18,19 @@ class Date
   def to_s
     strftime("%Y-%m-%d") # make the standard input format the output format
   end
+
+  def to_msgpack(*args)
+    to_s.to_msgpack(*args)
+  end
 end
 
 class Time
   def to_s
     strftime("%Y-%m-%d %H:%M:%S") # not interested in %z for tests
+  end
+
+  def to_msgpack(*args)
+    to_s.to_msgpack(*args)
   end
 end
 
@@ -141,8 +150,8 @@ module KitchenSync
 
     def expect_command(*args)
       command = read_command
-      assert_equal args, command
-      # raise "expected command #{args.inspect} but received #{command.inspect}" unless args == command # use this instead of assert_equal so we get the backtrace
+      # assert_equal args, command
+      raise "expected command #{args.inspect} but received #{command.inspect}" unless args == command # use this instead of assert_equal so we get the backtrace
     rescue EOFError
       fail "expected #{args.inspect} but the connection was closed; stderr: #{spawner.stderr_contents}"
     end
@@ -237,7 +246,7 @@ module KitchenSync
     end
 
     def query(sql)
-      connection.query(sql).collect {|row| row.values.collect {|value| value.to_s unless value.nil?}} # for now, ks mostly uses strings
+      connection.query(sql).collect {|row| row.values}
     end
 
     def clear_schema

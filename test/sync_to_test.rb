@@ -11,13 +11,13 @@ class SyncToTest < KitchenSync::EndpointTestCase
     clear_schema
     create_footbl
     execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str'), (101, 0, NULL), (1000, 0, NULL), (1001, 0, 'last')"
-    @rows = [["2",    "10",       "test"],
-             ["4",     nil,        "foo"],
-             ["5",     nil,          nil],
-             ["8",    "-1", "longer str"],
-             ["101",   "0",          nil],
-             ["1000",  "0",          nil],
-             ["1001",  "0",       "last"]]
+    @rows = [[2,     10,       "test"],
+             [4,    nil,        "foo"],
+             [5,    nil,          nil],
+             [8,     -1, "longer str"],
+             [101,    0,          nil],
+             [1000,   0,          nil],
+             [1001,   0,       "last"]]
     @keys = @rows.collect {|row| [row[0]]}
   end
 
@@ -102,7 +102,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     send_command   Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])
     expect_command Commands::HASH_NEXT, [@keys[0], @keys[2], hash_of(@rows[1..2])]
     send_command   Commands::HASH_NEXT, @keys[2], @keys[6], hash_of(@rows[3..6])
-    expect_command Commands::HASH_FAIL, [@keys[2], @keys[4], @keys[6], hash_of([@rows[3], ["101", "0", "different"]])]
+    expect_command Commands::HASH_FAIL, [@keys[2], @keys[4], @keys[6], hash_of([@rows[3], [101, 0, "different"]])]
     send_command   Commands::HASH_FAIL, @keys[2], @keys[3], @keys[4], hash_of(@rows[3..3])
     expect_command Commands::ROWS_AND_HASH_NEXT, [@keys[3], @keys[4], @keys[5], hash_of(@rows[5..5])] # note that the other end has deduced that rows[4] is the problem, so it is requesting that directly rather than giving its hash
     send_results   Commands::ROWS,
@@ -126,12 +126,12 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_command Commands::OPEN, ["footbl"]
     send_results   Commands::ROWS,
                    [[], []],
-                   ["2", nil, nil],
-                   ["3",  nil,  "foo"]
+                   [2, nil, nil],
+                   [3, nil,  "foo"]
     expect_command Commands::QUIT
 
-    assert_equal [["2", nil,   nil],
-                  ["3", nil, "foo"]],
+    assert_equal [[2, nil,   nil],
+                  [3, nil, "foo"]],
                  query("SELECT * FROM footbl ORDER BY col1")
   end
 
@@ -140,8 +140,8 @@ class SyncToTest < KitchenSync::EndpointTestCase
     create_texttbl
     execute "INSERT INTO texttbl VALUES (0, 'test'), (1, '#{'a'*16*1024}')"
 
-    @rows = [["0", "test"],
-             ["1", "a"*16*1024]]
+    @rows = [[0, "test"],
+             [1, "a"*16*1024]]
     @keys = @rows.collect {|row| [row[0]]}
 
     expect_handshake_commands
@@ -161,7 +161,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     clear_schema
     create_texttbl
 
-    @rows = [["1", "a"*16*1024]]
+    @rows = [[1, "a"*16*1024]]
     @keys = @rows.collect {|row| [row[0]]}
 
     expect_handshake_commands
@@ -184,8 +184,8 @@ class SyncToTest < KitchenSync::EndpointTestCase
     create_texttbl
     execute "INSERT INTO texttbl VALUES (0, 'test'), (1, '#{'a'*80*1024}')"
 
-    @rows = [["0", "test"],
-             ["1", "a"*80*1024]]
+    @rows = [[0, "test"],
+             [1, "a"*80*1024]]
     @keys = @rows.collect {|row| [row[0]]}
 
     expect_handshake_commands
@@ -205,7 +205,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     clear_schema
     create_texttbl
 
-    @rows = [["1", "a"*80*1024]]
+    @rows = [[1, "a"*80*1024]]
     @keys = @rows.collect {|row| [row[0]]}
 
     expect_handshake_commands

@@ -36,15 +36,15 @@ class FilterFromTest < KitchenSync::EndpointTestCase
   test_each "uses the given SQL expressions to filter which rows are seen in the table for tables with an only attribute" do
     create_some_tables
     execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"
-    @filtered_rows = [["4", nil, "foo"],
-                      ["5", nil,   nil]]
+    @filtered_rows = [[4, nil, "foo"],
+                      [5, nil,   nil]]
 
     with_filter_file("footbl:\n  only: col1 BETWEEN 4 AND 7") do
       send_handshake_commands
 
       send_command   Commands::OPEN, "footbl"
       expect_command Commands::HASH_NEXT,
-                     [[], ["4"], hash_of(@filtered_rows[0..0])]
+                     [[], [4], hash_of(@filtered_rows[0..0])]
 
       send_command   Commands::ROWS, [], []
       expect_command Commands::ROWS,
@@ -52,14 +52,14 @@ class FilterFromTest < KitchenSync::EndpointTestCase
                      @filtered_rows[0],
                      @filtered_rows[1]
 
-      send_command   Commands::ROWS, ["4"], []
+      send_command   Commands::ROWS, [4], []
       expect_command Commands::ROWS,
-                     [["4"], []],
+                     [[4], []],
                      @filtered_rows[1]
 
-      send_command   Commands::ROWS, [], ["5"]
+      send_command   Commands::ROWS, [], [5]
       expect_command Commands::ROWS,
-                     [[], ["5"]],
+                     [[], [5]],
                      @filtered_rows[0],
                      @filtered_rows[1]
     end
@@ -68,17 +68,17 @@ class FilterFromTest < KitchenSync::EndpointTestCase
   test_each "uses the given SQL expressions to filter column values in hash and rows commands for tables with a replace attribute" do
     create_some_tables
     execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"
-    @filtered_rows = [["2",  "6",       "testx"],
-                      ["4",  "7",        "foox"],
-                      ["5",  nil,     "default"],
-                      ["8", "18", "longer strx"]]
+    @filtered_rows = [[2,   6,       "testx"],
+                      [4,   7,        "foox"],
+                      [5, nil,     "default"],
+                      [8,  18, "longer strx"]]
 
     with_filter_file("footbl:\n  replace:\n    another_col: col1 + CHAR_LENGTH(col3)\n    col3: COALESCE(col3 || 'x', 'default')") do
       send_handshake_commands
 
       send_command   Commands::OPEN, "footbl"
       expect_command Commands::HASH_NEXT,
-                     [[], ["2"], hash_of(@filtered_rows[0..0])]
+                     [[], [2], hash_of(@filtered_rows[0..0])]
 
       send_command   Commands::ROWS, [], []
       expect_command Commands::ROWS,
@@ -93,14 +93,14 @@ class FilterFromTest < KitchenSync::EndpointTestCase
   test_each "applies both column filters and row filters if given" do
     create_some_tables
     execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"
-    @filtered_rows = [["4",  "7",     "foo"],
-                      ["5",  nil, "default"]]
+    @filtered_rows = [[4,   7,     "foo"],
+                      [5, nil, "default"]]
 
     with_filter_file("footbl:\n  replace:\n    another_col: col1 + CHAR_LENGTH(col3)\n    col3: COALESCE(col3, 'default')\n  only: col1 BETWEEN 4 AND 7") do
       send_handshake_commands
       send_command   Commands::OPEN, "footbl"
       expect_command Commands::HASH_NEXT,
-                     [[], ["4"], hash_of(@filtered_rows[0..0])]
+                     [[], [4], hash_of(@filtered_rows[0..0])]
 
       send_command   Commands::ROWS, [], []
       expect_command Commands::ROWS,

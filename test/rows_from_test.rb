@@ -15,86 +15,86 @@ class RowsFromTest < KitchenSync::EndpointTestCase
     expect_command Commands::ROWS,
                    [[], []]
 
-    send_command   Commands::ROWS, ["0"], ["0"]
+    send_command   Commands::ROWS, [0], [0]
     expect_command Commands::ROWS,
-                   [["0"], ["0"]]
+                   [[0], [0]]
 
-    send_command   Commands::ROWS, ["-1"], ["0"]
+    send_command   Commands::ROWS, [-1], [0]
     expect_command Commands::ROWS,
-                   [["-1"], ["0"]]
+                   [[-1], [0]]
 
-    send_command   Commands::ROWS, ["10"], ["11"]
+    send_command   Commands::ROWS, [10], [11]
     expect_command Commands::ROWS,
-                   [["10"], ["11"]]
+                   [[10], [11]]
 
     send_command   Commands::OPEN, "secondtbl"
     expect_command Commands::ROWS,
                    [[], []]
-    send_command   Commands::ROWS, ["aa", "0"], ["ab", "0"]
+    send_command   Commands::ROWS, ["aa", 0], ["ab", 0]
     expect_command Commands::ROWS,
-                   [["aa", "0"], ["ab", "0"]]
+                   [["aa", 0], ["ab", 0]]
   end
 
   test_each "returns all the rows whose key is greater than the first argument and not greater than the last argument" do
     create_some_tables
     execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"
-    @rows = [["2",  "10",       "test"],
-             ["4",   nil,        "foo"],
-             ["5",   nil,          nil],
-             ["8",  "-1", "longer str"]]
+    @rows = [[2,  10,       "test"],
+             [4, nil,        "foo"],
+             [5, nil,          nil],
+             [8,  -1, "longer str"]]
     @keys = @rows.collect {|row| [row[0]]}
     send_handshake_commands
 
     send_command   Commands::OPEN, "footbl"
     expect_command Commands::HASH_NEXT,
-                   [[], ["2"], hash_of(@rows[0..0])]
+                   [[], [2], hash_of(@rows[0..0])]
 
-    send_command   Commands::ROWS, ["1"], ["2"]
+    send_command   Commands::ROWS, [1], [2]
     expect_command Commands::ROWS,
-                   [["1"], ["2"]],
+                   [[1], [2]],
                    @rows[0]
 
-    send_command   Commands::ROWS, ["1"], ["2"] # same request
+    send_command   Commands::ROWS, [1], [2] # same request
     expect_command Commands::ROWS,
-                   [["1"], ["2"]],
+                   [[1], [2]],
                    @rows[0]
 
-    send_command   Commands::ROWS, ["0"], ["2"] # different request, but same data matched
+    send_command   Commands::ROWS, [0], [2] # different request, but same data matched
     expect_command Commands::ROWS,
-                   [["0"], ["2"]],
+                   [[0], [2]],
                    @rows[0]
 
-    send_command   Commands::ROWS, ["1"], ["3"] # ibid
+    send_command   Commands::ROWS, [1], [3] # ibid
     expect_command Commands::ROWS,
-                   [["1"], ["3"]],
+                   [[1], [3]],
                    @rows[0]
 
-    send_command   Commands::ROWS, ["3"], ["4"] # null numbers
+    send_command   Commands::ROWS, [3], [4] # null numbers
     expect_command Commands::ROWS,
-                   [["3"], ["4"]],
+                   [[3], [4]],
                    @rows[1]
 
-    send_command   Commands::ROWS, ["4"], ["5"] # null strings
+    send_command   Commands::ROWS, [4], [5] # null strings
     expect_command Commands::ROWS,
-                   [["4"], ["5"]],
+                   [[4], [5]],
                    @rows[2]
 
-    send_command   Commands::ROWS, ["5"], ["9"] # negative numbers
+    send_command   Commands::ROWS, [5], [9] # negative numbers
     expect_command Commands::ROWS,
-                   [["5"], ["9"]],
+                   [[5], [9]],
                    @rows[3]
 
-    send_command   Commands::ROWS, ["0"], ["10"]
+    send_command   Commands::ROWS, [0], [10]
     expect_command Commands::ROWS,
-                   [["0"], ["10"]],
+                   [[0], [10]],
                    *@rows
   end
 
   test_each "starts from the first row if an empty array is given as the first argument" do
     create_some_tables
     execute "INSERT INTO footbl VALUES (2, 3, 'foo'), (4, 5, 'bar')"
-    @rows = [["2", "3", "foo"],
-             ["4", "5", "bar"]]
+    @rows = [[2, 3, "foo"],
+             [4, 5, "bar"]]
     @keys = @rows.collect {|row| [row[0]]}
     send_handshake_commands
 
@@ -113,9 +113,9 @@ class RowsFromTest < KitchenSync::EndpointTestCase
                    @rows[0],
                    @rows[1]
 
-    send_command   Commands::ROWS, [], ["10"]
+    send_command   Commands::ROWS, [], [10]
     expect_command Commands::ROWS,
-                   [[], ["10"]],
+                   [[], [10]],
                    @rows[0],
                    @rows[1]
   end
@@ -129,35 +129,35 @@ class RowsFromTest < KitchenSync::EndpointTestCase
 
     send_command   Commands::OPEN, "secondtbl"
     expect_command Commands::HASH_NEXT,
-                   [[], ["aa", "100"], hash_of([["100", "aa", "100", "100"]])]
+                   [[], ["aa", 100], hash_of([[100, "aa", 100, 100]])]
 
-    send_command   Commands::ROWS, ["aa", "1"], ["zz", "2147483647"]
+    send_command   Commands::ROWS, ["aa", 1], ["zz", 2147483647]
     expect_command Commands::ROWS,
-                   [["aa", "1"], ["zz", "2147483647"]],
-                   [      "100", "aa", "100", "100"], # first because aa is the first term in the key, then 100 the next
-                   ["968116383", "aa",   "9",   "9"],
-                   ["363401169", "ab",  "20", "340"],
-                   [  "2349174", "xy",   "1",   "2"]
+                   [["aa", 1], ["zz", 2147483647]],
+                   [      100, "aa", 100, 100], # first because aa is the first term in the key, then 100 the next
+                   [968116383, "aa",   9,   9],
+                   [363401169, "ab",  20, 340],
+                   [  2349174, "xy",   1,   2]
 
-    send_command   Commands::ROWS, ["aa", "101"], ["aa", "1000000000"]
+    send_command   Commands::ROWS, ["aa", 101], ["aa", 1000000000]
     expect_command Commands::ROWS,
-                   [["aa", "101"], ["aa", "1000000000"]],
-                   ["968116383", "aa", "9", "9"]
+                   [["aa", 101], ["aa", 1000000000]],
+                   [968116383, "aa", 9, 9]
 
-    send_command   Commands::ROWS, ["aa", "100"], ["aa", "1000000000"]
+    send_command   Commands::ROWS, ["aa", 100], ["aa", 1000000000]
     expect_command Commands::ROWS,
-                   [["aa", "100"], ["aa", "1000000000"]],
-                   ["968116383", "aa", "9", "9"]
+                   [["aa", 100], ["aa", 1000000000]],
+                   [968116383, "aa", 9, 9]
 
-    send_command   Commands::ROWS, ["ww", "1"], ["zz", "1"]
+    send_command   Commands::ROWS, ["ww", 1], ["zz", 1]
     expect_command Commands::ROWS,
-                   [["ww", "1"], ["zz", "1"]],
-                   ["2349174", "xy", "1", "2"]
+                   [["ww", 1], ["zz", 1]],
+                   [2349174, "xy", 1, 2]
 
-    send_command   Commands::ROWS, ["xy", "1"], ["xy", "10000000"]
+    send_command   Commands::ROWS, ["xy", 1], ["xy", 10000000]
     expect_command Commands::ROWS,
-                   [["xy", "1"], ["xy", "10000000"]],
-                   ["2349174", "xy", "1", "2"]
+                   [["xy", 1], ["xy", 10000000]],
+                   [2349174, "xy", 1, 2]
   end
 
   test_each "supports reserved-word column names" do

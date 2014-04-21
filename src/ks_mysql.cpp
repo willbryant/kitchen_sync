@@ -18,12 +18,14 @@ public:
 	inline int n_tuples() const { return mysql_num_rows(_res); }
 	inline int n_columns() const { return _n_columns; }
 	inline enum_field_types type_of(int column_number) const { return types[column_number]; }
+	inline bool unsigned_at(int column_number) const { return types_unsigned[column_number]; }
 
 private:
 	MYSQL_RES *_res;
 	int _n_tuples;
 	int _n_columns;
 	vector<enum_field_types> types;
+	vector<bool> types_unsigned;
 };
 
 MySQLRes::MySQLRes(MYSQL &mysql, bool buffer) {
@@ -31,8 +33,11 @@ MySQLRes::MySQLRes(MYSQL &mysql, bool buffer) {
 	_n_columns = mysql_num_fields(_res);
 
 	types.resize(_n_columns);
+	types_unsigned.resize(_n_columns);
 	for (size_t i = 0; i < _n_columns; i++) {
-		types[i] = mysql_fetch_field(_res)->type;
+		MYSQL_FIELD *field = mysql_fetch_field(_res);
+		types[i] = field->type;
+		types_unsigned[i] = field->flags & UNSIGNED_FLAG;
 	}
 }
 
@@ -56,6 +61,8 @@ public:
 	inline         int length_of(int column_number) const { return _lengths[column_number]; }
 	inline      string string_at(int column_number) const { return string((char *)result_at(column_number), length_of(column_number)); }
 	inline        bool   bool_at(int column_number) const { return (strcmp((const char *)result_at(column_number), "1") == 0); }
+	inline   int64_t      int_at(int column_number) const { return strtoll((const char *)result_at(column_number), NULL, 10); }
+	inline  uint64_t     uint_at(int column_number) const { return strtoull((const char *)result_at(column_number), NULL, 10); }
 
 	template <typename Packer>
 	inline void pack_column_into(Packer &packer, int column_number) const {
@@ -65,6 +72,17 @@ public:
 			switch (_res.type_of(column_number)) {
 				case MYSQL_TYPE_TINY:
 					packer << bool_at(column_number);
+					break;
+
+				case MYSQL_TYPE_SHORT:
+				case MYSQL_TYPE_INT24:
+				case MYSQL_TYPE_LONG:
+				case MYSQL_TYPE_LONGLONG:
+					if (_res.unsigned_at(column_number)) {
+						packer << uint_at(column_number);
+					} else {
+						packer << int_at(column_number);
+					}
 					break;
 
 				default:

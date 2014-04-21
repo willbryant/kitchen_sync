@@ -11,11 +11,11 @@ class HashFromTest < KitchenSync::EndpointTestCase
     clear_schema
     create_footbl
     execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str'), (100, 0, 'last')"
-    @rows = [["2",  "10",       "test"],
-             ["4",   nil,        "foo"],
-             ["5",   nil,          nil],
-             ["8",  "-1", "longer str"],
-             ["100", "0",       "last"]]
+    @rows = [[2,    10,       "test"],
+             [4,   nil,        "foo"],
+             [5,   nil,          nil],
+             [8,    -1, "longer str"],
+             [100,   0,       "last"]]
     @keys = @rows.collect {|row| [row[0]]}
     send_handshake_commands
   end
@@ -98,9 +98,9 @@ class HashFromTest < KitchenSync::EndpointTestCase
     create_texttbl
     execute "INSERT INTO texttbl VALUES (1, '#{'x'*30*1024}'), (2, '#{'x'*30*1024}'), (3, '#{'x'*30*1024}')"
 
-    @rows = [["1", "x"*30*1024],
-             ["2", "x"*30*1024],
-             ["3", "x"*30*1024]]
+    @rows = [[1, "x"*30*1024],
+             [2, "x"*30*1024],
+             [3, "x"*30*1024]]
     @keys = @rows.collect {|row| [row[0]]}
 
     send_handshake_commands(64*1024)
@@ -114,9 +114,9 @@ class HashFromTest < KitchenSync::EndpointTestCase
     create_texttbl
     execute "INSERT INTO texttbl VALUES (1, '#{'x'*60*1024}'), (2, '#{'x'*60*1024}'), (3, '#{'x'*60*1024}')"
 
-    @rows = [["1", "x"*60*1024],
-             ["2", "x"*60*1024],
-             ["3", "x"*60*1024]]
+    @rows = [[1, "x"*60*1024],
+             [2, "x"*60*1024],
+             [3, "x"*60*1024]]
     @keys = @rows.collect {|row| [row[0]]}
 
     send_handshake_commands(64*1024)
@@ -130,13 +130,13 @@ class HashFromTest < KitchenSync::EndpointTestCase
     create_texttbl
     execute "INSERT INTO texttbl VALUES (1, '#{'x'*20*1024}'), (2, '#{'x'*20*1024}'), (3, '#{'x'*20*1024}'), (4, '#{'x'*20*1024}'), (5, '#{'x'*80*1024}'), (6, '#{'x'*80*1024}'), (7, '#{'x'*80*1024}')"
 
-    @rows = [["1", "x"*20*1024],
-             ["2", "x"*20*1024],
-             ["3", "x"*20*1024],
-             ["4", "x"*20*1024],
-             ["5", "x"*80*1024],
-             ["6", "x"*80*1024],
-             ["7", "x"*80*1024]]
+    @rows = [[1, "x"*20*1024],
+             [2, "x"*20*1024],
+             [3, "x"*20*1024],
+             [4, "x"*20*1024],
+             [5, "x"*80*1024],
+             [6, "x"*80*1024],
+             [7, "x"*80*1024]]
     @keys = @rows.collect {|row| [row[0]]}
     send_handshake_commands(64*1024)
 
@@ -156,10 +156,10 @@ class HashFromTest < KitchenSync::EndpointTestCase
     clear_schema
     create_secondtbl
     execute "INSERT INTO secondtbl VALUES (2349174, 'xy', 1, 2), (968116383, 'aa', 9, 9), (100, 'aa', 100, 100), (363401169, 'ab', 20, 340)"
-    @rows = [[      "100", "aa", "100", "100"], # first because the second column is the first term in the key so it's sorted like ["aa", 100]
-             ["968116383", "aa",   "9",   "9"],
-             ["363401169", "ab",  "20", "340"],
-             [  "2349174", "xy",   "1",   "2"]]
+    @rows = [[      100, "aa", 100, 100], # first because the second column is the first term in the key so it's sorted like ["aa", 100]
+             [968116383, "aa",   9,   9],
+             [363401169, "ab",  20, 340],
+             [  2349174, "xy",   1,   2]]
     # note that the primary key columns are in reverse order to the table definition; the command arguments need to be given in the key order, but the column order for the results is unrelated
     @keys = @rows.collect {|row| [row[1], row[0]]}
     send_handshake_commands
