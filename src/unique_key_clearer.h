@@ -9,13 +9,13 @@ struct UniqueKeyClearer {
 	UniqueKeyClearer(DatabaseClient &client, const Table &table, const ColumnIndices &key_columns):
 		client(&client),
 		table(&table),
-		columns(&key_columns),
+		key_columns(&key_columns),
 		delete_sql("DELETE FROM " + table.name + " WHERE (", ")") {
 	}
 
 	bool key_enforceable(const NullableRow &row) {
-		for (size_t n = 0; n < columns->size(); n++) {
-			if (row[(*columns)[n]].null) return false;
+		for (size_t n = 0; n < key_columns->size(); n++) {
+			if (row[(*key_columns)[n]].null) return false;
 		}
 		return true;
 	}
@@ -25,12 +25,12 @@ struct UniqueKeyClearer {
 		if (!key_enforceable(row)) return;
 
 		if (delete_sql.have_content()) delete_sql += ")\nOR (";
-		for (size_t n = 0; n < columns->size(); n++) {
+		for (size_t n = 0; n < key_columns->size(); n++) {
 			// frustratingly http://bugs.mysql.com/bug.php?id=31188 was not fixed until 5.7.3 so we can't simply make a big WHERE (key columns) IN (tuples) here, and have to use AND/OR repetition instead
 			if (n > 0) {
 				delete_sql += " AND ";
 			}
-			size_t column = (*columns)[n];
+			size_t column = (*key_columns)[n];
 			delete_sql += table->columns[column].name;
 			delete_sql += '=';
 			delete_sql += '\'';
@@ -51,7 +51,7 @@ struct UniqueKeyClearer {
 	// which is impossible with references.
 	DatabaseClient *client;
 	const Table *table;
-	const ColumnIndices *columns;
+	const ColumnIndices *key_columns;
 	BaseSQL delete_sql;
 };
 
