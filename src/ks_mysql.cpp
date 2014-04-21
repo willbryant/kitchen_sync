@@ -84,16 +84,16 @@ public:
 
 	template <typename RowReceiver>
 	size_t retrieve_rows(const Table &table, const ColumnValues &prev_key, size_t row_count, RowReceiver &row_packer) {
-		return query(retrieve_rows_sql(table, prev_key, row_count, quote_identifiers_with()), row_packer, false /* as above */);
+		return query(retrieve_rows_sql(*this, table, prev_key, row_count), row_packer, false /* as above */);
 	}
 
 	template <typename RowReceiver>
 	size_t retrieve_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, RowReceiver &row_packer) {
-		return query(retrieve_rows_sql(table, prev_key, last_key, quote_identifiers_with()), row_packer, false /* nb. n_tuples won't work, which is ok since we send rows individually */);
+		return query(retrieve_rows_sql(*this, table, prev_key, last_key), row_packer, false /* nb. n_tuples won't work, which is ok since we send rows individually */);
 	}
 
 	size_t count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
-		return atoi(select_one(count_rows_sql(table, prev_key, last_key, quote_identifiers_with())).c_str());
+		return atoi(select_one(count_rows_sql(*this, table, prev_key, last_key)).c_str());
 	}
 
 	void execute(const string &sql);
