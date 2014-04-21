@@ -131,16 +131,6 @@ Packer<Stream> &operator <<(Packer<Stream> &packer, const PackedValue &obj) {
 	return packer;
 }
 
-struct VectorWriteStream {
-	inline VectorWriteStream(PackedValue &value): value(value) {}
-
-	inline void write(const uint8_t *src, size_t bytes) {
-		memcpy(value.extend(bytes), src, bytes);
-	}
-
-	PackedValue &value;
-};
-
 struct VectorReadStream {
 	inline VectorReadStream(const PackedValue &value): value(value), pos(0) {}
 
@@ -154,9 +144,8 @@ struct VectorReadStream {
 };
 
 template <typename T>
-PackedValue &operator <<(PackedValue &value, const T &obj) {
-	VectorWriteStream stream(value);
-	Packer<VectorWriteStream> packer(stream);
+inline PackedValue &operator <<(PackedValue &value, const T &obj) {
+	Packer<PackedValue> packer(value);
 	packer << obj;
 	return value;
 }
@@ -164,7 +153,7 @@ PackedValue &operator <<(PackedValue &value, const T &obj) {
 typedef vector<PackedValue> PackedRow;
 
 template <typename T>
-PackedRow &operator <<(PackedRow &row, const T &obj) {
+inline PackedRow &operator <<(PackedRow &row, const T &obj) {
 	row.resize(row.size() + 1);
 	row.back() << obj;
 	return row;

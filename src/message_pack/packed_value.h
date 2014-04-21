@@ -1,6 +1,7 @@
 #ifndef PACKED_VALUE
 #define PACKED_VALUE
 
+#include <string.h>
 #include "type_codes.h"
 
 struct PackedValue {
@@ -10,6 +11,10 @@ struct PackedValue {
 		size_t size_before = encoded_bytes.size();
 		encoded_bytes.resize(size_before + bytes);
 		return encoded_bytes.data() + size_before;
+	}
+
+	inline void write(const uint8_t *src, size_t bytes) {
+		memcpy(extend(bytes), src, bytes);
 	}
 
 	inline void clear() { encoded_bytes.clear(); }
