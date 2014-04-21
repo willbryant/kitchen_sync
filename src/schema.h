@@ -4,11 +4,12 @@
 #include <string>
 #include <vector>
 #include <map>
+#include "message_pack/packed_value.h"
 
 using namespace std;
 
 typedef vector<size_t> ColumnIndices;
-typedef vector<string> ColumnValues;
+typedef vector<PackedValue> ColumnValues;
 typedef vector<ColumnValues> Rows;
 
 namespace ColumnTypes {

@@ -77,12 +77,13 @@ struct RowLastKey {
 		// keep its primary key, in case this turns out to be the last row, in which case we'll need to send it to the other end
 		last_key.resize(primary_key_columns.size());
 		for (size_t i = 0; i < primary_key_columns.size(); i++) {
-			last_key[i] = row.string_at(primary_key_columns[i]);
+			last_key[i].clear();
+			row.pack_column_into(last_key[i], primary_key_columns[i]);
 		}
 	}
 
 	const vector<size_t> &primary_key_columns;
-	vector<string> last_key;
+	vector<PackedValue> last_key;
 };
 
 struct RowHasherAndLastKey: RowHasher, RowLastKey {

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "schema.h"
+#include "encode_packed.h"
 
 using namespace std;
 
@@ -27,18 +28,18 @@ string columns_list(DatabaseClient &client, const Columns &columns, const Column
 }
 
 template <typename DatabaseClient>
-string non_binary_string_values_list(DatabaseClient &client, const vector<string> &values) {
+string values_list(DatabaseClient &client, const ColumnValues &values) {
 	if (values.empty()) {
 		return "(NULL)";
 	}
 
-	string result("('");
-	result.append(*values.begin());
-	for (vector<string>::const_iterator value = values.begin() + 1; value != values.end(); ++value) {
-		result.append("', '");
-		result.append(client.escape_value(*value));
+	string result("(");
+	result += encode(client, values.front());
+	for (ColumnValues::const_iterator value = values.begin() + 1; value != values.end(); ++value) {
+		result += ',';
+		result += encode(client, *value);
 	}
-	result.append("')");
+	result += ")";
 	return result;
 }
 
@@ -49,14 +50,14 @@ string where_sql(DatabaseClient &client, const string &key_columns, const Column
 		result += prefix;
 		result += key_columns;
 		result += " > ";
-		result += non_binary_string_values_list(client, prev_key);
+		result += values_list(client, prev_key);
 		prefix = " AND ";
 	}
 	if (!last_key.empty()) {
 		result += prefix;
 		result += key_columns;
 		result += " <= ";
-		result += non_binary_string_values_list(client, last_key);
+		result += values_list(client, last_key);
 		prefix = " AND ";
 	}
 	if (!extra_where_conditions.empty()) {
