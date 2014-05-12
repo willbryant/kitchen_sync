@@ -35,6 +35,7 @@ set(YamlCPP_LIBRARIES yaml-cpp)
 set(ks_SRCS src/ks.cpp src/db_url.cpp src/process.cpp src/unidirectional_pipe.cpp)
 add_executable(ks ${ks_SRCS})
 target_link_libraries(ks ${Boost_LIBRARIES})
+install(TARGETS ks RUNTIME DESTINATION bin)
 
 # the endpoints hash data using OpenSSL
 find_package(OpenSSL REQUIRED)
@@ -55,6 +56,7 @@ if (MYSQL_FOUND)
 	set(ks_mysql_SRCS src/ks_mysql.cpp)
 	add_executable(ks_mysql ${ks_mysql_SRCS} ${ks_endpoint_SRCS})
 	target_link_libraries(ks_mysql ${MYSQL_LIBRARIES} ${ks_endpoint_LIBS})
+	install(TARGETS ks_mysql RUNTIME DESTINATION bin)
 endif()
 
 # and one endpoint program for postgresql
@@ -67,6 +69,7 @@ if (PostgreSQL_FOUND)
 	set(ks_postgresql_SRCS src/ks_postgresql.cpp)
 	add_executable(ks_postgresql ${ks_postgresql_SRCS} ${ks_endpoint_SRCS})
 	target_link_libraries(ks_postgresql ${PostgreSQL_LIBRARIES} ${ks_endpoint_LIBS})
+	install(TARGETS ks_postgresql RUNTIME DESTINATION bin)
 endif()
 
 # tests require ruby and various extra gems.  to run the suite, run
