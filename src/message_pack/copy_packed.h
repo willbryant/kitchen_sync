@@ -6,15 +6,15 @@
 #include "unpack.h"
 
 template <typename Stream>
-uint8_t *copy_raw(Unpacker<Stream> &unpacker, PackedValue &obj, size_t bytes) {
+uint8_t *copy_bytes(Unpacker<Stream> &unpacker, PackedValue &obj, size_t bytes) {
 	uint8_t *start_of_data = obj.extend(bytes);
-	unpacker.read_raw_bytes(start_of_data, bytes);
+	unpacker.read_bytes(start_of_data, bytes);
 	return start_of_data;
 }
 
 template <typename Stream>
 void copy_object(Unpacker<Stream> &unpacker, PackedValue &obj) {
-	uint8_t leader = *copy_raw(unpacker, obj, 1);
+	uint8_t leader = *copy_bytes(unpacker, obj, 1);
 
 	if ((leader == MSGPACK_NIL || leader == MSGPACK_FALSE || leader == MSGPACK_TRUE) ||
 		(leader >= MSGPACK_POSITIVE_FIXNUM_MIN && leader <= MSGPACK_POSITIVE_FIXNUM_MAX) ||
@@ -22,7 +22,7 @@ void copy_object(Unpacker<Stream> &unpacker, PackedValue &obj) {
 		// no payload
 
 	} else if (leader >= MSGPACK_FIXRAW_MIN && leader <= MSGPACK_FIXRAW_MAX) {
-		copy_raw(unpacker, obj, leader & 31);
+		copy_bytes(unpacker, obj, leader & 31);
 
 	} else if (leader >= MSGPACK_FIXARRAY_MIN && leader <= MSGPACK_FIXARRAY_MAX) {
 		copy_array(unpacker, obj, leader & 15);
@@ -33,67 +33,67 @@ void copy_object(Unpacker<Stream> &unpacker, PackedValue &obj) {
 	} else {
 		switch (leader) {
 			case MSGPACK_FLOAT:
-				copy_raw(unpacker, obj, sizeof(float));
+				copy_bytes(unpacker, obj, sizeof(float));
 				break;
 
 			case MSGPACK_DOUBLE:
-				copy_raw(unpacker, obj, sizeof(double));
+				copy_bytes(unpacker, obj, sizeof(double));
 				break;
 
 			case MSGPACK_UINT8:
-				copy_raw(unpacker, obj, sizeof(uint8_t));
+				copy_bytes(unpacker, obj, sizeof(uint8_t));
 				break;
 
 			case MSGPACK_UINT16:
-				copy_raw(unpacker, obj, sizeof(uint16_t));
+				copy_bytes(unpacker, obj, sizeof(uint16_t));
 				break;
 
 			case MSGPACK_UINT32:
-				copy_raw(unpacker, obj, sizeof(uint32_t));
+				copy_bytes(unpacker, obj, sizeof(uint32_t));
 				break;
 
 			case MSGPACK_UINT64:
-				copy_raw(unpacker, obj, sizeof(uint64_t));
+				copy_bytes(unpacker, obj, sizeof(uint64_t));
 				break;
 
 			case MSGPACK_INT8:
-				copy_raw(unpacker, obj, sizeof(int8_t));
+				copy_bytes(unpacker, obj, sizeof(int8_t));
 				break;
 
 			case MSGPACK_INT16:
-				copy_raw(unpacker, obj, sizeof(int16_t));
+				copy_bytes(unpacker, obj, sizeof(int16_t));
 				break;
 
 			case MSGPACK_INT32:
-				copy_raw(unpacker, obj, sizeof(int32_t));
+				copy_bytes(unpacker, obj, sizeof(int32_t));
 				break;
 
 			case MSGPACK_INT64:
-				copy_raw(unpacker, obj, sizeof(int64_t));
+				copy_bytes(unpacker, obj, sizeof(int64_t));
 				break;
 
 			case MSGPACK_RAW16:
-				copy_raw(unpacker, obj, ntohs(*(uint16_t *)copy_raw(unpacker, obj, sizeof(uint16_t))));
+				copy_bytes(unpacker, obj, ntohs(*(uint16_t *)copy_bytes(unpacker, obj, sizeof(uint16_t))));
 				break;
 
 			case MSGPACK_RAW32:
-				copy_raw(unpacker, obj, ntohl(*(uint32_t *)copy_raw(unpacker, obj, sizeof(uint32_t))));
+				copy_bytes(unpacker, obj, ntohl(*(uint32_t *)copy_bytes(unpacker, obj, sizeof(uint32_t))));
 				break;
 
 			case MSGPACK_ARRAY16:
-				copy_array(unpacker, obj, ntohs(*(uint16_t *)copy_raw(unpacker, obj, sizeof(uint16_t))));
+				copy_array(unpacker, obj, ntohs(*(uint16_t *)copy_bytes(unpacker, obj, sizeof(uint16_t))));
 				break;
 
 			case MSGPACK_ARRAY32:
-				copy_array(unpacker, obj, ntohl(*(uint32_t *)copy_raw(unpacker, obj, sizeof(uint32_t))));
+				copy_array(unpacker, obj, ntohl(*(uint32_t *)copy_bytes(unpacker, obj, sizeof(uint32_t))));
 				break;
 
 			case MSGPACK_MAP16:
-				copy_map(unpacker, obj, ntohs(*(uint16_t *)copy_raw(unpacker, obj, sizeof(uint16_t))));
+				copy_map(unpacker, obj, ntohs(*(uint16_t *)copy_bytes(unpacker, obj, sizeof(uint16_t))));
 				break;
 
 			case MSGPACK_MAP32:
-				copy_map(unpacker, obj, ntohl(*(uint32_t *)copy_raw(unpacker, obj, sizeof(uint32_t))));
+				copy_map(unpacker, obj, ntohl(*(uint32_t *)copy_bytes(unpacker, obj, sizeof(uint32_t))));
 				break;
 
 			default:
@@ -127,7 +127,7 @@ Unpacker<Stream> &operator >>(Unpacker<Stream> &unpacker, PackedValue &obj) {
 
 template <typename Stream>
 Packer<Stream> &operator <<(Packer<Stream> &packer, const PackedValue &obj) {
-	packer.write_raw_bytes(obj.data(), obj.size());
+	packer.write_bytes(obj.data(), obj.size());
 	return packer;
 }
 

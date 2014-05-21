@@ -26,7 +26,7 @@ struct FDReadStream {
 		}
 	}
 
-	// reads the given number of raw bytes from the data stream
+	// reads the given number of bytes from the data stream without unpacking or endian conversion
 	inline void read(uint8_t *dest, size_t bytes) {
 		while (bytes > buf_avail) {
 			memcpy(dest, buf + buf_pos, buf_avail);
@@ -76,7 +76,7 @@ struct FDWriteStream {
 		}
 	}
 
-	// writes the given number of raw bytes to the data stream, possibly using a buffer; call flush() to force that to the underlying descriptor
+	// writes the given number of bytes as-is to the data stream, possibly using a buffer; call flush() to force that to the underlying descriptor
 	inline void write(const uint8_t *src, size_t bytes) {
 		if (bytes > sizeof(buf)) { // this both protects against integer overflows and avoids unnecessary copying into our buffer for large objects
 			flush();

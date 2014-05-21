@@ -34,7 +34,7 @@ public:
 	}
 
 	size_t next_array_length() {
-		uint8_t leader = read_raw<uint8_t>();
+		uint8_t leader = read_bytes<uint8_t>();
 
 		if (leader >= MSGPACK_FIXARRAY_MIN && leader <= MSGPACK_FIXARRAY_MAX) {
 			return (leader & 15);
@@ -42,10 +42,10 @@ public:
 
 		switch (leader) {
 			case MSGPACK_ARRAY16:
-				return ntohs(read_raw<uint16_t>());
+				return ntohs(read_bytes<uint16_t>());
 
 			case MSGPACK_ARRAY32:
-				return ntohl(read_raw<uint32_t>());
+				return ntohl(read_bytes<uint32_t>());
 
 			default:
 				backtrace();
@@ -54,7 +54,7 @@ public:
 	}
 
 	size_t next_map_length() {
-		uint8_t leader = read_raw<uint8_t>();
+		uint8_t leader = read_bytes<uint8_t>();
 
 		if (leader >= MSGPACK_FIXMAP_MIN && leader <= MSGPACK_FIXMAP_MAX) {
 			return (leader & 15);
@@ -62,10 +62,10 @@ public:
 
 		switch (leader) {
 			case MSGPACK_MAP16:
-				return ntohs(read_raw<uint16_t>());
+				return ntohs(read_bytes<uint16_t>());
 
 			case MSGPACK_MAP32:
-				return ntohl(read_raw<uint32_t>());
+				return ntohl(read_bytes<uint32_t>());
 
 			default:
 				backtrace();
@@ -74,16 +74,16 @@ public:
 	}
 
 
-	// reads the selected type as raw bytes from the data stream, without byte order conversion or type unmarshalling
+	// reads the given type as bytes from the data stream, without byte order conversion or type unmarshalling
 	template <typename T>
-	T read_raw() {
+	T read_bytes() {
 		T obj;
-		read_raw_bytes((uint8_t *)&obj, sizeof(obj));
+		read_bytes((uint8_t *)&obj, sizeof(obj));
 		return obj;
 	}
 
-	// reads the given number of raw bytes from the data stream, without byte order conversion or type unmarshalling
-	inline void read_raw_bytes(uint8_t *buf, size_t bytes) {
+	// reads the given number of bytes from the data stream, without byte order conversion or type unmarshalling
+	inline void read_bytes(uint8_t *buf, size_t bytes) {
 		stream.read(buf, bytes);
 	}
 
@@ -93,7 +93,7 @@ protected:
 
 template <typename Stream, typename T>
 Unpacker<Stream> &operator >>(Unpacker<Stream> &unpacker, T &obj) {
-	uint8_t leader = unpacker.template read_raw<uint8_t>();
+	uint8_t leader = unpacker.template read_bytes<uint8_t>();
 
 	if (leader >= MSGPACK_POSITIVE_FIXNUM_MIN && leader <= MSGPACK_POSITIVE_FIXNUM_MAX) {
 		obj = (T) leader;
@@ -112,43 +112,43 @@ Unpacker<Stream> &operator >>(Unpacker<Stream> &unpacker, T &obj) {
 				break;
 
 			case MSGPACK_FLOAT:
-				obj = (T) unpacker.template read_raw<float>();
+				obj = (T) unpacker.template read_bytes<float>();
 				break;
 
 			case MSGPACK_DOUBLE:
-				obj = (T) unpacker.template read_raw<double>();
+				obj = (T) unpacker.template read_bytes<double>();
 				break;
 
 			case MSGPACK_UINT8:
-				obj = (T) unpacker.template read_raw<uint8_t>();
+				obj = (T) unpacker.template read_bytes<uint8_t>();
 				break;
 
 			case MSGPACK_UINT16:
-				obj = (T) ntohs(unpacker.template read_raw<uint16_t>());
+				obj = (T) ntohs(unpacker.template read_bytes<uint16_t>());
 				break;
 
 			case MSGPACK_UINT32:
-				obj = (T) ntohl(unpacker.template read_raw<uint32_t>());
+				obj = (T) ntohl(unpacker.template read_bytes<uint32_t>());
 				break;
 
 			case MSGPACK_UINT64:
-				obj = (T) ntohll(unpacker.template read_raw<uint64_t>());
+				obj = (T) ntohll(unpacker.template read_bytes<uint64_t>());
 				break;
 
 			case MSGPACK_INT8:
-				obj = (T) unpacker.template read_raw<int8_t>();
+				obj = (T) unpacker.template read_bytes<int8_t>();
 				break;
 
 			case MSGPACK_INT16:
-				obj = (T) ntohs(unpacker.template read_raw<int16_t>());
+				obj = (T) ntohs(unpacker.template read_bytes<int16_t>());
 				break;
 
 			case MSGPACK_INT32:
-				obj = (T) ntohl(unpacker.template read_raw<int32_t>());
+				obj = (T) ntohl(unpacker.template read_bytes<int32_t>());
 				break;
 
 			case MSGPACK_INT64:
-				obj = (T) ntohll(unpacker.template read_raw<int64_t>());
+				obj = (T) ntohll(unpacker.template read_bytes<int64_t>());
 				break;
 
 			default:
@@ -161,18 +161,18 @@ Unpacker<Stream> &operator >>(Unpacker<Stream> &unpacker, T &obj) {
 
 template <typename Stream>
 Unpacker<Stream> &operator >>(Unpacker<Stream> &unpacker, std::string &obj) {
-	uint8_t leader = unpacker.template read_raw<uint8_t>();
+	uint8_t leader = unpacker.template read_bytes<uint8_t>();
 
 	if (leader >= MSGPACK_FIXRAW_MIN && leader <= MSGPACK_FIXRAW_MAX) {
 		obj.resize(leader & 31);
 	} else {
 		switch(leader) {
 			case MSGPACK_RAW16:
-				obj.resize(ntohs(unpacker.template read_raw<uint16_t>()));
+				obj.resize(ntohs(unpacker.template read_bytes<uint16_t>()));
 				break;
 
 			case MSGPACK_RAW32:
-				obj.resize(ntohl(unpacker.template read_raw<uint32_t>()));
+				obj.resize(ntohl(unpacker.template read_bytes<uint32_t>()));
 				break;
 
 			default:
@@ -181,7 +181,7 @@ Unpacker<Stream> &operator >>(Unpacker<Stream> &unpacker, std::string &obj) {
 		}
 	}
 
-	unpacker.read_raw_bytes((uint8_t *)obj.data(), obj.size());
+	unpacker.read_bytes((uint8_t *)obj.data(), obj.size());
 	return unpacker;
 }
 

@@ -22,14 +22,14 @@ class Packer {
 public:
 	inline Packer(Stream &stream): stream(stream) {}
 
-	// writes the selected type as raw bytes to the data stream, without byte order conversion or type marshalling
+	// writes the given value as bytes to the data stream, without byte order conversion or type marshalling
 	template <typename T>
-	inline void write_raw(const T &obj) {
-		write_raw_bytes((const uint8_t*)&obj, sizeof(obj));
+	inline void write_bytes(const T &obj) {
+		write_bytes((const uint8_t*)&obj, sizeof(obj));
 	}
 
-	// writes the given number of raw bytes to the data stream, without byte order conversion or type unmarshalling
-	inline void write_raw_bytes(const uint8_t *buf, size_t bytes) {
+	// writes the given number of bytes to the data stream, without byte order conversion or type unmarshalling
+	inline void write_bytes(const uint8_t *buf, size_t bytes) {
 		stream.write(buf, bytes);
 	}
 
@@ -43,46 +43,46 @@ protected:
 
 template <typename Stream>
 Packer<Stream> &operator <<(Packer<Stream> &packer, const nullptr_t &obj) {
-	packer.write_raw(MSGPACK_NIL);
+	packer.write_bytes(MSGPACK_NIL);
 	return packer;
 }
 
 template <typename Stream>
 Packer<Stream> &operator <<(Packer<Stream> &packer, const long long &obj) {
 	if (obj > 0xffffffff) {
-		packer.write_raw(MSGPACK_UINT64);
-		packer.write_raw((uint64_t) htonll(obj));
+		packer.write_bytes(MSGPACK_UINT64);
+		packer.write_bytes((uint64_t) htonll(obj));
 
 	} else if (obj > 0xffff) {
-		packer.write_raw(MSGPACK_UINT32);
-		packer.write_raw((uint32_t) htonl(obj));
+		packer.write_bytes(MSGPACK_UINT32);
+		packer.write_bytes((uint32_t) htonl(obj));
 
 	} else if (obj > 0xff) {
-		packer.write_raw(MSGPACK_UINT16);
-		packer.write_raw((uint16_t) htons(obj));
+		packer.write_bytes(MSGPACK_UINT16);
+		packer.write_bytes((uint16_t) htons(obj));
 
 	} else if (obj > MSGPACK_POSITIVE_FIXNUM_MAX) {
-		packer.write_raw(MSGPACK_UINT8);
-		packer.write_raw((uint8_t) obj);
+		packer.write_bytes(MSGPACK_UINT8);
+		packer.write_bytes((uint8_t) obj);
 
 	} else if (obj >= (int8_t) MSGPACK_NEGATIVE_FIXNUM_MIN) {
-		packer.write_raw((int8_t) obj);
+		packer.write_bytes((int8_t) obj);
 
 	} else if (obj >= (int8_t) 0xff) {
-		packer.write_raw(MSGPACK_INT8);
-		packer.write_raw((int8_t) obj);
+		packer.write_bytes(MSGPACK_INT8);
+		packer.write_bytes((int8_t) obj);
 
 	} else if (obj >= (int16_t) 0xffff) {
-		packer.write_raw(MSGPACK_INT16);
-		packer.write_raw((int16_t) htons(obj));
+		packer.write_bytes(MSGPACK_INT16);
+		packer.write_bytes((int16_t) htons(obj));
 
 	} else if (obj >= (int32_t) 0xffffffff) {
-		packer.write_raw(MSGPACK_INT32);
-		packer.write_raw((int32_t) htonl(obj));
+		packer.write_bytes(MSGPACK_INT32);
+		packer.write_bytes((int32_t) htonl(obj));
 
 	} else {
-		packer.write_raw(MSGPACK_INT64);
-		packer.write_raw((int64_t) htonll(obj));
+		packer.write_bytes(MSGPACK_INT64);
+		packer.write_bytes((int64_t) htonll(obj));
 	}
 	return packer;
 }
@@ -90,23 +90,23 @@ Packer<Stream> &operator <<(Packer<Stream> &packer, const long long &obj) {
 template <typename Stream>
 Packer<Stream> &operator <<(Packer<Stream> &packer, const unsigned long long &obj) {
 	if (obj > 0xffffffff) {
-		packer.write_raw(MSGPACK_UINT64);
-		packer.write_raw((uint64_t) htonll(obj));
+		packer.write_bytes(MSGPACK_UINT64);
+		packer.write_bytes((uint64_t) htonll(obj));
 
 	} else if (obj > 0xffff) {
-		packer.write_raw(MSGPACK_UINT32);
-		packer.write_raw((uint32_t) htonl(obj));
+		packer.write_bytes(MSGPACK_UINT32);
+		packer.write_bytes((uint32_t) htonl(obj));
 
 	} else if (obj > 0xff) {
-		packer.write_raw(MSGPACK_UINT16);
-		packer.write_raw((uint16_t) htons(obj));
+		packer.write_bytes(MSGPACK_UINT16);
+		packer.write_bytes((uint16_t) htons(obj));
 
 	} else if (obj > MSGPACK_POSITIVE_FIXNUM_MAX) {
-		packer.write_raw(MSGPACK_UINT8);
-		packer.write_raw((uint8_t) obj);
+		packer.write_bytes(MSGPACK_UINT8);
+		packer.write_bytes((uint8_t) obj);
 
 	} else {
-		packer.write_raw((uint8_t) obj);
+		packer.write_bytes((uint8_t) obj);
 	}
 	return packer;
 }
@@ -149,36 +149,36 @@ inline Packer<Stream> &operator <<(Packer<Stream> &packer, const unsigned short 
 
 template <typename Stream>
 inline Packer<Stream> &operator <<(Packer<Stream> &packer, const bool &obj) {
-	packer.write_raw(obj ? MSGPACK_TRUE : MSGPACK_FALSE);
+	packer.write_bytes(obj ? MSGPACK_TRUE : MSGPACK_FALSE);
 	return packer;
 }
 
 template <typename Stream>
 inline Packer<Stream> &operator <<(Packer<Stream> &packer, const float &obj) {
-	packer.write_raw(MSGPACK_FLOAT);
-	packer.write_raw(obj);
+	packer.write_bytes(MSGPACK_FLOAT);
+	packer.write_bytes(obj);
 	return packer;
 }
 
 template <typename Stream>
 inline Packer<Stream> &operator <<(Packer<Stream> &packer, const double &obj) {
-	packer.write_raw(MSGPACK_FLOAT);
-	packer.write_raw(obj);
+	packer.write_bytes(MSGPACK_FLOAT);
+	packer.write_bytes(obj);
 	return packer;
 }
 
 template <typename Stream>
 void pack_raw_length(Packer<Stream> &packer, size_t size) {
 	if (size <= MSGPACK_FIXRAW_MAX - MSGPACK_FIXRAW_MIN) {
-		packer.write_raw((uint8_t) (MSGPACK_FIXRAW_MIN + size));
+		packer.write_bytes((uint8_t) (MSGPACK_FIXRAW_MIN + size));
 
 	} else if (size <= 0xffff) {
-		packer.write_raw(MSGPACK_RAW16);
-		packer.write_raw((uint16_t) htons(size));
+		packer.write_bytes(MSGPACK_RAW16);
+		packer.write_bytes((uint16_t) htons(size));
 
 	} else if (size <= 0xffffffff) {
-		packer.write_raw(MSGPACK_RAW32);
-		packer.write_raw((uint32_t) htonl(size));
+		packer.write_bytes(MSGPACK_RAW32);
+		packer.write_bytes((uint32_t) htonl(size));
 
 	} else {
 		throw runtime_error("String too large to serialize");
@@ -188,7 +188,7 @@ void pack_raw_length(Packer<Stream> &packer, size_t size) {
 template <typename Stream>
 inline void pack_raw(Packer<Stream> &packer, const uint8_t *buf, size_t bytes) {
 	pack_raw_length(packer, bytes);
-	packer.write_raw_bytes(buf, bytes);
+	packer.write_bytes(buf, bytes);
 }
 
 template <typename Stream>
@@ -200,15 +200,15 @@ inline Packer<Stream> &operator <<(Packer<Stream> &packer, const std::string &ob
 template <typename Stream>
 void pack_array_length(Packer<Stream> &packer, size_t size) {
 	if (size <= MSGPACK_FIXARRAY_MAX - MSGPACK_FIXARRAY_MIN) {
-		packer.write_raw((uint8_t) (MSGPACK_FIXARRAY_MIN + size));
+		packer.write_bytes((uint8_t) (MSGPACK_FIXARRAY_MIN + size));
 
 	} else if (size <= 0xffff) {
-		packer.write_raw(MSGPACK_ARRAY16);
-		packer.write_raw((uint16_t) htons(size));
+		packer.write_bytes(MSGPACK_ARRAY16);
+		packer.write_bytes((uint16_t) htons(size));
 
 	} else if (size <= 0xffffffff) {
-		packer.write_raw(MSGPACK_ARRAY32);
-		packer.write_raw((uint32_t) htonl(size));
+		packer.write_bytes(MSGPACK_ARRAY32);
+		packer.write_bytes((uint32_t) htonl(size));
 
 	} else {
 		throw runtime_error("Array too large to serialize");
@@ -227,15 +227,15 @@ Packer<Stream> &operator <<(Packer<Stream> &packer, const std::vector<T> &obj) {
 template <typename Stream>
 void pack_map_length(Packer<Stream> &packer, size_t size) {
 	if (size <= MSGPACK_FIXMAP_MAX - MSGPACK_FIXMAP_MIN) {
-		packer.write_raw((uint8_t) (MSGPACK_FIXMAP_MIN + size));
+		packer.write_bytes((uint8_t) (MSGPACK_FIXMAP_MIN + size));
 
 	} else if (size <= 0xffff) {
-		packer.write_raw(MSGPACK_MAP16);
-		packer.write_raw((uint16_t) htons(size));
+		packer.write_bytes(MSGPACK_MAP16);
+		packer.write_bytes((uint16_t) htons(size));
 
 	} else if (size <= 0xffffffff) {
-		packer.write_raw(MSGPACK_MAP32);
-		packer.write_raw((uint32_t) htonl(size));
+		packer.write_bytes(MSGPACK_MAP32);
+		packer.write_bytes((uint32_t) htonl(size));
 
 	} else {
 		throw runtime_error("Map too large to serialize");
