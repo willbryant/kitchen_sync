@@ -88,7 +88,8 @@ public:
 					break;
 
 				default:
-					packer << string_at(column_number);
+					// we use our non-copied memory class, equivalent to but faster than using string_at
+					packer << memory(result_at(column_number), length_of(column_number));
 			}
 		}
 	}

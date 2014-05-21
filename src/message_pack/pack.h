@@ -197,6 +197,27 @@ inline Packer<Stream> &operator <<(Packer<Stream> &packer, const std::string &ob
 	return packer;
 }
 
+// tiny wrapper around a pointer with length so we can avoid copying bytes into
+// std::string objects when we only need them to call << to get pack_raw anyway.
+struct memory {
+	inline memory(const void *buf, size_t size): buf(buf), size(size) {}
+
+	const void *buf;
+	size_t size;
+
+private:
+	// forbid copying to reduce bugs - you shouldn't use this class like this.
+	// could be tolerated if required in future, as long as you can guarantee
+	// the backing pointers are still valid.
+	memory(const memory& copy_from) { throw logic_error("copying forbidden"); }
+};
+
+template <typename Stream>
+inline Packer<Stream> &operator <<(Packer<Stream> &packer, const memory &obj) {
+	pack_raw(packer, (const uint8_t *)obj.buf, obj.size);
+	return packer;
+}
+
 template <typename Stream>
 void pack_array_length(Packer<Stream> &packer, size_t size) {
 	if (size <= MSGPACK_FIXARRAY_MAX - MSGPACK_FIXARRAY_MIN) {
