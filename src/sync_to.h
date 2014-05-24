@@ -44,7 +44,7 @@ struct SyncToWorker {
 			negotiate_protocol();
 			negotiate_target_block_size();
 			share_snapshot();
-			populate_database_schema();
+			retrieve_database_schema();
 
 			client.start_write_transaction();
 
@@ -134,24 +134,24 @@ struct SyncToWorker {
 		}
 	}
 
-	void populate_database_schema() {
+	void retrieve_database_schema() {
+		// we could do this in all workers, but there's no need, and it'd waste a bit of traffic/time
 		if (leader) {
-			client.populate_database_schema(database);
+			send_command(output, Commands::SCHEMA);
+			read_expected_command(input, Commands::SCHEMA, database);
 			filter_tables(database.tables);
 		}
 	}
 
 	void compare_schema() {
-		// we could do this in all workers, but there's no need, and it'd waste a bit of traffic/time
 		if (leader) {
-			// get its schema
-			Database from_database;
-			send_command(output, Commands::SCHEMA);
-			read_expected_command(input, Commands::SCHEMA, from_database);
-			filter_tables(from_database.tables);
+			// get our schema
+			Database to_database;
+			client.populate_database_schema(to_database);
+			filter_tables(to_database.tables);
 
 			// check they match
-			check_schema_match(from_database, database);
+			match_schemas(database, to_database);
 		}
 	}
 

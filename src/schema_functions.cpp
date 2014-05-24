@@ -139,7 +139,7 @@ void check_tables_match(Tables from_tables, Tables to_tables) {
 	}
 }
 
-void check_schema_match(const Database &from_database, const Database &to_database) {
+void match_schemas(const Database &from_database, const Database &to_database) {
 	// currently we only pay attention to tables, but in the future we might support other schema items
 	check_tables_match(from_database.tables, to_database.tables);
 }
