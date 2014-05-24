@@ -116,23 +116,13 @@ void check_table_match(const Table &from_table, const Table &to_table) {
 	// FUTURE: check collation etc.
 }
 
-Tables::const_iterator skip_ignored_tables(Tables::const_iterator table, const Tables::const_iterator &end, const set<string> &ignore_tables, const set<string> &only_tables) {
-	while (table != end && (ignore_tables.count(table->name) || (!only_tables.empty() && !only_tables.count(table->name)))) {
-		++table;
-	}
-	return table;
-}
-
-void check_tables_match(Tables from_tables, Tables to_tables, const set<string> &ignore_tables, const set<string> &only_tables) {
+void check_tables_match(Tables from_tables, Tables to_tables) {
 	// databases typically return the tables in sorted order, but our algorithm requires it, so we quickly enforce it here
 	sort(from_tables.begin(), from_tables.end());
 	sort(  to_tables.begin(),   to_tables.end());
 
-	Tables::const_iterator to_table = skip_ignored_tables(to_tables.begin(), to_tables.end(), ignore_tables, only_tables);
-	for (Tables::const_iterator from_table = skip_ignored_tables(from_tables.begin(), from_tables.end(), ignore_tables, only_tables);
-		 from_table != from_tables.end();
-		 from_table = skip_ignored_tables(++from_table, from_tables.end(), ignore_tables, only_tables)) {
-		
+	Tables::const_iterator to_table = to_tables.begin();
+	for (Tables::const_iterator from_table = from_tables.begin(); from_table != from_tables.end(); ++from_table) {
 		if (to_table == to_tables.end() || to_table->name > from_table->name) {
 			report_schema_mismatch("Missing table " + from_table->name);
 
@@ -141,7 +131,7 @@ void check_tables_match(Tables from_tables, Tables to_tables, const set<string> 
 
 		} else {
 			check_table_match(*from_table, *to_table);
-			to_table = skip_ignored_tables(++to_table, to_tables.end(), ignore_tables, only_tables);
+			++to_table;
 		}
 	}
 	if (to_table != to_tables.end()) {
@@ -149,7 +139,7 @@ void check_tables_match(Tables from_tables, Tables to_tables, const set<string> 
 	}
 }
 
-void check_schema_match(const Database &from_database, const Database &to_database, const set<string> &ignore_tables, const set<string> &only_tables) {
+void check_schema_match(const Database &from_database, const Database &to_database) {
 	// currently we only pay attention to tables, but in the future we might support other schema items
-	check_tables_match(from_database.tables, to_database.tables, ignore_tables, only_tables);
+	check_tables_match(from_database.tables, to_database.tables);
 }

@@ -1,11 +1,9 @@
 #include "sync_queue.h"
 
-void SyncQueue::enqueue(const Tables &tables, const set<string> &ignore_tables, const set<string> &only_tables) {
+void SyncQueue::enqueue(const Tables &tables) {
 	unique_lock<std::mutex> lock(mutex);
 	for (const Table &from_table : tables) {
-		if (!ignore_tables.count(from_table.name) && (only_tables.empty() || only_tables.count(from_table.name))) {
-			queue.push_back(&from_table);
-		}
+		queue.push_back(&from_table);
 	}
 }
 

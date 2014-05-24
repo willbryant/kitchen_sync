@@ -137,6 +137,7 @@ struct SyncToWorker {
 	void populate_database_schema() {
 		if (leader) {
 			client.populate_database_schema(database);
+			filter_tables(database.tables);
 		}
 	}
 
@@ -144,21 +145,32 @@ struct SyncToWorker {
 		// we could do this in all workers, but there's no need, and it'd waste a bit of traffic/time
 		if (leader) {
 			// get its schema
-			send_command(output, Commands::SCHEMA);
-
-			// read the response to the schema command that the output thread sends when it starts
 			Database from_database;
+			send_command(output, Commands::SCHEMA);
 			read_expected_command(input, Commands::SCHEMA, from_database);
+			filter_tables(from_database.tables);
 
 			// check they match
-			check_schema_match(from_database, database, ignore_tables, only_tables);
+			check_schema_match(from_database, database);
+		}
+	}
+
+	void filter_tables(Tables &tables) {
+		Tables::iterator table = tables.begin();
+		while (table != tables.end()) {
+			if (ignore_tables.count(table->name) ||
+				(!only_tables.empty() && !only_tables.count(table->name))) {
+				table = tables.erase(table);
+			} else {
+				++table;
+			}
 		}
 	}
 
 	void enqueue_tables() {
 		// queue up all the tables
 		if (leader) {
-			sync_queue.enqueue(database.tables, ignore_tables, only_tables);
+			sync_queue.enqueue(database.tables);
 		}
 
 		// wait for the leader to do that (a barrier here is slightly excessive as we don't care if the other
