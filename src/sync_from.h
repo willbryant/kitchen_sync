@@ -6,7 +6,7 @@
 
 template<class DatabaseClient>
 struct SyncFromWorker {
-	SyncFromWorker(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, const char *filter_file, int read_from_descriptor, int write_to_descriptor):
+	SyncFromWorker(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, const char *filter_file, int read_from_descriptor, int write_to_descriptor, char *status_area, size_t status_size):
 		client(database_host, database_port, database_name, database_username, database_password),
 		filter_file(filter_file),
 		in(read_from_descriptor),
@@ -14,12 +14,16 @@ struct SyncFromWorker {
 		out(write_to_descriptor),
 		output(out),
 		row_packer(output),
+		status_area(status_area),
+		status_size(status_size),
 		target_block_size(1) {
 	}
 
 	void operator()() {
+		show_status("negotiating");
 		negotiate_protocol_version();
 
+		show_status("ready");
 		const Table *table;
 
 		try {
@@ -98,6 +102,7 @@ struct SyncFromWorker {
 		read_all_arguments(input, table_name);
 		const Table *table = tables_by_name.at(table_name); // throws out_of_range if not present in the map
 		hash_first_range(*this, *table, target_block_size);
+		show_status(table_name);
 		return table;
 	}
 
@@ -229,6 +234,11 @@ struct SyncFromWorker {
 		}
 	}
 
+	void show_status(string message) {
+		strncpy(status_area, message.c_str(), status_size);
+		status_area[status_size] = 0;
+	}
+
 	DatabaseClient client;
 	Database database;
 	map<string, Table*> tables_by_name;
@@ -238,6 +248,8 @@ struct SyncFromWorker {
 	FDWriteStream out;
 	Packer<FDWriteStream> output;
 	RowPacker<FDWriteStream> row_packer;
+	char *status_area;
+	size_t status_size;
 
 	int protocol_version;
 	size_t target_block_size;
