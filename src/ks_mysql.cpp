@@ -269,7 +269,7 @@ string MySQLClient::export_snapshot() {
 	// mysql's system catalogs are non-transactional and do not give a consistent snapshot; furthermore,
 	// it doesn't support export/import of transactions, so we need to exclude other transactions while
 	// we start up our set of read transactions so that they see consistent data.
-	execute("FLUSH TABLES"); // wait for current update statements to finish, without blocking other connections
+	execute("FLUSH NO_WRITE_TO_BINLOG TABLES"); // wait for current update statements to finish, without blocking other connections
 	execute("FLUSH TABLES WITH READ LOCK"); // then block other connections from updating/committing
 	start_read_transaction(); // and start our transaction, and signal the other workers to start theirs
 	return "locked";
