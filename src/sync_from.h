@@ -6,7 +6,7 @@
 
 template<class DatabaseClient>
 struct SyncFromWorker {
-	SyncFromWorker(const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password, const char *filter_file, int read_from_descriptor, int write_to_descriptor, char *status_area, size_t status_size):
+	SyncFromWorker(const string &database_host, const string &database_port, const string &database_name, const string &database_username, const string &database_password, const string &filter_file, int read_from_descriptor, int write_to_descriptor, char *status_area, size_t status_size):
 		client(database_host, database_port, database_name, database_username, database_password),
 		filter_file(filter_file),
 		in(read_from_descriptor),
@@ -229,7 +229,7 @@ struct SyncFromWorker {
 			tables_by_name[table.name] = &table;
 		}
 
-		if (filter_file && *filter_file) {
+		if (!filter_file.empty()) {
 			load_filters(filter_file, tables_by_name);
 		}
 	}
@@ -242,7 +242,7 @@ struct SyncFromWorker {
 	DatabaseClient client;
 	Database database;
 	map<string, Table*> tables_by_name;
-	const char *filter_file;
+	string filter_file;
 	FDReadStream in;
 	Unpacker<FDReadStream> input;
 	FDWriteStream out;

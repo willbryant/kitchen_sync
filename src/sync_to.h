@@ -15,7 +15,7 @@ template <typename DatabaseClient>
 struct SyncToWorker {
 	SyncToWorker(
 		Database &database, SyncQueue &sync_queue, bool leader, int read_from_descriptor, int write_to_descriptor,
-		const char *database_host, const char *database_port, const char *database_name, const char *database_username, const char *database_password,
+		const string &database_host, const string &database_port, const string &database_name, const string &database_username, const string &database_password,
 		const set<string> &ignore_tables, const set<string> &only_tables, int verbose, bool snapshot, bool partial, bool rollback_after):
 			database(database),
 			sync_queue(sync_queue),

@@ -113,11 +113,11 @@ public:
 	typedef MySQLRow RowType;
 
 	MySQLClient(
-		const char *database_host,
-		const char *database_port,
-		const char *database_name,
-		const char *database_username,
-		const char *database_password);
+		const string &database_host,
+		const string &database_port,
+		const string &database_name,
+		const string &database_username,
+		const string &database_password);
 	~MySQLClient();
 
 	template <typename RowReceiver>
@@ -205,27 +205,27 @@ private:
 };
 
 MySQLClient::MySQLClient(
-	const char *database_host,
-	const char *database_port,
-	const char *database_name,
-	const char *database_username,
-	const char *database_password) {
+	const string &database_host,
+	const string &database_port,
+	const string &database_name,
+	const string &database_username,
+	const string &database_password) {
 
 	// mysql_real_connect takes separate params for numeric ports and unix domain sockets
 	int port = 0;
 	const char *socket = nullptr;
-	if (database_port && *database_port) {
-		if (*database_port >= '0' && *database_port <= '9') {
-			port = atoi(database_port);
+	if (!database_port.empty()) {
+		if (database_port.front() >= '0' && database_port.front() <= '9') {
+			port = atoi(database_port.c_str());
 		} else {
-			socket = database_port;
+			socket = database_port.c_str();
 		}
 	}
 
 	mysql_init(&mysql);
 	mysql_options(&mysql, MYSQL_READ_DEFAULT_GROUP, "ks_mysql");
 	mysql_options(&mysql, MYSQL_SET_CHARSET_NAME, "binary");
-	if (!mysql_real_connect(&mysql, database_host, database_username, database_password, database_name, port, socket, 0)) {
+	if (!mysql_real_connect(&mysql, database_host.c_str(), database_username.c_str(), database_password.c_str(), database_name.c_str(), port, socket, 0)) {
 		throw runtime_error(mysql_error(&mysql));
 	}
 

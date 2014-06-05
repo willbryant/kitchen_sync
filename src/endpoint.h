@@ -32,7 +32,7 @@ int endpoint_main(int argc, char *argv[]) {
 		if (database_password == string("-")) database_password = "";
 		
 		if (from) {
-			const char *filters_file = argc > 7 ? argv[7] : nullptr;
+			const string filters_file = argc > 7 ? argv[7] : "";
 			char *status_area = argv[1];
 			char *last_arg = argv[argc - 1];
 			char *end_of_last_arg = last_arg + strlen(last_arg);

@@ -123,11 +123,11 @@ public:
 	typedef PostgreSQLRow RowType;
 
 	PostgreSQLClient(
-		const char *database_host,
-		const char *database_port,
-		const char *database_name,
-		const char *database_username,
-		const char *database_password);
+		const string &database_host,
+		const string &database_port,
+		const string &database_name,
+		const string &database_username,
+		const string &database_password);
 	~PostgreSQLClient();
 
 	template <typename RowReceiver>
@@ -213,14 +213,14 @@ private:
 };
 
 PostgreSQLClient::PostgreSQLClient(
-	const char *database_host,
-	const char *database_port,
-	const char *database_name,
-	const char *database_username,
-	const char *database_password) {
+	const string &database_host,
+	const string &database_port,
+	const string &database_name,
+	const string &database_username,
+	const string &database_password) {
 
-	const char *keywords[] = { "host",        "port",        "dbname",      "user",            "password",        nullptr };
-	const char *values[]   = { database_host, database_port, database_name, database_username, database_password, nullptr };
+	const char *keywords[] = { "host",                "port",                "dbname",              "user",                    "password",                nullptr };
+	const char *values[]   = { database_host.c_str(), database_port.c_str(), database_name.c_str(), database_username.c_str(), database_password.c_str(), nullptr };
 
 	conn = PQconnectdbParams(keywords, values, 1 /* allow expansion */);
 

@@ -54,7 +54,7 @@ void load_filter_map(Table &table, const YAML::Node &node) {
 	}
 }
 
-void load_filters(const char *filters_file, map<string, Table*> &tables_by_name) {
+void load_filters(const string &filters_file, map<string, Table*> &tables_by_name) {
 	YAML::Node config(YAML::LoadFile(filters_file));
 
 	for (YAML::const_iterator table_it = config.begin(); table_it != config.end(); ++table_it) {
