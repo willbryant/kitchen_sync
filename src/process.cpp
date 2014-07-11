@@ -68,13 +68,6 @@ pid_t Process::fork_and_exec(const string &binary, const char *args[], Unidirect
 	}
 }
 
-void Process::fork_and_exec_pair(const string &binary1, const string &binary2, const char *args1[], const char *args2[], pid_t *child1, pid_t *child2) {
-	UnidirectionalPipe pipe1;
-	UnidirectionalPipe pipe2;
-	*child1 = fork_and_exec(binary1, args1, pipe1, pipe2);
-	*child2 = fork_and_exec(binary2, args2, pipe2, pipe1);
-}
-
 bool Process::wait_for_and_check(pid_t child) {
 	int status;
 	while (true) {
