@@ -1,3 +1,5 @@
+#include <stdexcept>
+
 class UnidirectionalPipe {
 public:
 	UnidirectionalPipe();
@@ -14,4 +16,7 @@ public:
 
 private:
 	int pipe_handles[2];
+
+	// forbid copying
+	UnidirectionalPipe(const UnidirectionalPipe& copy_from) { throw std::logic_error("copying forbidden"); }
 };
