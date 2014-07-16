@@ -9,7 +9,7 @@ using namespace std;
 using namespace boost::program_options;
 
 const string this_program_name("ks");
-const int to_descriptor_list_start = 500; // arbitrary
+const int to_descriptor_list_start = 8; // arbitrary; when the program starts we expect only 0, 1, and 2 to be in use, and we only need a couple of temporaries.  getdtablesize() is guaranteed to be at least 20, which is not much!
 
 int help(options_description desc) {
     cout << desc << "\n";
