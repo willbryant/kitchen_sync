@@ -16,7 +16,7 @@ void check_hash_and_choose_next_range(Worker &worker, const Table &table, const 
 
 	// the other end has given us their hash for the key range (prev_key, last_key], calculate our hash
 	RowHasher hasher;
-	worker.client.retrieve_rows(table, prev_key, last_key, hasher);
+	worker.client.retrieve_rows(hasher, table, prev_key, last_key);
 
 	if (hasher.finish() == hash) {
 		if (failed_prev_key) {
@@ -68,7 +68,8 @@ template <typename Worker, typename Hasher>
 void hash_to_target_block_size(Worker &worker, const Table &table, Hasher &hasher, size_t target_block_size) {
 	if (hasher.size == 0) return;
 	while (hasher.size <= target_block_size/2 &&
-		   worker.client.retrieve_rows(table, hasher.last_key, max<size_t>((target_block_size/2 - hasher.size)*hasher.row_count/hasher.size, 1), hasher)) ;
+		   worker.client.retrieve_rows(hasher, table, hasher.last_key, ColumnValues(), max<size_t>((target_block_size/2 - hasher.size)*hasher.row_count/hasher.size, 1)))
+		/* continue */;
 }
 
 template <typename Worker>
@@ -76,7 +77,7 @@ void hash_failed_range(Worker &worker, const Table &table, size_t rows_to_hash, 
 	if (!rows_to_hash) throw logic_error("Can't hash 0 rows");
 
 	RowHasherAndLastKey hasher(table.primary_key_columns);
-	worker.client.retrieve_rows(table, prev_key, rows_to_hash, hasher);
+	worker.client.retrieve_rows(hasher, table, prev_key, ColumnValues(), rows_to_hash);
 
 	if (failed_prev_key) {
 		worker.send_rows_and_hash_fail_command(table, *failed_prev_key, prev_key, hasher.last_key, failed_last_key, hasher.finish().to_string());
@@ -90,7 +91,7 @@ void hash_next_range(Worker &worker, const Table &table, const ColumnValues &pre
 	if (!rows_to_hash) throw logic_error("Can't hash 0 rows");
 	
 	RowHasherAndLastKey hasher(table.primary_key_columns);
-	worker.client.retrieve_rows(table, prev_key, rows_to_hash, hasher);
+	worker.client.retrieve_rows(hasher, table, prev_key, ColumnValues(), rows_to_hash);
 	hash_to_target_block_size(worker, table, hasher, target_block_size);
 
 	if (hasher.row_count == 0) {
@@ -116,7 +117,7 @@ void rows_and_next_hash(Worker &worker, const Table &table, const ColumnValues &
 	// (the hypothetical key value before that row's would be preferrable if we could find it).
 	if (extend_last_key && !last_key.empty()) {
 		RowLastKey row_last_key(table.primary_key_columns);
-		worker.client.retrieve_rows(table, last_key, 1, row_last_key);
+		worker.client.retrieve_rows(row_last_key, table, last_key, ColumnValues(), 1);
 		last_key = row_last_key.last_key; // may still be empty if we have no more rows
 	}
 
@@ -129,7 +130,7 @@ void rows_and_next_hash(Worker &worker, const Table &table, const ColumnValues &
 	} else {
 		// find the hash for the range *after* the rows that we will send
 		RowHasherAndLastKey hasher(table.primary_key_columns);
-		worker.client.retrieve_rows(table, last_key, 1 /* rows to hash */, hasher);
+		worker.client.retrieve_rows(hasher, table, last_key, ColumnValues(), 1 /* rows to hash */);
 
 		// hash more rows if we're not even close to the target block size, so we don't spend
 		// forever trading hashes and rows for small ranges if most of the table doesn't match

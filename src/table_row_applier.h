@@ -60,7 +60,7 @@ struct TableRowApplier {
 		} else {
 			// otherwise, load our rows in the range so we can compare them
 			RowLoader<DatabaseClient> row_loader(table, existing_rows);
-			client.retrieve_rows(table, matched_up_to_key, last_not_matching_key, row_loader);
+			client.retrieve_rows(row_loader, table, matched_up_to_key, last_not_matching_key);
 		}
 
 		PackedRow row;

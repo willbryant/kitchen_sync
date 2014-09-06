@@ -192,19 +192,19 @@ struct SyncFromWorker {
 
 	inline void send_rows_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
 		send_command_begin(output, Commands::ROWS, prev_key, last_key);
-		client.retrieve_rows(table, prev_key, last_key, row_packer);
+		client.retrieve_rows(row_packer, table, prev_key, last_key);
 		send_command_end(output);
 	}
 
 	inline void send_rows_and_hash_next_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &next_key, const string &hash) {
 		send_command_begin(output, Commands::ROWS_AND_HASH_NEXT, prev_key, last_key, next_key, hash);
-		client.retrieve_rows(table, prev_key, last_key, row_packer);
+		client.retrieve_rows(row_packer, table, prev_key, last_key);
 		send_command_end(output);
 	}
 
 	inline void send_rows_and_hash_fail_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &next_key, const ColumnValues &failed_last_key, const string &hash) {
 		send_command_begin(output, Commands::ROWS_AND_HASH_FAIL, prev_key, last_key, next_key, failed_last_key, hash);
-		client.retrieve_rows(table, prev_key, last_key, row_packer);
+		client.retrieve_rows(row_packer, table, prev_key, last_key);
 		send_command_end(output);
 	}
 

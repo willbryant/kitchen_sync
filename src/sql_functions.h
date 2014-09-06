@@ -83,22 +83,10 @@ string select_columns_sql(DatabaseClient &client, const Table &table) {
 	return result;
 }
 
-template <typename DatabaseClient>
-string retrieve_rows_sql(DatabaseClient &client, const Table &table, const ColumnValues &prev_key, size_t row_count) {
-	string key_columns(columns_list(client, table.columns, table.primary_key_columns));
-
-	string result("SELECT ");
-	result += select_columns_sql(client, table);
-	result += " FROM ";
-	result += table.name;
-	result += where_sql(client, key_columns, prev_key, ColumnValues(), table.where_conditions);
-	result += " ORDER BY " + key_columns.substr(1, key_columns.size() - 2);
-	result += " LIMIT " + to_string(row_count);
-	return result;
-}
+const ssize_t NO_ROW_COUNT_LIMIT = -1;
 
 template <typename DatabaseClient>
-string retrieve_rows_sql(DatabaseClient &client, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
+string retrieve_rows_sql(DatabaseClient &client, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, ssize_t row_count = NO_ROW_COUNT_LIMIT) {
 	string key_columns(columns_list(client, table.columns, table.primary_key_columns));
 
 	string result("SELECT ");
@@ -106,7 +94,10 @@ string retrieve_rows_sql(DatabaseClient &client, const Table &table, const Colum
 	result += " FROM ";
 	result += table.name;
 	result += where_sql(client, key_columns, prev_key, last_key, table.where_conditions);
-	result += + " ORDER BY " + key_columns.substr(1, key_columns.size() - 2);
+	result += " ORDER BY " + key_columns.substr(1, key_columns.size() - 2);
+	if (row_count != NO_ROW_COUNT_LIMIT) {
+		result += " LIMIT " + to_string(row_count);
+	}
 	return result;
 }
 
