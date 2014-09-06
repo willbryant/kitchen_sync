@@ -13,7 +13,6 @@ struct SyncFromWorker {
 		input(in),
 		out(write_to_descriptor),
 		output(out),
-		row_packer(output),
 		status_area(status_area),
 		status_size(status_size),
 		target_block_size(1) {
@@ -192,20 +191,34 @@ struct SyncFromWorker {
 
 	inline void send_rows_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
 		send_command_begin(output, Commands::ROWS, prev_key, last_key);
-		client.retrieve_rows(row_packer, table, prev_key, last_key);
+		send_rows(table, prev_key, last_key);
 		send_command_end(output);
 	}
 
 	inline void send_rows_and_hash_next_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &next_key, const string &hash) {
 		send_command_begin(output, Commands::ROWS_AND_HASH_NEXT, prev_key, last_key, next_key, hash);
-		client.retrieve_rows(row_packer, table, prev_key, last_key);
+		send_rows(table, prev_key, last_key);
 		send_command_end(output);
 	}
 
 	inline void send_rows_and_hash_fail_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &next_key, const ColumnValues &failed_last_key, const string &hash) {
 		send_command_begin(output, Commands::ROWS_AND_HASH_FAIL, prev_key, last_key, next_key, failed_last_key, hash);
-		client.retrieve_rows(row_packer, table, prev_key, last_key);
+		send_rows(table, prev_key, last_key);
 		send_command_end(output);
+	}
+
+	void send_rows(const Table &table, ColumnValues prev_key, const ColumnValues &last_key) {
+		// we limit individual queries to an arbitrary limit of 10000 rows, to reduce annoying slow
+		// queries that would otherwise be logged on the server and reduce buffering.
+		const int BATCH_SIZE = 10000;
+		RowPackerAndLastKey<FDWriteStream> row_packer(output, table.primary_key_columns);
+
+		while (true) {
+			client.retrieve_rows(row_packer, table, prev_key, last_key, BATCH_SIZE);
+			if (row_packer.row_count < BATCH_SIZE) break;
+			prev_key = row_packer.last_key;
+			row_packer.reset_row_count();
+		}
 	}
 
 	void negotiate_protocol_version() {
@@ -247,7 +260,6 @@ struct SyncFromWorker {
 	Unpacker<FDReadStream> input;
 	FDWriteStream out;
 	Packer<FDWriteStream> output;
-	RowPacker<FDWriteStream> row_packer;
 	char *status_area;
 	size_t status_size;
 

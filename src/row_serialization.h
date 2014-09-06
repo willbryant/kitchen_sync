@@ -9,13 +9,29 @@
 	#include <openssl/md5.h>
 #endif
 
+struct RowCounter {
+	RowCounter(): row_count(0) {}
+
+	template <typename DatabaseRow>
+	void operator()(const DatabaseRow &row) {
+		row_count++;
+	}
+
+	size_t row_count;
+};
+
 template <typename OutputStream>
-struct RowPacker {
+struct RowPacker: RowCounter {
 	RowPacker(Packer<OutputStream> &packer): packer(packer) {}
 
 	template <typename DatabaseRow>
 	void operator()(const DatabaseRow &row) {
+		RowCounter::operator()(row);
 		row.pack_row_into(packer);
+	}
+
+	void reset_row_count() {
+		row_count = 0;
 	}
 
 	Packer<OutputStream> &packer;
@@ -39,8 +55,8 @@ inline bool operator == (const Hash &hash, const string &str) {
 	return (hash.md_len == str.length() && memcmp(str.c_str(), hash.md_value, hash.md_len) == 0);
 }
 
-struct RowHasher {
-	RowHasher(): row_count(0), size(0), row_packer(*this) {
+struct RowHasher: RowCounter {
+	RowHasher(): size(0), row_packer(*this) {
 		MD5_Init(&mdctx);
 	}
 
@@ -52,7 +68,7 @@ struct RowHasher {
 
 	template <typename DatabaseRow>
 	void operator()(const DatabaseRow &row) {
-		row_count++;
+		RowCounter::operator()(row);
 		row.pack_row_into(row_packer);
 	}
 
@@ -62,7 +78,6 @@ struct RowHasher {
 	}
 
 	MD5_CTX mdctx;
-	size_t row_count;
 	size_t size;
 	Packer<RowHasher> row_packer;
 	Hash hash;
@@ -93,6 +108,18 @@ struct RowHasherAndLastKey: RowHasher, RowLastKey {
 	template <typename DatabaseRow>
 	inline void operator()(const DatabaseRow &row) {
 		RowHasher::operator()(row);
+		RowLastKey::operator()(row);
+	}
+};
+
+template <typename OutputStream>
+struct RowPackerAndLastKey: RowPacker<OutputStream>, RowLastKey {
+	RowPackerAndLastKey(Packer<OutputStream> &packer, const vector<size_t> &primary_key_columns): RowPacker<OutputStream>(packer), RowLastKey(primary_key_columns) {
+	}
+
+	template <typename DatabaseRow>
+	inline void operator()(const DatabaseRow &row) {
+		RowPacker<OutputStream>::operator()(row);
 		RowLastKey::operator()(row);
 	}
 };
