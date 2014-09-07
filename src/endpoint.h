@@ -13,7 +13,7 @@ set<string> split_list(const string &str) {
 
 template<class DatabaseClient>
 int endpoint_main(int argc, char *argv[]) {
-	if (argc < 7 || (argv[1] != string("from") && argv[1] != string("to"))) {
+	if (argc < 8 || (argv[1] != string("from") && argv[1] != string("to"))) {
 		cerr << "This program is a part of Kitchen Sync.  Instead of running this program directly, run 'ks'.\n";
 		return 1;
 	}
@@ -21,33 +21,38 @@ int endpoint_main(int argc, char *argv[]) {
 	bool from = (argv[1] == string("from"));
 
 	try {
+		// the first set of arguments are the same for both endpoints
 		const char *database_host(argv[2]);
 		const char *database_port(argv[3]);
 		const char *database_name(argv[4]);
 		const char *database_username(argv[5]);
 		const char *database_password(argv[6]);
+		const char *set_variables(argv[7]);
 
+		// unfortunately when we transport program arguments over SSH it flattens them into a string and so empty arguments get lost; we work around by using "-"
 		if (database_port     == string("-")) database_port     = "";
 		if (database_username == string("-")) database_username = "";
 		if (database_password == string("-")) database_password = "";
+		if (set_variables     == string("-")) set_variables     = "";
 		
+		// the remaining arguments are different for the two arguments
 		if (from) {
-			const string filters_file = argc > 7 ? argv[7] : "";
+			const string filters_file = argc > 8 ? argv[8] : "";
 			char *status_area = argv[1];
 			char *last_arg = argv[argc - 1];
 			char *end_of_last_arg = last_arg + strlen(last_arg);
 			size_t status_size = end_of_last_arg - status_area;
-			sync_from<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, filters_file, STDIN_FILENO, STDOUT_FILENO, status_area, status_size);
+			sync_from<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, set_variables, filters_file, STDIN_FILENO, STDOUT_FILENO, status_area, status_size);
 		} else {
-			set <string> ignore(split_list(argc > 7 ? argv[7] : ""));
-			set <string> only(split_list(argc > 8 ? argv[8] : ""));
-			int workers = argc > 9 ? atoi(argv[9]) : 1;
-			int startfd = argc > 10 ? atoi(argv[10]) : STDIN_FILENO;
-			int verbose = argc > 11 ? atoi(argv[11]) : false;
-			bool snapshot = argc > 12 ? atoi(argv[12]) : false;
-			bool partial = argc > 13 ? atoi(argv[13]) : false;
-			bool rollback_after = argc > 14 ? atoi(argv[14]) : false;
-			sync_to<DatabaseClient>(workers, startfd, database_host, database_port, database_name, database_username, database_password, ignore, only, verbose, snapshot, partial, rollback_after);
+			set <string> ignore(split_list(argc > 8 ? argv[8] : ""));
+			set <string> only(split_list(argc > 9 ? argv[9] : ""));
+			int workers = argc > 10 ? atoi(argv[10]) : 1;
+			int startfd = argc > 11 ? atoi(argv[11]) : STDIN_FILENO;
+			int verbose = argc > 12 ? atoi(argv[12]) : false;
+			bool snapshot = argc > 13 ? atoi(argv[13]) : false;
+			bool partial = argc > 14 ? atoi(argv[14]) : false;
+			bool rollback_after = argc > 15 ? atoi(argv[15]) : false;
+			sync_to<DatabaseClient>(workers, startfd, database_host, database_port, database_name, database_username, database_password, set_variables, ignore, only, verbose, snapshot, partial, rollback_after);
 		}
 	} catch (const sync_error& e) {
 		// the worker thread has already output the error to cerr

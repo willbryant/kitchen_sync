@@ -234,7 +234,7 @@ module KitchenSync
     end
 
     def program_args
-      @program_args ||= [ from_or_to.to_s, database_host, database_port, database_name, database_username, database_password ]
+      @program_args ||= [ from_or_to.to_s, database_host, database_port, database_name, database_username, database_password, "-" ]
     end
 
     def connection

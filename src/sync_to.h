@@ -16,7 +16,8 @@ struct SyncToWorker {
 	SyncToWorker(
 		Database &database, SyncQueue &sync_queue, bool leader, int read_from_descriptor, int write_to_descriptor,
 		const string &database_host, const string &database_port, const string &database_name, const string &database_username, const string &database_password,
-		const set<string> &ignore_tables, const set<string> &only_tables, int verbose, bool snapshot, bool partial, bool rollback_after):
+		const string &set_variables, const set<string> &ignore_tables, const set<string> &only_tables,
+		int verbose, bool snapshot, bool partial, bool rollback_after):
 			database(database),
 			sync_queue(sync_queue),
 			leader(leader),
@@ -33,6 +34,9 @@ struct SyncToWorker {
 			partial(partial),
 			protocol_version(0),
 			worker_thread(std::ref(*this)) {
+		if (!set_variables.empty()) {
+			client.execute("SET " + set_variables);
+		}
 	}
 
 	~SyncToWorker() {
