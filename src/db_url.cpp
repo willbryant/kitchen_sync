@@ -84,12 +84,12 @@ void validate(
 	pair<string, string> username_password_and_host_port = split_pair(username_password_host_port_and_database.first, "@", 1);
 	pair<string, string> username_password = split_pair(username_password_and_host_port.first, ":", -1);
 	pair<string, string> host_port = split_pair(username_password_and_host_port.second, ":", -1);
-	result.protocol = protocol_and_rest.first;
-	result.username = username_password.first;
-	result.password = username_password.second;
-	result.host = host_port.first;
-	result.port = host_port.second;
-	result.database = username_password_host_port_and_database.second;
+	result.protocol = urldecode(protocol_and_rest.first);
+	result.username = urldecode(username_password.first);
+	result.password = urldecode(username_password.second);
+	result.host = urldecode(host_port.first);
+	result.port = urldecode(host_port.second);
+	result.database = urldecode(username_password_host_port_and_database.second);
 
 	v = boost::any(result);
 }
