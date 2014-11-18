@@ -25,11 +25,17 @@ find_package(Boost COMPONENTS program_options REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 
 # yaml-cpp for filter files
-set(YAML_CPP_BUILD_TOOLS OFF)
-set(YAML_CPP_BUILD_CONTRIB OFF)
-add_subdirectory(src/yaml-cpp)
-include_directories(src/yaml-cpp/include)
-set(YamlCPP_LIBRARIES yaml-cpp)
+include(FindPkgConfig)
+pkg_check_modules(YamlCPP yaml-cpp)
+if(YamlCPP_FOUND)
+    include_directories(YamlCPP_INCLUDE_DIRS)
+else()
+    set(YAML_CPP_BUILD_TOOLS OFF)
+    set(YAML_CPP_BUILD_CONTRIB OFF)
+    add_subdirectory(src/yaml-cpp)
+    include_directories(src/yaml-cpp/include)
+    set(YamlCPP_LIBRARIES yaml-cpp)
+endif()
 
 # the main program knows nothing but how to hook up the endpoints
 set(ks_SRCS src/ks.cpp src/db_url.cpp src/process.cpp src/unidirectional_pipe.cpp)
