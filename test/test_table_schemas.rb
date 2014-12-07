@@ -22,10 +22,10 @@ SQL
   def create_secondtbl
     execute(<<-SQL)
       CREATE TABLE secondtbl (
+        tri BIGINT,
         pri1 INT NOT NULL,
         pri2 CHAR(2) NOT NULL,
         sec INT,
-        tri BIGINT,
         PRIMARY KEY(pri2, pri1))
 SQL
     execute(<<-SQL)
@@ -36,13 +36,13 @@ SQL
   def secondtbl_def
     { "name"    => "secondtbl",
       "columns" => [
+        {"name" => "tri",  "column_type" => ColumnTypes::SINT, "size" => 8},
         {"name" => "pri1", "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
         {"name" => "pri2", "column_type" => ColumnTypes::FCHR, "size" => 2, "nullable" => false},
-        {"name" => "sec",  "column_type" => ColumnTypes::SINT, "size" => 4},
-        {"name" => "tri",  "column_type" => ColumnTypes::SINT, "size" => 8}],
-      "primary_key_columns" => [1, 0], # note order is that listed in the key, not the index of the column in the table
+        {"name" => "sec",  "column_type" => ColumnTypes::SINT, "size" => 4}],
+      "primary_key_columns" => [2, 1], # note order is that listed in the key, not the index of the column in the table
       "keys" => [
-        {"name" => "secidx", "unique" => false, "columns" => [2]}] }
+        {"name" => "secidx", "unique" => false, "columns" => [3]}] }
   end
 
   def create_middletbl

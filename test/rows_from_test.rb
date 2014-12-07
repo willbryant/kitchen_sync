@@ -122,42 +122,42 @@ class RowsFromTest < KitchenSync::EndpointTestCase
 
   test_each "supports composite keys" do
     create_some_tables
-    execute "INSERT INTO secondtbl VALUES (2349174, 'xy', 1, 2), (968116383, 'aa', 9, 9), (100, 'aa', 100, 100), (363401169, 'ab', 20, 340)"
+    execute "INSERT INTO secondtbl VALUES (2, 2349174, 'xy', 1), (9, 968116383, 'aa', 9), (100, 100, 'aa', 100), (340, 363401169, 'ab', 20)"
     send_handshake_commands
 
     # note when reading these that the primary key columns are in reverse order to the table definition; the command arguments need to be given in the key order, but the column order for the results is unrelated
 
     send_command   Commands::OPEN, "secondtbl"
     expect_command Commands::HASH_NEXT,
-                   [[], ["aa", 100], hash_of([[100, "aa", 100, 100]])]
+                   [[], ["aa", 100], hash_of([[100, 100, "aa", 100]])]
 
     send_command   Commands::ROWS, ["aa", 1], ["zz", 2147483647]
     expect_command Commands::ROWS,
                    [["aa", 1], ["zz", 2147483647]],
-                   [      100, "aa", 100, 100], # first because aa is the first term in the key, then 100 the next
-                   [968116383, "aa",   9,   9],
-                   [363401169, "ab",  20, 340],
-                   [  2349174, "xy",   1,   2]
+                   [100,       100, "aa", 100], # first because aa is the first term in the key, then 100 the next
+                   [  9, 968116383, "aa",   9],
+                   [340, 363401169, "ab",  20],
+                   [  2,   2349174, "xy",   1]
 
     send_command   Commands::ROWS, ["aa", 101], ["aa", 1000000000]
     expect_command Commands::ROWS,
                    [["aa", 101], ["aa", 1000000000]],
-                   [968116383, "aa", 9, 9]
+                   [9, 968116383, "aa", 9]
 
     send_command   Commands::ROWS, ["aa", 100], ["aa", 1000000000]
     expect_command Commands::ROWS,
                    [["aa", 100], ["aa", 1000000000]],
-                   [968116383, "aa", 9, 9]
+                   [9, 968116383, "aa", 9]
 
     send_command   Commands::ROWS, ["ww", 1], ["zz", 1]
     expect_command Commands::ROWS,
                    [["ww", 1], ["zz", 1]],
-                   [2349174, "xy", 1, 2]
+                   [2, 2349174, "xy", 1]
 
     send_command   Commands::ROWS, ["xy", 1], ["xy", 10000000]
     expect_command Commands::ROWS,
                    [["xy", 1], ["xy", 10000000]],
-                   [2349174, "xy", 1, 2]
+                   [2, 2349174, "xy", 1]
   end
 
   test_each "supports reserved-word column names" do

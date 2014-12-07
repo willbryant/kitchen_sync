@@ -243,12 +243,11 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   test_each "complains about missing columns before other columns" do
     clear_schema
     create_secondtbl
-    execute("ALTER TABLE secondtbl DROP COLUMN pri1")
-    execute("CREATE UNIQUE INDEX pri2_key ON secondtbl (pri2)") # needed for pg, which drops the primary key when a column is removed; mysql just removes the removed column from the index
+    execute("ALTER TABLE secondtbl DROP COLUMN tri")
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    expect_stderr("Missing column pri1 on table secondtbl") do
+    expect_stderr("Missing column tri on table secondtbl") do
       send_command Commands::SCHEMA, "tables" => [secondtbl_def]
       unpacker.read rescue nil      
     end
@@ -367,7 +366,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     expect_stderr("Mismatching primary key (pri2, pri1) on table secondtbl, should have (pri1, pri2)") do
-      send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("primary_key_columns" => [0, 1])]
+      send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("primary_key_columns" => [1, 2])]
       unpacker.read rescue nil      
     end
   end
@@ -379,7 +378,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     expect_stderr("Mismatching primary key (pri2, pri1) on table secondtbl, should have (pri2, pri1, sec)") do
-      send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("primary_key_columns" => [1, 0, 2])]
+      send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("primary_key_columns" => [2, 1, 3])]
       unpacker.read rescue nil      
     end
   end
@@ -391,7 +390,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     expect_stderr("Mismatching primary key (pri2, pri1) on table secondtbl, should have (sec, pri2, pri1)") do
-      send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("primary_key_columns" => [2, 1, 0])]
+      send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("primary_key_columns" => [3, 2, 1])]
       unpacker.read rescue nil      
     end
   end
@@ -440,7 +439,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    expect_stderr("Mismatching columns (sec) on table secondtbl key secidx, should have (tri, pri2)") do
+    expect_stderr("Mismatching columns (sec) on table secondtbl key secidx, should have (sec, pri1)") do
       send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("keys" => [secondtbl_def["keys"][0].merge("columns" => [3, 1])])]
       unpacker.read rescue nil      
     end

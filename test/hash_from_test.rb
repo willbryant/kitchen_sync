@@ -155,31 +155,31 @@ class HashFromTest < KitchenSync::EndpointTestCase
   test_each "supports composite keys" do
     clear_schema
     create_secondtbl
-    execute "INSERT INTO secondtbl VALUES (2349174, 'xy', 1, 2), (968116383, 'aa', 9, 9), (100, 'aa', 100, 100), (363401169, 'ab', 20, 340)"
-    @rows = [[      100, "aa", 100, 100], # first because the second column is the first term in the key so it's sorted like ["aa", 100]
-             [968116383, "aa",   9,   9],
-             [363401169, "ab",  20, 340],
-             [  2349174, "xy",   1,   2]]
+    execute "INSERT INTO secondtbl VALUES (2, 2349174, 'xy', 1), (9, 968116383, 'aa', 9), (100, 100, 'aa', 100), (340, 363401169, 'ab', 20)"
+    @rows = [[100,       100, "aa", 100], # first because the second column is the first term in the key so it's sorted like ["aa", 100]
+             [  9, 968116383, "aa",   9],
+             [340, 363401169, "ab",  20],
+             [  2,   2349174, "xy",   1]]
     # note that the primary key columns are in reverse order to the table definition; the command arguments need to be given in the key order, but the column order for the results is unrelated
-    @keys = @rows.collect {|row| [row[1], row[0]]}
+    @keys = @rows.collect {|row| [row[2], row[1]]}
     send_handshake_commands
 
     send_command   Commands::OPEN, "secondtbl"
     expect_command Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
 
-    send_command   Commands::HASH_NEXT,       [], @keys[0], hash_of(@rows[0..0])
+    send_command   Commands::HASH_NEXT,        [], @keys[0], hash_of(@rows[0..0])
     expect_command Commands::HASH_NEXT, [@keys[0], @keys[2], hash_of(@rows[1..2])]
 
     send_command   Commands::HASH_NEXT, ["aa", "101"], @keys[1], hash_of(@rows[1..1])
     expect_command Commands::HASH_NEXT, [@keys[1], @keys[3], hash_of(@rows[2..3])]
 
-    send_command   Commands::HASH_NEXT,       [], ["aa", "101"], hash_of(@rows[0..0])
+    send_command   Commands::HASH_NEXT,        [], ["aa", "101"], hash_of(@rows[0..0])
     expect_command Commands::HASH_NEXT, [["aa", "101"], @keys[2], hash_of(@rows[1..2])]
 
-    send_command   Commands::HASH_NEXT, @keys[0], @keys[1], hash_of(@rows[1..1])
+    send_command   Commands::HASH_NEXT,  @keys[0], @keys[1], hash_of(@rows[1..1])
     expect_command Commands::HASH_NEXT, [@keys[1], @keys[3], hash_of(@rows[2..3])]
 
-    send_command   Commands::HASH_NEXT, @keys[0], @keys[2], hash_of(@rows[1..2])
+    send_command   Commands::HASH_NEXT,  @keys[0], @keys[2], hash_of(@rows[1..2])
     expect_command Commands::HASH_NEXT, [@keys[2], @keys[3], hash_of(@rows[3..3])]
 
     send_command   Commands::HASH_NEXT, @keys[0], @keys[1], hash_of(@rows[1..1]).reverse
