@@ -1,7 +1,10 @@
 #ifdef __APPLE__
 	#include <libkern/OSByteOrder.h>
-	#define ntohll OSSwapBigToHostInt64
-	#define htonll OSSwapHostToBigInt64
+	#ifndef ntohll
+		/* added in yosemite */
+		#define ntohll OSSwapBigToHostInt64
+		#define htonll OSSwapHostToBigInt64
+	#endif
 #else
 	#include <endian.h>
 	#include <arpa/inet.h>
