@@ -33,7 +33,6 @@ struct Column {
 	string column_type;
 	size_t size;
 	size_t scale;
-	vector<string> labels;
 
 	// the following member isn't serialized currently (could be, but not required):
 	string filter_expression;
