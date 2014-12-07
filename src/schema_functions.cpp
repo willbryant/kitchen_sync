@@ -51,7 +51,7 @@ void check_columns_match(const Table &table, const Columns &from_columns, const 
 	}
 }
 
-string column_names(const Columns &columns, const ColumnIndices &column_indices) {
+string unquoted_column_names_list(const Columns &columns, const ColumnIndices &column_indices) {
 	if (column_indices.empty()) {
 		return "(NULL)";
 	}
@@ -68,7 +68,7 @@ string column_names(const Columns &columns, const ColumnIndices &column_indices)
 
 void check_primary_key_matches(const Table &table, const ColumnIndices &from_primary_key_columns, const ColumnIndices &to_primary_key_columns) {
 	if (from_primary_key_columns != to_primary_key_columns) {
-		report_schema_mismatch("Mismatching primary key " + column_names(table.columns, to_primary_key_columns) + " on table " + table.name + ", should have " + column_names(table.columns, from_primary_key_columns));
+		report_schema_mismatch("Mismatching primary key " + unquoted_column_names_list(table.columns, to_primary_key_columns) + " on table " + table.name + ", should have " + unquoted_column_names_list(table.columns, from_primary_key_columns));
 	}
 }
 
@@ -77,7 +77,7 @@ void check_key_match(const Table &table, const Key &from_key, const Key &to_key)
 		report_schema_mismatch("Mismatching unique flag on table " + table.name + " key " + from_key.name);
 	}
 	if (from_key.columns != to_key.columns) {
-		report_schema_mismatch("Mismatching columns " + column_names(table.columns, to_key.columns) + " on table " + table.name + " key " + from_key.name + ", should have " + column_names(table.columns, from_key.columns));
+		report_schema_mismatch("Mismatching columns " + unquoted_column_names_list(table.columns, to_key.columns) + " on table " + table.name + " key " + from_key.name + ", should have " + unquoted_column_names_list(table.columns, from_key.columns));
 	}
 }
 
