@@ -41,12 +41,12 @@ class SnapshotFromTest < KitchenSync::EndpointTestCase
       extra_spawner.send_command Commands::IMPORT_SNAPSHOT, snapshot
       assert_equal [Commands::IMPORT_SNAPSHOT], extra_spawner.read_command
       send_schema_command extra_spawner
+    
+      send_command Commands::UNHOLD_SNAPSHOT
+      expect_command Commands::UNHOLD_SNAPSHOT
+      send_schema_command
     ensure
       extra_spawner.stop_binary
     end
-    
-    send_command Commands::UNHOLD_SNAPSHOT
-    expect_command Commands::UNHOLD_SNAPSHOT
-    send_schema_command
   end
 end

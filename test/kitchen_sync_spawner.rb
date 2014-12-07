@@ -56,9 +56,9 @@ class KitchenSyncSpawner
   
   def stop_binary
     return unless @child_pid
+    Process.kill('TERM', @child_pid) if @child_pid
     @program_stdin.close unless @program_stdin.closed?
     @program_stdout.close
-    Process.kill('TERM', @child_pid) if @child_pid
     wait
     @unpacker = nil
   end
