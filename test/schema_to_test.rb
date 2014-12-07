@@ -340,7 +340,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    expect_stderr("Column another_col on table footbl should be INT but was VARCHAR") do
+    expect_stderr("Column another_col on table footbl should have type INT but has type VARCHAR") do
       send_command Commands::SCHEMA, "tables" => [footbl_def]
       unpacker.read rescue nil      
     end
@@ -353,7 +353,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    expect_stderr("Column another_col on table footbl should be nullable but was not nullable") do
+    expect_stderr("Column another_col on table footbl should be nullable but is not nullable") do
       send_command Commands::SCHEMA, "tables" => [footbl_def]
       unpacker.read rescue nil      
     end

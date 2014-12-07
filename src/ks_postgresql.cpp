@@ -306,50 +306,61 @@ struct PostgreSQLColumnLister {
 		string name(row.string_at(0));
 		string db_type(row.string_at(1));
 		bool nullable(row.string_at(2) == "f");
+		bool default_set(row.string_at(3) == "t");
+		string default_value;
+
+		if (default_set) {
+			default_value = row.string_at(4);
+			if (default_value.length() > 2 && default_value[0] == '\'') {
+				default_value = unescape_value(default_value.substr(1, default_value.rfind('\'') - 1));
+			}
+		}
 
 		if (db_type == "boolean") {
-			table.columns.emplace_back(name, nullable, ColumnTypes::BOOL);
+			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::BOOL);
 		} else if (db_type == "smallint") {
-			table.columns.emplace_back(name, nullable, ColumnTypes::SINT, 2);
+			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::SINT, 2);
 		} else if (db_type == "integer") {
-			table.columns.emplace_back(name, nullable, ColumnTypes::SINT, 4);
-		} else if (db_type == "real") {
-			table.columns.emplace_back(name, nullable, ColumnTypes::REAL, 4);
-		} else if (db_type == "double precision") {
-			table.columns.emplace_back(name, nullable, ColumnTypes::REAL, 8);
+			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::SINT, 4);
 		} else if (db_type == "bigint") {
-			table.columns.emplace_back(name, nullable, ColumnTypes::SINT, 8);
+			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::SINT, 8);
+		} else if (db_type == "real") {
+			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::REAL, 4);
+		} else if (db_type == "double precision") {
+			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::REAL, 8);
 		} else if (db_type.substr(0, 8) == "numeric(") {
-			table.columns.emplace_back(name, nullable, ColumnTypes::DECI, extract_length(db_type), extract_scale(db_type));
+			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::DECI, extract_column_length(db_type), extract_column_scale(db_type));
 		} else if (db_type.substr(0, 18) == "character varying(") {
-			table.columns.emplace_back(name, nullable, ColumnTypes::VCHR, extract_length(db_type));
+			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::VCHR, extract_column_length(db_type));
 		} else if (db_type.substr(0, 10) == "character(") {
-			table.columns.emplace_back(name, nullable, ColumnTypes::FCHR, extract_length(db_type));
+			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::FCHR, extract_column_length(db_type));
 		} else if (db_type == "text") {
-			table.columns.emplace_back(name, nullable, ColumnTypes::TEXT);
+			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::TEXT);
 		} else if (db_type == "bytea") {
-			table.columns.emplace_back(name, nullable, ColumnTypes::BLOB);
+			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::BLOB);
 		} else if (db_type == "date") {
-			table.columns.emplace_back(name, nullable, ColumnTypes::DATE);
-		} else if (db_type == "time without time zone") {
-			table.columns.emplace_back(name, nullable, ColumnTypes::TIME);
-		} else if (db_type == "timestamp without time zone") {
-			table.columns.emplace_back(name, nullable, ColumnTypes::DTTM);
+			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::DATE);
+		} else if (db_type == "time without time zone") { // TODO: consider support for 'with time zone'
+			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::TIME);
+		} else if (db_type == "timestamp without time zone") { // TODO: consider support for 'with time zone'
+			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::DTTM);
 		} else {
 			throw runtime_error("Don't know how to represent postgresql type of " + table.name + '.' + name + " (" + db_type + ")");
 		}
 	}
 
-	inline int extract_length(const string &db_type) {
-		size_t pos = db_type.find('(');
-		if (pos >= db_type.length() - 1) throw runtime_error("Couldn't find length in type specification " + db_type);
-		return atoi(db_type.c_str() + pos + 1);
-	}
-
-	inline int extract_scale(const string &db_type) {
-		size_t pos = db_type.find(',');
-		if (pos >= db_type.length() - 1) throw runtime_error("Couldn't find scale in type specification " + db_type);
-		return atoi(db_type.c_str() + pos + 1);
+	inline string unescape_value(const string &escaped) {
+		string result;
+		result.reserve(escaped.length());
+		for (string::size_type n = 0; n < escaped.length(); n++) {
+			// this is by no means a complete unescaping function, it only handles the cases seen in
+			// the output of pg_get_expr so far
+			if (escaped[n] == '\\' || escaped[n] == '\'') {
+				n += 1;
+			}
+			result += escaped[n];
+		}
+		return result;
 	}
 
 	Table &table;
@@ -407,11 +418,12 @@ struct PostgreSQLTableLister {
 
 		PostgreSQLColumnLister column_lister(table);
 		client.query(
-			"SELECT attname, format_type(atttypid, atttypmod), attnotnull "
-			  "FROM pg_attribute, pg_type, pg_class "
-			 "WHERE attrelid = pg_class.oid AND "
-			       "atttypid = pg_type.oid AND "
-			       "attnum > 0 AND "
+			"SELECT attname, format_type(atttypid, atttypmod), attnotnull, atthasdef, pg_get_expr(adbin, adrelid) "
+			  "FROM pg_attribute "
+			  "JOIN pg_class ON attrelid = pg_class.oid "
+			  "JOIN pg_type ON atttypid = pg_type.oid "
+			  "LEFT JOIN pg_attrdef ON adrelid = attrelid AND adnum = attnum "
+			 "WHERE attnum > 0 AND "
 			       "NOT attisdropped AND "
 			       "relname = '" + table.name + "' "
 			 "ORDER BY attnum",

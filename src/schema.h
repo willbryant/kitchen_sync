@@ -33,12 +33,14 @@ struct Column {
 	string column_type;
 	size_t size;
 	size_t scale;
+	bool default_set;
+	string default_value;
 
 	// the following member isn't serialized currently (could be, but not required):
 	string filter_expression;
 
-	inline Column(const string &name, bool nullable, string column_type, size_t size = 0, size_t scale = 0): name(name), nullable(nullable), column_type(column_type), size(size), scale(scale) {}
-	inline Column(): size(0), scale(0), nullable(true) {}
+	inline Column(const string &name, bool nullable, bool default_set, string default_value, string column_type, size_t size = 0, size_t scale = 0): name(name), nullable(nullable), default_set(default_set), default_value(default_value), column_type(column_type), size(size), scale(scale) {}
+	inline Column(): size(0), scale(0), nullable(true), default_set(false) {}
 };
 
 typedef vector<Column> Columns;

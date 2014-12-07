@@ -47,4 +47,14 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
       send_handshake_commands rescue nil
     end
   end
+
+  test_each "shows the default values for columns" do
+    clear_schema
+    create_defaultstbl
+    send_handshake_commands
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA,
+                   [{"tables" => [defaultstbl_def]}]
+  end
 end

@@ -19,13 +19,25 @@ void report_schema_mismatch(const string &error) {
 void check_column_match(const Table &table, const Column &from_column, const Column &to_column) {
 	// FUTURE: check collation etc.
 	if (from_column.column_type != to_column.column_type) {
-		report_schema_mismatch("Column " + from_column.name + " on table " + table.name + " should be " + from_column.column_type + " but was " + to_column.column_type);
+		throw schema_mismatch("Column " + from_column.name + " on table " + table.name +
+			" should have type " + from_column.column_type +
+			" but has type " + to_column.column_type);
 	}
 	if (from_column.size != to_column.size) {
-		report_schema_mismatch("Column " + from_column.name + " on table " + table.name + " should have size " + to_string(from_column.size) + " but was " + to_string(to_column.size));
+		throw schema_mismatch("Column " + from_column.name + " on table " + table.name +
+			" should have size " + to_string(from_column.size) +
+			" but has size " + to_string(to_column.size));
 	}
 	if (from_column.nullable != to_column.nullable) {
-		report_schema_mismatch("Column " + from_column.name + " on table " + table.name + " should be " + (from_column.nullable ? "nullable" : "not nullable") + " but was " + (to_column.nullable ? "nullable" : "not nullable"));
+		throw schema_mismatch("Column " + from_column.name + " on table " + table.name +
+			" should be " + (from_column.nullable ? "nullable" : "not nullable") +
+			" but is " + (to_column.nullable ? "nullable" : "not nullable"));
+	}
+	if (from_column.default_set != to_column.default_set ||
+		(from_column.default_set && (from_column.default_value != to_column.default_value))) {
+		throw schema_mismatch("Column " + from_column.name + " on table " + table.name +
+			" should " + (from_column.default_set ? "have default " + from_column.default_value : "not have default") +
+			" but " + (to_column.default_set ? "has default " + to_column.default_value : "doesn't have default"));
 	}
 }
 

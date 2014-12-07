@@ -10,6 +10,7 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	if (column.size) fields++;
 	if (column.scale) fields++;
 	if (!column.nullable) fields++;
+	if (column.default_set) fields++;
 	pack_map_length(packer, fields);
 	packer << string("name");
 	packer << column.name;
@@ -26,6 +27,10 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	if (!column.nullable) {
 		packer << string("nullable");
 		packer << column.nullable;
+	}
+	if (column.default_set) {
+		packer << string("default_value");
+		packer << column.default_value;
 	}
 }
 
@@ -77,6 +82,9 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 			unpacker >> column.scale;
 		} else if (attr_key == "nullable") {
 			unpacker >> column.nullable;
+		} else if (attr_key == "default_value") {
+			column.default_set = true;
+			unpacker >> column.default_value;
 		} // ignore anything else, for forward compatibility
 	}
 }

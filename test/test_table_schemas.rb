@@ -98,15 +98,15 @@ SQL
   def misctbl_def
     { "name"    => "misctbl",
       "columns" => [
-        {"name" => "pri",       "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
-        {"name" => "boolfield", "column_type" => ColumnTypes::BOOL},
-        {"name" => "datefield", "column_type" => ColumnTypes::DATE},
-        {"name" => "timefield", "column_type" => ColumnTypes::TIME},
+        {"name" => "pri",           "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
+        {"name" => "boolfield",     "column_type" => ColumnTypes::BOOL},
+        {"name" => "datefield",     "column_type" => ColumnTypes::DATE},
+        {"name" => "timefield",     "column_type" => ColumnTypes::TIME},
         {"name" => "datetimefield", "column_type" => ColumnTypes::DTTM},
-        {"name" => "floatfield", "column_type" => ColumnTypes::REAL, "size" => 4},
-        {"name" => "doublefield", "column_type" => ColumnTypes::REAL, "size" => 8},
-        {"name" => "decimalfield", "column_type" => ColumnTypes::DECI, "size" => 10, "scale" => 4},
-        {"name" => "blobfield", "column_type" => ColumnTypes::BLOB}],
+        {"name" => "floatfield",    "column_type" => ColumnTypes::REAL, "size" => 4},
+        {"name" => "doublefield",   "column_type" => ColumnTypes::REAL, "size" => 8},
+        {"name" => "decimalfield",  "column_type" => ColumnTypes::DECI, "size" => 10, "scale" => 4},
+        {"name" => "blobfield",     "column_type" => ColumnTypes::BLOB}],
       "primary_key_columns" => [0],
       "keys" => [] }
   end
@@ -170,6 +170,42 @@ SQL
         {"name" => "col1"},
         {"name" => "int"},
         {"name" => "varchar"}],
+      "primary_key_columns" => [0],
+      "keys" => [] }
+  end
+
+  def create_defaultstbl
+    execute(<<-SQL)
+      CREATE TABLE defaultstbl (
+        pri INT NOT NULL,
+        varcharfield VARCHAR(32) DEFAULT 'test \\\\ with '' escaping©',
+        charfield CHAR(5) DEFAULT 'test ',
+        falseboolfield BOOL DEFAULT FALSE,
+        trueboolfield BOOL DEFAULT TRUE,
+        datefield DATE DEFAULT '2019-04-01',
+        timefield TIME DEFAULT '12:34:56',
+        datetimefield #{@database_server == 'postgresql' ? 'timestamp' : 'DATETIME'} DEFAULT '2019-04-01 12:34:56',
+        floatfield #{@database_server == 'postgresql' ? 'real' : 'FLOAT'} DEFAULT 42.625,
+        doublefield DOUBLE PRECISION DEFAULT 0.0625,
+        decimalfield DECIMAL(9, 3) DEFAULT '123456.789',
+        PRIMARY KEY(pri))
+SQL
+  end
+
+  def defaultstbl_def
+    { "name"    => "defaultstbl",
+      "columns" => [
+        {"name" => "pri",            "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false},
+        {"name" => "varcharfield",   "column_type" => ColumnTypes::VCHR, "size" => 32,               "default_value" => "test \\ with ' escaping©"},
+        {"name" => "charfield",      "column_type" => ColumnTypes::FCHR, "size" =>  5,               "default_value" => "test "},
+        {"name" => "falseboolfield", "column_type" => ColumnTypes::BOOL,                             "default_value" => "false"},
+        {"name" => "trueboolfield",  "column_type" => ColumnTypes::BOOL,                             "default_value" => "true"},
+        {"name" => "datefield",      "column_type" => ColumnTypes::DATE,                             "default_value" => "2019-04-01"},
+        {"name" => "timefield",      "column_type" => ColumnTypes::TIME,                             "default_value" => "12:34:56"},
+        {"name" => "datetimefield",  "column_type" => ColumnTypes::DTTM,                             "default_value" => "2019-04-01 12:34:56"},
+        {"name" => "floatfield",     "column_type" => ColumnTypes::REAL, "size" =>  4,               "default_value" => "42.625"},
+        {"name" => "doublefield",    "column_type" => ColumnTypes::REAL, "size" =>  8,               "default_value" => "0.0625"},
+        {"name" => "decimalfield",   "column_type" => ColumnTypes::DECI, "size" =>  9, "scale" => 3, "default_value" => "123456.789"}],
       "primary_key_columns" => [0],
       "keys" => [] }
   end
