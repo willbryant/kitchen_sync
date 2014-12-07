@@ -110,6 +110,8 @@ class KitchenSyncSpawner
         return results
       end
     end
+  rescue EOFError
+    fail "Unexpected EOF reading command; stderr output: #{stderr_contents.inspect}"
   end
 
   def send_command(verb, *args)
