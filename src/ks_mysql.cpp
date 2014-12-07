@@ -305,8 +305,12 @@ struct MySQLColumnLister {
 
 		if (db_type == "tinyint(1)") {
 			table.columns.emplace_back(name, nullable, ColumnTypes::BOOL);
+		} else if (db_type.substr(0, 9) == "tinyint(") {
+			table.columns.emplace_back(name, nullable, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 1);
 		} else if (db_type.substr(0, 9) == "smallint(") {
 			table.columns.emplace_back(name, nullable, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 2);
+		} else if (db_type.substr(0, 9) == "mediumint(") {
+			table.columns.emplace_back(name, nullable, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 3);
 		} else if (db_type.substr(0, 4) == "int(") {
 			table.columns.emplace_back(name, nullable, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 4);
 		} else if (db_type.substr(0, 7) == "bigint(") {
