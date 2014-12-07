@@ -1,8 +1,8 @@
 require File.expand_path(File.join(File.dirname(__FILE__), 'test_helper'))
 
 class ProtocolVersionTest < KitchenSync::EndpointTestCase
-  EARLIEST_PROTOCOL_VERSION_SUPPORTED = 2
-  LATEST_PROTOCOL_VERSION_SUPPORTED = 2
+  EARLIEST_PROTOCOL_VERSION_SUPPORTED = 3
+  LATEST_PROTOCOL_VERSION_SUPPORTED = 3
 
   def from_or_to
     :from
