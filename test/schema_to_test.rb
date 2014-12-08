@@ -43,7 +43,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Extra table footbl") do
       send_command Commands::SCHEMA, "tables" => []
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -54,7 +54,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Missing table footbl") do
       send_command Commands::SCHEMA, "tables" => [footbl_def]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -67,7 +67,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Missing table footbl") do
       send_command Commands::SCHEMA, "tables" => [footbl_def, middletbl_def, secondtbl_def]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -80,7 +80,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Missing table middletbl") do
       send_command Commands::SCHEMA, "tables" => [footbl_def, middletbl_def, secondtbl_def]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -93,7 +93,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Missing table secondtbl") do
       send_command Commands::SCHEMA, "tables" => [footbl_def, middletbl_def, secondtbl_def]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -107,7 +107,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Extra table footbl") do
       send_command Commands::SCHEMA, "tables" => [middletbl_def, secondtbl_def]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -121,7 +121,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Extra table middletbl") do
       send_command Commands::SCHEMA, "tables" => [footbl_def, secondtbl_def]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -135,7 +135,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Extra table secondtbl") do
       send_command Commands::SCHEMA, "tables" => [footbl_def, middletbl_def]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -153,7 +153,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     send_command   Commands::ROWS, [], []
     expect_command Commands::OPEN, ["secondtbl"]
     send_command   Commands::ROWS, [], []
-    unpacker.read rescue nil
+    read_command rescue nil
   end
 
   test_each "doesn't complain about a missing table between other tables if told to ignore the table" do
@@ -169,7 +169,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     send_command   Commands::ROWS, [], []
     expect_command Commands::OPEN, ["secondtbl"]
     send_command   Commands::ROWS, [], []
-    unpacker.read rescue nil
+    read_command rescue nil
   end
 
   test_each "doesn't complain about a missing table after other tables if told to ignore the table" do
@@ -185,7 +185,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     send_command   Commands::ROWS, [], []
     expect_command Commands::OPEN, ["middletbl"]
     send_command   Commands::ROWS, [], []
-    unpacker.read rescue nil
+    read_command rescue nil
   end
 
   test_each "doesn't complain about extra tables before other tables if told to ignore the table" do
@@ -202,7 +202,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     send_command   Commands::ROWS, [], []
     expect_command Commands::OPEN, ["secondtbl"]
     send_command   Commands::ROWS, [], []
-    unpacker.read rescue nil
+    read_command rescue nil
   end
 
   test_each "doesn't complain about extra tables between other tables if told to ignore the table" do
@@ -219,7 +219,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     send_command   Commands::ROWS, [], []
     expect_command Commands::OPEN, ["secondtbl"]
     send_command   Commands::ROWS, [], []
-    unpacker.read rescue nil
+    read_command rescue nil
   end
 
   test_each "doesn't complain about extra tables after other tables if told to ignore the table" do
@@ -236,7 +236,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     send_command   Commands::ROWS, [], []
     expect_command Commands::OPEN, ["middletbl"]
     send_command   Commands::ROWS, [], []
-    unpacker.read rescue nil
+    read_command rescue nil
   end
 
 
@@ -249,7 +249,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Missing column tri on table secondtbl") do
       send_command Commands::SCHEMA, "tables" => [secondtbl_def]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -262,7 +262,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Missing column another_col on table footbl") do
       send_command Commands::SCHEMA, "tables" => [footbl_def]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -275,7 +275,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Missing column col3 on table footbl") do
       send_command Commands::SCHEMA, "tables" => [footbl_def]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -288,7 +288,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Extra column col1 on table footbl") do
       send_command Commands::SCHEMA, "tables" => [footbl_def.merge("columns" => footbl_def["columns"][1..-1])]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -301,7 +301,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Extra column another_col on table footbl") do
       send_command Commands::SCHEMA, "tables" => [footbl_def.merge("columns" => footbl_def["columns"][0..0] + footbl_def["columns"][2..-1])]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -314,7 +314,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Extra column col3 on table footbl") do
       send_command Commands::SCHEMA, "tables" => [footbl_def.merge("columns" => footbl_def["columns"][0..-2])]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -327,7 +327,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Misordered column another_col on table footbl, should have col1 first") do
       send_command Commands::SCHEMA, "tables" => [footbl_def.merge("columns" => footbl_def["columns"][1..-1] + footbl_def["columns"][0..0])]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -341,7 +341,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Column another_col on table footbl should have type INT but has type VARCHAR") do
       send_command Commands::SCHEMA, "tables" => [footbl_def]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -354,7 +354,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Column another_col on table footbl should be nullable but is not nullable") do
       send_command Commands::SCHEMA, "tables" => [footbl_def]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -367,7 +367,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Mismatching primary key (pri2, pri1) on table secondtbl, should have (pri1, pri2)") do
       send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("primary_key_columns" => [1, 2])]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -379,7 +379,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Mismatching primary key (pri2, pri1) on table secondtbl, should have (pri2, pri1, sec)") do
       send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("primary_key_columns" => [2, 1, 3])]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -391,7 +391,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Mismatching primary key (pri2, pri1) on table secondtbl, should have (sec, pri2, pri1)") do
       send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("primary_key_columns" => [3, 2, 1])]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -405,7 +405,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Extra key extrakey on table secondtbl") do
       send_command Commands::SCHEMA, "tables" => [secondtbl_def]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -417,7 +417,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Missing key missingkey on table secondtbl") do
       send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("keys" => secondtbl_def["keys"] + [secondtbl_def["keys"][0].merge("name" => "missingkey")])]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -429,7 +429,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Mismatching unique flag on table secondtbl key secidx") do
       send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("keys" => [secondtbl_def["keys"][0].merge("unique" => true)])]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 
@@ -441,7 +441,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA
     expect_stderr("Mismatching columns (sec) on table secondtbl key secidx, should have (sec, pri1)") do
       send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("keys" => [secondtbl_def["keys"][0].merge("columns" => [3, 1])])]
-      unpacker.read rescue nil      
+      read_command rescue nil      
     end
   end
 end
