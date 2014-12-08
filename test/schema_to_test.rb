@@ -325,9 +325,9 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    expect_stderr("Misordered column another_col on table footbl, should have col1 first") do
-      send_command Commands::SCHEMA, "tables" => [footbl_def.merge("columns" => footbl_def["columns"][1..-1] + footbl_def["columns"][0..0])]
-      read_command rescue nil      
+    expect_stderr("Misordered column col3 on table footbl, should have another_col first") do
+      send_command Commands::SCHEMA, "tables" => [footbl_def.merge("columns" => footbl_def["columns"][0..0] + footbl_def["columns"][2..-1] + footbl_def["columns"][1..1])]
+      read_command rescue nil
     end
   end
 
