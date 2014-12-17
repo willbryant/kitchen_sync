@@ -1,6 +1,7 @@
 #ifndef TABLE_ROW_APPLIER_H
 #define TABLE_ROW_APPLIER_H
 
+#include "database_client_traits.h"
 #include "sql_functions.h"
 #include "unique_key_clearer.h"
 
@@ -30,22 +31,106 @@ struct RowLoader {
 };
 
 template <typename DatabaseClient>
+void append_row_tuple(DatabaseClient &client, BaseSQL &sql, const PackedRow &row) {
+	if (sql.have_content()) sql += "),\n(";
+	for (size_t n = 0; n < row.size(); n++) {
+		if (n > 0) {
+			sql += ',';
+		}
+		sql += encode(client, row[n]);
+	}
+}
+
+// databases that don't support the REPLACE statement must explicitly clear conflicting rows
+template <typename DatabaseClient, bool = is_base_of<SupportsReplace, DatabaseClient>::value>
+struct Replacer {
+	Replacer(DatabaseClient &client, const Table &table):
+		client(client),
+		insert_sql("INSERT INTO " + table.name + " VALUES\n(", ")"),
+		primary_key_clearer(client, table, table.primary_key_columns) {
+		// set up the clearers we'll need to insert rows - these clear any conflicting values from later in the same table
+		for (const Key &key : table.keys) {
+			if (key.unique) {
+				unique_keys_clearers.emplace_back(client, table, key.columns);
+			}
+		}
+	}
+
+	void row(const PackedRow &row, bool exists, bool end_of_table) {
+		// when we apply(), first we will delete existing rows - we do that rather than use UPDATE
+		// statements because you can't really batch UPDATE, whereas you can batch DELETE & INSERT.
+		if (exists) {
+			primary_key_clearer.row(row);
+		}
+
+		// before we can insert our rows we will also have to first clear any later rows with the
+		// same unique key values.  if we're inserting rows at the end of the table, by definition
+		// there are no later rows, so nothing we need to clear.
+		if (!end_of_table) {
+			for (UniqueKeyClearer<DatabaseClient> &unique_key_clearer : unique_keys_clearers) {
+				unique_key_clearer.row(row);
+			}
+		}
+
+		// we can then batch up a big INSERT statement
+		append_row_tuple(client, insert_sql, row);
+	}
+
+	inline void apply() {
+		primary_key_clearer.apply();
+
+		for (UniqueKeyClearer<DatabaseClient> &unique_key_clearer : unique_keys_clearers) {
+			unique_key_clearer.apply();
+		}
+
+		insert_sql.apply(client);
+	}
+
+	DatabaseClient &client;
+	BaseSQL insert_sql;
+	UniqueKeyClearer<DatabaseClient> primary_key_clearer;
+	vector< UniqueKeyClearer<DatabaseClient> > unique_keys_clearers;
+};
+
+// databases that do support REPLACE are much simpler - we just use the same statement for any type of insert/update
+template <typename DatabaseClient>
+struct Replacer<DatabaseClient, true> {
+	Replacer(DatabaseClient &client, const Table &table):
+		client(client),
+		insert_sql("REPLACE INTO " + table.name + " VALUES\n(", ")"),
+		primary_key_clearer(client, table, table.primary_key_columns) {
+	}
+
+	void row(const PackedRow &row, bool _exists, bool _end_of_table) {
+		append_row_tuple(client, insert_sql, row);
+	}
+
+	inline void apply() {
+		// although we don't need or use primary_key_clearer ourself, if the TableRowApplier has listed some rows to
+		// delete, we want to do that too
+		primary_key_clearer.apply();
+
+		// aside from that, we're simply running batched REPLACE statements
+		insert_sql.apply(client);
+	}
+
+	DatabaseClient &client;
+	BaseSQL insert_sql;
+	UniqueKeyClearer<DatabaseClient> primary_key_clearer;
+};
+
+template <typename DatabaseClient>
 struct TableRowApplier {
 	TableRowApplier(DatabaseClient &client, const Table &table):
 		client(client),
 		table(table),
 		primary_key_columns(columns_list(client, table.columns, table.primary_key_columns)),
-		primary_key_clearer(client, table, table.primary_key_columns),
-		insert_sql(client.replace_sql_prefix() + table.name + " VALUES\n(", ")"),
+		replacer(client, table),
 		rows_changed(0) {
-
-		// if the client doesn't support REPLACE, we will need to delete rows with the PKs we want to
-		// insert, and also clear later rows that have our unique key values in order to insert
-		client.add_replace_clearers(unique_keys_clearers, table);
 	}
 
 	~TableRowApplier() {
-		apply();
+		replacer.apply();
 	}
 
 	template <typename InputStream>
@@ -73,22 +158,20 @@ struct TableRowApplier {
 			if (row.size() == 0) break;
 			rows_in_range++;
 
-			if (last_not_matching_key.empty()) {
-				// if we're inserting the range to the end of the table, we know we need to insert this row
-				// since there can be no later rows, we don't need to clear unique keys these rows use
-				add_to_insert(row);
+			if (replace_row(existing_rows, row, last_not_matching_key.empty())) {
 				rows_changed++;
-			} else {
-				// otherwise, if we don't have this row or if our row is different, we need replace our row
-				if (consider_replace(existing_rows, row)) {
-					rows_changed++;
+
+				// to reduce the trips to the database server, we don't execute a statement for each row -
+				// but we do it periodically, as it's not efficient to build up enormous strings either
+				if (replacer.insert_sql.curr.size() > BaseSQL::MAX_SENSIBLE_INSERT_COMMAND_SIZE) {
+					replacer.apply();
 				}
 			}
 		}
 
 		// clear any remaining rows the other end didn't have
 		for (RowsByPrimaryKey::const_iterator it = existing_rows.begin(); it != existing_rows.end(); ++it) {
-			add_to_primary_key_clearer(it->second);
+			replacer.primary_key_clearer.row(it->second);
 		}
 		rows_changed  += existing_rows.size();
 		rows_in_range += existing_rows.size();
@@ -96,10 +179,15 @@ struct TableRowApplier {
 		return rows_in_range;
 	}
 
-	bool consider_replace(RowsByPrimaryKey &existing_rows, const PackedRow &row) {
+	bool replace_row(RowsByPrimaryKey &existing_rows, const PackedRow &row, bool end_of_table) {
+		// if we're inserting the range to the end of the table, we know we need to insert this row
+		if (end_of_table) {
+			replacer.row(row, false, true);
+			return true;
+		}
+
 		RowsByPrimaryKey::iterator existing_row = existing_rows.find(primary_key(table, row));
 
-		// if we don't have this row, we need to insert it
 		if (existing_row != existing_rows.end()) {
 			// we do have the row, but if it's changed we need to replace it
 			bool matches = (existing_row->second == row);
@@ -109,65 +197,24 @@ struct TableRowApplier {
 
 			if (matches) return false;
 
-			// row is different, so we need to delete it and insert it
-			if (client.need_primary_key_clearer_to_replace()) {
-				add_to_primary_key_clearer(row);
-			}
+			// row is different
+			replacer.row(row, true, false);
+		} else {
+			// if we don't have this row, we need to insert it
+			replacer.row(row, false, false);
 		}
-
-		add_to_unique_keys_clearers(row);
-		add_to_insert(row);
 
 		return true;
-	}
-
-	void add_to_insert(const PackedRow &row) {
-		if (insert_sql.have_content()) insert_sql += "),\n(";
-		for (size_t n = 0; n < row.size(); n++) {
-			if (n > 0) {
-				insert_sql += ',';
-			}
-			insert_sql += encode(client, row[n]);
-		}
-
-		// to reduce the trips to the database server, we don't execute a statement for each row -
-		// but we do it periodically, as it's not efficient to build up enormous strings either
-		if (insert_sql.curr.size() > BaseSQL::MAX_SENSIBLE_INSERT_COMMAND_SIZE) {
-			apply();
-		}
-	}
-
-	void add_to_primary_key_clearer(const PackedRow &row) {
-		primary_key_clearer.row(row);
-	}
-
-	void add_to_unique_keys_clearers(const PackedRow &row) {
-		// before we can insert our rows we also have to first clear any later rows with the same
-		// unique key values - unless the database supports REPLACE in which case the constructor
-		// will have left unique_keys_clearers empty.
-		for (UniqueKeyClearer<DatabaseClient> &unique_key_clearer : unique_keys_clearers) {
-			unique_key_clearer.row(row);
-		}
 	}
 
 	void delete_range(const ColumnValues &matched_up_to_key, const ColumnValues &last_not_matching_key) {
 		client.execute("DELETE FROM " + table.name + where_sql(client, primary_key_columns, matched_up_to_key, last_not_matching_key));
 	}
 
-	inline void apply() {
-		primary_key_clearer.apply();
-
-		for (UniqueKeyClearer<DatabaseClient> &unique_key_clearer : unique_keys_clearers) unique_key_clearer.apply();
-
-		insert_sql.apply(client);
-	}
-
 	DatabaseClient &client;
 	const Table &table;
 	string primary_key_columns;
-	UniqueKeyClearer<DatabaseClient> primary_key_clearer;
-	vector< UniqueKeyClearer<DatabaseClient> > unique_keys_clearers;
-	BaseSQL insert_sql;
+	Replacer<DatabaseClient> replacer;
 	size_t rows_changed;
 };
 

@@ -5,6 +5,7 @@
 #include <libpq-fe.h>
 
 #include "schema.h"
+#include "database_client_traits.h"
 #include "row_printer.h"
 
 class PostgreSQLRes {
@@ -153,17 +154,6 @@ public:
 	string escape_value(const string &value);
 
 	inline char quote_identifiers_with() const { return '"'; }
-	inline const char* replace_sql_prefix() const { return "INSERT INTO "; }
-	inline bool need_primary_key_clearer_to_replace() const { return true; }
-
-	template <typename UniqueKeyClearerClass>
-	void add_replace_clearers(vector<UniqueKeyClearerClass> &unique_key_clearers, const Table &table) {
-		for (const Key &key : table.keys) {
-			if (key.unique) {
-				unique_key_clearers.push_back(UniqueKeyClearerClass(*this, table, key.columns));
-			}
-		}
-	}
 
 protected:
 	friend class PostgreSQLTableLister;

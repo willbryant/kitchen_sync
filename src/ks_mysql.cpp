@@ -5,6 +5,7 @@
 #include <mysql.h>
 
 #include "schema.h"
+#include "database_client_traits.h"
 #include "row_printer.h"
 
 #define MYSQL_5_6_5 50605
@@ -108,7 +109,7 @@ private:
 };
 
 
-class MySQLClient {
+class MySQLClient: public SupportsReplace {
 public:
 	typedef MySQLRow RowType;
 
@@ -143,11 +144,6 @@ public:
 	string escape_value(const string &value);
 
 	inline char quote_identifiers_with() const { return '`'; }
-	inline const char* replace_sql_prefix() const { return "REPLACE INTO "; }
-	inline bool need_primary_key_clearer_to_replace() const { return false; /* not needed since we support REPLACE */ }
-
-	template <typename UniqueKeyClearerClass>
-	inline void add_replace_clearers(vector<UniqueKeyClearerClass> &unique_key_clearers, const Table &table) { /* not needed since we support REPLACE */ }
 
 protected:
 	friend class MySQLTableLister;
