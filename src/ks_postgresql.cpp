@@ -119,7 +119,7 @@ string PostgreSQLRow::decoded_byte_string_at(int column_number) const {
 }
 
 
-class PostgreSQLClient {
+class PostgreSQLClient: public GlobalKeys {
 public:
 	typedef PostgreSQLRow RowType;
 
@@ -152,6 +152,8 @@ public:
 	void rollback_transaction();
 	void populate_database_schema(Database &database);
 	string escape_value(const string &value);
+	string column_type(const Column &column);
+	string column_definition(const Column &column);
 
 	inline char quote_identifiers_with() const { return '"'; }
 
@@ -286,6 +288,119 @@ string PostgreSQLClient::escape_value(const string &value) {
 	result.resize(value.size()*2 + 1);
 	size_t result_length = PQescapeStringConn(conn, (char*)result.data(), value.c_str(), value.size(), nullptr);
 	result.resize(result_length);
+	return result;
+}
+
+string PostgreSQLClient::column_type(const Column &column) {
+	if (column.column_type == ColumnTypes::BLOB) {
+		return "bytea";
+
+	} else if (column.column_type == ColumnTypes::TEXT) {
+		return "text";
+
+	} else if (column.column_type == ColumnTypes::VCHR) {
+		string result("character varying(");
+		result += to_string(column.size);
+		result += ")";
+		return result;
+
+	} else if (column.column_type == ColumnTypes::FCHR) {
+		string result("character(");
+		result += to_string(column.size);
+		result += ")";
+		return result;
+
+	} else if (column.column_type == ColumnTypes::BOOL) {
+		return "boolean";
+
+	} else if (column.column_type == ColumnTypes::SINT || column.column_type == ColumnTypes::UINT) {
+		switch (column.size) {
+			case 1: // not used by postgresql; smallint is the nearest equivalent
+			case 2:
+				return "smallint";
+				break;
+
+			case 3: // not used by postgresql; integer is the nearest equivalent
+			case 4:
+				return "integer";
+				break;
+
+			default:
+				return "bigint";
+		}
+
+		// postgresql doesn't support unsigned columns; to make migration from databases that do
+		// easier, we don't reject unsigned columns, we just convert them to the signed equivalent
+
+	} else if (column.column_type == ColumnTypes::REAL) {
+		return (column.size == 4 ? "float" : "double precision");
+
+	} else if (column.column_type == ColumnTypes::DECI) {
+		string result("numeric(");
+		result += to_string(column.size);
+		result += ',';
+		result += to_string(column.scale);
+		result += ')';
+		return result;
+
+	} else if (column.column_type == ColumnTypes::DATE) {
+		return "date without time zone";
+
+	} else if (column.column_type == ColumnTypes::TIME) {
+		return "time without time zone";
+
+	} else if (column.column_type == ColumnTypes::DTTM) {
+		return "datetime without time zone";
+
+	} else {
+		throw runtime_error("Don't know how to express column type of " + column.name + " (" + column.column_type + ")");
+	}
+}
+
+string PostgreSQLClient::column_definition(const Column &column) {
+	string result;
+	result += quote_identifiers_with();
+	result += column.name;
+	result += quote_identifiers_with();
+	result += ' ';
+
+	result += column_type(column);
+
+	if (!column.nullable) {
+		result += " NOT NULL";
+	}
+
+	switch (column.default_type) {
+		case DefaultType::no_default:
+			break;
+
+		case DefaultType::sequence:
+			result += " DEFAULT nextval('";
+			result += column.name;
+			result += "_seq'::regclass)";
+			break;
+
+		case DefaultType::default_value:
+			result += " DEFAULT ";
+			if (column.column_type == ColumnTypes::BOOL ||
+				column.column_type == ColumnTypes::SINT ||
+				column.column_type == ColumnTypes::UINT ||
+				column.column_type == ColumnTypes::REAL ||
+				column.column_type == ColumnTypes::DECI) {
+				result += column.default_value;
+			} else {
+				result += "'";
+				result += escape_value(column.default_value);
+				result += "'";
+			}
+			break;
+
+		case DefaultType::default_function:
+			result += " DEFAULT ";
+			result += column.default_value;
+			break;
+	}
+
 	return result;
 }
 

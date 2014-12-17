@@ -48,6 +48,9 @@ struct Column {
 
 	inline Column(const string &name, bool nullable, DefaultType default_type, string default_value, string column_type, size_t size = 0, size_t scale = 0): name(name), nullable(nullable), default_type(default_type), default_value(default_value), column_type(column_type), size(size), scale(scale) {}
 	inline Column(): nullable(true), size(0), scale(0), default_type(DefaultType::no_default) {}
+
+	inline bool operator==(const Column &other) const { return (name == other.name && nullable == other.nullable && column_type == other.column_type && size == other.size && scale == other.scale && default_type == other.default_type && default_value == other.default_value); }
+	inline bool operator !=(const Column &other) const { return (!(*this == other)); }
 };
 
 typedef vector<Column> Columns;
@@ -62,6 +65,8 @@ struct Key {
 	inline Key() {}
 
 	inline bool operator <(const Key &other) const { return (unique != other.unique ? unique : name < other.name); }
+	inline bool operator ==(const Key &other) const { return (name == other.name && unique == other.unique && columns == other.columns); }
+	inline bool operator !=(const Key &other) const { return (!(*this == other)); }
 };
 
 typedef vector<Key> Keys;
@@ -79,6 +84,8 @@ struct Table {
 	inline Table() {}
 
 	inline bool operator <(const Table &other) const { return (name < other.name); }
+	inline bool operator ==(const Table &other) const { return (name == other.name && columns == other.columns && primary_key_columns == other.primary_key_columns && keys == other.keys); }
+	inline bool operator !=(const Table &other) const { return (!(*this == other)); }
 	size_t index_of_column(const string &name) const;
 };
 

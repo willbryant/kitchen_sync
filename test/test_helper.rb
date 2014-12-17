@@ -34,13 +34,117 @@ class Time
   end
 end
 
+class Object
+  def try!(method, *args)
+    send(method, *args)
+  end
+end
+
+class NilClass
+  def try!(method, *args)
+    nil
+  end
+end
+
 class PGconn
   def execute(sql)
     async_exec(sql)
   end
 
   def tables
-    query("SELECT tablename FROM pg_tables WHERE schemaname = ANY (current_schemas(false))").collect {|row| row["tablename"]}
+    query("SELECT tablename FROM pg_tables WHERE schemaname = ANY (current_schemas(false)) ORDER BY tablename").collect {|row| row["tablename"]}
+  end
+
+  def table_primary_key_name(table_name)
+    "#{table_name}_pkey"
+  end
+
+  def table_keys(table_name)
+    query(<<-SQL).collect {|row| row["relname"]}
+      SELECT index_class.relname
+        FROM pg_class table_class, pg_index, pg_class index_class
+       WHERE table_class.relname = '#{table_name}' AND
+             table_class.oid = pg_index.indrelid AND
+             index_class.oid = pg_index.indexrelid AND
+             index_class.relkind = 'i' AND
+             NOT pg_index.indisprimary
+    SQL
+  end
+
+  def table_keys_unique(table_name)
+    query(<<-SQL).each_with_object({}) {|row, results| results[row["relname"]] = row["indisunique"]}
+      SELECT index_class.relname, indisunique
+        FROM pg_class table_class, pg_index, pg_class index_class
+       WHERE table_class.relname = '#{table_name}' AND
+             table_class.oid = pg_index.indrelid AND
+             index_class.oid = pg_index.indexrelid AND
+             index_class.relkind = 'i' AND
+             NOT pg_index.indisprimary
+    SQL
+  end
+
+  def table_key_columns(table_name)
+    query(<<-SQL).each_with_object({}) {|row, results| (results[row["relname"]] ||= []) << row["attname"]}
+      SELECT index_class.relname, attname
+        FROM pg_class table_class, pg_index, pg_class index_class, generate_subscripts(indkey, 1) AS position, pg_attribute
+       WHERE table_class.relname = '#{table_name}' AND
+             table_class.oid = pg_index.indrelid AND
+             index_class.oid = pg_index.indexrelid AND
+             index_class.relkind = 'i' AND
+             table_class.oid = pg_attribute.attrelid AND
+             pg_attribute.attnum = indkey[position]
+       ORDER BY position
+    SQL
+  end
+
+  def table_column_names(table_name)
+    query(<<-SQL).collect {|row| row["attname"]}
+      SELECT attname
+        FROM pg_attribute, pg_class
+       WHERE attrelid = pg_class.oid AND
+             attnum > 0 AND
+             NOT attisdropped AND
+             relname = '#{table_name}'
+       ORDER BY attnum
+    SQL
+  end
+
+  def table_column_types(table_name)
+    query(<<-SQL).collect.with_object({}) {|row, results| results[row["attname"]] = row["atttype"]}
+      SELECT attname, format_type(atttypid, atttypmod) AS atttype
+        FROM pg_attribute, pg_class, pg_type
+       WHERE attrelid = pg_class.oid AND
+             atttypid = pg_type.oid AND
+             attnum > 0 AND
+             NOT attisdropped AND
+             relname = '#{table_name}'
+       ORDER BY attnum
+    SQL
+  end
+
+  def table_column_nullability(table_name)
+    query(<<-SQL).collect.with_object({}) {|row, results| results[row["attname"]] = !row["attnotnull"]}
+      SELECT attname, attnotnull
+        FROM pg_attribute, pg_class
+       WHERE attrelid = pg_class.oid AND
+             attnum > 0 AND
+             NOT attisdropped AND
+             relname = '#{table_name}'
+       ORDER BY attnum
+    SQL
+  end
+
+  def table_column_defaults(table_name)
+    query(<<-SQL).collect.with_object({}) {|row, results| results[row["attname"]] = row["attdefault"].try!(:gsub, /^'(.*)'::.*$/, '\\1')}
+      SELECT attname, (CASE WHEN atthasdef THEN pg_get_expr(adbin, adrelid) ELSE NULL END) AS attdefault
+        FROM pg_attribute
+        JOIN pg_class ON attrelid = pg_class.oid
+        LEFT JOIN pg_attrdef ON adrelid = attrelid AND adnum = attnum
+       WHERE attnum > 0 AND
+             NOT attisdropped AND
+             relname = '#{table_name}'
+       ORDER BY attnum
+    SQL
   end
 
   def quote_ident(name)
@@ -55,6 +159,38 @@ class Mysql2::Client
 
   def tables
     query("SHOW TABLES").collect {|row| row.values.first}
+  end
+
+  def table_primary_key_name(table_name)
+    "PRIMARY"
+  end
+
+  def table_keys(table_name)
+    query("SHOW KEYS FROM #{table_name}").collect {|row| row["Key_name"] unless row["Key_name"] == "PRIMARY"}.compact
+  end
+
+  def table_keys_unique(table_name)
+    query("SHOW KEYS FROM #{table_name}").each_with_object({}) {|row, results| results[row["Key_name"]] = row["Non_unique"].zero? unless row["Key_name"] == "PRIMARY"}
+  end
+
+  def table_key_columns(table_name)
+    query("SHOW KEYS FROM #{table_name}").each_with_object({}) {|row, results| (results[row["Key_name"]] ||= []) << row["Column_name"]}
+  end
+
+  def table_column_names(table_name)
+    query("SHOW COLUMNS FROM #{table_name}").collect {|row| row.values.first}.compact
+  end
+
+  def table_column_types(table_name)
+    query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = row["Type"]}
+  end
+
+  def table_column_nullability(table_name)
+    query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = (row["Null"] == "YES")}
+  end
+
+  def table_column_defaults(table_name)
+    query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = row["Default"]}
   end
 
   def quote_ident(name)

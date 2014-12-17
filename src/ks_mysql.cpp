@@ -142,6 +142,8 @@ public:
 	void rollback_transaction();
 	void populate_database_schema(Database &database);
 	string escape_value(const string &value);
+	string column_type(const Column &column);
+	string column_definition(const Column &column);
 
 	inline char quote_identifiers_with() const { return '`'; }
 
@@ -287,6 +289,156 @@ string MySQLClient::escape_value(const string &value) {
 	result.resize(value.size()*2 + 1);
 	size_t result_length = mysql_real_escape_string(&mysql, (char*)result.data(), value.c_str(), value.size());
 	result.resize(result_length);
+	return result;
+}
+
+string MySQLClient::column_type(const Column &column) {
+	if (column.column_type == ColumnTypes::BLOB) {
+		switch (column.size) {
+			case 1:
+				return "tinyblob";
+				break;
+
+			case 2:
+				return "blob";
+				break;
+
+			case 3:
+				return "mediumblob";
+				break;
+
+			default:
+				return "longblob";
+		}
+
+	} else if (column.column_type == ColumnTypes::TEXT) {
+		switch (column.size) {
+			case 1:
+				return "tinytext";
+				break;
+
+			case 2:
+				return "text";
+				break;
+
+			case 3:
+				return "mediumtext";
+				break;
+
+			default:
+				return "longtext";
+		}
+
+	} else if (column.column_type == ColumnTypes::VCHR) {
+		string result("varchar(");
+		result += to_string(column.size);
+		result += ")";
+		return result;
+
+	} else if (column.column_type == ColumnTypes::FCHR) {
+		string result("char(");
+		result += to_string(column.size);
+		result += ")";
+		return result;
+
+	} else if (column.column_type == ColumnTypes::BOOL) {
+		return "tinyint(1)";
+
+	} else if (column.column_type == ColumnTypes::SINT || column.column_type == ColumnTypes::UINT) {
+		string result;
+
+		switch (column.size) {
+			case 1:
+				result = "tinyint";
+				break;
+
+			case 2:
+				result = "smallint";
+				break;
+
+			case 3:
+				result = "mediumint";
+				break;
+
+			case 4:
+				result = "int";
+				break;
+
+			default:
+				result = "bigint";
+		}
+
+		if (column.column_type == ColumnTypes::UINT) {
+			result += " unsigned";
+		}
+
+		return result;
+
+	} else if (column.column_type == ColumnTypes::REAL) {
+		return (column.size == 4 ? "float" : "double");
+
+	} else if (column.column_type == ColumnTypes::DECI) {
+		string result("decimal(");
+		result += to_string(column.size);
+		result += ',';
+		result += to_string(column.scale);
+		result += ')';
+		return result;
+
+	} else if (column.column_type == ColumnTypes::DATE) {
+		return "date";
+
+	} else if (column.column_type == ColumnTypes::TIME) {
+		return "time";
+
+	} else if (column.column_type == ColumnTypes::DTTM) {
+		return "datetime";
+
+	} else {
+		throw runtime_error("Don't know how to express column type of " + column.name + " (" + column.column_type + ")");
+	}
+}
+
+string MySQLClient::column_definition(const Column &column) {
+	string result;
+	result += quote_identifiers_with();
+	result += column.name;
+	result += quote_identifiers_with();
+	result += ' ';
+
+	result += column_type(column);
+
+	if (!column.nullable) {
+		result += " NOT NULL";
+	}
+
+	switch (column.default_type) {
+		case DefaultType::no_default:
+			break;
+
+		case DefaultType::sequence:
+			result += " AUTO_INCREMENT";
+			break;
+
+		case DefaultType::default_value:
+			result += " DEFAULT ";
+			if (column.column_type == ColumnTypes::BOOL ||
+				column.column_type == ColumnTypes::SINT ||
+				column.column_type == ColumnTypes::UINT ||
+				column.column_type == ColumnTypes::REAL ||
+				column.column_type == ColumnTypes::DECI) {
+				result += column.default_value;
+			} else {
+				result += "'";
+				result += escape_value(column.default_value);
+				result += "'";
+			}
+			break;
+
+		case DefaultType::default_function:
+			throw runtime_error("Can't implement default function " + column.default_value);
+	}
+
 	return result;
 }
 

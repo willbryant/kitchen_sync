@@ -4,4 +4,7 @@
 struct SupportsReplace {
 };
 
+struct GlobalKeys {
+};
+
 #endif
