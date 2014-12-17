@@ -1,6 +1,7 @@
 #include "command.h"
 #include "sync_algorithm.h"
 #include "schema_functions.h"
+#include "schema_matcher.h"
 #include "sync_queue.h"
 #include "table_row_applier.h"
 #include "fdstream.h"
@@ -17,7 +18,7 @@ struct SyncToWorker {
 		Database &database, SyncQueue &sync_queue, bool leader, int read_from_descriptor, int write_to_descriptor,
 		const string &database_host, const string &database_port, const string &database_name, const string &database_username, const string &database_password,
 		const string &set_variables, const set<string> &ignore_tables, const set<string> &only_tables,
-		int verbose, bool snapshot, bool partial, bool rollback_after):
+		int verbose, bool snapshot, bool partial, bool rollback_after, bool alter):
 			database(database),
 			sync_queue(sync_queue),
 			leader(leader),
@@ -32,6 +33,7 @@ struct SyncToWorker {
 			snapshot(snapshot),
 			rollback_after(rollback_after),
 			partial(partial),
+			alter(alter),
 			protocol_version(0),
 			worker_thread(std::ref(*this)) {
 		if (!set_variables.empty()) {
@@ -47,12 +49,13 @@ struct SyncToWorker {
 		try {
 			negotiate_protocol();
 			negotiate_target_block_size();
+
 			share_snapshot();
 			retrieve_database_schema();
+			compare_schema();
 
 			client.start_write_transaction();
 
-			compare_schema();
 			enqueue_tables();
 			sync_tables();
 
@@ -159,8 +162,26 @@ struct SyncToWorker {
 			client.populate_database_schema(to_database);
 			filter_tables(to_database.tables);
 
-			// check they match
-			match_schemas(database, to_database);
+			// check they match, and if not, figure out what DDL we would need to run to fix the 'to' end's schema
+			SchemaMatcher<DatabaseClient> matcher(client);
+
+			matcher.match_schemas(database, to_database);
+
+			if (matcher.statements.empty()) return;
+
+			if (alter) {
+				for (const string &statement : matcher.statements) {
+					if (verbose) cout << statement << endl;
+					client.execute(statement);
+				}
+			} else {
+				cerr << "The database schema doesn't match.  Use the --alter option if you would like to automatically apply the following schema changes:" << endl << endl;
+				for (const string &statement : matcher.statements) {
+					cerr << statement << endl;
+				}
+				cerr << endl;
+				throw runtime_error("Database schema needs migration");
+			}
 		}
 	}
 
@@ -414,6 +435,7 @@ struct SyncToWorker {
 	bool snapshot;
 	bool partial;
 	bool rollback_after;
+	bool alter;
 
 	int protocol_version;
 	size_t target_block_size;

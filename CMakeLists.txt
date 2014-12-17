@@ -48,7 +48,7 @@ find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIRS})
 
 # the endpoints do the actual work
-set(ks_endpoint_SRCS src/schema.cpp src/schema_functions.cpp src/filters.cpp src/abortable_barrier.cpp src/sync_queue.cpp)
+set(ks_endpoint_SRCS src/schema.cpp src/filters.cpp src/abortable_barrier.cpp src/sync_queue.cpp)
 set(ks_endpoint_LIBS ${OPENSSL_LIBRARIES} ${YamlCPP_LIBRARIES} ${Boost_LIBRARIES})
 
 # turn on debugging symbols

@@ -30,6 +30,7 @@ int main(int argc, char *argv[]) {
 		bool snapshot = true;
 		bool partial = false;
 		bool rollback = false;
+		bool alter = false;
 		string ignore, only;
 		desc.add_options()
 			("from",               value<DbUrl>(&from)->required(),        "The URL of the database to copy data from.  Required.\n")
@@ -41,9 +42,10 @@ int main(int argc, char *argv[]) {
 			("filters",	           value<string>(&filters),				   "YAML file to read table/column filtering information from (at the 'from' end).\n")
 			("set-from-variables", value<string>(&set_from_variables),     "SET variables to apply at the 'from' end (eg. --set-from-variables=\"sql_log_off=0, time_zone='UTC'\")\n")
 			("set-to-variables",   value<string>(&set_to_variables),       "SET variables to apply at the 'to' end (eg. --set-to-variables=\"sql_log_bin=0\")\n")
-			("without-snapshot-export",                                    "Don't attempt to export & use a consistent snapshot across multiple workers (which is normally a good thing, but requires version 9.2 or later for PostgreSQL and on MySQL uses FLUSH TABLES WITH READ LOCK which requires the RELOAD privilege and may have an impact on other connections); you will still get a consistent copy if the database is (perhaps temporarily) frozen when the workers start.\n")
+			("without-snapshot-export",                                    "Don't attempt to export/use a consistent snapshot across multiple workers (snapshots are normally a good thing, but require version 9.2 or later for PostgreSQL, and on MySQL uses FLUSH TABLES WITH READ LOCK which requires the RELOAD privilege and may have an impact on other connections as it blocks till all open transactions commit).  If you use this option, you may get an inconsistent copy if transactions commit in between the individual worker transactions starting, but changes after that point will not be a problem.\n")
 			("partial",                                                    "Attempt to commit changes even if some workers hit errors.\n")
 			("rollback-after",                                             "Roll back afterwards, for benchmarking.\n")
+			("alter",                                                      "Alter the database schema if it currently doesn't match.\n")
 			("verbose",                                                    "Log more information as the program works.\n")
 			("debug",                                                      "Log debugging information as the program works.\n");
 		variables_map vm;
@@ -63,6 +65,7 @@ int main(int argc, char *argv[]) {
 		if (vm.count("without-snapshot-export")) snapshot = false;
 		if (vm.count("partial")) partial = true;
 		if (vm.count("rollback-after")) rollback = true;
+		if (vm.count("alter")) alter = true;
 
 		cout << "Kitchen Sync" << endl;
 
@@ -86,7 +89,7 @@ int main(int argc, char *argv[]) {
 
 		const char *from_args[] = { ssh_binary.c_str(), "-C", "-c", "blowfish", via.c_str(),
 									from_binary.c_str(), "from", from.host.c_str(), from.port.c_str(), from.database.c_str(), from.username.c_str(), from.password.c_str(), set_from_variables.c_str(), filters.c_str(), nullptr };
-		const char *  to_args[] = {   to_binary.c_str(),   "to",   to.host.c_str(),   to.port.c_str(),   to.database.c_str(),   to.username.c_str(),   to.password.c_str(), set_to_variables.c_str(), ignore.c_str(), only.c_str(), workers_str.c_str(), startfd_str.c_str(), verbose_str.c_str(), snapshot ? "1" : "0", partial ? "1" : "0", rollback ? "1" : "0", nullptr };
+		const char *  to_args[] = {   to_binary.c_str(),   "to",   to.host.c_str(),   to.port.c_str(),   to.database.c_str(),   to.username.c_str(),   to.password.c_str(), set_to_variables.c_str(), ignore.c_str(), only.c_str(), workers_str.c_str(), startfd_str.c_str(), verbose_str.c_str(), snapshot ? "1" : "0", partial ? "1" : "0", rollback ? "1" : "0", alter ? "1" : "0", nullptr };
 		const char **applicable_from_args = (via.empty() ? from_args + 5 : from_args);
 
 		vector<pid_t> child_pids;

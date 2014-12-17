@@ -52,7 +52,8 @@ int endpoint_main(int argc, char *argv[]) {
 			bool snapshot = argc > 13 ? atoi(argv[13]) : false;
 			bool partial = argc > 14 ? atoi(argv[14]) : false;
 			bool rollback_after = argc > 15 ? atoi(argv[15]) : false;
-			sync_to<DatabaseClient>(workers, startfd, database_host, database_port, database_name, database_username, database_password, set_variables, ignore, only, verbose, snapshot, partial, rollback_after);
+			bool alter = argc > 16 ? atoi(argv[16]) : true;
+			sync_to<DatabaseClient>(workers, startfd, database_host, database_port, database_name, database_username, database_password, set_variables, ignore, only, verbose, snapshot, partial, rollback_after, alter);
 		}
 	} catch (const sync_error& e) {
 		// the worker thread has already output the error to cerr
