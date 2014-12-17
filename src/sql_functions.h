@@ -19,9 +19,9 @@ string columns_list(DatabaseClient &client, const Columns &columns, const Column
 	result += columns[*column_indices.begin()].name;
 	for (ColumnIndices::const_iterator column_index = column_indices.begin() + 1; column_index != column_indices.end(); ++column_index) {
 		result += ", ";
-		if (client.quote_identifiers_with()) result += client.quote_identifiers_with();
+		result += client.quote_identifiers_with();
 		result += columns[*column_index].name;
-		if (client.quote_identifiers_with()) result += client.quote_identifiers_with();
+		result += client.quote_identifiers_with();
 	}
 	result += ")";
 	return result;
@@ -76,9 +76,9 @@ string select_columns_sql(DatabaseClient &client, const Table &table) {
 			result += column->filter_expression;
 			result += " AS ";
 		}
-		if (client.quote_identifiers_with()) result += client.quote_identifiers_with();
+		result += client.quote_identifiers_with();
 		result += column->name;
-		if (client.quote_identifiers_with()) result += client.quote_identifiers_with();
+		result += client.quote_identifiers_with();
 	}
 	return result;
 }
