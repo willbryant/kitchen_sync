@@ -302,7 +302,7 @@ struct MySQLColumnLister {
 		string default_value(default_set ? row.string_at(4) : string(""));
 
 		if (db_type == "tinyint(1)") {
-			default_value = (default_value == "1" ? "true" : "false");
+			if (default_set) default_value = (default_value == "1" ? "true" : "false");
 			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::BOOL);
 		} else if (db_type.substr(0, 9) == "tinyint(") {
 			table.columns.emplace_back(name, nullable, default_set, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 1);
