@@ -82,14 +82,19 @@ struct SyncToWorker {
 	}
 
 	void negotiate_protocol() {
-		const int PROTOCOL_VERSION_SUPPORTED = 3;
+		const int EARLIEST_PROTOCOL_VERSION_SUPPORTED = 4;
+		const int LATEST_PROTOCOL_VERSION_SUPPORTED = 4;
 
 		// tell the other end what version of the protocol we can speak, and have them tell us which version we're able to converse in
-		send_command(output, Commands::PROTOCOL, PROTOCOL_VERSION_SUPPORTED);
+		send_command(output, Commands::PROTOCOL, LATEST_PROTOCOL_VERSION_SUPPORTED);
 
 		// read the response to the protocol_version command that the output thread sends when it starts
 		// this is currently unused, but the command's semantics need to be in place for it to be useful in the future...
 		read_expected_command(input, Commands::PROTOCOL, protocol_version);
+
+		if (protocol_version < EARLIEST_PROTOCOL_VERSION_SUPPORTED || protocol_version > LATEST_PROTOCOL_VERSION_SUPPORTED) {
+			throw runtime_error("Sorry, the other end doesn't support a compatible protocol version");
+		}
 	}
 
 	void negotiate_target_block_size() {

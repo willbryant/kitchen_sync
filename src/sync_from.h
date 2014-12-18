@@ -228,14 +228,15 @@ struct SyncFromWorker {
 	}
 
 	void negotiate_protocol_version() {
-		const int PROTOCOL_VERSION_SUPPORTED = 3;
+		const int EARLIEST_PROTOCOL_VERSION_SUPPORTED = 4;
+		const int LATEST_PROTOCOL_VERSION_SUPPORTED = 4;
 
 		// all conversations must start with a Commands::PROTOCOL command to establish the language to be used
 		int their_protocol_version;
 		read_expected_command(input, Commands::PROTOCOL, their_protocol_version);
 
-		// the usable protocol is the highest out of those supported by the two ends
-		protocol_version = min(PROTOCOL_VERSION_SUPPORTED, their_protocol_version);
+		// the usable protocol is the highest out of those supported by the two ends, unless lower than the minimum in which case no version is usable
+		protocol_version = max(EARLIEST_PROTOCOL_VERSION_SUPPORTED, min(LATEST_PROTOCOL_VERSION_SUPPORTED, their_protocol_version));
 
 		// tell the other end what version was selected
 		send_command(output, Commands::PROTOCOL, protocol_version);
