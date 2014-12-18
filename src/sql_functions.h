@@ -16,7 +16,9 @@ string columns_list(DatabaseClient &client, const Columns &columns, const Column
 	}
 
 	string result("(");
+	result += client.quote_identifiers_with();
 	result += columns[*column_indices.begin()].name;
+	result += client.quote_identifiers_with();
 	for (ColumnIndices::const_iterator column_index = column_indices.begin() + 1; column_index != column_indices.end(); ++column_index) {
 		result += ", ";
 		result += client.quote_identifiers_with();
