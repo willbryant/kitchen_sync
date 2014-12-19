@@ -27,20 +27,27 @@ namespace ColumnTypes {
 	const string DTTM = "DATETIME";
 }
 
+enum DefaultType {
+	no_default = 0,
+	sequence = 1,
+	default_value = 2,
+	default_function = 3,
+};
+
 struct Column {
 	string name;
 	bool nullable;
 	string column_type;
 	size_t size;
 	size_t scale;
-	bool default_set;
+	DefaultType default_type;
 	string default_value;
 
 	// the following member isn't serialized currently (could be, but not required):
 	string filter_expression;
 
-	inline Column(const string &name, bool nullable, bool default_set, string default_value, string column_type, size_t size = 0, size_t scale = 0): name(name), nullable(nullable), default_set(default_set), default_value(default_value), column_type(column_type), size(size), scale(scale) {}
-	inline Column(): size(0), scale(0), nullable(true), default_set(false) {}
+	inline Column(const string &name, bool nullable, DefaultType default_type, string default_value, string column_type, size_t size = 0, size_t scale = 0): name(name), nullable(nullable), default_type(default_type), default_value(default_value), column_type(column_type), size(size), scale(scale) {}
+	inline Column(): nullable(true), size(0), scale(0), default_type(DefaultType::no_default) {}
 };
 
 typedef vector<Column> Columns;

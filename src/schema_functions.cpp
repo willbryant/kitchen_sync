@@ -33,11 +33,11 @@ void check_column_match(const Table &table, const Column &from_column, const Col
 			" should be " + (from_column.nullable ? "nullable" : "not nullable") +
 			" but is " + (to_column.nullable ? "nullable" : "not nullable"));
 	}
-	if (from_column.default_set != to_column.default_set ||
-		(from_column.default_set && (from_column.default_value != to_column.default_value))) {
+	if (from_column.default_type != to_column.default_type ||
+		(from_column.default_type && (from_column.default_value != to_column.default_value))) {
 		throw schema_mismatch("Column " + from_column.name + " on table " + table.name +
-			" should " + (from_column.default_set ? "have default " + from_column.default_value : "not have default") +
-			" but " + (to_column.default_set ? "has default " + to_column.default_value : "doesn't have default"));
+			" should " + (from_column.default_type ? "have default " + from_column.default_value : "not have default") +
+			" but " + (to_column.default_type ? "has default " + to_column.default_value : "doesn't have default"));
 	}
 }
 

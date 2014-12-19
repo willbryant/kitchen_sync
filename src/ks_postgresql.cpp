@@ -296,44 +296,49 @@ struct PostgreSQLColumnLister {
 		string name(row.string_at(0));
 		string db_type(row.string_at(1));
 		bool nullable(row.string_at(2) == "f");
-		bool default_set(row.string_at(3) == "t");
+		DefaultType default_type(DefaultType::no_default);
 		string default_value;
 
-		if (default_set) {
+		if (row.string_at(3) == "t") {
+			default_type = DefaultType::default_value;
 			default_value = row.string_at(4);
-			if (default_value.length() > 2 && default_value[0] == '\'') {
+			if (default_value.length() > 20 &&
+				default_value.substr(0, 8) == "nextval('" &&
+				default_value.substr(default_value.length() - 12, 12) == "'::regclass)") {
+				default_type = DefaultType::sequence;
+			} else if (default_value.length() > 2 && default_value[0] == '\'') {
 				default_value = unescape_value(default_value.substr(1, default_value.rfind('\'') - 1));
 			}
 		}
 
 		if (db_type == "boolean") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::BOOL);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BOOL);
 		} else if (db_type == "smallint") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::SINT, 2);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SINT, 2);
 		} else if (db_type == "integer") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::SINT, 4);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SINT, 4);
 		} else if (db_type == "bigint") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::SINT, 8);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SINT, 8);
 		} else if (db_type == "real") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::REAL, 4);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::REAL, 4);
 		} else if (db_type == "double precision") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::REAL, 8);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::REAL, 8);
 		} else if (db_type.substr(0, 8) == "numeric(") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::DECI, extract_column_length(db_type), extract_column_scale(db_type));
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DECI, extract_column_length(db_type), extract_column_scale(db_type));
 		} else if (db_type.substr(0, 18) == "character varying(") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::VCHR, extract_column_length(db_type));
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::VCHR, extract_column_length(db_type));
 		} else if (db_type.substr(0, 10) == "character(") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::FCHR, extract_column_length(db_type));
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::FCHR, extract_column_length(db_type));
 		} else if (db_type == "text") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::TEXT);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TEXT);
 		} else if (db_type == "bytea") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::BLOB);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BLOB);
 		} else if (db_type == "date") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::DATE);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DATE);
 		} else if (db_type == "time without time zone") { // TODO: consider support for 'with time zone'
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::TIME);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TIME);
 		} else if (db_type == "timestamp without time zone") { // TODO: consider support for 'with time zone'
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::DTTM);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM);
 		} else {
 			throw runtime_error("Don't know how to represent postgresql type of " + table.name + '.' + name + " (" + db_type + ")");
 		}

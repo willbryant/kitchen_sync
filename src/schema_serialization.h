@@ -10,7 +10,7 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	if (column.size) fields++;
 	if (column.scale) fields++;
 	if (!column.nullable) fields++;
-	if (column.default_set) fields++;
+	if (column.default_type) fields++;
 	pack_map_length(packer, fields);
 	packer << string("name");
 	packer << column.name;
@@ -28,9 +28,24 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 		packer << string("nullable");
 		packer << column.nullable;
 	}
-	if (column.default_set) {
-		packer << string("default_value");
-		packer << column.default_value;
+	switch (column.default_type) {
+		case DefaultType::no_default:
+			break;
+
+		case DefaultType::sequence:
+			packer << string("sequence");
+			packer << column.default_value; // currently unused, but allowed for forward compatibility
+			break;
+
+		case DefaultType::default_value:
+			packer << string("default_value");
+			packer << column.default_value;
+			break;
+
+		case DefaultType::default_function:
+			packer << string("default_function");
+			packer << column.default_value;
+			break;
 	}
 }
 
@@ -82,8 +97,14 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 			unpacker >> column.scale;
 		} else if (attr_key == "nullable") {
 			unpacker >> column.nullable;
+		} else if (attr_key == "sequence") {
+			column.default_type = DefaultType::sequence;
+			unpacker >> column.default_value; // currently unused, but allowed for forward compatibility
 		} else if (attr_key == "default_value") {
-			column.default_set = true;
+			column.default_type = DefaultType::default_value;
+			unpacker >> column.default_value;
+		} else if (attr_key == "default_function") {
+			column.default_type = DefaultType::default_function;
 			unpacker >> column.default_value;
 		} // ignore anything else, for forward compatibility
 	}

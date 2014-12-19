@@ -298,55 +298,56 @@ struct MySQLColumnLister {
 		string db_type(row.string_at(1));
 		bool nullable(row.string_at(2) == "YES");
 		bool unsign(db_type.length() > 8 && db_type.substr(db_type.length() - 8, 8) == "unsigned");
-		bool default_set(!row.null_at(4));
-		string default_value(default_set ? row.string_at(4) : string(""));
+		DefaultType default_type(row.null_at(4) ? DefaultType::no_default : DefaultType::default_value);
+		string default_value(default_type ? row.string_at(4) : string(""));
+		if (row.string_at(5).find("auto_increment") != string::npos) default_type = DefaultType::sequence;
 
 		if (db_type == "tinyint(1)") {
-			if (default_set) default_value = (default_value == "1" ? "true" : "false");
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::BOOL);
+			if (default_type) default_value = (default_value == "1" ? "true" : "false");
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BOOL);
 		} else if (db_type.substr(0, 9) == "tinyint(") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 1);
+			table.columns.emplace_back(name, nullable, default_type, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 1);
 		} else if (db_type.substr(0, 9) == "smallint(") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 2);
+			table.columns.emplace_back(name, nullable, default_type, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 2);
 		} else if (db_type.substr(0, 9) == "mediumint(") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 3);
+			table.columns.emplace_back(name, nullable, default_type, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 3);
 		} else if (db_type.substr(0, 4) == "int(") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 4);
+			table.columns.emplace_back(name, nullable, default_type, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 4);
 		} else if (db_type.substr(0, 7) == "bigint(") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 8);
+			table.columns.emplace_back(name, nullable, default_type, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 8);
 		} else if (db_type.substr(0, 8) == "decimal(") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::DECI, extract_column_length(db_type), extract_column_scale(db_type));
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DECI, extract_column_length(db_type), extract_column_scale(db_type));
 		} else if (db_type == "float") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::REAL, 4);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::REAL, 4);
 		} else if (db_type == "double") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::REAL, 8);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::REAL, 8);
 		} else if (db_type.substr(0, 8) == "varchar(") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::VCHR, extract_column_length(db_type));
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::VCHR, extract_column_length(db_type));
 		} else if (db_type.substr(0, 5) == "char(") {
 			while (default_value.length() < extract_column_length(db_type)) default_value += ' ';
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::FCHR, extract_column_length(db_type));
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::FCHR, extract_column_length(db_type));
 		} else if (db_type == "tinytext") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::TEXT, 1);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TEXT, 1);
 		} else if (db_type == "text") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::TEXT, 2);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TEXT, 2);
 		} else if (db_type == "mediumtext") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::TEXT, 3);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TEXT, 3);
 		} else if (db_type == "longtext") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::TEXT); // no specific size for compatibility, but 4 in current mysql
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TEXT); // no specific size for compatibility, but 4 in current mysql
 		} else if (db_type == "tinyblob") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::BLOB, 1);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BLOB, 1);
 		} else if (db_type == "blob") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::BLOB, 2);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BLOB, 2);
 		} else if (db_type == "mediumblob") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::BLOB, 3);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BLOB, 3);
 		} else if (db_type == "longblob") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::BLOB); // no specific size for compatibility, but 4 in current mysql
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BLOB); // no specific size for compatibility, but 4 in current mysql
 		} else if (db_type == "date") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::DATE);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DATE);
 		} else if (db_type == "time") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::TIME);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TIME);
 		} else if (db_type == "datetime") {
-			table.columns.emplace_back(name, nullable, default_set, default_value, ColumnTypes::DTTM);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM);
 		} else {
 			throw runtime_error("Don't know how to represent mysql type of " + table.name + '.' + name + " (" + db_type + ")");
 		}
