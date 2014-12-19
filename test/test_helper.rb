@@ -123,7 +123,7 @@ Verbs = Commands.constants.each_with_object({}) {|k, results| results[Commands.c
 
 module KitchenSync
   class TestCase < Test::Unit::TestCase
-    CURRENT_PROTOCOL_VERSION = 4
+    PROTOCOL_VERSION_SUPPORTED = 5
 
     undef_method :default_test if instance_methods.include? 'default_test' or
                                   instance_methods.include? :default_test
@@ -171,8 +171,8 @@ module KitchenSync
     end
 
     def send_protocol_command
-      send_command   Commands::PROTOCOL, CURRENT_PROTOCOL_VERSION
-      expect_command Commands::PROTOCOL, [CURRENT_PROTOCOL_VERSION]
+      send_command   Commands::PROTOCOL, PROTOCOL_VERSION_SUPPORTED
+      expect_command Commands::PROTOCOL, [PROTOCOL_VERSION_SUPPORTED]
     end
 
     def send_without_snapshot_command
@@ -187,8 +187,8 @@ module KitchenSync
 
     def expect_handshake_commands(target_block_size = 1)
       # checking how protocol versions are handled is covered in protocol_versions_test; here we just need to get past that to get on to the commands we want to test
-      expect_command Commands::PROTOCOL, [CURRENT_PROTOCOL_VERSION]
-      send_command   Commands::PROTOCOL, CURRENT_PROTOCOL_VERSION
+      expect_command Commands::PROTOCOL, [PROTOCOL_VERSION_SUPPORTED]
+      send_command   Commands::PROTOCOL, PROTOCOL_VERSION_SUPPORTED
 
       # we force the block size down to 1 by default so we can test out our algorithms row-by-row, but real runs would use a bigger size
       assert_equal   Commands::TARGET_BLOCK_SIZE, read_command.first
