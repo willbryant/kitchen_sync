@@ -7,6 +7,16 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     :to
   end
 
+  def insert_secondtbl_rows
+    execute "INSERT INTO secondtbl VALUES (2, 2349174, 'xy', 1), (9, 968116383, 'aa', NULL)"
+  end
+
+  def assert_secondtbl_rows_present
+    assert_equal [[9, 968116383, 'aa', nil],
+                  [2,   2349174, 'xy',   1]],
+                 query("SELECT * FROM secondtbl ORDER BY pri2, pri1")
+  end
+
   test_each "accepts an empty list of tables on an empty database" do
     clear_schema
 
@@ -462,9 +472,10 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   end
 
 
-  test_each "drops extra keys" do
+  test_each "drops extra keys, without recreating the table" do
     clear_schema
     create_secondtbl
+    insert_secondtbl_rows
     execute "CREATE INDEX extrakey ON secondtbl (sec, tri)"
 
     expect_handshake_commands
@@ -472,11 +483,13 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     send_command Commands::SCHEMA, "tables" => [secondtbl_def]
     read_command
     assert_equal secondtbl_def["keys"].collect {|key| key["name"]}, connection.table_keys("secondtbl")
+    assert_secondtbl_rows_present
   end
 
-  test_each "adds missing keys" do
+  test_each "adds missing keys, without recreating the table" do
     clear_schema
     create_secondtbl
+    insert_secondtbl_rows
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
@@ -484,11 +497,13 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     read_command
     assert_equal %w(missingkey) + secondtbl_def["keys"].collect {|key| key["name"]}, connection.table_keys("secondtbl").sort
     assert !connection.table_keys_unique("secondtbl")["missingkey"], "missingkey index should not be unique"
+    assert_secondtbl_rows_present
   end
 
-  test_each "changes keys whose unique flag doesn't match" do
+  test_each "changes keys whose unique flag doesn't match, without recreating the table" do
     clear_schema
     create_secondtbl
+    insert_secondtbl_rows
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
@@ -497,11 +512,13 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("keys" => [key.merge("unique" => true)])]
     read_command
     assert connection.table_keys_unique("secondtbl")[key["name"]], "missingkey index should be unique"
+    assert_secondtbl_rows_present
   end
 
-  test_each "changes keys whose column list doesn't match" do
+  test_each "changes keys whose column list doesn't match, without recreating the table" do
     clear_schema
     create_secondtbl
+    insert_secondtbl_rows
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
@@ -510,5 +527,6 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("keys" => [key.merge("columns" => [3, 1])])]
     read_command
     assert_equal [secondtbl_def["columns"][3]["name"], secondtbl_def["columns"][1]["name"]], connection.table_key_columns("secondtbl")[key["name"]]
+    assert_secondtbl_rows_present
   end
 end

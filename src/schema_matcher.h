@@ -91,8 +91,8 @@ struct SchemaMatcher {
 		sort(from_tables.begin(), from_tables.end());
 		sort(  to_tables.begin(),   to_tables.end());
 
-		Tables::const_iterator from_table = from_tables.begin();
-		Tables::iterator         to_table =   to_tables.begin();
+		Tables::iterator from_table = from_tables.begin();
+		Tables::iterator   to_table =   to_tables.begin();
 		while (to_table != to_tables.end()) {
 			if (from_table == from_tables.end() ||
 				from_table->name > to_table->name) {
@@ -119,16 +119,70 @@ struct SchemaMatcher {
 		}
 	}
 
-	void match_table(const Table &from_table, Table &to_table) {
+	void match_table(Table &from_table, Table &to_table) {
+		// sort the key lists so they have the same order; we consider keys to be unordered
+		sort(from_table.keys.begin(), from_table.keys.end());
+		sort(  to_table.keys.begin(),   to_table.keys.end());
+
+		// if the tables match, we don't have to do anything
 		if (from_table == to_table) return;
 
-		recreate_table(from_table, to_table);
+		// so the table differs.  see if it's something we can fix without recreating the table.
+		Statements alter_statements;
+
+		match_keys(alter_statements, from_table, to_table);
+
+		if (from_table == to_table) {
+			// yup, the statements we can construct would fix it - append those statements to the list
+			statements.splice(statements.end(), alter_statements);
+		} else {
+			// nope, throw away those ALTER statements, and recreate the table
+			DropTableStatements<DatabaseClient>::add_to(statements, client, to_table);
+			CreateTableStatements<DatabaseClient>::add_to(statements, client, from_table);
+			to_table = from_table;
+		}
 	}
 
-	void recreate_table(const Table &from_table, Table &to_table) {
-		DropTableStatements<DatabaseClient>::add_to(statements, client, to_table);
-		CreateTableStatements<DatabaseClient>::add_to(statements, client, from_table);
-		to_table = from_table;
+	void match_keys(Statements &alter_statements, const Table &from_table, Table &to_table) {
+		Keys::const_iterator from_key = from_table.keys.begin();
+		Keys::iterator         to_key =   to_table.keys.begin();
+
+		while (to_key != to_table.keys.end()) {
+			if (from_key == from_table.keys.end() ||
+				from_key->name > to_key->name) {
+				// our end has an extra key, drop it
+				DropKeyStatements<DatabaseClient>::add_to(alter_statements, client, to_table, *to_key);
+				to_key = to_table.keys.erase(to_key);
+				// keep the current from_key and re-evaluate on the next iteration
+
+			} else if (to_key->name > from_key->name) {
+				// their end has an extra key, add it
+				CreateKeyStatements<DatabaseClient>::add_to(alter_statements, client, to_table, *from_key);
+				to_key = ++to_table.keys.insert(to_key, *from_key);
+				++from_key;
+				// keep the current to_key and re-evaluate on the next iteration
+
+			} else {
+				match_key(alter_statements, from_table, *from_key, *to_key);
+				++to_key;
+				++from_key;
+			}
+		}
+
+		while (from_key != from_table.keys.end()) {
+			CreateKeyStatements<DatabaseClient>::add_to(alter_statements, client, to_table, *from_key);
+			to_key = ++to_table.keys.insert(to_key, *from_key);
+			++from_key;
+		}
+	}
+
+	void match_key(Statements &alter_statements, const Table &from_table, const Key &from_key, Key &to_key) {
+		if (from_key == to_key) return;
+
+		// recreate the index.  not all databases can combine these two statements, so we implement the general case only for now.
+		DropKeyStatements<DatabaseClient>::add_to(alter_statements, client, from_table, to_key);
+		CreateKeyStatements<DatabaseClient>::add_to(alter_statements, client, from_table, from_key);
+		to_key = from_key;
 	}
 
 	DatabaseClient &client;
