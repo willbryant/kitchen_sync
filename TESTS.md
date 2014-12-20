@@ -1,7 +1,7 @@
 Running the test suite
 ======================
 
-First, compile the software using the [INSTALL.md](INSTALL.md) instructions.  You'll need
+First, compile the software using the [install guide](INSTALL.md) instructions.  You'll need
 to build Kitchen Sync for both mysql and postgresql if you'd like to run the test suite.
 
 To run the tests you should install both databases on your local machine.  You'll then need
