@@ -153,6 +153,7 @@ public:
 	void populate_database_schema(Database &database);
 	string escape_value(const string &value);
 	string column_type(const Column &column);
+	string column_default(const Column &column);
 	string column_definition(const Column &column);
 
 	inline char quote_identifiers_with() const { return '"'; }
@@ -357,31 +358,21 @@ string PostgreSQLClient::column_type(const Column &column) {
 	}
 }
 
-string PostgreSQLClient::column_definition(const Column &column) {
-	string result;
-	result += quote_identifiers_with();
-	result += column.name;
-	result += quote_identifiers_with();
-	result += ' ';
-
-	result += column_type(column);
-
-	if (!column.nullable) {
-		result += " NOT NULL";
-	}
+string PostgreSQLClient::column_default(const Column &column) {
+	string result(" DEFAULT ");
 
 	switch (column.default_type) {
 		case DefaultType::no_default:
+			result += " NULL";
 			break;
 
 		case DefaultType::sequence:
-			result += " DEFAULT nextval('";
+			result += " nextval('";
 			result += column.name;
 			result += "_seq'::regclass)";
 			break;
 
 		case DefaultType::default_value:
-			result += " DEFAULT ";
 			if (column.column_type == ColumnTypes::BOOL ||
 				column.column_type == ColumnTypes::SINT ||
 				column.column_type == ColumnTypes::UINT ||
@@ -396,9 +387,27 @@ string PostgreSQLClient::column_definition(const Column &column) {
 			break;
 
 		case DefaultType::default_function:
-			result += " DEFAULT ";
 			result += column.default_value;
-			break;
+	}
+
+	return result;
+}
+
+string PostgreSQLClient::column_definition(const Column &column) {
+	string result;
+	result += quote_identifiers_with();
+	result += column.name;
+	result += quote_identifiers_with();
+	result += ' ';
+
+	result += column_type(column);
+
+	if (!column.nullable) {
+		result += " NOT NULL";
+	}
+
+	if (column.default_type) {
+		result += column_default(column);
 	}
 
 	return result;

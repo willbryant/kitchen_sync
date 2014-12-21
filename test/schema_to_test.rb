@@ -17,6 +17,19 @@ class SchemaToTest < KitchenSync::EndpointTestCase
                  query("SELECT * FROM secondtbl ORDER BY pri2, pri1")
   end
 
+  def insert_footbl_rows
+    execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str'), (1001, 0, 'last')"
+  end
+
+  def assert_footbl_rows_present
+    assert_equal [[2,     10,       "test"],
+                  [4,    nil,        "foo"],
+                  [5,    nil,          nil],
+                  [8,     -1, "longer str"],
+                  [1001,   0,       "last"]],
+                 query("SELECT * FROM footbl ORDER BY col1")
+  end
+
   test_each "accepts an empty list of tables on an empty database" do
     clear_schema
 
@@ -379,9 +392,10 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   end
 
 
-  test_each "recreates the table if column defaults need to be cleared" do
+  test_each "changes the column default if they need to be cleared, without recreating the table" do
     clear_schema
     create_footbl
+    insert_footbl_rows
     execute("ALTER TABLE footbl ALTER another_col SET DEFAULT 42")
 
     expect_handshake_commands
@@ -389,11 +403,13 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     send_command Commands::SCHEMA, "tables" => [footbl_def]
     read_command
     assert_equal({"col1" => nil, "another_col" => nil, "col3" => nil}, connection.table_column_defaults("footbl"))
+    assert_footbl_rows_present
   end
 
-  test_each "recreates the table if column defaults need to be set" do
+  test_each "changes the column default if they need to be set, without recreating the table" do
     clear_schema
     create_footbl
+    insert_footbl_rows
     table_def = footbl_def
     table_def["columns"][1]["default_value"] = "42"
 
@@ -402,11 +418,13 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     send_command Commands::SCHEMA, "tables" => [table_def]
     read_command
     assert_equal({"col1" => nil, "another_col" => "42", "col3" => nil}, connection.table_column_defaults("footbl"))
+    assert_footbl_rows_present
   end
 
-  test_each "recreates the table if column defaults need to be changed" do
+  test_each "changes the column default if they need to be changed, without recreating the table" do
     clear_schema
     create_footbl
+    insert_footbl_rows
     execute("ALTER TABLE footbl ALTER another_col SET DEFAULT 42")
     table_def = footbl_def
     table_def["columns"][1]["default_value"] = "23"
@@ -416,11 +434,13 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     send_command Commands::SCHEMA, "tables" => [table_def]
     read_command
     assert_equal({"col1" => nil, "another_col" => "23", "col3" => nil}, connection.table_column_defaults("footbl"))
+    assert_footbl_rows_present
   end
 
-  test_each "recreates the table if column defaults need to be set on a string column" do
+  test_each "changes the column default if they need to be set on a string column, without recreating the table" do
     clear_schema
     create_footbl
+    insert_footbl_rows
     table_def = footbl_def
     table_def["columns"][2]["default_value"] = "foo"
 
@@ -429,6 +449,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     send_command Commands::SCHEMA, "tables" => [table_def]
     read_command
     assert_equal({"col1" => nil, "another_col" => nil, "col3" => "foo"}, connection.table_column_defaults("footbl"))
+    assert_footbl_rows_present
   end
 
 

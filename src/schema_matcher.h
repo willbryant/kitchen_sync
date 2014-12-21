@@ -77,6 +77,30 @@ struct CreateTableStatements {
 };
 
 template <typename DatabaseClient>
+struct AlterTableStatements {
+	static void add_to(Statements &statements, DatabaseClient &client, const Table &table, const string &alter_table_clauses) {
+		string result("ALTER TABLE ");
+		result += table.name;
+		result += alter_table_clauses;
+		statements.push_back(result);
+	}
+};
+
+template <typename DatabaseClient>
+struct AlterColumnDefaultClauses {
+	static void add_to(string &alter_table_clauses, DatabaseClient &client, const Column &from_column, Column &to_column) {
+		alter_table_clauses += " ALTER ";
+		alter_table_clauses += client.quote_identifiers_with();
+		alter_table_clauses += to_column.name;
+		alter_table_clauses += client.quote_identifiers_with();
+		alter_table_clauses += " SET ";
+		alter_table_clauses += client.column_default(from_column);
+		to_column.default_type  = from_column.default_type;
+		to_column.default_value = from_column.default_value;
+	}
+};
+
+template <typename DatabaseClient>
 struct SchemaMatcher {
 	SchemaMatcher(DatabaseClient &client): client(client) {}
 
@@ -130,6 +154,7 @@ struct SchemaMatcher {
 		// so the table differs.  see if it's something we can fix without recreating the table.
 		Statements alter_statements;
 
+		match_column_defaults(alter_statements, from_table, to_table);
 		match_keys(alter_statements, from_table, to_table);
 
 		if (from_table == to_table) {
@@ -173,6 +198,29 @@ struct SchemaMatcher {
 			CreateKeyStatements<DatabaseClient>::add_to(alter_statements, client, to_table, *from_key);
 			to_key = ++to_table.keys.insert(to_key, *from_key);
 			++from_key;
+		}
+	}
+
+	void match_column_defaults(Statements &alter_statements, const Table &from_table, Table &to_table) {
+		Columns::const_iterator from_column = from_table.columns.begin();
+		Columns::iterator         to_column =   to_table.columns.begin();
+
+		string alter_table_clauses;
+
+		while (to_column != to_table.columns.end() && from_column != from_table.columns.end() && to_column->name == from_column->name) {
+			if ((from_column->default_type != to_column->default_type || from_column->default_value != to_column->default_value) &&
+				(from_column->default_type != DefaultType::sequence)) {
+				if (!alter_table_clauses.empty()) {
+					alter_table_clauses += ",";
+				}
+				AlterColumnDefaultClauses<DatabaseClient>::add_to(alter_table_clauses, client, *from_column, *to_column);
+			}
+			++to_column;
+			++from_column;
+		}
+
+		if (!alter_table_clauses.empty()) {
+			AlterTableStatements<DatabaseClient>::add_to(alter_statements, client, to_table, alter_table_clauses);
 		}
 	}
 

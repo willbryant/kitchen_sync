@@ -143,6 +143,7 @@ public:
 	void populate_database_schema(Database &database);
 	string escape_value(const string &value);
 	string column_type(const Column &column);
+	string column_default(const Column &column);
 	string column_definition(const Column &column);
 
 	inline char quote_identifiers_with() const { return '`'; }
@@ -399,6 +400,35 @@ string MySQLClient::column_type(const Column &column) {
 	}
 }
 
+string MySQLClient::column_default(const Column &column) {
+	switch (column.default_type) {
+		case DefaultType::no_default:
+			return " DEFAULT NULL";
+
+		case DefaultType::sequence:
+			return " AUTO_INCREMENT";
+
+		case DefaultType::default_value: {
+			string result(" DEFAULT ");
+			if (column.column_type == ColumnTypes::BOOL ||
+				column.column_type == ColumnTypes::SINT ||
+				column.column_type == ColumnTypes::UINT ||
+				column.column_type == ColumnTypes::REAL ||
+				column.column_type == ColumnTypes::DECI) {
+				result += column.default_value;
+			} else {
+				result += "'";
+				result += escape_value(column.default_value);
+				result += "'";
+			}
+			return result;
+		}
+
+		case DefaultType::default_function:
+			throw runtime_error("Can't implement default function " + column.default_value);
+	}
+}
+
 string MySQLClient::column_definition(const Column &column) {
 	string result;
 	result += quote_identifiers_with();
@@ -412,31 +442,8 @@ string MySQLClient::column_definition(const Column &column) {
 		result += " NOT NULL";
 	}
 
-	switch (column.default_type) {
-		case DefaultType::no_default:
-			break;
-
-		case DefaultType::sequence:
-			result += " AUTO_INCREMENT";
-			break;
-
-		case DefaultType::default_value:
-			result += " DEFAULT ";
-			if (column.column_type == ColumnTypes::BOOL ||
-				column.column_type == ColumnTypes::SINT ||
-				column.column_type == ColumnTypes::UINT ||
-				column.column_type == ColumnTypes::REAL ||
-				column.column_type == ColumnTypes::DECI) {
-				result += column.default_value;
-			} else {
-				result += "'";
-				result += escape_value(column.default_value);
-				result += "'";
-			}
-			break;
-
-		case DefaultType::default_function:
-			throw runtime_error("Can't implement default function " + column.default_value);
+	if (column.default_type) {
+		result += column_default(column);
 	}
 
 	return result;
