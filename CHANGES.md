@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.21
+----
+* Add or remove keys (if --alter is used) without recreating the entire table.
+
 0.20
 ----
 * Documentation.  Moar documentation.
