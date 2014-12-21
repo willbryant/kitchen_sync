@@ -4,7 +4,7 @@ Changelog
 0.22
 ----
 * Set or clear column defaults (if --alter is used) without recreating the entire table.
-* Add missing to fix GCC compilation errors.
+* Add missing include to fix GCC compilation errors.
 
 0.21
 ----
