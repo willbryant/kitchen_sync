@@ -476,7 +476,7 @@ struct MySQLColumnLister {
 		} else if (db_type.substr(0, 8) == "varchar(") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::VCHR, extract_column_length(db_type));
 		} else if (db_type.substr(0, 5) == "char(") {
-			while (default_value.length() < extract_column_length(db_type)) default_value += ' ';
+			while (default_type && default_value.length() < extract_column_length(db_type)) default_value += ' ';
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::FCHR, extract_column_length(db_type));
 		} else if (db_type == "tinytext") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TEXT, 1);
