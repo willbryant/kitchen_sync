@@ -1,6 +1,7 @@
 #ifndef SCHEMA_MATCHER_H
 #define SCHEMA_MATCHER_H
 
+#include <algorithm>
 #include <list>
 
 #include "database_client_traits.h"
