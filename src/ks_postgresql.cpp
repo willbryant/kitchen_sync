@@ -218,6 +218,8 @@ PostgreSQLClient::PostgreSQLClient(
 	if (PQsetClientEncoding(conn, "SQL_ASCII")) {
 		throw runtime_error(PQerrorMessage(conn));
 	}
+
+	execute("SET client_min_messages TO WARNING");
 }
 
 PostgreSQLClient::~PostgreSQLClient() {
