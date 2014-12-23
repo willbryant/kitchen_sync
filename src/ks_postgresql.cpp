@@ -321,6 +321,13 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 				column.size = 0;
 			}
 		}
+
+		for (Key &key : table.keys) {
+			if (key.name.size() >= 63) {
+				// postgresql has a hardcoded limit of 63 characters for index names
+				key.name = key.name.substr(0, 63);
+			}
+		}
 	}
 }
 
