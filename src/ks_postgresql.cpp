@@ -427,9 +427,10 @@ struct PostgreSQLColumnLister {
 			default_type = DefaultType::default_value;
 			default_value = row.string_at(4);
 			if (default_value.length() > 20 &&
-				default_value.substr(0, 8) == "nextval('" &&
+				default_value.substr(0, 9) == "nextval('" &&
 				default_value.substr(default_value.length() - 12, 12) == "'::regclass)") {
 				default_type = DefaultType::sequence;
+				default_value = "";
 			} else if (default_value.length() > 2 && default_value[0] == '\'') {
 				default_value = unescape_value(default_value.substr(1, default_value.rfind('\'') - 1));
 			}

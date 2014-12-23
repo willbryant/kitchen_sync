@@ -57,4 +57,14 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA,
                    [{"tables" => [defaultstbl_def]}]
   end
+
+  test_each "describes serial/auto_increment sequence columns" do
+    clear_schema
+    create_autotbl
+    send_handshake_commands
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA,
+                   [{"tables" => [autotbl_def]}]
+  end
 end

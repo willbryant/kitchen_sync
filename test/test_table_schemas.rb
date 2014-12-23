@@ -209,4 +209,26 @@ SQL
       "primary_key_columns" => [0],
       "keys" => [] }
   end
+
+  def create_autotbl
+    sequence_column_type = case @database_server
+    when 'mysql'      then 'INT NOT NULL AUTO_INCREMENT'
+    when 'postgresql' then 'SERIAL'
+    end
+    execute(<<-SQL)
+      CREATE TABLE autotbl (
+        inc #{sequence_column_type},
+        payload VARCHAR(10),
+        PRIMARY KEY(inc))
+SQL
+  end
+
+  def autotbl_def
+    { "name"    => "autotbl",
+      "columns" => [
+        {"name" => "inc",     "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false, "sequence" => ""},
+        {"name" => "payload", "column_type" => ColumnTypes::VCHR, "size" => 10}],
+      "primary_key_columns" => [0],
+      "keys" => [] }
+  end
 end
