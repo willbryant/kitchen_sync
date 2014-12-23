@@ -90,6 +90,9 @@ SQL
         floatfield #{@database_server == 'postgresql' ? 'real' : 'FLOAT'},
         doublefield DOUBLE PRECISION,
         decimalfield DECIMAL(10, 4),
+        vchrfield VARCHAR(9),
+        fchrfield CHAR(9),
+        textfield TEXT#{'(268435456)' if @database_server == 'mysql'},
         blobfield #{@database_server == 'postgresql' ? 'bytea' : 'BLOB'}#{'(268435456)' if @database_server == 'mysql'},
         PRIMARY KEY(pri))
 SQL
@@ -106,6 +109,9 @@ SQL
         {"name" => "floatfield",    "column_type" => ColumnTypes::REAL, "size" => 4},
         {"name" => "doublefield",   "column_type" => ColumnTypes::REAL, "size" => 8},
         {"name" => "decimalfield",  "column_type" => ColumnTypes::DECI, "size" => 10, "scale" => 4},
+        {"name" => "vchrfield",     "column_type" => ColumnTypes::VCHR, "size" => 9},
+        {"name" => "fchrfield",     "column_type" => ColumnTypes::FCHR, "size" => 9},
+        {"name" => "textfield",     "column_type" => ColumnTypes::TEXT},
         {"name" => "blobfield",     "column_type" => ColumnTypes::BLOB}],
       "primary_key_columns" => [0],
       "keys" => [] }

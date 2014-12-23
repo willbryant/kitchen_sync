@@ -15,9 +15,9 @@ class ColumnTypesToTest < KitchenSync::EndpointTestCase
     execute "ALTER TABLE misctbl DROP column timefield, DROP column floatfield, DROP column doublefield, DROP column decimalfield"
     trimmed_misctbl_def = misctbl_def.merge("columns" => misctbl_def["columns"].reject {|column| %w(timefield floatfield doublefield decimalfield).include?(column["name"])})
 
-    execute "INSERT INTO misctbl VALUES (-21, true, '2099-12-31', '2014-04-13 01:02:03', 'test')" # insert the first row but not the second
-    @rows = [[-21,  true, Date.parse('2099-12-31'), Time.parse('2014-04-13 01:02:03'), 'test'],
-             [ 42, false, Date.parse('1900-01-01'), Time.parse('1970-02-03 23:59:59'), "binary\001test"]]
+    execute "INSERT INTO misctbl VALUES (-21, true, '2099-12-31', '2014-04-13 01:02:03', 'vartext', 'fixedtext', 'sometext', 'test')" # insert the first row but not the second
+    @rows = [[-21,  true, Date.parse('2099-12-31'), Time.parse('2014-04-13 01:02:03'), 'vartext', 'fixedtext', 'sometext', 'test'],
+             [ 42, false, Date.parse('1900-01-01'), Time.parse('1970-02-03 23:59:59'), 'vartext', 'fixedtext', 'sometext', "binary\001test"]]
     @keys = @rows.collect {|row| [row[0]]}
 
     expect_handshake_commands
