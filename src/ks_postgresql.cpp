@@ -348,13 +348,13 @@ string PostgreSQLClient::column_type(const Column &column) {
 		return result;
 
 	} else if (column.column_type == ColumnTypes::DATE) {
-		return "date without time zone";
+		return "date";
 
 	} else if (column.column_type == ColumnTypes::TIME) {
 		return "time without time zone";
 
 	} else if (column.column_type == ColumnTypes::DTTM) {
-		return "datetime without time zone";
+		return "timestamp without time zone";
 
 	} else {
 		throw runtime_error("Don't know how to express column type of " + column.name + " (" + column.column_type + ")");

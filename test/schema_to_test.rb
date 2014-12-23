@@ -155,6 +155,17 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   end
 
 
+  test_each "can create all supported types of columns" do
+    clear_schema
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command Commands::SCHEMA, "tables" => [misctbl_def]
+    read_command
+    assert_equal %w(misctbl), connection.tables
+  end
+
+
   test_each "doesn't complain about a missing table before other tables if told to ignore the table, and doesn't ask for its data" do
     program_args << 'footbl'
     clear_schema
