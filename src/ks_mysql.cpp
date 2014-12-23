@@ -141,6 +141,7 @@ public:
 	void commit_transaction();
 	void rollback_transaction();
 	void populate_database_schema(Database &database);
+	void convert_unsupported_database_schema(Database &database);
 	string escape_value(const string &value);
 	string column_type(const Column &column);
 	string column_default(const Table &table, const Column &column);
@@ -291,6 +292,10 @@ string MySQLClient::escape_value(const string &value) {
 	size_t result_length = mysql_real_escape_string(&mysql, (char*)result.data(), value.c_str(), value.size());
 	result.resize(result_length);
 	return result;
+}
+
+void MySQLClient::convert_unsupported_database_schema(Database &database) {
+	// nothing yet
 }
 
 string MySQLClient::column_type(const Column &column) {

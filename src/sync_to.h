@@ -151,6 +151,7 @@ struct SyncToWorker {
 		if (leader) {
 			send_command(output, Commands::SCHEMA);
 			read_expected_command(input, Commands::SCHEMA, database);
+			client.convert_unsupported_database_schema(database);
 			filter_tables(database.tables);
 		}
 	}

@@ -151,6 +151,7 @@ public:
 	void commit_transaction();
 	void rollback_transaction();
 	void populate_database_schema(Database &database);
+	void convert_unsupported_database_schema(Database &database);
 	string escape_value(const string &value);
 	string column_type(const Column &column);
 	string column_sequence_name(const Table &table, const Column &column);
@@ -295,6 +296,34 @@ string PostgreSQLClient::escape_value(const string &value) {
 	return result;
 }
 
+void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
+	for (Table &table : database.tables) {
+		for (Column &column : table.columns) {
+			if (column.column_type == ColumnTypes::UINT) {
+				// postgresql doesn't support unsigned columns; to make migration from databases that do
+				// easier, we don't reject unsigned columns, we just convert them to the signed equivalent
+				// and rely on it raising if we try to insert an invalid value
+				column.column_type = ColumnTypes::SINT;
+			}
+
+			if (column.column_type == ColumnTypes::SINT && column.size == 1) {
+				// not used by postgresql; smallint is the nearest equivalent
+				column.size = 2;
+			}
+
+			if (column.column_type == ColumnTypes::SINT && column.size == 3) {
+				// not used by postgresql; integer is the nearest equivalent
+				column.size = 4;
+			}
+
+			if (column.column_type == ColumnTypes::TEXT || column.column_type == ColumnTypes::BLOB) {
+				// postgresql doesn't have different sized TEXT/BLOB columns, they're all equivalent to mysql's biggest type
+				column.size = 0;
+			}
+		}
+	}
+}
+
 string PostgreSQLClient::column_type(const Column &column) {
 	if (column.column_type == ColumnTypes::BLOB) {
 		return "bytea";
@@ -317,24 +346,20 @@ string PostgreSQLClient::column_type(const Column &column) {
 	} else if (column.column_type == ColumnTypes::BOOL) {
 		return "boolean";
 
-	} else if (column.column_type == ColumnTypes::SINT || column.column_type == ColumnTypes::UINT) {
+	} else if (column.column_type == ColumnTypes::SINT) {
 		switch (column.size) {
-			case 1: // not used by postgresql; smallint is the nearest equivalent
 			case 2:
 				return "smallint";
-				break;
 
-			case 3: // not used by postgresql; integer is the nearest equivalent
 			case 4:
 				return "integer";
-				break;
+
+			case 8:
+				return "bigint";
 
 			default:
-				return "bigint";
+				throw runtime_error("Don't know how to create integer column " + column.name + " of size " + to_string(column.size));
 		}
-
-		// postgresql doesn't support unsigned columns; to make migration from databases that do
-		// easier, we don't reject unsigned columns, we just convert them to the signed equivalent
 
 	} else if (column.column_type == ColumnTypes::REAL) {
 		return (column.size == 4 ? "float" : "double precision");
