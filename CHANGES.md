@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.23
+----
+* Implement auto-creation of postgresql sequences for serial columns.
+* Numerous fixes to postgresql table creation and cross-compatibility with mysql.
+
 0.22
 ----
 * Set or clear column defaults (if `--alter` is used) without recreating the entire table.
