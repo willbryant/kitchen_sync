@@ -218,7 +218,7 @@ SQL
     execute(<<-SQL)
       CREATE TABLE autotbl (
         inc #{sequence_column_type},
-        payload VARCHAR(10),
+        payload INT NOT NULL,
         PRIMARY KEY(inc))
 SQL
   end
@@ -226,8 +226,8 @@ SQL
   def autotbl_def
     { "name"    => "autotbl",
       "columns" => [
-        {"name" => "inc",     "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false, "sequence" => ""},
-        {"name" => "payload", "column_type" => ColumnTypes::VCHR, "size" => 10}],
+        {"name" => "inc",     "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false, "sequence" => ""},
+        {"name" => "payload", "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false}],
       "primary_key_columns" => [0],
       "keys" => [] }
   end

@@ -453,6 +453,17 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   end
 
 
+  test_each "creates missing tables with sequence primary key columns" do
+    clear_schema
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command Commands::SCHEMA, "tables" => [autotbl_def]
+    read_command
+    assert_equal({"inc" => true, "payload" => false}, connection.table_column_sequences("autotbl"))
+  end
+
+
   test_each "recreates the table if the primary key column order doesn't match" do
     clear_schema
     create_secondtbl

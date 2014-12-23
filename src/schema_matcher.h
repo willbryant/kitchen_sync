@@ -49,6 +49,66 @@ struct CreateKeyStatements {
 	}
 };
 
+// sequences - for cross-compatibility, these are only supported for sequence columns
+
+template <typename DatabaseClient, bool = is_base_of<SequenceColumns, DatabaseClient>::value>
+struct CreateTableSequencesStatements {
+	static void add_to(Statements &statements, DatabaseClient &client, const Table &table) {
+		/* nothing required */
+	}
+};
+
+template <typename DatabaseClient>
+struct CreateTableSequencesStatements <DatabaseClient, true> {
+	static void add_to(Statements &statements, DatabaseClient &client, const Table &table) {
+		for (const Column &column : table.columns) {
+			if (column.default_type == DefaultType::sequence) {
+				string result("DROP SEQUENCE IF EXISTS ");
+				result += client.quote_identifiers_with();
+				result += client.column_sequence_name(table, column);
+				result += client.quote_identifiers_with();
+				statements.push_back(result);
+
+				result = "CREATE SEQUENCE ";
+				result += client.quote_identifiers_with();
+				result += client.column_sequence_name(table, column);
+				result += client.quote_identifiers_with();
+				statements.push_back(result);
+			}
+		}
+	}
+};
+
+template <typename DatabaseClient, bool = is_base_of<SequenceColumns, DatabaseClient>::value>
+struct OwnTableSequencesStatements {
+	static void add_to(Statements &statements, DatabaseClient &client, const Table &table) {
+		/* nothing required */
+	}
+};
+
+template <typename DatabaseClient>
+struct OwnTableSequencesStatements <DatabaseClient, true> {
+	static void add_to(Statements &statements, DatabaseClient &client, const Table &table) {
+		for (const Column &column : table.columns) {
+			if (column.default_type == DefaultType::sequence) {
+				string result("ALTER SEQUENCE ");
+				result += client.quote_identifiers_with();
+				result += client.column_sequence_name(table, column);
+				result += client.quote_identifiers_with();
+				result += " OWNED BY ";
+				result += client.quote_identifiers_with();
+				result += table.name;
+				result += client.quote_identifiers_with();
+				result += '.';
+				result += client.quote_identifiers_with();
+				result += column.name;
+				result += client.quote_identifiers_with();
+				statements.push_back(result);
+			}
+		}
+	}
+};
+
 // tables
 template <typename DatabaseClient>
 struct DropTableStatements {
@@ -60,11 +120,13 @@ struct DropTableStatements {
 template <typename DatabaseClient>
 struct CreateTableStatements {
 	static void add_to(Statements &statements, DatabaseClient &client, const Table &table) {
+		CreateTableSequencesStatements<DatabaseClient>::add_to(statements, client, table);
+
 		string result("CREATE TABLE ");
 		result += table.name;
 		for (Columns::const_iterator column = table.columns.begin(); column != table.columns.end(); ++column) {
 			result += (column == table.columns.begin() ? " (\n  " : ",\n  ");
-			result += client.column_definition(*column);
+			result += client.column_definition(table, *column);
 		}
 		result += ",\n  PRIMARY KEY";
 		result += columns_list(client, table.columns, table.primary_key_columns);
@@ -74,6 +136,8 @@ struct CreateTableStatements {
 		for (const Key &key : table.keys) {
 			CreateKeyStatements<DatabaseClient>::add_to(statements, client, table, key);
 		}
+
+		OwnTableSequencesStatements<DatabaseClient>::add_to(statements, client, table);
 	}
 };
 
@@ -89,13 +153,13 @@ struct AlterTableStatements {
 
 template <typename DatabaseClient>
 struct AlterColumnDefaultClauses {
-	static void add_to(string &alter_table_clauses, DatabaseClient &client, const Column &from_column, Column &to_column) {
+	static void add_to(string &alter_table_clauses, DatabaseClient &client, const Table &table, const Column &from_column, Column &to_column) {
 		alter_table_clauses += " ALTER ";
 		alter_table_clauses += client.quote_identifiers_with();
 		alter_table_clauses += to_column.name;
 		alter_table_clauses += client.quote_identifiers_with();
 		alter_table_clauses += " SET ";
-		alter_table_clauses += client.column_default(from_column);
+		alter_table_clauses += client.column_default(table, from_column);
 		to_column.default_type  = from_column.default_type;
 		to_column.default_value = from_column.default_value;
 	}
@@ -214,7 +278,7 @@ struct SchemaMatcher {
 				if (!alter_table_clauses.empty()) {
 					alter_table_clauses += ",";
 				}
-				AlterColumnDefaultClauses<DatabaseClient>::add_to(alter_table_clauses, client, *from_column, *to_column);
+				AlterColumnDefaultClauses<DatabaseClient>::add_to(alter_table_clauses, client, from_table, *from_column, *to_column);
 			}
 			++to_column;
 			++from_column;

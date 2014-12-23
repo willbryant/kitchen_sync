@@ -143,8 +143,8 @@ public:
 	void populate_database_schema(Database &database);
 	string escape_value(const string &value);
 	string column_type(const Column &column);
-	string column_default(const Column &column);
-	string column_definition(const Column &column);
+	string column_default(const Table &table, const Column &column);
+	string column_definition(const Table &table, const Column &column);
 
 	inline char quote_identifiers_with() const { return '`'; }
 
@@ -400,7 +400,7 @@ string MySQLClient::column_type(const Column &column) {
 	}
 }
 
-string MySQLClient::column_default(const Column &column) {
+string MySQLClient::column_default(const Table &table, const Column &column) {
 	switch (column.default_type) {
 		case DefaultType::no_default:
 			return " DEFAULT NULL";
@@ -429,7 +429,7 @@ string MySQLClient::column_default(const Column &column) {
 	}
 }
 
-string MySQLClient::column_definition(const Column &column) {
+string MySQLClient::column_definition(const Table &table, const Column &column) {
 	string result;
 	result += quote_identifiers_with();
 	result += column.name;
@@ -443,7 +443,7 @@ string MySQLClient::column_definition(const Column &column) {
 	}
 
 	if (column.default_type) {
-		result += column_default(column);
+		result += column_default(table, column);
 	}
 
 	return result;

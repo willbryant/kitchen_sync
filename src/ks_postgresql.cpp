@@ -119,7 +119,7 @@ string PostgreSQLRow::decoded_byte_string_at(int column_number) const {
 }
 
 
-class PostgreSQLClient: public GlobalKeys {
+class PostgreSQLClient: public GlobalKeys, public SequenceColumns {
 public:
 	typedef PostgreSQLRow RowType;
 
@@ -153,8 +153,9 @@ public:
 	void populate_database_schema(Database &database);
 	string escape_value(const string &value);
 	string column_type(const Column &column);
-	string column_default(const Column &column);
-	string column_definition(const Column &column);
+	string column_sequence_name(const Table &table, const Column &column);
+	string column_default(const Table &table, const Column &column);
+	string column_definition(const Table &table, const Column &column);
 
 	inline char quote_identifiers_with() const { return '"'; }
 
@@ -360,7 +361,12 @@ string PostgreSQLClient::column_type(const Column &column) {
 	}
 }
 
-string PostgreSQLClient::column_default(const Column &column) {
+string PostgreSQLClient::column_sequence_name(const Table &table, const Column &column) {
+	// name to match what postgresql creates for serial columns
+	return table.name + "_" + column.name + "_seq";
+}
+
+string PostgreSQLClient::column_default(const Table &table, const Column &column) {
 	string result(" DEFAULT ");
 
 	switch (column.default_type) {
@@ -370,8 +376,8 @@ string PostgreSQLClient::column_default(const Column &column) {
 
 		case DefaultType::sequence:
 			result += " nextval('";
-			result += column.name;
-			result += "_seq'::regclass)";
+			result += escape_value(column_sequence_name(table, column));
+			result += "'::regclass)";
 			break;
 
 		case DefaultType::default_value:
@@ -395,7 +401,7 @@ string PostgreSQLClient::column_default(const Column &column) {
 	return result;
 }
 
-string PostgreSQLClient::column_definition(const Column &column) {
+string PostgreSQLClient::column_definition(const Table &table, const Column &column) {
 	string result;
 	result += quote_identifiers_with();
 	result += column.name;
@@ -409,7 +415,7 @@ string PostgreSQLClient::column_definition(const Column &column) {
 	}
 
 	if (column.default_type) {
-		result += column_default(column);
+		result += column_default(table, column);
 	}
 
 	return result;

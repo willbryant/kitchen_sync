@@ -7,4 +7,7 @@ struct SupportsReplace {
 struct GlobalKeys {
 };
 
+struct SequenceColumns {
+};
+
 #endif

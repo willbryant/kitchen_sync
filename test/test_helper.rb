@@ -147,6 +147,10 @@ class PGconn
     SQL
   end
 
+  def table_column_sequences(table_name)
+    table_column_defaults(table_name).collect.with_object({}) {|(column, default), results| results[column] = !!(default =~ /^nextval\('\w+_seq'::regclass\)/)}
+  end
+
   def quote_ident(name)
     self.class.quote_ident(name)
   end
@@ -191,6 +195,10 @@ class Mysql2::Client
 
   def table_column_defaults(table_name)
     query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = row["Default"]}
+  end
+
+  def table_column_sequences(table_name)
+    query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = !!(row["Extra"] =~ /auto_increment/)}
   end
 
   def quote_ident(name)
