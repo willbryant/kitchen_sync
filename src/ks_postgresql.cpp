@@ -369,7 +369,7 @@ string PostgreSQLClient::column_type(const Column &column) {
 		}
 
 	} else if (column.column_type == ColumnTypes::REAL) {
-		return (column.size == 4 ? "float" : "double precision");
+		return (column.size == 4 ? "real" : "double precision");
 
 	} else if (column.column_type == ColumnTypes::DECI) {
 		string result("numeric(");
