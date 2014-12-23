@@ -143,6 +143,7 @@ public:
 	void populate_database_schema(Database &database);
 	void convert_unsupported_database_schema(Database &database);
 	string escape_value(const string &value);
+	inline string escape_column_value(const Column &column, const string &value) { return escape_value(value); }
 	string column_type(const Column &column);
 	string column_default(const Table &table, const Column &column);
 	string column_definition(const Table &table, const Column &column);
@@ -423,7 +424,7 @@ string MySQLClient::column_default(const Table &table, const Column &column) {
 				result += column.default_value;
 			} else {
 				result += "'";
-				result += escape_value(column.default_value);
+				result += escape_column_value(column, column.default_value);
 				result += "'";
 			}
 			return result;

@@ -153,6 +153,7 @@ public:
 	void populate_database_schema(Database &database);
 	void convert_unsupported_database_schema(Database &database);
 	string escape_value(const string &value);
+	string escape_column_value(const Column &column, const string &value);
 	string column_type(const Column &column);
 	string column_sequence_name(const Table &table, const Column &column);
 	string column_default(const Table &table, const Column &column);
@@ -296,6 +297,20 @@ string PostgreSQLClient::escape_value(const string &value) {
 	return result;
 }
 
+string PostgreSQLClient::escape_column_value(const Column &column, const string &value) {
+	if (column.column_type != ColumnTypes::BLOB) {
+		return escape_value(value);
+	}
+
+	size_t encoded_length;
+	const unsigned char *encoded = PQescapeByteaConn(conn, (const unsigned char *)value.c_str(), value.size(), &encoded_length);
+	string result(encoded, encoded + encoded_length);
+	PQfreemem((void *)encoded);
+
+	// bizarrely, the bytea parser is an extra level on top of the normal escaping, so you still need the latter after PQescapeByteaConn, even though PQunescapeBytea doesn't do the reverse
+	return escape_value(result);
+}
+
 void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 	for (Table &table : database.tables) {
 		for (Column &column : table.columns) {
@@ -421,7 +436,7 @@ string PostgreSQLClient::column_default(const Table &table, const Column &column
 				result += column.default_value;
 			} else {
 				result += "'";
-				result += escape_value(column.default_value);
+				result += escape_column_value(column, column.default_value);
 				result += "'";
 			}
 			break;

@@ -31,13 +31,13 @@ struct RowLoader {
 };
 
 template <typename DatabaseClient>
-void append_row_tuple(DatabaseClient &client, BaseSQL &sql, const PackedRow &row) {
+void append_row_tuple(DatabaseClient &client, const Columns &columns, BaseSQL &sql, const PackedRow &row) {
 	if (sql.have_content()) sql += "),\n(";
 	for (size_t n = 0; n < row.size(); n++) {
 		if (n > 0) {
 			sql += ',';
 		}
-		sql += encode(client, row[n]);
+		sql += encode(client, columns[n], row[n]);
 	}
 }
 
@@ -46,6 +46,7 @@ template <typename DatabaseClient, bool = is_base_of<SupportsReplace, DatabaseCl
 struct Replacer {
 	Replacer(DatabaseClient &client, const Table &table):
 		client(client),
+		columns(table.columns),
 		insert_sql("INSERT INTO " + table.name + " VALUES\n(", ")"),
 		primary_key_clearer(client, table, table.primary_key_columns) {
 		// set up the clearers we'll need to insert rows - these clear any conflicting values from later in the same table
@@ -73,7 +74,7 @@ struct Replacer {
 		}
 
 		// we can then batch up a big INSERT statement
-		append_row_tuple(client, insert_sql, row);
+		append_row_tuple(client, columns, insert_sql, row);
 	}
 
 	inline void apply() {
@@ -87,6 +88,7 @@ struct Replacer {
 	}
 
 	DatabaseClient &client;
+	const Columns &columns;
 	BaseSQL insert_sql;
 	UniqueKeyClearer<DatabaseClient> primary_key_clearer;
 	vector< UniqueKeyClearer<DatabaseClient> > unique_keys_clearers;
@@ -97,12 +99,13 @@ template <typename DatabaseClient>
 struct Replacer<DatabaseClient, true> {
 	Replacer(DatabaseClient &client, const Table &table):
 		client(client),
+		columns(table.columns),
 		insert_sql("REPLACE INTO " + table.name + " VALUES\n(", ")"),
 		primary_key_clearer(client, table, table.primary_key_columns) {
 	}
 
 	void row(const PackedRow &row, bool _exists, bool _end_of_table) {
-		append_row_tuple(client, insert_sql, row);
+		append_row_tuple(client, columns, insert_sql, row);
 	}
 
 	inline void apply() {
@@ -115,6 +118,7 @@ struct Replacer<DatabaseClient, true> {
 	}
 
 	DatabaseClient &client;
+	const Columns &columns;
 	BaseSQL insert_sql;
 	UniqueKeyClearer<DatabaseClient> primary_key_clearer;
 };
@@ -124,7 +128,6 @@ struct TableRowApplier {
 	TableRowApplier(DatabaseClient &client, const Table &table):
 		client(client),
 		table(table),
-		primary_key_columns(columns_list(client, table.columns, table.primary_key_columns)),
 		replacer(client, table),
 		rows_changed(0) {
 	}
@@ -208,12 +211,11 @@ struct TableRowApplier {
 	}
 
 	void delete_range(const ColumnValues &matched_up_to_key, const ColumnValues &last_not_matching_key) {
-		client.execute("DELETE FROM " + table.name + where_sql(client, primary_key_columns, matched_up_to_key, last_not_matching_key));
+		client.execute("DELETE FROM " + table.name + where_sql(client, table, matched_up_to_key, last_not_matching_key));
 	}
 
 	DatabaseClient &client;
 	const Table &table;
-	string primary_key_columns;
 	Replacer<DatabaseClient> replacer;
 	size_t rows_changed;
 };

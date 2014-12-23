@@ -4,7 +4,7 @@
 #include "message_pack/copy_packed.h"
 
 template <typename DatabaseClient>
-string encode(DatabaseClient &client, const PackedValue &value) {
+string encode(DatabaseClient &client, const Column &column, const PackedValue &value) {
 	if (value.is_nil())		return "NULL";
 	if (value.is_false())	return "false";
 	if (value.is_true())	return "true";
@@ -50,7 +50,7 @@ string encode(DatabaseClient &client, const PackedValue &value) {
 			return to_string(unpacker.template next<int64_t>());
 
 		default:
-			return "'" + client.escape_value(unpacker.template next<string>()) + "'";
+			return "'" + client.escape_column_value(column, unpacker.template next<string>()) + "'";
 	}
 }
 

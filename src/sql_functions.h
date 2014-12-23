@@ -30,36 +30,38 @@ string columns_list(DatabaseClient &client, const Columns &columns, const Column
 }
 
 template <typename DatabaseClient>
-string values_list(DatabaseClient &client, const ColumnValues &values) {
+string values_list(DatabaseClient &client, const Table &table, const ColumnValues &values) {
 	if (values.empty()) {
 		return "(NULL)";
 	}
 
 	string result("(");
-	result += encode(client, values.front());
-	for (ColumnValues::const_iterator value = values.begin() + 1; value != values.end(); ++value) {
-		result += ',';
-		result += encode(client, *value);
+	for (size_t n = 0; n < table.primary_key_columns.size(); n++) {
+		if (n > 0) {
+			result += ',';
+		}
+		result += encode(client, table.columns[table.primary_key_columns[n]], values[n]);
 	}
 	result += ")";
 	return result;
 }
 
 template <typename DatabaseClient>
-string where_sql(DatabaseClient &client, const string &key_columns, const ColumnValues &prev_key, const ColumnValues &last_key, const string &extra_where_conditions = "", const char *prefix = " WHERE ") {
+string where_sql(DatabaseClient &client, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &extra_where_conditions = "", const char *prefix = " WHERE ") {
+	string key_columns(columns_list(client, table.columns, table.primary_key_columns));
 	string result;
 	if (!prev_key.empty()) {
 		result += prefix;
 		result += key_columns;
 		result += " > ";
-		result += values_list(client, prev_key);
+		result += values_list(client, table, prev_key);
 		prefix = " AND ";
 	}
 	if (!last_key.empty()) {
 		result += prefix;
 		result += key_columns;
 		result += " <= ";
-		result += values_list(client, last_key);
+		result += values_list(client, table, last_key);
 		prefix = " AND ";
 	}
 	if (!extra_where_conditions.empty()) {
@@ -95,7 +97,7 @@ string retrieve_rows_sql(DatabaseClient &client, const Table &table, const Colum
 	result += select_columns_sql(client, table);
 	result += " FROM ";
 	result += table.name;
-	result += where_sql(client, key_columns, prev_key, last_key, table.where_conditions);
+	result += where_sql(client, table, prev_key, last_key, table.where_conditions);
 	result += " ORDER BY " + key_columns.substr(1, key_columns.size() - 2);
 	if (row_count != NO_ROW_COUNT_LIMIT) {
 		result += " LIMIT " + to_string(row_count);
@@ -105,11 +107,9 @@ string retrieve_rows_sql(DatabaseClient &client, const Table &table, const Colum
 
 template <typename DatabaseClient>
 string count_rows_sql(DatabaseClient &client, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
-	string key_columns(columns_list(client, table.columns, table.primary_key_columns));
-
 	string result("SELECT COUNT(*) FROM ");
 	result += table.name;
-	result += where_sql(client, key_columns, prev_key, last_key, table.where_conditions);
+	result += where_sql(client, table, prev_key, last_key, table.where_conditions);
 	return result;
 }
 

@@ -223,6 +223,31 @@ class SyncToTest < KitchenSync::EndpointTestCase
                  query("SELECT * FROM texttbl ORDER BY pri")
   end
 
+  test_each "handles requesting and saving arbitrary binary values in BLOB fields" do
+    clear_schema
+    create_texttbl
+
+    bytes = (0..255).to_a.pack("C*")
+    bytes = bytes.reverse + bytes
+    row = [1] + [nil]*(misctbl_def["columns"].size - 2) + [bytes]
+    @rows = [row]
+    @keys = @rows.collect {|row| [row[0]]}
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command   Commands::SCHEMA, "tables" => [misctbl_def]
+    expect_command Commands::OPEN, ["misctbl"]
+    send_command   Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])
+    expect_command Commands::ROWS, [[], []]
+    send_results   Commands::ROWS,
+                   [[], []],
+                   @rows[0]
+    expect_command Commands::QUIT
+
+    assert_equal @rows,
+                 query("SELECT * FROM misctbl ORDER BY pri")
+  end
+
   test_each "handles reusing unique values that were previously on later rows" do
     setup_with_footbl
     execute "CREATE UNIQUE INDEX unique_key ON footbl (col3)"
