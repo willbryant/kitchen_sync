@@ -371,11 +371,11 @@ string PostgreSQLClient::column_default(const Table &table, const Column &column
 
 	switch (column.default_type) {
 		case DefaultType::no_default:
-			result += " NULL";
+			result += "NULL";
 			break;
 
 		case DefaultType::sequence:
-			result += " nextval('";
+			result += "nextval('";
 			result += escape_value(column_sequence_name(table, column));
 			result += "'::regclass)";
 			break;
