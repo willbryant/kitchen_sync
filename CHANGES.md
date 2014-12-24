@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.24
+----
+* Implement bytea encoding for postgresql.
+
 0.23
 ----
 * Implement auto-creation of postgresql sequences for serial columns.
