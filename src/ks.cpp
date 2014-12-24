@@ -16,6 +16,17 @@ int help(options_description desc) {
     return 1;
 }
 
+void be_christmassy() {
+	cout << "            #" << endl
+	     << "           ##o" << endl
+	     << "          o#*##" << endl
+	     << "         ####o##" << endl
+	     << "        #*#o####o" << endl
+	     << "       #####o##*##" << endl
+	     << "      ####o###*####" << endl
+	     << "           | |" << endl;
+}
+
 int main(int argc, char *argv[]) {
 	try
 	{
@@ -115,6 +126,7 @@ int main(int argc, char *argv[]) {
 		
 		if (success) {
 			cout << "Finished Kitchen Syncing." << endl;
+			be_christmassy();
 			return 0;
 		} else {
 			cout << "Kitchen Syncing failed." << endl;
