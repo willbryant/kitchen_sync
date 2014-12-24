@@ -234,7 +234,7 @@ PostgreSQLClient::~PostgreSQLClient() {
 void PostgreSQLClient::execute(const string &sql) {
     PostgreSQLRes res(PQexec(conn, sql.c_str()));
 
-    if (res.status() != PGRES_COMMAND_OK) {
+    if (res.status() != PGRES_COMMAND_OK && res.status() != PGRES_TUPLES_OK) {
 		throw runtime_error(PQerrorMessage(conn) + string("\n") + sql);
     }
 }
