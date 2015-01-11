@@ -126,7 +126,8 @@ int main(int argc, char *argv[]) {
 		
 		if (success) {
 			cout << "Finished Kitchen Syncing." << endl;
-			be_christmassy();
+			time_t t = time(NULL);
+			if (verbose && localtime(&t)->tm_mon == 11) be_christmassy();
 			return 0;
 		} else {
 			cout << "Kitchen Syncing failed." << endl;
