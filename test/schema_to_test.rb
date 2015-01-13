@@ -417,6 +417,20 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     assert_footbl_rows_present
   end
 
+  test_each "changes the column default if they need to be cleared on non-nullable columns, without recreating the table" do
+    clear_schema
+    create_footbl
+    insert_footbl_rows
+    execute("ALTER TABLE footbl ALTER col1 SET DEFAULT 42")
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command Commands::SCHEMA, "tables" => [footbl_def]
+    read_command
+    assert_equal({"col1" => nil, "another_col" => nil, "col3" => nil}, connection.table_column_defaults("footbl"))
+    assert_footbl_rows_present
+  end
+
   test_each "changes the column default if they need to be set, without recreating the table" do
     clear_schema
     create_footbl

@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.26
+----
+* Fix dropping defaults on non-nullable columns on mysql.
+
 0.25 - Christmas edition
 ----
 * Reset sequences after syncing table rows on postgresql.
