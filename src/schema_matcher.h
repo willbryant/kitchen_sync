@@ -158,8 +158,12 @@ struct AlterColumnDefaultClauses {
 		alter_table_clauses += client.quote_identifiers_with();
 		alter_table_clauses += to_column.name;
 		alter_table_clauses += client.quote_identifiers_with();
-		alter_table_clauses += " SET ";
-		alter_table_clauses += client.column_default(table, from_column);
+		if (from_column.default_type) {
+			alter_table_clauses += " SET ";
+			alter_table_clauses += client.column_default(table, from_column);
+		} else {
+			alter_table_clauses += " DROP DEFAULT";
+		}
 		to_column.default_type  = from_column.default_type;
 		to_column.default_value = from_column.default_value;
 	}
