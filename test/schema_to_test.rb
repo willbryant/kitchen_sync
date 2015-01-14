@@ -31,9 +31,13 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   end
 
   def assert_same_keys(table_def)
-    assert_equal table_def["keys"].collect {|key| key["name"]}, connection.table_keys(table_def["name"])
-    table_def["keys"].each {|key| assert_equal key["unique"], connection.table_keys_unique(table_def["name"])[key["name"]], "#{key["name"]} index should#{' not' unless key["unique"]} be unique"}
-    table_def["keys"].each {|key| assert_equal key["columns"], connection.table_keys_columns(table_def["name"])[key["name"]]}
+    table_name = table_def["name"]
+    assert_equal table_def["primary_key_columns"].collect {|index| table_def["columns"][index]["name"]},
+      connection.table_key_columns(table_name)[connection.table_primary_key_name(table_name)]
+
+    assert_equal table_def["keys"].collect {|key| key["name"]}, connection.table_keys(table_name)
+    table_def["keys"].each {|key| assert_equal key["unique"], connection.table_keys_unique(table_name)[key["name"]], "#{key["name"]} index should#{' not' unless key["unique"]} be unique"}
+    table_def["keys"].each {|key| assert_equal key["columns"].collect {|index| table_def["columns"][index]["name"]}, connection.table_key_columns(table_name)[key["name"]]}
   end
 
   test_each "accepts an empty list of tables on an empty database" do
@@ -377,6 +381,53 @@ SQL
     read_command
     assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_footbl_rows_present
+    assert_same_keys(footbl_def)
+  end
+
+  test_each "updates or recreates keys that included extra columns when they are removed, without recreating the table" do
+    clear_schema
+    execute(<<-SQL)
+      CREATE TABLE secondtbl (
+        tri BIGINT,
+        pri1 INT NOT NULL,
+        pri2 CHAR(2) NOT NULL,
+        sec INT,
+        removeme INT,
+        PRIMARY KEY(pri2, pri1))
+SQL
+    execute(<<-SQL)
+      CREATE INDEX removeidx ON secondtbl (removeme)
+SQL
+    execute(<<-SQL)
+      CREATE INDEX secidx ON secondtbl (sec, removeme)
+SQL
+    insert_secondtbl_rows
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command Commands::SCHEMA, "tables" => [secondtbl_def]
+    read_command
+    assert_equal secondtbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("secondtbl")
+    assert_secondtbl_rows_present
+    assert_same_keys(secondtbl_def)
+  end
+
+  test_each "recreates tables if needed to update the primary key for dropped columns" do
+    clear_schema
+    execute(<<-SQL)
+      CREATE TABLE footbl (
+        col1 INT NOT NULL,
+        another_col SMALLINT,
+        col3 VARCHAR(10),
+        removeme INT NOT NULL,
+        PRIMARY KEY(col1, removeme))
+SQL
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command Commands::SCHEMA, "tables" => [footbl_def]
+    read_command
+    assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_same_keys(footbl_def)
   end
 

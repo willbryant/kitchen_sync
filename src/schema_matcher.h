@@ -183,7 +183,7 @@ struct UpdateKeyForDroppedColumn {
 				++column;
 			}
 		}
-		return true; // key successfully updated
+		return (!key_columns.empty()); // key successfully updated, unless it's now empty, in which case the key will be dropped by the database server
 	}
 };
 
