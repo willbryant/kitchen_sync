@@ -10,4 +10,7 @@ struct GlobalKeys {
 struct SequenceColumns {
 };
 
+struct DropKeysWhenColumnsDropped {
+};
+
 #endif

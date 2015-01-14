@@ -119,7 +119,7 @@ string PostgreSQLRow::decoded_byte_string_at(int column_number) const {
 }
 
 
-class PostgreSQLClient: public GlobalKeys, public SequenceColumns {
+class PostgreSQLClient: public GlobalKeys, public SequenceColumns, public DropKeysWhenColumnsDropped {
 public:
 	typedef PostgreSQLRow RowType;
 

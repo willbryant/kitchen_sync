@@ -8,7 +8,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   end
 
   def insert_secondtbl_rows
-    execute "INSERT INTO secondtbl VALUES (2, 2349174, 'xy', 1), (9, 968116383, 'aa', NULL)"
+    execute "INSERT INTO secondtbl (tri, pri1, pri2, sec) VALUES (2, 2349174, 'xy', 1), (9, 968116383, 'aa', NULL)"
   end
 
   def assert_secondtbl_rows_present
@@ -18,7 +18,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   end
 
   def insert_footbl_rows
-    execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str'), (1001, 0, 'last')"
+    execute "INSERT INTO footbl (col1, another_col, col3) VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str'), (1001, 0, 'last')"
   end
 
   def assert_footbl_rows_present
@@ -28,6 +28,12 @@ class SchemaToTest < KitchenSync::EndpointTestCase
                   [8,     -1, "longer str"],
                   [1001,   0,       "last"]],
                  query("SELECT * FROM footbl ORDER BY col1")
+  end
+
+  def assert_same_keys(table_def)
+    assert_equal table_def["keys"].collect {|key| key["name"]}, connection.table_keys(table_def["name"])
+    table_def["keys"].each {|key| assert_equal key["unique"], connection.table_keys_unique(table_def["name"])[key["name"]], "#{key["name"]} index should#{' not' unless key["unique"]} be unique"}
+    table_def["keys"].each {|key| assert_equal key["columns"], connection.table_keys_columns(table_def["name"])[key["name"]]}
   end
 
   test_each "accepts an empty list of tables on an empty database" do
@@ -311,43 +317,67 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     assert_equal nil, connection.table_column_defaults("footbl")["another_col"]
   end
 
-  test_each "drops extra columns before other columns" do
+  test_each "drops extra columns before other columns without recreating the table" do
     clear_schema
-    create_footbl
-    # postgresql doesn't support BEFORE/AFTER so we do this test by changing the expected schema instead
+    execute(<<-SQL)
+      CREATE TABLE footbl (
+        removeme INT,
+        col1 INT NOT NULL,
+        another_col SMALLINT,
+        col3 VARCHAR(10),
+        PRIMARY KEY(col1))
+SQL
+    insert_footbl_rows
 
-    columns = footbl_def["columns"][1..-1]
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def.merge("columns" => columns)]
+    send_command Commands::SCHEMA, "tables" => [footbl_def]
     read_command
-    assert_equal columns.collect {|column| column["name"]}, connection.table_column_names("footbl")
+    assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
+    assert_footbl_rows_present
+    assert_same_keys(footbl_def)
   end
 
-  test_each "drops extra columns between other columns" do
+  test_each "drops extra columns between other columns without recreating the table" do
     clear_schema
-    create_footbl
-    # postgresql doesn't support BEFORE/AFTER so we do this test by changing the expected schema instead
+    execute(<<-SQL)
+      CREATE TABLE footbl (
+        col1 INT NOT NULL,
+        removeme INT,
+        another_col SMALLINT,
+        col3 VARCHAR(10),
+        PRIMARY KEY(col1))
+SQL
+    insert_footbl_rows
 
-    columns = footbl_def["columns"][0..0] + footbl_def["columns"][2..-1]
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def.merge("columns" => columns)]
+    send_command Commands::SCHEMA, "tables" => [footbl_def]
     read_command
-    assert_equal columns.collect {|column| column["name"]}, connection.table_column_names("footbl")
+    assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
+    assert_footbl_rows_present
+    assert_same_keys(footbl_def)
   end
 
-  test_each "drops extra columns after other columns" do
+  test_each "drops extra columns after other columns without recreating the table" do
     clear_schema
-    create_footbl
-    # postgresql doesn't support BEFORE/AFTER so we do this test by changing the expected schema instead
+    execute(<<-SQL)
+      CREATE TABLE footbl (
+        col1 INT NOT NULL,
+        another_col SMALLINT,
+        col3 VARCHAR(10),
+        removeme INT,
+        PRIMARY KEY(col1))
+SQL
+    insert_footbl_rows
 
-    columns = footbl_def["columns"][0..-2]
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def.merge("columns" => columns)]
+    send_command Commands::SCHEMA, "tables" => [footbl_def]
     read_command
-    assert_equal columns.collect {|column| column["name"]}, connection.table_column_names("footbl")
+    assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
+    assert_footbl_rows_present
+    assert_same_keys(footbl_def)
   end
 
   test_each "moves misordered columns" do

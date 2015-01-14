@@ -169,6 +169,64 @@ struct AlterColumnDefaultClauses {
 	}
 };
 
+template <typename DatabaseClient, bool = is_base_of<DropKeysWhenColumnsDropped, DatabaseClient>::value>
+struct UpdateKeyForDroppedColumn {
+	static bool update_key_columns(ColumnIndices &key_columns, size_t column_index) {
+		ColumnIndices::iterator column = key_columns.begin();
+		while (column != key_columns.end()) {
+			if (*column == column_index) {
+				column = key_columns.erase(column);
+			} else {
+				if (*column > column_index) {
+					--*column;
+				}
+				++column;
+			}
+		}
+		return true; // key successfully updated
+	}
+};
+
+template <typename DatabaseClient>
+struct UpdateKeyForDroppedColumn <DatabaseClient, true> {
+	static bool update_key_columns(ColumnIndices &key_columns, size_t column_index) {
+		ColumnIndices::iterator column = key_columns.begin();
+		while (column != key_columns.end()) {
+			if (*column == column_index) {
+				return false; // key will be dropped by the database server, not updated
+			} else {
+				if (*column > column_index) {
+					--*column;
+				}
+				++column;
+			}
+		}
+		return true; // key successfully updated
+	}
+};
+
+template <typename DatabaseClient>
+struct DropColumnClauses {
+	static void add_to(string &alter_table_clauses, DatabaseClient &client, Table &table, size_t column_index) {
+		alter_table_clauses += " DROP ";
+		alter_table_clauses += client.quote_identifiers_with();
+		alter_table_clauses += table.columns[column_index].name;
+		alter_table_clauses += client.quote_identifiers_with();
+
+		Keys::iterator key = table.keys.begin();
+		while (key != table.keys.end()) {
+			if (UpdateKeyForDroppedColumn<DatabaseClient>::update_key_columns(key->columns, column_index)) {
+				++key;
+			} else {
+				key = table.keys.erase(key);
+			}
+		}
+		if (!UpdateKeyForDroppedColumn<DatabaseClient>::update_key_columns(table.primary_key_columns, column_index)) {
+			table.primary_key_columns.clear(); // so the table compares not-equal and gets recreated
+		}
+	}
+};
+
 template <typename DatabaseClient>
 struct SchemaMatcher {
 	SchemaMatcher(DatabaseClient &client): client(client) {}
@@ -271,21 +329,26 @@ struct SchemaMatcher {
 	}
 
 	void match_column_defaults(Statements &alter_statements, const Table &from_table, Table &to_table) {
-		Columns::const_iterator from_column = from_table.columns.begin();
-		Columns::iterator         to_column =   to_table.columns.begin();
-
 		string alter_table_clauses;
 
-		while (to_column != to_table.columns.end() && from_column != from_table.columns.end() && to_column->name == from_column->name) {
-			if ((from_column->default_type != to_column->default_type || from_column->default_value != to_column->default_value) &&
-				(from_column->default_type != DefaultType::sequence)) {
-				if (!alter_table_clauses.empty()) {
-					alter_table_clauses += ",";
+		size_t column_index = 0; // we use indices here because we need to update the key column lists, which use indices rather than names
+		while (column_index < to_table.columns.size()) {
+			Columns::const_iterator from_column(from_table.columns.begin() + column_index);
+			Columns::iterator         to_column(  to_table.columns.begin() + column_index);
+
+			if (column_index >= from_table.columns.size() || to_column->name != from_column->name) {
+				DropColumnClauses<DatabaseClient>::add_to(alter_table_clauses, client, to_table, column_index);
+				to_table.columns.erase(to_column);
+			} else {
+				if ((from_column->default_type != to_column->default_type || from_column->default_value != to_column->default_value) &&
+					(from_column->default_type != DefaultType::sequence)) {
+					if (!alter_table_clauses.empty()) {
+						alter_table_clauses += ",";
+					}
+					AlterColumnDefaultClauses<DatabaseClient>::add_to(alter_table_clauses, client, to_table, *from_column, *to_column);
 				}
-				AlterColumnDefaultClauses<DatabaseClient>::add_to(alter_table_clauses, client, from_table, *from_column, *to_column);
+				++column_index;
 			}
-			++to_column;
-			++from_column;
 		}
 
 		if (!alter_table_clauses.empty()) {
