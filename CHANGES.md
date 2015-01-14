@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.27
+----
+* Drop extra columns (if `--alter` is used) without recreating the table.
+
 0.26
 ----
 * Fix dropping defaults on non-nullable columns on mysql.
