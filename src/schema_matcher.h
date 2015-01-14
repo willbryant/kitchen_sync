@@ -281,7 +281,7 @@ struct SchemaMatcher {
 		// so the table differs.  see if it's something we can fix without recreating the table.
 		Statements alter_statements;
 
-		match_column_defaults(alter_statements, from_table, to_table);
+		match_columns(alter_statements, from_table, to_table);
 		match_keys(alter_statements, from_table, to_table);
 
 		if (from_table == to_table) {
@@ -328,7 +328,7 @@ struct SchemaMatcher {
 		}
 	}
 
-	void match_column_defaults(Statements &alter_statements, const Table &from_table, Table &to_table) {
+	void match_columns(Statements &alter_statements, const Table &from_table, Table &to_table) {
 		string alter_table_clauses;
 
 		size_t column_index = 0; // we use indices here because we need to update the key column lists, which use indices rather than names
