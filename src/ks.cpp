@@ -8,6 +8,8 @@
 using namespace std;
 using namespace boost::program_options;
 
+#define VERY_VERBOSE 2
+
 const string this_program_name("ks");
 const int to_descriptor_list_start = 8; // arbitrary; when the program starts we expect only 0, 1, and 2 to be in use, and we only need a couple of temporaries.  getdtablesize() is guaranteed to be at least 20, which is not much!
 
@@ -102,6 +104,16 @@ int main(int argc, char *argv[]) {
 									from_binary.c_str(), "from", from.host.c_str(), from.port.c_str(), from.database.c_str(), from.username.c_str(), from.password.c_str(), set_from_variables.c_str(), filters.c_str(), nullptr };
 		const char *  to_args[] = {   to_binary.c_str(),   "to",   to.host.c_str(),   to.port.c_str(),   to.database.c_str(),   to.username.c_str(),   to.password.c_str(), set_to_variables.c_str(), ignore.c_str(), only.c_str(), workers_str.c_str(), startfd_str.c_str(), verbose_str.c_str(), snapshot ? "1" : "0", partial ? "1" : "0", rollback ? "1" : "0", alter ? "1" : "0", nullptr };
 		const char **applicable_from_args = (via.empty() ? from_args + 5 : from_args);
+
+		if (verbose >= VERY_VERBOSE) {
+			cout << "from command:";
+			for (const char **p = from_args; *p; p++) cout << ' ' << (**p ? *p : "''");
+			cout << endl;
+
+			cout << "to command:";
+			for (const char **p = to_args; *p; p++) cout << ' ' << (**p ? *p : "''");
+			cout << endl;
+		}
 
 		vector<pid_t> child_pids;
 		for (int worker = 0; worker < workers; ++worker) {
