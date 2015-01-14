@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.29
+----
+* Debugging: dump the worker arguments if run with `--debug`
+
 0.28
 ----
 * Drop extra columns (if `--alter` is used) without recreating the table.
