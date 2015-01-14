@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.27
+0.28
 ----
 * Drop extra columns (if `--alter` is used) without recreating the table.
 
