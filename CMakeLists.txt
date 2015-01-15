@@ -81,6 +81,7 @@ endif()
 # tests require ruby and various extra gems.  to run the suite, run
 #   cmake .. && CTEST_OUTPUT_ON_FAILURE=1 make test
 enable_testing()
+add_test(0_build_first ${CMAKE_BUILD_TOOL} all) # hack needed to cause 'make test' to build first, since you can't add a dependency to built-in targets :(
 add_test(protocol_version_test   env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/protocol_version_test.rb)
 add_test(snapshot_from_test      env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/snapshot_from_test.rb)
 add_test(schema_from_test        env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/schema_from_test.rb)
