@@ -1,15 +1,19 @@
 Changelog
 =========
 
+0.31
+----
+* Change column nullability (if `--alter` is used) without recreating the table.
+
 0.30
 ----
-* Look for PostgreSQL version 9.4 too, even if not included in your platform's cmake module
-* Fix dropping multiple columns on a table in one pass
-* Debugging: comment briefly on what part of tables doesn't match
+* Look for PostgreSQL version 9.4 too, even if not included in your platform's cmake module.
+* Fix dropping multiple columns on a table in one pass.
+* Debugging: comment briefly on what part of tables doesn't match.
 
 0.29
 ----
-* Debugging: dump the worker arguments if run with `--debug`
+* Debugging: dump the worker arguments if run with `--debug`.
 
 0.28
 ----
