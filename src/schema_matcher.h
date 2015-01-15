@@ -351,6 +351,9 @@ struct SchemaMatcher {
 			Columns::iterator         to_column(  to_table.columns.begin() + column_index);
 
 			if (column_index >= from_table.columns.size() || to_column->name != from_column->name) {
+				if (!alter_table_clauses.empty()) {
+					alter_table_clauses += ",";
+				}
 				DropColumnClauses<DatabaseClient>::add_to(alter_table_clauses, client, to_table, column_index);
 				to_table.columns.erase(to_column);
 			} else {

@@ -325,7 +325,8 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     clear_schema
     execute(<<-SQL)
       CREATE TABLE footbl (
-        removeme INT,
+        removeme1 INT,
+        removeme2 INT,
         col1 INT NOT NULL,
         another_col SMALLINT,
         col3 VARCHAR(10),
@@ -347,7 +348,8 @@ SQL
     execute(<<-SQL)
       CREATE TABLE footbl (
         col1 INT NOT NULL,
-        removeme INT,
+        removeme1 INT,
+        removeme2 INT,
         another_col SMALLINT,
         col3 VARCHAR(10),
         PRIMARY KEY(col1))
@@ -370,7 +372,8 @@ SQL
         col1 INT NOT NULL,
         another_col SMALLINT,
         col3 VARCHAR(10),
-        removeme INT,
+        removeme1 INT,
+        removeme2 INT,
         PRIMARY KEY(col1))
 SQL
     insert_footbl_rows
