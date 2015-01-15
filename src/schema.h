@@ -49,7 +49,7 @@ struct Column {
 	inline Column(const string &name, bool nullable, DefaultType default_type, string default_value, string column_type, size_t size = 0, size_t scale = 0): name(name), nullable(nullable), default_type(default_type), default_value(default_value), column_type(column_type), size(size), scale(scale) {}
 	inline Column(): nullable(true), size(0), scale(0), default_type(DefaultType::no_default) {}
 
-	inline bool operator==(const Column &other) const { return (name == other.name && nullable == other.nullable && column_type == other.column_type && size == other.size && scale == other.scale && default_type == other.default_type && default_value == other.default_value); }
+	inline bool operator ==(const Column &other) const { return (name == other.name && nullable == other.nullable && column_type == other.column_type && size == other.size && scale == other.scale && default_type == other.default_type && default_value == other.default_value); }
 	inline bool operator !=(const Column &other) const { return (!(*this == other)); }
 };
 
