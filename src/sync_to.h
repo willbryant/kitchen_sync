@@ -173,7 +173,9 @@ struct SyncToWorker {
 			if (alter) {
 				for (const string &statement : matcher.statements) {
 					if (verbose) cout << statement << endl;
-					client.execute(statement);
+					if (statement.substr(0, 2) != "--") { // stop postgresql printing the comments to stderr
+						client.execute(statement);
+					}
 				}
 			} else {
 				cerr << "The database schema doesn't match.  Use the --alter option if you would like to automatically apply the following schema changes:" << endl << endl;

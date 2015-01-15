@@ -289,10 +289,24 @@ struct SchemaMatcher {
 			statements.splice(statements.end(), alter_statements);
 		} else {
 			// nope, throw away those ALTER statements, and recreate the table
+			comment_on_table_differences(statements, from_table, to_table);
 			DropTableStatements<DatabaseClient>::add_to(statements, client, to_table);
 			CreateTableStatements<DatabaseClient>::add_to(statements, client, from_table);
 			to_table = from_table;
 		}
+	}
+
+	void comment_on_table_differences(Statements &statements, const Table &from_table, const Table &to_table) {
+		string comment("-- ");
+		comment += to_table.name;
+		if (to_table.columns == from_table.columns) {
+			comment += ": columns match";
+			comment += (to_table.primary_key_columns == from_table.primary_key_columns ? ", primary key columns match" : ", primary key columns don't match");
+			comment += (to_table.keys == from_table.keys ? ", keys match" : ", keys don't match");
+		} else {
+			comment += ": columns don't match";
+		}
+		statements.push_back(comment);
 	}
 
 	void match_keys(Statements &alter_statements, const Table &from_table, Table &to_table) {
