@@ -1,6 +1,12 @@
 Changelog
 =========
 
+0.30
+----
+* Look for PostgreSQL version 9.4 too, even if not included in your platform's cmake module
+* Fix dropping multiple columns on a table in one pass
+* Debugging: comment briefly on what part of tables doesn't match
+
 0.29
 ----
 * Debugging: dump the worker arguments if run with `--debug`
