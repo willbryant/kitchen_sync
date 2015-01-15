@@ -154,6 +154,10 @@ class PGconn
   def quote_ident(name)
     self.class.quote_ident(name)
   end
+
+  def zero_time_value
+    "00:00:00"
+  end
 end
 
 class Mysql2::Client
@@ -203,6 +207,10 @@ class Mysql2::Client
 
   def quote_ident(name)
     "`#{name}`"
+  end
+
+  def zero_time_value
+    Time.new(2000, 1, 1, 0, 0, 0)
   end
 end
 

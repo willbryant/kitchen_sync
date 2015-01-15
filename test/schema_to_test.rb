@@ -481,17 +481,72 @@ SQL
                  query("SELECT * FROM footbl ORDER BY col1")
   end
 
-  test_each "recreates the table if columns need to be made not nullable" do
+  test_each "makes columns not nullable if they need to be, without recreating the table" do
     clear_schema
     create_footbl
     table_def = footbl_def
     table_def["columns"][1]["nullable"] = false
+    execute "INSERT INTO footbl (col1, another_col, col3) VALUES (2, 10, 'test'), (4, 404, 'foo'), (5, 404, NULL), (8, -1, 'longer str'), (1001, 0, 'last')"
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command Commands::SCHEMA, "tables" => [table_def]
     read_command
     assert_equal({"col1" => false, "another_col" => false, "col3" => true}, connection.table_column_nullability("footbl"))
+    assert_equal [[2,     10,       "test"],
+                  [4,    404,        "foo"],
+                  [5,    404,          nil],
+                  [8,     -1, "longer str"],
+                  [1001,   0,       "last"]],
+                 query("SELECT * FROM footbl ORDER BY col1")
+  end
+
+  test_each "makes columns not nullable if they need to be, without recreating the table, even if there are some null values to start with, keeping existing values where already not null" do
+    clear_schema
+    create_footbl
+    table_def = footbl_def
+    table_def["columns"][1]["nullable"] = false
+    execute "INSERT INTO footbl (col1, another_col, col3) VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str'), (1001, 0, 'last')"
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command Commands::SCHEMA, "tables" => [table_def]
+    read_command
+    assert_equal({"col1" => false, "another_col" => false, "col3" => true}, connection.table_column_nullability("footbl"))
+    assert_equal [[2,     10,       "test"],
+                  [4,      0,        "foo"],
+                  [5,      0,          nil],
+                  [8,     -1, "longer str"],
+                  [1001,   0,       "last"]],
+                 query("SELECT * FROM footbl ORDER BY col1")
+  end
+
+  test_each "makes columns not nullable if they need to be, without recreating the table, even if there are some null values to start with, for any type of column" do
+    clear_schema
+    create_misctbl
+    table_def = misctbl_def
+    table_def["columns"].each {|column| column["nullable"] = false}
+    execute "INSERT INTO misctbl (pri) VALUES (42)"
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command Commands::SCHEMA, "tables" => [table_def]
+    read_command
+    assert_equal([false], connection.table_column_nullability("misctbl").values.uniq)
+    rows = query("SELECT * FROM misctbl")
+    assert_equal 1, rows.size
+    assert_equal 42, rows[0][0]
+    assert_equal false, rows[0][1]
+    assert_equal Date.new(2000, 1, 1), rows[0][2]
+    assert_equal connection.zero_time_value, rows[0][3] # not consistent between ruby clients
+    assert_equal Time.new(2000, 1, 1, 0, 0, 0), rows[0][4]
+    assert_equal 0, rows[0][5]
+    assert_equal 0, rows[0][6]
+    assert_equal 0, BigDecimal(rows[0][7].to_s) # return type not consistent between ruby clients
+    assert_equal "", rows[0][8]
+    assert_equal "", rows[0][9].strip # padding not consistent between ruby clients
+    assert_equal "", rows[0][10]
+    assert_equal "", rows[0][11]
   end
 
 

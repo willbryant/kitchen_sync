@@ -206,6 +206,51 @@ struct AlterColumnNullabilityClauses <DatabaseClient, true> {
 	}
 };
 
+template <typename DatabaseClient>
+struct UpdateTableStatements {
+	static void add_to(Statements &statements, DatabaseClient &client, const Table &table, const string &update_table_clauses) {
+		string result("UPDATE ");
+		result += table.name;
+		result += " SET ";
+		result += update_table_clauses;
+		statements.push_back(result);
+	}
+};
+
+template <typename DatabaseClient>
+struct OverwriteColumnNullValueClauses {
+	static void add_to(string &update_table_clauses, DatabaseClient &client, const Table &table, const Column &column) {
+		if (!update_table_clauses.empty()) {
+			update_table_clauses += ",";
+		}
+		update_table_clauses += client.quote_identifiers_with();
+		update_table_clauses += column.name;
+		update_table_clauses += client.quote_identifiers_with();
+		update_table_clauses += " = COALESCE(";
+		update_table_clauses += client.quote_identifiers_with();
+		update_table_clauses += column.name;
+		update_table_clauses += client.quote_identifiers_with();
+		update_table_clauses += ", '";
+		update_table_clauses += client.escape_column_value(column, usable_column_value(column));
+		update_table_clauses += "')";
+	}
+
+	static string usable_column_value(const Column &column) {
+		if (column.column_type == ColumnTypes::BLOB || column.column_type == ColumnTypes::TEXT ||
+			column.column_type == ColumnTypes::VCHR || column.column_type == ColumnTypes::FCHR) {
+			return "";
+		} else if (column.column_type == ColumnTypes::DATE) {
+			return "2000-01-01";
+		} else if (column.column_type == ColumnTypes::TIME) {
+			return "00:00:00";
+		} else if (column.column_type == ColumnTypes::DTTM) {
+			return "2000-01-01 00:00:00";
+		} else {
+			return "0"; // covers bool too - quoted '0' values will be accepted by mysql, but quoted 'false' values wouldn't
+		}
+	}
+};
+
 template <typename DatabaseClient, bool = is_base_of<DropKeysWhenColumnsDropped, DatabaseClient>::value>
 struct UpdateKeyForDroppedColumn {
 	static bool update_key_columns(ColumnIndices &key_columns, size_t column_index) {
@@ -383,6 +428,7 @@ struct SchemaMatcher {
 	}
 
 	void match_columns(Statements &alter_statements, const Table &from_table, Table &to_table) {
+		string update_table_clauses;
 		string alter_table_clauses;
 
 		size_t column_index = 0; // we use indices here because we need to update the key column lists, which use indices rather than names
@@ -396,6 +442,9 @@ struct SchemaMatcher {
 			} else {
 				if (from_column->nullable && !to_column->nullable) {
 					AlterColumnNullabilityClauses<DatabaseClient>::add_to(alter_table_clauses, client, to_table, *from_column, *to_column);
+				} else if (!from_column->nullable && to_column->nullable) {
+					OverwriteColumnNullValueClauses<DatabaseClient>::add_to(update_table_clauses, client, to_table, *to_column);
+					AlterColumnNullabilityClauses<DatabaseClient>::add_to(alter_table_clauses, client, to_table, *from_column, *to_column);
 				}
 				if ((from_column->default_type != to_column->default_type || from_column->default_value != to_column->default_value) &&
 					(from_column->default_type != DefaultType::sequence)) {
@@ -405,6 +454,9 @@ struct SchemaMatcher {
 			}
 		}
 
+		if (!update_table_clauses.empty()) {
+			UpdateTableStatements<DatabaseClient>::add_to(alter_statements, client, to_table, update_table_clauses);
+		}
 		if (!alter_table_clauses.empty()) {
 			AlterTableStatements<DatabaseClient>::add_to(alter_statements, client, to_table, alter_table_clauses);
 		}
