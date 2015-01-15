@@ -154,6 +154,9 @@ struct AlterTableStatements {
 template <typename DatabaseClient>
 struct AlterColumnDefaultClauses {
 	static void add_to(string &alter_table_clauses, DatabaseClient &client, const Table &table, const Column &from_column, Column &to_column) {
+		if (!alter_table_clauses.empty()) {
+			alter_table_clauses += ",";
+		}
 		alter_table_clauses += " ALTER ";
 		alter_table_clauses += client.quote_identifiers_with();
 		alter_table_clauses += to_column.name;
@@ -166,6 +169,40 @@ struct AlterColumnDefaultClauses {
 		}
 		to_column.default_type  = from_column.default_type;
 		to_column.default_value = from_column.default_value;
+	}
+};
+
+template <typename DatabaseClient, bool = is_base_of<SetNullability, DatabaseClient>::value>
+struct AlterColumnNullabilityClauses {
+	static void add_to(string &alter_table_clauses, DatabaseClient &client, const Table &table, const Column &from_column, Column &to_column) {
+		if (!alter_table_clauses.empty()) {
+			alter_table_clauses += ",";
+		}
+		alter_table_clauses += " MODIFY ";
+		alter_table_clauses += client.column_definition(table, from_column);
+		to_column.nullable = from_column.nullable;
+		to_column.default_type = from_column.default_type;
+		// MODIFY column_definition will actually change the data type too, but that may or may not succeed,
+		// so currently we don't say we've fixed the type so that our matcher algorithm will still drop and recreate
+	}
+};
+
+template <typename DatabaseClient>
+struct AlterColumnNullabilityClauses <DatabaseClient, true> {
+	static void add_to(string &alter_table_clauses, DatabaseClient &client, const Table &table, const Column &from_column, Column &to_column) {
+		if (!alter_table_clauses.empty()) {
+			alter_table_clauses += ",";
+		}
+		alter_table_clauses += " ALTER ";
+		alter_table_clauses += client.quote_identifiers_with();
+		alter_table_clauses += to_column.name;
+		alter_table_clauses += client.quote_identifiers_with();
+		if (from_column.nullable) {
+			alter_table_clauses += " DROP NOT NULL";
+		} else {
+			alter_table_clauses += " SET NOT NULL";
+		}
+		to_column.nullable = from_column.nullable;
 	}
 };
 
@@ -208,6 +245,9 @@ struct UpdateKeyForDroppedColumn <DatabaseClient, true> {
 template <typename DatabaseClient>
 struct DropColumnClauses {
 	static void add_to(string &alter_table_clauses, DatabaseClient &client, Table &table, size_t column_index) {
+		if (!alter_table_clauses.empty()) {
+			alter_table_clauses += ",";
+		}
 		alter_table_clauses += " DROP ";
 		alter_table_clauses += client.quote_identifiers_with();
 		alter_table_clauses += table.columns[column_index].name;
@@ -351,17 +391,14 @@ struct SchemaMatcher {
 			Columns::iterator         to_column(  to_table.columns.begin() + column_index);
 
 			if (column_index >= from_table.columns.size() || to_column->name != from_column->name) {
-				if (!alter_table_clauses.empty()) {
-					alter_table_clauses += ",";
-				}
 				DropColumnClauses<DatabaseClient>::add_to(alter_table_clauses, client, to_table, column_index);
 				to_table.columns.erase(to_column);
 			} else {
+				if (from_column->nullable && !to_column->nullable) {
+					AlterColumnNullabilityClauses<DatabaseClient>::add_to(alter_table_clauses, client, to_table, *from_column, *to_column);
+				}
 				if ((from_column->default_type != to_column->default_type || from_column->default_value != to_column->default_value) &&
 					(from_column->default_type != DefaultType::sequence)) {
-					if (!alter_table_clauses.empty()) {
-						alter_table_clauses += ",";
-					}
 					AlterColumnDefaultClauses<DatabaseClient>::add_to(alter_table_clauses, client, to_table, *from_column, *to_column);
 				}
 				++column_index;

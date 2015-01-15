@@ -450,7 +450,8 @@ SQL
   test_each "recreates the table if column types don't match" do
     clear_schema
     create_footbl
-    execute({"mysql" => "ALTER TABLE footbl MODIFY another_col VARCHAR(11)", "postgresql" => "ALTER TABLE footbl ALTER COLUMN another_col TYPE VARCHAR(11)"}[@database_server])
+    execute({"mysql" => "ALTER TABLE footbl MODIFY another_col VARCHAR(11)",
+        "postgresql" => "ALTER TABLE footbl ALTER COLUMN another_col TYPE VARCHAR(11)"}[@database_server])
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
@@ -460,17 +461,24 @@ SQL
   end
 
 
-  test_each "recreates the table if columns need to be made nullable" do
+  test_each "makes columns nullable if they need to be, without recreating the table" do
     clear_schema
     create_footbl
     execute({"mysql" => "ALTER TABLE footbl MODIFY another_col SMALLINT NOT NULL",
         "postgresql" => "ALTER TABLE footbl ALTER COLUMN another_col SET NOT NULL"}[@database_server])
+    execute "INSERT INTO footbl (col1, another_col, col3) VALUES (2, 10, 'test'), (4, 404, 'foo'), (5, 404, NULL), (8, -1, 'longer str'), (1001, 0, 'last')"
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command Commands::SCHEMA, "tables" => [footbl_def]
     read_command
     assert_equal({"col1" => false, "another_col" => true, "col3" => true}, connection.table_column_nullability("footbl"))
+    assert_equal [[2,     10,       "test"],
+                  [4,    404,        "foo"],
+                  [5,    404,          nil],
+                  [8,     -1, "longer str"],
+                  [1001,   0,       "last"]],
+                 query("SELECT * FROM footbl ORDER BY col1")
   end
 
   test_each "recreates the table if columns need to be made not nullable" do

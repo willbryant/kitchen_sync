@@ -13,4 +13,7 @@ struct SequenceColumns {
 struct DropKeysWhenColumnsDropped {
 };
 
+struct SetNullability {
+};
+
 #endif
