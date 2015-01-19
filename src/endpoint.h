@@ -48,7 +48,7 @@ int endpoint_main(int argc, char *argv[]) {
 			set <string> only(split_list(argc > 9 ? argv[9] : ""));
 			int workers = argc > 10 ? atoi(argv[10]) : 1;
 			int startfd = argc > 11 ? atoi(argv[11]) : STDIN_FILENO;
-			int verbose = argc > 12 ? atoi(argv[12]) : false;
+			int verbose = argc > 12 ? atoi(argv[12]) : 0;
 			bool snapshot = argc > 13 ? atoi(argv[13]) : false;
 			bool partial = argc > 14 ? atoi(argv[14]) : false;
 			bool rollback_after = argc > 15 ? atoi(argv[15]) : false;
