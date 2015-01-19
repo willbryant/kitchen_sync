@@ -1,0 +1,198 @@
+#ifndef OPTIONS_H
+#define OPTIONS_H
+
+#include <getopt.h>
+#include "db_url.h"
+
+struct Options {
+	inline Options(): workers(1), verbose(0), snapshot(true), partial(false), rollback(false), alter(false) {}
+
+	void help() {
+		cerr <<
+			"Allowed options:\n"
+			"  --from url                 The URL of the database to copy data from.  \n"
+			"                             Required.\n"
+			"\n"
+			"  --to url                   The URL of the database to copy data to.  \n"
+			"                             Required.\n"
+			"\n"
+			"  --via host                 The server to run the 'from' end on (instead of \n"
+			"                             accessing the database server directly).  \n"
+			"                             Optional; useful whenever the network link to the \n"
+			"                             'from' database server is a bottleneck, which will\n"
+			"                             definitely be the case if it is at another \n"
+			"                             datacentre, and may even be the case on local LANs\n"
+			"                             if you have very fast disks.\n"
+			"\n"
+			"  --workers num (=1)         The number of concurrent workers to use at each \n"
+			"                             end.\n"
+			"\n"
+			"  --ignore tables            Comma-separated list of tables to ignore.\n"
+			"\n"
+			"  --only tables              Comma-separated list of tables to process (causing \n"
+			"                             all others to be ignored).\n"
+			"\n"
+			"  --filters file.yml         YAML file to read table/column filtering \n"
+			"                             information from (if using --via, this is read at \n"
+			"                             the 'from' end).\n"
+			"\n"
+			"  --set-from-variables var   SET variables to apply at the 'from' end (eg. \n"
+			"                             --set-from-variables=\"sql_log_off=0, \n"
+			"                             time_zone='UTC'\")\n"
+			"\n"
+			"  --set-to-variables var     SET variables to apply at the 'to' end (eg. \n"
+			"                             --set-to-variables=\"sql_log_bin=0\")\n"
+			"\n"
+			"  --without-snapshot-export  Don't attempt to export/use a consistent snapshot \n"
+			"                             across multiple workers (snapshots are normally a \n"
+			"                             good thing, but require version 9.2 or later for \n"
+			"                             PostgreSQL, and on MySQL uses FLUSH TABLES WITH \n"
+			"                             READ LOCK which requires the RELOAD privilege and \n"
+			"                             may have an impact on other connections as it \n"
+			"                             blocks till all open transactions commit).  \n"
+			"                             Turning on this option avoids these problems, but \n"
+			"                             you may get an inconsistent copy if transactions \n"
+			"                             commit in between the individual worker \n"
+			"                             transactions starting (changes after that point \n"
+			"                             still won't be a problem).\n"
+			"\n"
+			"  --partial                  Attempt to commit changes even if some workers hit\n"
+			"                             errors.\n"
+			"\n"
+			"  --rollback-after           Roll back afterwards, for benchmarking.\n"
+			"\n"
+			"  --alter                    Alter the database schema if it doesn't match.\n"
+			"                             (If not given, the schema will still be checked,\n"
+			"                             and if it doesn't match the statements --alter\n"
+			"                             would use are printed as suggestions.)"
+			"\n"
+			"  --verbose                  Log more information as the program works.\n"
+			"\n"
+			"  --debug                    Log debugging information as the program works.\n";
+		cerr << endl;
+	}
+
+	inline bool parse(int argc, char *argv[]) {
+		try {
+			int urls = 0;
+			while (true) {
+				static struct option longopts[] = {
+					{ "from",						required_argument,	NULL,	'f' },
+					{ "to",							required_argument,	NULL,	't' },
+					{ "via",						required_argument,	NULL,	'v' },
+					{ "workers",					required_argument,	NULL,	'w' },
+					{ "ignore",						required_argument,	NULL,	'i' },
+					{ "only",						required_argument,	NULL,	'o' },
+					{ "filters",					required_argument,	NULL,	'l' },
+					{ "set-from-variables",			required_argument,	NULL,	'F' },
+					{ "set-to-variables",			required_argument,	NULL,	'T' },
+					{ "without-snapshot-export",	no_argument,		NULL,	'W' },
+					{ "partial",					no_argument,		NULL,	'p' },
+					{ "rollback-after",				no_argument,		NULL,	'r' },
+					{ "alter",						no_argument,		NULL,	'a' },
+					{ "verbose",					no_argument,		NULL,	'V' },
+					{ "debug",						no_argument,		NULL,	'd' },
+					{ NULL,							0,					NULL,	0 },
+				};
+
+				char ch = getopt_long_only(argc, argv, "", longopts, NULL);
+				if (ch == -1) break;
+
+				switch (ch) {
+					case 'f':
+						from = DbUrl(optarg);
+						urls++;
+						break;
+
+					case 't':
+						to = DbUrl(optarg);
+						urls++;
+						break;
+
+					case 'v':
+						via = optarg;
+						break;
+
+					case 'w':
+						workers = atoi(optarg);
+						if (!workers) help();
+						break;
+
+					case 'i':
+						ignore = optarg;
+						break;
+
+					case 'o':
+						only = optarg;
+						break;
+
+					case 'l':
+						filters = optarg;
+						break;
+
+					case 'F':
+						set_from_variables = optarg;
+						break;
+
+					case 'T':
+						set_to_variables = optarg;
+						break;
+
+					case 'W':
+						snapshot = false;
+						break;
+
+					case 'p':
+						partial = true;
+						break;
+
+					case 'r':
+						rollback = true;
+						break;
+
+					case 'a':
+						alter = true;
+						break;
+
+					case 'V':
+						verbose = 1;
+						break;
+
+					case 'd':
+						verbose = 2;
+						break;
+
+					case '?':
+						help();
+						return false;
+				}
+			}
+
+			if (urls < 2) {
+				help();
+				return false;
+			}
+
+			return true;
+		} catch (const exception &e) {
+			cerr << e.what() << endl;
+			help();
+			return false;
+		}
+	}
+
+	DbUrl from, to;
+	string via;
+	string filters;
+	string set_from_variables;
+	string set_to_variables;
+	int workers;
+	int verbose;
+	bool snapshot;
+	bool partial;
+	bool rollback;
+	bool alter;
+	string ignore, only;
+};
+
+#endif

@@ -1,7 +1,6 @@
 #include "db_url.h"
 
 using namespace std;
-using namespace boost::program_options;
 
 inline int DbUrl::from_hex(char ch) { 
 	if (ch >= '0' && ch <= '9') {
@@ -66,30 +65,22 @@ pair<string, string> split_pair(const string &str, const string &separator, int 
 	} else if (pick_which_side < 0) {
 		return pair<string, string>(str, "");
 	} else {
-		throw validation_error(validation_error::invalid_option_value);
+		throw invalid_argument("Invalid URL part: expected to find '" + separator + "' in '" + str + "'");
 	}
 }
 
-void validate(
-	boost::any& v, 
-	const vector<string>& values,
-	DbUrl* target_type,
-	int _dummy) {
-	validators::check_first_occurrence(v);
-	DbUrl result;
-
+DbUrl::DbUrl(const string &url) {
 	// vendor://[user[:pass]@]hostname[:port]/database
-	pair<string, string> protocol_and_rest = split_pair(validators::get_single_string(values), "://", 0);
+	pair<string, string> protocol_and_rest = split_pair(url, "://", 0);
 	pair<string, string> username_password_host_port_and_database = split_pair(protocol_and_rest.second, "/", 0);
 	pair<string, string> username_password_and_host_port = split_pair(username_password_host_port_and_database.first, "@", 1);
 	pair<string, string> username_password = split_pair(username_password_and_host_port.first, ":", -1);
 	pair<string, string> host_port = split_pair(username_password_and_host_port.second, ":", -1);
-	result.protocol = DbUrl::urldecode(protocol_and_rest.first);
-	result.username = DbUrl::urldecode(username_password.first);
-	result.password = DbUrl::urldecode(username_password.second);
-	result.host = DbUrl::urldecode(host_port.first);
-	result.port = DbUrl::urldecode(host_port.second);
-	result.database = DbUrl::urldecode(username_password_host_port_and_database.second);
 
-	v = boost::any(result);
+	protocol = DbUrl::urldecode(protocol_and_rest.first);
+	username = DbUrl::urldecode(username_password.first);
+	password = DbUrl::urldecode(username_password.second);
+	host = DbUrl::urldecode(host_port.first);
+	port = DbUrl::urldecode(host_port.second);
+	database = DbUrl::urldecode(username_password_host_port_and_database.second);
 }

@@ -4,7 +4,7 @@ Installing Kitchen Sync
 To compile Kitchen Sync, you will need:
 * a C++11 compiler
 * cmake
-* boost program options library
+* boost headers
 * openssl library headers
 * postgresql client library headers; and/or
 * mysql client library headers
