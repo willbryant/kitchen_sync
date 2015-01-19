@@ -106,8 +106,8 @@ struct SyncFromWorker {
 		string table_name;
 		read_all_arguments(input, table_name);
 		const Table *table = tables_by_name.at(table_name); // throws out_of_range if not present in the map
+		show_status("syncing " + table_name);
 		hash_first_range(*this, *table, target_block_size);
-		show_status(table_name);
 		return table;
 	}
 
