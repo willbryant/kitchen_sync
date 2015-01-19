@@ -1,5 +1,7 @@
 #include "db_url.h"
 
+#include <stdexcept>
+
 using namespace std;
 
 inline int DbUrl::from_hex(char ch) { 
