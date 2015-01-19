@@ -21,6 +21,11 @@ class SyncToTest < KitchenSync::EndpointTestCase
     @keys = @rows.collect {|row| [row[0]]}
   end
 
+  def expect_quit_and_close
+    expect_command Commands::QUIT
+    assert_equal "", spawner.read_from_program
+  end
+
   test_each "is immediately sent all rows if the other end has an empty table, and finishes without needing to make any changes if the table is empty" do
     clear_schema
     create_footbl
@@ -30,7 +35,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     send_command   Commands::SCHEMA, "tables" => [footbl_def]
     expect_command Commands::OPEN, ["footbl"]
     send_command   Commands::ROWS, [], []
-    expect_command Commands::QUIT
+    expect_quit_and_close
 
     assert_equal [],
                  query("SELECT * FROM footbl ORDER BY col1")
@@ -45,7 +50,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     send_command   Commands::SCHEMA, "tables" => [footbl_def]
     expect_command Commands::OPEN, ["footbl"]
     send_command   Commands::ROWS, [], []
-    expect_command Commands::QUIT
+    expect_quit_and_close
 
     assert_equal [],
                  query("SELECT * FROM footbl ORDER BY col1")
@@ -63,7 +68,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     send_command   Commands::HASH_NEXT, @keys[2], @keys[6], hash_of(@rows[3..6])
     expect_command Commands::ROWS, [@keys[-1], []]
     send_command   Commands::ROWS, @keys[-1], []
-    expect_command Commands::QUIT
+    expect_quit_and_close
 
     assert_equal @rows,
                  query("SELECT * FROM footbl ORDER BY col1")
@@ -85,7 +90,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     send_command   Commands::HASH_NEXT, @keys[1], @keys[3], hash_of(@rows[2..3])
     expect_command Commands::HASH_NEXT, [@keys[3], @keys[-1], hash_of(@rows[4..-1])]
     send_command   Commands::ROWS, @keys[-1], []
-    expect_command Commands::QUIT
+    expect_quit_and_close
 
     assert_equal @rows,
                  query("SELECT * FROM footbl ORDER BY col1")
@@ -111,7 +116,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     send_command   Commands::HASH_NEXT, @keys[4], @keys[5], hash_of(@rows[5..5])
     expect_command Commands::HASH_NEXT, [@keys[5], @keys[6], hash_of(@rows[6..6])]
     send_command   Commands::ROWS, @keys[-1], []
-    expect_command Commands::QUIT
+    expect_quit_and_close
 
     assert_equal @rows,
                  query("SELECT * FROM footbl ORDER BY col1")
@@ -128,7 +133,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
                    [[], []],
                    [2, nil, nil],
                    [3, nil,  "foo"]
-    expect_command Commands::QUIT
+    expect_quit_and_close
 
     assert_equal [[2, nil,   nil],
                   [3, nil, "foo"]],
@@ -151,7 +156,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     send_command   Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])
     expect_command Commands::HASH_NEXT, [@keys[0], @keys[1], hash_of(@rows[1..1])]
     send_command   Commands::ROWS, @keys[1], []
-    expect_command Commands::QUIT
+    expect_quit_and_close
 
     assert_equal @rows,
                  query("SELECT * FROM texttbl ORDER BY pri")
@@ -173,7 +178,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     send_results   Commands::ROWS,
                    [[], []],
                    @rows[0]
-    expect_command Commands::QUIT
+    expect_quit_and_close
 
     assert_equal @rows,
                  query("SELECT * FROM texttbl ORDER BY pri")
@@ -195,7 +200,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     send_command   Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])
     expect_command Commands::HASH_NEXT, [@keys[0], @keys[1], hash_of(@rows[1..1])]
     send_command   Commands::ROWS, @keys[1], []
-    expect_command Commands::QUIT
+    expect_quit_and_close
 
     assert_equal @rows,
                  query("SELECT * FROM texttbl ORDER BY pri")
@@ -217,7 +222,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     send_results   Commands::ROWS,
                    [[], []],
                    @rows[0]
-    expect_command Commands::QUIT
+    expect_quit_and_close
 
     assert_equal @rows,
                  query("SELECT * FROM texttbl ORDER BY pri")
@@ -242,7 +247,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     send_results   Commands::ROWS,
                    [[], []],
                    @rows[0]
-    expect_command Commands::QUIT
+    expect_quit_and_close
 
     assert_equal @rows,
                  query("SELECT * FROM misctbl ORDER BY pri")
@@ -272,7 +277,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     send_results   Commands::ROWS,
                    [@keys[6], []],
                    @rows[6]
-    expect_command Commands::QUIT
+    expect_quit_and_close
 
     assert_equal @rows,
                  query("SELECT * FROM footbl ORDER BY col1")

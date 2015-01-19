@@ -302,7 +302,6 @@ module KitchenSync
 
     def expect_command(*args)
       command = read_command
-      # assert_equal args, command
       raise "expected command #{args.inspect} but received #{command.inspect}" unless args == command # use this instead of assert_equal so we get the backtrace
     rescue EOFError
       fail "expected #{args.inspect} but the connection was closed; stderr: #{spawner.stderr_contents}"

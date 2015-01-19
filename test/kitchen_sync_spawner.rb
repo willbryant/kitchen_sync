@@ -86,6 +86,10 @@ class KitchenSyncSpawner
     @expected_stderr_contents || "" if @capture_stderr_in
   end
 
+  def read_from_program
+    @program_stdout.read
+  end
+
   def unpacker
     @unpacker ||= MessagePack::Unpacker.new(@program_stdout)
   end
