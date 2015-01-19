@@ -64,9 +64,6 @@ struct SyncToWorker {
 			} else {
 				commit();
 			}
-
-			// send a quit so the other end closes its output and terminates gracefully
-			send_quit_command();
 		} catch (const exception &e) {
 			// make sure all other workers terminate promptly, and if we are the first to fail, output the error
 			if (sync_queue.abort()) {
@@ -227,6 +224,9 @@ struct SyncToWorker {
 			// read work out since that needs to see changes made to satisfy unique indexes earlier in the table)
 			sync_table(*table);
 		}
+
+		// send a quit so the other end closes its output and terminates gracefully
+		send_quit_command();
 
 		// wait for all workers to finish their tables
 		sync_queue.wait_at_barrier();
