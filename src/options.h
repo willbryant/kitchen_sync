@@ -166,6 +166,7 @@ struct Options {
 						} else {
 							throw invalid_argument("Unknown commit level: " + string(optarg));
 						}
+						break;
 
 					case 'p':
 						commit_level = CommitLevel::always;
