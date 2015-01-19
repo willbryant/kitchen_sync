@@ -21,11 +21,6 @@ class SyncToTest < KitchenSync::EndpointTestCase
     @keys = @rows.collect {|row| [row[0]]}
   end
 
-  def expect_quit_and_close
-    expect_command Commands::QUIT
-    assert_equal "", spawner.read_from_program
-  end
-
   test_each "is immediately sent all rows if the other end has an empty table, and finishes without needing to make any changes if the table is empty" do
     clear_schema
     create_footbl

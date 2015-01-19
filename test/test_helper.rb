@@ -350,6 +350,11 @@ module KitchenSync
       send_command   Commands::WITHOUT_SNAPSHOT
     end
 
+    def expect_quit_and_close
+      expect_command Commands::QUIT
+      assert_equal "", spawner.read_from_program
+    end
+
     def expect_stderr(contents)
       spawner.expect_stderr(contents) { yield }
     end

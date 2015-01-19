@@ -30,7 +30,7 @@ class ColumnTypesToTest < KitchenSync::EndpointTestCase
     send_results   Commands::ROWS,
                    [@keys[0], []],
                    @rows[1]
-    expect_command Commands::QUIT
+    expect_quit_and_close
 
     assert_equal @rows,
                  query("SELECT * FROM misctbl ORDER BY pri")

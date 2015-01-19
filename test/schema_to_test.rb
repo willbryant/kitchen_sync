@@ -46,7 +46,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, "tables" => []
-    expect_command Commands::QUIT
+    expect_quit_and_close
   end
 
   test_each "accepts a matching list of tables with matching schema" do
@@ -64,7 +64,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     send_command   Commands::ROWS, [], []
     expect_command Commands::OPEN, ["secondtbl"]
     send_command   Commands::ROWS, [], []
-    expect_command Commands::QUIT
+    expect_quit_and_close
   end
 
 
