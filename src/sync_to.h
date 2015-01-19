@@ -1,4 +1,5 @@
 #include "command.h"
+#include "commit_level.h"
 #include "sync_algorithm.h"
 #include "schema_functions.h"
 #include "schema_matcher.h"
@@ -18,7 +19,7 @@ struct SyncToWorker {
 		Database &database, SyncQueue &sync_queue, bool leader, int read_from_descriptor, int write_to_descriptor,
 		const string &database_host, const string &database_port, const string &database_name, const string &database_username, const string &database_password,
 		const string &set_variables, const set<string> &ignore_tables, const set<string> &only_tables,
-		int verbose, bool snapshot, bool partial, bool rollback_after, bool alter):
+		int verbose, bool snapshot, bool alter, CommitLevel commit_level):
 			database(database),
 			sync_queue(sync_queue),
 			leader(leader),
@@ -31,9 +32,8 @@ struct SyncToWorker {
 			only_tables(only_tables),
 			verbose(verbose),
 			snapshot(snapshot),
-			rollback_after(rollback_after),
-			partial(partial),
 			alter(alter),
+			commit_level(commit_level),
 			protocol_version(0),
 			worker_thread(std::ref(*this)) {
 		if (!set_variables.empty()) {
@@ -59,10 +59,10 @@ struct SyncToWorker {
 			enqueue_tables();
 			sync_tables();
 
-			if (rollback_after) {
-				rollback();
-			} else {
+			if (commit_level >= CommitLevel::success) {
 				commit();
+			} else {
+				rollback();
 			}
 		} catch (const exception &e) {
 			// make sure all other workers terminate promptly, and if we are the first to fail, output the error
@@ -70,9 +70,8 @@ struct SyncToWorker {
 				cerr << e.what() << endl;
 			}
 
-			// if the --partial option was used, try to commit the changes we've made, but ignore any errors,
-			// and don't bother outputting timings
-			if (partial) {
+			// optionally, try to commit the changes we've made, but ignore any errors, and don't bother outputting timings
+			if (commit_level == CommitLevel::always || commit_level == CommitLevel::often) {
 				try { client.commit_transaction(); } catch (...) {}
 			}
 		}
@@ -234,7 +233,7 @@ struct SyncToWorker {
 	}
 
 	void sync_table(const Table &table) {
-		TableRowApplier<DatabaseClient> row_applier(client, table);
+		TableRowApplier<DatabaseClient> row_applier(client, table, commit_level >= CommitLevel::often);
 		size_t hash_commands = 0;
 		size_t rows_commands = 0;
 		time_t started = time(nullptr);
@@ -290,6 +289,11 @@ struct SyncToWorker {
 			time_t now = time(nullptr);
 			unique_lock<mutex> lock(sync_queue.mutex);
 			cout << "finished " << table.name << " in " << (now - started) << "s using " << hash_commands << " hash commands and " << rows_commands << " rows commands changing " << row_applier.rows_changed << " rows" << endl << flush;
+		}
+
+		if (commit_level >= CommitLevel::tables) {
+			commit();
+			client.start_write_transaction();
 		}
 	}
 
@@ -396,7 +400,7 @@ struct SyncToWorker {
 
 		client.commit_transaction();
 
-		if (verbose) {
+		if (verbose && commit_level < CommitLevel::tables) {
 			time_t now = time(nullptr);
 			unique_lock<mutex> lock(sync_queue.mutex);
 			cout << "committed in " << (now - started) << "s" << endl << flush;
@@ -436,9 +440,8 @@ struct SyncToWorker {
 	const set<string> only_tables;
 	int verbose;
 	bool snapshot;
-	bool partial;
-	bool rollback_after;
 	bool alter;
+	CommitLevel commit_level;
 
 	int protocol_version;
 	size_t target_block_size;

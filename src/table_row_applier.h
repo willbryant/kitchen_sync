@@ -153,18 +153,28 @@ struct ResetTableSequences <DatabaseClient, true> {
 
 template <typename DatabaseClient>
 struct TableRowApplier {
-	TableRowApplier(DatabaseClient &client, const Table &table):
+	TableRowApplier(DatabaseClient &client, const Table &table, bool commit_often):
 		client(client),
 		table(table),
 		replacer(client, table),
+		commit_often(commit_often),
 		rows_changed(0) {
 	}
 
 	~TableRowApplier() {
-		replacer.apply();
+		apply();
 
 		// reset sequences on those databases that don't automatically bump the high-water mark for inserts
 		ResetTableSequences<DatabaseClient>::execute(client, table);
+	}
+
+	void apply() {
+		replacer.apply();
+
+		if (commit_often) {
+			client.commit_transaction();
+			client.start_write_transaction();
+		}
 	}
 
 	template <typename InputStream>
@@ -198,7 +208,7 @@ struct TableRowApplier {
 				// to reduce the trips to the database server, we don't execute a statement for each row -
 				// but we do it periodically, as it's not efficient to build up enormous strings either
 				if (replacer.insert_sql.curr.size() > BaseSQL::MAX_SENSIBLE_INSERT_COMMAND_SIZE) {
-					replacer.apply();
+					apply();
 				}
 			}
 		}
@@ -248,6 +258,7 @@ struct TableRowApplier {
 	DatabaseClient &client;
 	const Table &table;
 	Replacer<DatabaseClient> replacer;
+	bool commit_often;
 	size_t rows_changed;
 };
 

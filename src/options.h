@@ -2,10 +2,13 @@
 #define OPTIONS_H
 
 #include <getopt.h>
+#include <cstring>
+#include <stdexcept>
+#include "commit_level.h"
 #include "db_url.h"
 
 struct Options {
-	inline Options(): workers(1), verbose(0), snapshot(true), partial(false), rollback(false), alter(false) {}
+	inline Options(): workers(1), verbose(0), snapshot(true), alter(false), commit_level(CommitLevel::success) {}
 
 	void help() {
 		cerr <<
@@ -56,10 +59,14 @@ struct Options {
 			"                             transactions starting (changes after that point \n"
 			"                             still won't be a problem).\n"
 			"\n"
-			"  --partial                  Attempt to commit changes even if some workers hit\n"
-			"                             errors.\n"
-			"\n"
-			"  --rollback-after           Roll back afterwards, for benchmarking.\n"
+			"  --commit                   When to commit the write transactions.  May be:\n"
+			"                               'never' (roll back after syncing);\n"
+			"                               'success' (commit if all workers complete normally);\n"
+			"                               'tables' (commit after finishing each table); or\n"
+			"                               'often' (periodically commit work in progress)\n"
+			"                             The default is 'success'.  'never' is only useful\n"
+			"                             for benchmarking and testing.  'often' is best if\n"
+			"                             you are happy to run Kitchen Sync again if it fails.\n"
 			"\n"
 			"  --alter                    Alter the database schema if it doesn't match.\n"
 			"                             (If not given, the schema will still be checked,\n"
@@ -87,8 +94,9 @@ struct Options {
 					{ "set-from-variables",			required_argument,	NULL,	'F' },
 					{ "set-to-variables",			required_argument,	NULL,	'T' },
 					{ "without-snapshot-export",	no_argument,		NULL,	'W' },
-					{ "partial",					no_argument,		NULL,	'p' },
-					{ "rollback-after",				no_argument,		NULL,	'r' },
+					{ "commit",						required_argument,	NULL,	'c' },
+					{ "partial",					no_argument,		NULL,	'p' }, // deprecated - use '--commit often' instead
+					{ "rollback-after",				no_argument,		NULL,	'r' }, // deprecated - use '--commit never', which is equivalent
 					{ "alter",						no_argument,		NULL,	'a' },
 					{ "verbose",					no_argument,		NULL,	'V' },
 					{ "debug",						no_argument,		NULL,	'd' },
@@ -115,7 +123,7 @@ struct Options {
 
 					case 'w':
 						workers = atoi(optarg);
-						if (!workers) help();
+						if (!workers) throw invalid_argument("Must have at least one worker");
 						break;
 
 					case 'i':
@@ -142,12 +150,25 @@ struct Options {
 						snapshot = false;
 						break;
 
+					case 'c':
+						if (!strcmp(optarg, "never")) {
+							commit_level = CommitLevel::never;
+						} else if (!strcmp(optarg, "success")) {
+							commit_level = CommitLevel::success;
+						} else if (!strcmp(optarg, "tables")) {
+							commit_level = CommitLevel::tables;
+						} else if (!strcmp(optarg, "often")) {
+							commit_level = CommitLevel::often;
+						} else {
+							throw invalid_argument("Unknown commit level: " + string(optarg));
+						}
+
 					case 'p':
-						partial = true;
+						commit_level = CommitLevel::always;
 						break;
 
 					case 'r':
-						rollback = true;
+						commit_level = CommitLevel::never;
 						break;
 
 					case 'a':
@@ -189,9 +210,8 @@ struct Options {
 	int workers;
 	int verbose;
 	bool snapshot;
-	bool partial;
-	bool rollback;
 	bool alter;
+	CommitLevel commit_level;
 	string ignore, only;
 };
 
