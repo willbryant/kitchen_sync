@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.33
+0.34
 ----
 * Replace the --partial and --rollback-after option with a more general --commit option and add options to commit after each table or insert batch.  `--commit often` is useful to avoid large rollback segments on mysql.
 * Fix a potential invalid memory access in the case where table columns don't match.
