@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.32
+----
+* Send quit commands to the 'from' endpoints as soon as possible.
+
 0.31
 ----
 * Change column nullability (if `--alter` is used) without recreating the table.
