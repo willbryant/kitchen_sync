@@ -16,4 +16,7 @@ struct DropKeysWhenColumnsDropped {
 struct SetNullability {
 };
 
+struct SupportsAddNonNullableColumns {
+};
+
 #endif

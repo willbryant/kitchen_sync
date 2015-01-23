@@ -291,9 +291,10 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     assert_equal nil, connection.table_column_defaults("secondtbl")["tri"]
   end
 
-  test_each "adds missing columns between other columns" do
+  test_each "adds missing columns between other columns without recreating the table" do
     clear_schema
     create_footbl
+    insert_footbl_rows
     execute("ALTER TABLE footbl DROP COLUMN another_col")
 
     expect_handshake_commands
@@ -304,11 +305,19 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     assert_match /^smallint/, connection.table_column_types("footbl")["another_col"]
     assert_equal true, connection.table_column_nullability("footbl")["another_col"]
     assert_equal nil, connection.table_column_defaults("footbl")["another_col"]
+    assert_equal [[2,    nil, nil], # the later columns get dropped and recreated too, because there's no other way to get the columns into the right order with postgresql
+                  [4,    nil, nil],
+                  [5,    nil, nil],
+                  [8,    nil, nil],
+                  [1001, nil, nil]],
+                 query("SELECT * FROM footbl ORDER BY col1")
+    assert_same_keys(footbl_def)
   end
 
-  test_each "adds missing columns after other columns" do
+  test_each "adds missing columns after other columns without recreating the table" do
     clear_schema
     create_footbl
+    insert_footbl_rows
     execute("ALTER TABLE footbl DROP COLUMN col3")
 
     expect_handshake_commands
@@ -316,10 +325,48 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     send_command Commands::SCHEMA, "tables" => [footbl_def]
     read_command
     assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
-    assert_match /^smallint/, connection.table_column_types("footbl")["another_col"]
-    assert_equal true, connection.table_column_nullability("footbl")["another_col"]
-    assert_equal nil, connection.table_column_defaults("footbl")["another_col"]
+    assert_match /char.*10/, connection.table_column_types("footbl")["col3"]
+    assert_equal true, connection.table_column_nullability("footbl")["col3"]
+    assert_equal nil, connection.table_column_defaults("footbl")["col3"]
+    assert_equal [[2,     10, nil],
+                  [4,    nil, nil],
+                  [5,    nil, nil],
+                  [8,     -1, nil],
+                  [1001,   0, nil]],
+                 query("SELECT * FROM footbl ORDER BY col1")
+    assert_same_keys(footbl_def)
   end
+
+  test_each "adds missing non-nullable columns after other columns without recreating the table" do
+    clear_schema
+    create_footbl
+    insert_footbl_rows
+    execute("ALTER TABLE footbl DROP COLUMN another_col, DROP COLUMN col3")
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command Commands::SCHEMA, "tables" => [footbl_def.merge("columns" => [
+      footbl_def["columns"][0],
+      footbl_def["columns"][1].merge("nullable" => false),
+      footbl_def["columns"][2].merge("nullable" => false)
+    ])]
+    read_command
+    assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
+    assert_match /^smallint/, connection.table_column_types("footbl")["another_col"]
+    assert_equal false, connection.table_column_nullability("footbl")["another_col"]
+    assert_equal nil, connection.table_column_defaults("footbl")["another_col"]
+    assert_match /char.*10/, connection.table_column_types("footbl")["col3"]
+    assert_equal false, connection.table_column_nullability("footbl")["col3"]
+    assert_equal nil, connection.table_column_defaults("footbl")["col3"]
+    assert_equal [[2,    0, ""],
+                  [4,    0, ""],
+                  [5,    0, ""],
+                  [8,    0, ""],
+                  [1001, 0, ""]],
+                 query("SELECT * FROM footbl ORDER BY col1")
+    assert_same_keys(footbl_def)
+  end
+
 
   test_each "drops extra columns before other columns without recreating the table" do
     clear_schema
@@ -386,6 +433,7 @@ SQL
     assert_footbl_rows_present
     assert_same_keys(footbl_def)
   end
+
 
   test_each "updates or recreates keys that included extra columns when they are removed, without recreating the table" do
     clear_schema

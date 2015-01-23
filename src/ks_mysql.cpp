@@ -109,7 +109,7 @@ private:
 };
 
 
-class MySQLClient: public SupportsReplace {
+class MySQLClient: public SupportsReplace, public SupportsAddNonNullableColumns {
 public:
 	typedef MySQLRow RowType;
 

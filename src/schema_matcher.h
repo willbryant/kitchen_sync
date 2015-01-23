@@ -188,7 +188,7 @@ struct AlterColumnNullabilityClauses {
 };
 
 template <typename DatabaseClient>
-struct AlterColumnNullabilityClauses <DatabaseClient, true> {
+struct AlterColumnNullabilityClauses<DatabaseClient, true> {
 	static void add_to(string &alter_table_clauses, DatabaseClient &client, const Table &table, const Column &from_column, Column &to_column) {
 		if (!alter_table_clauses.empty()) {
 			alter_table_clauses += ",";
@@ -312,6 +312,42 @@ struct DropColumnClauses {
 	}
 };
 
+template <typename DatabaseClient, bool = is_base_of<DatabaseClient, SupportsAddNonNullableColumns>::value>
+struct AddColumnClauses {
+	static void add_to(string &alter_table_clauses, string &second_round_alter_table_clauses, DatabaseClient &client, Table &table, const Column &column) {
+		if (!alter_table_clauses.empty()) {
+			alter_table_clauses += ",";
+		}
+		alter_table_clauses += " ADD ";
+		if (column.nullable || column.default_type == DefaultType::default_value) {
+			alter_table_clauses += client.column_definition(table, column);
+		} else {
+			// first add the column, with a default value to get past the non-nullability
+			Column temp(column);
+			temp.default_type = DefaultType::default_value;
+			temp.default_value = OverwriteColumnNullValueClauses<DatabaseClient>::usable_column_value(column);
+			alter_table_clauses += client.column_definition(table, temp);
+
+			// then change the default to what it should be; unfortunately postgresql won't let us combine this
+			// into the same ALTER statement, so we have to have this silly second_round_alter_table_clauses
+			AlterColumnDefaultClauses<DatabaseClient>::add_to(second_round_alter_table_clauses, client, table, column, temp);
+		}
+		table.columns.push_back(column); // our schema matching algorithm only supports adding columns at the end because not all databases support AFTER clauses
+	}
+};
+
+template <typename DatabaseClient>
+struct AddColumnClauses<DatabaseClient, true> {
+	static void add_to(string &alter_table_clauses, string &second_round_alter_table_clauses, DatabaseClient &client, Table &table, const Column &column) {
+		if (!alter_table_clauses.empty()) {
+			alter_table_clauses += ",";
+		}
+		alter_table_clauses += " ADD ";
+		alter_table_clauses += client.column_definition(table, column);
+		table.columns.push_back(column);
+	}
+};
+
 template <typename DatabaseClient>
 struct SchemaMatcher {
 	SchemaMatcher(DatabaseClient &client): client(client) {}
@@ -432,7 +468,7 @@ struct SchemaMatcher {
 
 	void match_columns(Statements &alter_statements, const Table &from_table, Table &to_table) {
 		string update_table_clauses;
-		string alter_table_clauses;
+		string alter_table_clauses, second_round_alter_table_clauses;
 
 		size_t column_index = 0; // we use indices here because we need to update the key column lists, which use indices rather than names
 		while (column_index < to_table.columns.size()) {
@@ -456,12 +492,20 @@ struct SchemaMatcher {
 				++column_index;
 			}
 		}
+		while (column_index < from_table.columns.size()) {
+			Columns::const_iterator from_column(from_table.columns.begin() + column_index);
+			AddColumnClauses<DatabaseClient>::add_to(alter_table_clauses, second_round_alter_table_clauses, client, to_table, *from_column);
+			++column_index;
+		}
 
 		if (!update_table_clauses.empty()) {
 			UpdateTableStatements<DatabaseClient>::add_to(alter_statements, client, to_table, update_table_clauses);
 		}
 		if (!alter_table_clauses.empty()) {
 			AlterTableStatements<DatabaseClient>::add_to(alter_statements, client, to_table, alter_table_clauses);
+		}
+		if (!second_round_alter_table_clauses.empty()) {
+			AlterTableStatements<DatabaseClient>::add_to(alter_statements, client, to_table, second_round_alter_table_clauses);
 		}
 	}
 
