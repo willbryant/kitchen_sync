@@ -494,6 +494,11 @@ struct SchemaMatcher {
 		}
 		while (column_index < from_table.columns.size()) {
 			Columns::const_iterator from_column(from_table.columns.begin() + column_index);
+			if (!from_column->nullable && column_used_in_unique_key(from_table, column_index)) {
+				// since the column is non-nullable we will fill in a default value (eg. 0 or "") for all rows, which means that adding
+				// the unique key would fail.  so we're going to have to recreate the table; no point trying to add the column.
+				return;
+			}
 			AddColumnClauses<DatabaseClient>::add_to(alter_table_clauses, second_round_alter_table_clauses, client, to_table, *from_column);
 			++column_index;
 		}
@@ -507,6 +512,17 @@ struct SchemaMatcher {
 		if (!second_round_alter_table_clauses.empty()) {
 			AlterTableStatements<DatabaseClient>::add_to(alter_statements, client, to_table, second_round_alter_table_clauses);
 		}
+	}
+
+	bool column_used_in_unique_key(const Table &table, size_t column_index) {
+		for (const Key &key : table.keys) {
+			for (size_t index : key.columns) {
+				if (index == column_index) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	void match_key(Statements &alter_statements, const Table &from_table, const Key &from_key, Key &to_key) {

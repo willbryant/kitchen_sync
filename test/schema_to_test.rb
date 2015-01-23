@@ -342,16 +342,18 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_footbl
     insert_footbl_rows
     execute("ALTER TABLE footbl DROP COLUMN another_col, DROP COLUMN col3")
+    table_def = footbl_def
+    table_def["columns"] = [
+      table_def["columns"][0],
+      table_def["columns"][1].merge("nullable" => false),
+      table_def["columns"][2].merge("nullable" => false)
+    ]
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def.merge("columns" => [
-      footbl_def["columns"][0],
-      footbl_def["columns"][1].merge("nullable" => false),
-      footbl_def["columns"][2].merge("nullable" => false)
-    ])]
+    send_command Commands::SCHEMA, "tables" => [table_def]
     read_command
-    assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
+    assert_equal table_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_match /^smallint/, connection.table_column_types("footbl")["another_col"]
     assert_equal false, connection.table_column_nullability("footbl")["another_col"]
     assert_equal nil, connection.table_column_defaults("footbl")["another_col"]
@@ -364,7 +366,31 @@ class SchemaToTest < KitchenSync::EndpointTestCase
                   [8,    0, ""],
                   [1001, 0, ""]],
                  query("SELECT * FROM footbl ORDER BY col1")
-    assert_same_keys(footbl_def)
+    assert_same_keys(table_def)
+  end
+
+  test_each "recreates the table as necessary to add non-nullable columns with unique keys" do
+    clear_schema
+    create_footbl
+    insert_footbl_rows
+    execute("ALTER TABLE footbl DROP COLUMN col3")
+    table_def = footbl_def
+    table_def["columns"] = [
+      table_def["columns"][0],
+      table_def["columns"][1],
+      table_def["columns"][2].merge("nullable" => false)
+    ]
+    table_def["keys"] << {"name" => "uniqueidx", "columns" => [2], "unique" => true}
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command Commands::SCHEMA, "tables" => [table_def]
+    read_command
+    assert_equal table_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
+    assert_match /char.*10/, connection.table_column_types("footbl")["col3"]
+    assert_equal false, connection.table_column_nullability("footbl")["col3"]
+    assert_equal nil, connection.table_column_defaults("footbl")["col3"]
+    assert_same_keys(table_def)
   end
 
 
