@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.35
+----
+* Add new columns (if `--alter` is used) to the end of the columns list without recreating the table.
+
 0.34
 ----
 * Replace the `--partial` and `--rollback-after` option with a more general `--commit` option and add options to commit after each table or insert batch.  `--commit often` is useful to avoid large rollback segments on mysql.
