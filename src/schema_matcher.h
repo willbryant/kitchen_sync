@@ -481,7 +481,7 @@ struct SchemaMatcher {
 			} else {
 				if (from_column->nullable && !to_column->nullable) {
 					AlterColumnNullabilityClauses<DatabaseClient>::add_to(alter_table_clauses, client, to_table, *from_column, *to_column);
-				} else if (!from_column->nullable && to_column->nullable) {
+				} else if (!from_column->nullable && to_column->nullable && !column_used_in_unique_key(from_table, column_index)) {
 					OverwriteColumnNullValueClauses<DatabaseClient>::add_to(update_table_clauses, client, to_table, *to_column);
 					AlterColumnNullabilityClauses<DatabaseClient>::add_to(alter_table_clauses, client, to_table, *from_column, *to_column);
 				}
