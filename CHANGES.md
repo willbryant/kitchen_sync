@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.36
+----
+* Don't attempt to add non-nullable columns or make nullable columns non-nullable if there are any unique keys defined on the table, as this will inevitably hit duplicate key errors.
+
 0.35
 ----
 * Add new columns (if `--alter` is used) to the end of the columns list without recreating the table.
