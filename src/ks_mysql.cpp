@@ -242,7 +242,7 @@ void MySQLClient::execute(const string &sql) {
 void MySQLClient::start_read_transaction() {
 	execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
 	if (mysql_get_server_version(&mysql) >= MYSQL_5_6_5 && strstr(mysql_get_server_info(&mysql), "MariaDB") == nullptr) {
-		execute("START TRANSACTION READ ONLY WITH CONSISTENT SNAPSHOT");
+		execute("START TRANSACTION READ ONLY, WITH CONSISTENT SNAPSHOT");
 	} else {
 		execute("START TRANSACTION WITH CONSISTENT SNAPSHOT");
 	}
@@ -572,7 +572,7 @@ struct MySQLTableLister {
 
 		// if the table has no primary key, we need to find a unique key with no nullable columns to act as a surrogate primary key
 		sort(table.keys.begin(), table.keys.end()); // order is arbitrary for keys, but both ends must be consistent, so we sort the keys by name
-		
+
 		for (Keys::const_iterator key = table.keys.begin(); key != table.keys.end() && table.primary_key_columns.empty(); ++key) {
 			if (key->unique && !key_lister.unique_but_nullable_keys.count(key->name)) {
 				table.primary_key_columns = key->columns;

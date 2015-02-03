@@ -358,7 +358,7 @@ module KitchenSync
     def expect_stderr(contents)
       spawner.expect_stderr(contents) { yield }
     end
-    
+
     def fixture_file_path(filename)
       File.join(File.dirname(__FILE__), 'fixtures', filename)
     end
