@@ -3,7 +3,8 @@ Changelog
 
 0.36
 ----
-* Don't attempt to add non-nullable columns or make nullable columns non-nullable if there are any unique keys defined on the table, as this will inevitably hit duplicate key errors.
+* Don't attempt to add non-nullable columns or make nullable columns non-nullable if there are any unique keys defined on the columns, as this will inevitably hit duplicate key errors.
+* Fix mysql 5.6.5+ compatibility.  Thanks @bagedevimo.
 
 0.35
 ----
