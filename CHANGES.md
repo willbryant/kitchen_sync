@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.37
+----
+* Build configuration changes to fix using a system-wide copy of yaml-cpp.  Thanks @pvenegas.
+
 0.36
 ----
 * Don't attempt to add non-nullable columns or make nullable columns non-nullable if there are any unique keys defined on the columns, as this will inevitably hit duplicate key errors.
