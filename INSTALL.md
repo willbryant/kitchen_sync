@@ -5,9 +5,9 @@ To compile Kitchen Sync, you will need:
 * a C++11 compiler
 * cmake
 * boost headers
-* openssl library headers
 * postgresql client library headers; and/or
 * mysql client library headers
+* openssl library headers (except on OS X where Apple's Common Crypto library is used instead)
 
 Kitchen Sync needs at least one database client library to do something useful, but it will produce a separate binary for each different database, so you don't need to compile or deploy all the binaries on systems where you won't use them.
 
