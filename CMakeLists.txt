@@ -44,9 +44,11 @@ add_executable(ks ${ks_SRCS})
 target_link_libraries(ks ${Boost_LIBRARIES})
 install(TARGETS ks RUNTIME DESTINATION bin)
 
-# the endpoints hash data using OpenSSL
-find_package(OpenSSL REQUIRED)
-include_directories(${OPENSSL_INCLUDE_DIRS})
+# the endpoints hash data using OpenSSL; on OS X we use Apple's Common Crypto fork instead
+if(NOT APPLE)
+	find_package(OpenSSL REQUIRED)
+	include_directories(${OPENSSL_INCLUDE_DIRS})
+endif()
 
 # the endpoints do the actual work
 set(ks_endpoint_SRCS src/schema.cpp src/filters.cpp src/abortable_barrier.cpp src/sync_queue.cpp)
