@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.38
+----
+* Remove unnecessary OpenSSL dependency on OS X (we use Common Crypto since 0.2).
+
 0.37
 ----
 * Build configuration changes to fix using a system-wide copy of yaml-cpp.  Thanks @pvenegas.
