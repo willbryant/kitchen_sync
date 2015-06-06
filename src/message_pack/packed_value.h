@@ -22,13 +22,15 @@ struct PackedValue {
 	}
 
 	PackedValue &operator=(const PackedValue &from) {
-		free(encoded_bytes);
-		encoded_bytes = NULL;
-		used = from.used;
-		if (used) {
-			encoded_bytes = (uint8_t *)malloc(used);
-			if (!encoded_bytes) throw std::bad_alloc();
-			memcpy(encoded_bytes, from.encoded_bytes, used);
+		if (&from != this) {
+			free(encoded_bytes);
+			encoded_bytes = NULL;
+			used = from.used;
+			if (used) {
+				encoded_bytes = (uint8_t *)malloc(used);
+				if (!encoded_bytes) throw std::bad_alloc();
+				memcpy(encoded_bytes, from.encoded_bytes, used);
+			}
 		}
 		return *this;
 	}
