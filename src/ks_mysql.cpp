@@ -23,7 +23,6 @@ public:
 
 private:
 	MYSQL_RES *_res;
-	int _n_tuples;
 	int _n_columns;
 	vector<enum_field_types> types;
 	vector<bool> types_unsigned;
@@ -470,11 +469,11 @@ struct MySQLColumnLister {
 		if (db_type == "tinyint(1)") {
 			if (default_type) default_value = (default_value == "1" ? "true" : "false");
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BOOL);
-		} else if (db_type.substr(0, 9) == "tinyint(") {
+		} else if (db_type.substr(0, 8) == "tinyint(") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 1);
 		} else if (db_type.substr(0, 9) == "smallint(") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 2);
-		} else if (db_type.substr(0, 9) == "mediumint(") {
+		} else if (db_type.substr(0, 10) == "mediumint(") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 3);
 		} else if (db_type.substr(0, 4) == "int(") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 4);
