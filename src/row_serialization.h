@@ -40,6 +40,7 @@ struct RowPacker: RowCounter {
 #define MAX_DIGEST_LENGTH MD5_DIGEST_LENGTH
 
 struct Hash {
+	inline Hash(): md_len(0) {}
 	inline std::string to_string() const { return string(md_value, md_value + md_len); }
 
 	unsigned int md_len;

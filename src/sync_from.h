@@ -18,6 +18,7 @@ struct SyncFromWorker {
 			output(out),
 			status_area(status_area),
 			status_size(status_size),
+			protocol_version(0),
 			target_block_size(1) {
 		if (!set_variables.empty()) {
 			client.execute("SET " + set_variables);

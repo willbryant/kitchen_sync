@@ -35,6 +35,7 @@ struct SyncToWorker {
 			alter(alter),
 			commit_level(commit_level),
 			protocol_version(0),
+			target_block_size(1),
 			worker_thread(std::ref(*this)) {
 		if (!set_variables.empty()) {
 			client.execute("SET " + set_variables);
