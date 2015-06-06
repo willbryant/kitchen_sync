@@ -47,10 +47,11 @@ struct PackedValue {
 	}
 
 	inline uint8_t *extend(size_t bytes) {
+		uint8_t *new_encoded_bytes = (uint8_t *)realloc(encoded_bytes, used + bytes);
+		if (!new_encoded_bytes) throw std::bad_alloc();
 		size_t size_before = used;
 		used += bytes;
-		encoded_bytes = (uint8_t *)realloc(encoded_bytes, used);
-		if (!encoded_bytes) throw std::bad_alloc();
+		encoded_bytes = new_encoded_bytes;
 		return encoded_bytes + size_before;
 	}
 
