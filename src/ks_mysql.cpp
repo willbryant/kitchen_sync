@@ -466,7 +466,7 @@ struct MySQLColumnLister {
 		string default_value(default_type ? row.string_at(4) : string(""));
 		if (row.string_at(5).find("auto_increment") != string::npos) default_type = DefaultType::sequence;
 
-		if (db_type == "tinyint(1)") {
+		if (db_type == "tinyint(1)" && (!default_type || default_value == "0" || default_value == "1")) {
 			if (default_type) default_value = (default_value == "1" ? "true" : "false");
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BOOL);
 		} else if (db_type.substr(0, 8) == "tinyint(") {
