@@ -4,7 +4,7 @@ Using Kitchen Sync
 Getting started
 ---------------
 
-If you haven't already got Kitchen Sync installed, please see [Installing Kitchen Sync](INSTALL.md).
+If you haven't already installed Kitchen Sync, please see [Installing Kitchen Sync](INSTALL.md).
 
 If you'd like to see the wide range of exciting and confusing command-line options Kitchen Sync has to offer, simply run `ks`.  Otherwise, read on.
 
@@ -62,11 +62,11 @@ The above examples all access the database servers directly (over their native d
 
 For some use cases, direct access to the database server will not be allowed by the network security policies.
 
-For many others, even though this is possible, it's highly inefficient, because it means that all the data is transferred over the network, even the data that already matches.
+And for many other use cases, even though this may be possible, it's highly inefficient because it means that all the data is transferred over the network, even the data that already matches.
 
 But Kitchen Sync does not have to be run on a single node.  When you run Kitchen Sync it actually splits itself into two halves - one for the 'from' end (i.e. source) and one for the 'to' end (i.e. target) - and these two halves can be separated by an SSH connection using the built-in transport option.
 
-The Kitchen Sync protocol that runs between them mostly transfers only hashes of the content, so if large sections of the data already matches, the traffic actually sent over the network should be much smaller than the actual data compared.  (If the network is a bottleneck, this means the SSH transport option can even be beneficial over local networks, but it works well over Internet-scale distances.)
+The Kitchen Sync protocol that runs between them mostly transfers only hashes of the content, so if large sections of the data already matches, the traffic actually sent over the network should be much smaller than the actual data compared.  (If the network is a bottleneck, this means the SSH transport option can even be beneficial over local networks, but it particularly helps over Internet-scale distances.)
 
 To use the SSH transport you need to install Kitchen Sync on a machine that you can SSH to at the source datacentre.  For current versions of Kitchen Sync you should always install the same version as you will have at the other end (the protocol is versioned to allow forward compatibility, but that level of cross-compatibility isn't being maintained in these early releases).
 
@@ -86,6 +86,6 @@ ks --via server1.sourcecluster \
    --to postgresql://anotheruser:greatpassword/localhost/targetdb
 ```
 
-Note that in this case the `localhost` specified will be the `--via` server at the 'from' end, but the server you are starting Kitchen Sync on at the 'to' end.
+Note that in this case the `localhost` specified in the two connection strings is different - at the 'from' end it will be the `--via` server, but at the 'to' end it will be the server you are starting Kitchen Sync on.
 
 (The `--via` option always controls what machine Kitchen Sync runs on for the 'from' end; there is no option to run Kitchen Sync's 'to' end on a different machine.)
