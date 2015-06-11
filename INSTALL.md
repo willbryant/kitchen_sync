@@ -28,7 +28,12 @@ apt-get install libmysqlclient-dev
 OS X
 ----
 
-Homebrew users can install these on OS X using:
+Kitchen Sync is now available in Homebrew.  You can install it using:
+```
+brew install kitchen-sync
+```
+
+To compile from source yourself, Homebrew users can install the above build dependencies using:
 ```
 brew install cmake boost
 ```
