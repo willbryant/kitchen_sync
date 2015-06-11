@@ -277,4 +277,26 @@ class SyncToTest < KitchenSync::EndpointTestCase
     assert_equal @rows,
                  query("SELECT * FROM footbl ORDER BY col1")
   end
+
+  test_each "accepts large insert sets" do
+    clear_schema
+    create_texttbl
+
+    @rows = (0..99).collect {|n| [n + 1, (97 + n % 26).chr*512*1024]}
+    @keys = @rows.collect {|row| [row[0]]}
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command   Commands::SCHEMA, "tables" => [texttbl_def]
+    expect_command Commands::OPEN, ["texttbl"]
+    # send_command   Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])
+    # expect_command Commands::HASH_NEXT, [@keys[0], @keys[1], hash_of(@rows[1..1])]
+    send_results   Commands::ROWS,
+                   [[], []],
+                   *@rows
+    expect_quit_and_close
+
+    assert_equal @rows,
+                 query("SELECT * FROM texttbl ORDER BY pri")
+  end
 end
