@@ -5,6 +5,7 @@
 #include "schema_matcher.h"
 #include "sync_queue.h"
 #include "table_row_applier.h"
+#include "reset_table_sequences.h"
 #include "fdstream.h"
 #include <boost/algorithm/string.hpp>
 #include <thread>
@@ -285,6 +286,12 @@ struct SyncToWorker {
 					throw command_error("Unknown command " + to_string(verb));
 			}
 		}
+
+		// make sure all pending updates have been applied
+		row_applier.apply();
+
+		// reset sequences on those databases that don't automatically bump the high-water mark for inserts
+		ResetTableSequences<DatabaseClient>::execute(client, table);
 
 		if (verbose) {
 			time_t now = time(nullptr);

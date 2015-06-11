@@ -4,7 +4,6 @@
 #include "database_client_traits.h"
 #include "sql_functions.h"
 #include "unique_key_clearer.h"
-#include "reset_table_sequences.h"
 
 typedef map<PackedRow, PackedRow> RowsByPrimaryKey;
 
@@ -132,13 +131,6 @@ struct TableRowApplier {
 		replacer(client, table),
 		commit_often(commit_often),
 		rows_changed(0) {
-	}
-
-	~TableRowApplier() {
-		apply();
-
-		// reset sequences on those databases that don't automatically bump the high-water mark for inserts
-		ResetTableSequences<DatabaseClient>::execute(client, table);
 	}
 
 	void apply() {
