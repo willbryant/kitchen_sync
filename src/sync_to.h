@@ -4,7 +4,7 @@
 #include "schema_functions.h"
 #include "schema_matcher.h"
 #include "sync_queue.h"
-#include "table_row_applier.h"
+#include "row_range_applier.h"
 #include "reset_table_sequences.h"
 #include "fdstream.h"
 #include <boost/algorithm/string.hpp>
@@ -235,7 +235,7 @@ struct SyncToWorker {
 	}
 
 	void sync_table(const Table &table) {
-		TableRowApplier<DatabaseClient> row_applier(client, table, commit_level >= CommitLevel::often);
+		RowReplacer<DatabaseClient> row_replacer(client, table, commit_level >= CommitLevel::often);
 		size_t hash_commands = 0;
 		size_t rows_commands = 0;
 		time_t started = time(nullptr);
@@ -266,18 +266,18 @@ struct SyncToWorker {
 					break;
 
 				case Commands::ROWS:
-					finished = handle_rows_command(table, row_applier);
+					finished = handle_rows_command(table, row_replacer);
 					rows_commands++;
 					break;
 
 				case Commands::ROWS_AND_HASH_NEXT:
-					handle_rows_and_hash_next_command(table, row_applier);
+					handle_rows_and_hash_next_command(table, row_replacer);
 					hash_commands++;
 					rows_commands++;
 					break;
 
 				case Commands::ROWS_AND_HASH_FAIL:
-					handle_rows_and_hash_fail_command(table, row_applier);
+					handle_rows_and_hash_fail_command(table, row_replacer);
 					hash_commands++;
 					rows_commands++;
 					break;
@@ -288,7 +288,7 @@ struct SyncToWorker {
 		}
 
 		// make sure all pending updates have been applied
-		row_applier.apply();
+		row_replacer.apply();
 
 		// reset sequences on those databases that don't automatically bump the high-water mark for inserts
 		ResetTableSequences<DatabaseClient>::execute(client, table);
@@ -296,7 +296,7 @@ struct SyncToWorker {
 		if (verbose) {
 			time_t now = time(nullptr);
 			unique_lock<mutex> lock(sync_queue.mutex);
-			cout << "finished " << table.name << " in " << (now - started) << "s using " << hash_commands << " hash commands and " << rows_commands << " rows commands changing " << row_applier.rows_changed << " rows" << endl << flush;
+			cout << "finished " << table.name << " in " << (now - started) << "s using " << hash_commands << " hash commands and " << rows_commands << " rows commands changing " << row_replacer.rows_changed << " rows" << endl << flush;
 		}
 
 		if (commit_level >= CommitLevel::tables) {
@@ -328,7 +328,7 @@ struct SyncToWorker {
 		check_hash_and_choose_next_range(*this, table, nullptr, prev_key, last_key, &failed_last_key, hash, target_block_size);
 	}
 
-	bool handle_rows_command(const Table &table, TableRowApplier<DatabaseClient> &row_applier) {
+	bool handle_rows_command(const Table &table, RowReplacer<DatabaseClient> &row_replacer) {
 		// we're being sent a range of rows; apply them to our end.  we do this in-context to
 		// provide flow control - if we buffered and used a separate apply thread, we would
 		// bloat up if this end couldn't write to disk as quickly as the other end sent data.
@@ -336,14 +336,14 @@ struct SyncToWorker {
 		read_array(input, prev_key, last_key); // the first array gives the range arguments, which is followed by one array for each row
 		if (verbose >= VERY_VERBOSE) cout << "-> rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
 
-		row_applier.stream_from_input(input, prev_key, last_key);
+		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
 
 		// if the range extends to the end of their table, that means we're done with this table;
 		// otherwise, rows commands are immediately followed by another command
 		return (last_key.empty());
 	}
 
-	void handle_rows_and_hash_next_command(const Table &table, TableRowApplier<DatabaseClient> &row_applier) {
+	void handle_rows_and_hash_next_command(const Table &table, RowReplacer<DatabaseClient> &row_replacer) {
 		// combo of the above ROWS and HASH_NEXT commands
 		ColumnValues prev_key, last_key, next_key;
 		string hash;
@@ -359,11 +359,11 @@ struct SyncToWorker {
 		// deadlock; it's never been smaller than a page on any supported OS, and has been
 		// defaulted to much larger values for some years.
 		check_hash_and_choose_next_range(*this, table, nullptr, last_key, next_key, nullptr, hash, target_block_size);
-		row_applier.stream_from_input(input, prev_key, last_key);
+		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
 		// nb. it's implied last_key is not [], as we would have been sent back a plain rows command for the combined range if that was needed
 	}
 
-	void handle_rows_and_hash_fail_command(const Table &table, TableRowApplier<DatabaseClient> &row_applier) {
+	void handle_rows_and_hash_fail_command(const Table &table, RowReplacer<DatabaseClient> &row_replacer) {
 		// combo of the above ROWS and HASH_FAIL commands
 		ColumnValues prev_key, last_key, next_key, failed_last_key;
 		string hash;
@@ -373,7 +373,7 @@ struct SyncToWorker {
 
 		// same pipelining as the previous case
 		check_hash_and_choose_next_range(*this, table, nullptr, last_key, next_key, &failed_last_key, hash, target_block_size);
-		row_applier.stream_from_input(input, prev_key, last_key);
+		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
 	}
 
 	inline void send_hash_next_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
