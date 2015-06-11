@@ -1,6 +1,12 @@
 Changelog
 =========
 
+0.39
+----
+* Better forward compatibility with future versions that may add new entries to the database schema definitions.
+* Look for PostgreSQL version 9.5 too, even if not included in your platform's cmake module.
+* Fix various compiler warnings reported by users.
+
 0.38
 ----
 * Remove unnecessary OpenSSL dependency on OS X (we use Common Crypto since 0.2).
