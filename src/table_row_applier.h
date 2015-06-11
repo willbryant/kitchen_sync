@@ -4,6 +4,7 @@
 #include "database_client_traits.h"
 #include "sql_functions.h"
 #include "unique_key_clearer.h"
+#include "reset_table_sequences.h"
 
 typedef map<PackedRow, PackedRow> RowsByPrimaryKey;
 
@@ -121,34 +122,6 @@ struct Replacer<DatabaseClient, true> {
 	const Columns &columns;
 	BaseSQL insert_sql;
 	UniqueKeyClearer<DatabaseClient> primary_key_clearer;
-};
-
-template <typename DatabaseClient, bool = is_base_of<SequenceColumns, DatabaseClient>::value>
-struct ResetTableSequences {
-	static void execute(DatabaseClient &client, const Table &table) {
-		/* nothing required */
-	}
-};
-
-template <typename DatabaseClient>
-struct ResetTableSequences <DatabaseClient, true> {
-	static void execute(DatabaseClient &client, const Table &table) {
-		for (const Column &column : table.columns) {
-			if (column.default_type == DefaultType::sequence) {
-				string statement("SELECT setval(pg_get_serial_sequence('");
-				statement += client.escape_value(table.name);
-				statement += "', '";
-				statement += client.escape_value(column.name);
-				statement += "'), COALESCE(MAX(";
-				statement += client.quote_identifiers_with();
-				statement += column.name;
-				statement += client.quote_identifiers_with();
-				statement += "), 0) + 1, false) FROM ";
-				statement += table.name;
-				client.execute(statement);
-			}
-		}
-	}
 };
 
 template <typename DatabaseClient>
