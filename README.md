@@ -11,7 +11,7 @@ Kitchen Sync aims to:
 * **Minimize write traffic to the target database**: as well as maximising update performance & SSD life, if you host your target database on a filesystem or storage cluster that supports Copy-on-Write, the storage requirements will grow only in proportion to the actual changes, you can store many versions of the database with minimal storage growth for datasets that tend to have large amounts of unchanged data between versions.
 * **Produce partial replicas**: optionally exclude tables that are not required at the target end, or synchronise only specific tables or even only rows matching certain criteria, with all other data being cleared at the target end to help reset to a known state.
 * **Filter out sensitive data on-the-fly**: define column expressions to overwrite certain data as it is retrieved from the source database server, to ensure that sensitive customer or business data never leaves the origin database server - even if a full-sized and otherwise complete production-like copy is needed for testing and development.
-* **Check and update schema**: Kitchen Sync will check that the target database schema matches the source, and can (optionally) recreate tables to make them match.
+* **Check and update schema**: Kitchen Sync will check that the target database schema matches the source, and can (optionally) recreate or alter tables to make them match.
 
 Installation
 ------------

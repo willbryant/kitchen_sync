@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.40
+----
+* Better algorithm for applying row changes that avoids using large amounts of memory when the 'from' end has deleted a large set of rows.
+* Default `long_query_time` to a higher value on MySQL to reduce annoying noise in logs.
+
 0.39
 ----
 * Better forward compatibility with future versions that may add new entries to the database schema definitions.
