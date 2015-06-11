@@ -32,27 +32,41 @@ struct FDReadStream {
 			memcpy(dest, buf + buf_pos, buf_avail);
 			dest  += buf_avail;
 			bytes -= buf_avail;
-			fill_buf();
+			populate_buf();
 		}
 		memcpy(dest, buf + buf_pos, bytes);
 		buf_pos   += bytes;
 		buf_avail -= bytes;
 	}
 
+	inline void skip(size_t bytes) {
+		while (bytes > buf_avail) {
+			bytes -= buf_avail;
+			populate_buf();
+		}
+		buf_pos   += bytes;
+		buf_avail -= bytes;
+	}
+
 protected:
-	void fill_buf() {
+	// attempts to populate at least some bytes in buf, which is assumed to be completely empty.
+	// sets buf_pos to 0, and buf_avail to the number of bytes present in the buffer, even if an
+	// error occurs.
+	void populate_buf() {
 		ssize_t bytes_read;
+		buf_pos = 0;
 		while (true) {
 			bytes_read = ::read(fd, buf, sizeof(buf));
 			if (bytes_read == 0) {
+				buf_avail = 0;
 				throw stream_closed_error();
 			}
 			if (bytes_read < 0) {
 				if (errno == EINTR) continue;
+				buf_avail = 0;
 				throw stream_error("Couldn't read from descriptor: " + string(strerror(errno)));
 			}
 			buf_avail = bytes_read;
-			buf_pos = 0;
 			break;
 		}
 	}

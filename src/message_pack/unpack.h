@@ -87,6 +87,99 @@ public:
 		stream.read(buf, bytes);
 	}
 
+	// skips the next element in the stream, irrespective of type
+	inline void skip() {
+		uint8_t leader = read_bytes<uint8_t>();
+
+		if ((leader >= MSGPACK_POSITIVE_FIXNUM_MIN && leader <= MSGPACK_POSITIVE_FIXNUM_MAX) ||
+			(leader >= MSGPACK_NEGATIVE_FIXNUM_MIN && leader <= MSGPACK_NEGATIVE_FIXNUM_MAX) ||
+			leader == MSGPACK_FALSE ||
+			leader == MSGPACK_TRUE ||
+			leader == MSGPACK_NIL) {
+			// single-byte encoding; nothing further to do
+
+		} else if (leader >= MSGPACK_FIXRAW_MIN && leader <= MSGPACK_FIXRAW_MAX) {
+			stream.skip(leader & 31);
+
+		} else if (leader == MSGPACK_RAW16) {
+			stream.skip(ntohs(read_bytes<uint16_t>()));
+
+		} else if (leader == MSGPACK_RAW32) {
+			stream.skip(ntohl(read_bytes<uint32_t>()));
+
+		} else if (leader >= MSGPACK_FIXARRAY_MIN && leader <= MSGPACK_FIXARRAY_MAX) {
+			size_t n = (leader & 15);
+			while (n--) skip();
+
+		} else if (leader == MSGPACK_ARRAY16) {
+			size_t n = ntohs(read_bytes<uint16_t>());
+			while (n--) skip();
+
+		} else if (leader == MSGPACK_ARRAY32) {
+			size_t n = ntohl(read_bytes<uint32_t>());
+			while (n--) skip();
+
+		} else if (leader >= MSGPACK_FIXMAP_MIN && leader <= MSGPACK_FIXMAP_MAX) {
+			size_t n = 2*(leader & 15);
+			while (n--) skip();
+
+		} else if (leader == MSGPACK_MAP16) {
+			size_t n = 2*ntohs(read_bytes<uint16_t>());
+			while (n--) skip();
+
+		} else if (leader == MSGPACK_MAP32) {
+			size_t n = 2*ntohl(read_bytes<uint32_t>());
+			while (n--) skip();
+
+		} else {
+			switch (leader) {
+				case MSGPACK_FLOAT:
+					read_bytes<float>();
+					break;
+
+				case MSGPACK_DOUBLE:
+					read_bytes<double>();
+					break;
+
+				case MSGPACK_UINT8:
+					read_bytes<uint8_t>();
+					break;
+
+				case MSGPACK_UINT16:
+					read_bytes<uint16_t>();
+					break;
+
+				case MSGPACK_UINT32:
+					read_bytes<uint32_t>();
+					break;
+
+				case MSGPACK_UINT64:
+					read_bytes<uint64_t>();
+					break;
+
+				case MSGPACK_INT8:
+					read_bytes<int8_t>();
+					break;
+
+				case MSGPACK_INT16:
+					read_bytes<int16_t>();
+					break;
+
+				case MSGPACK_INT32:
+					read_bytes<int32_t>();
+					break;
+
+				case MSGPACK_INT64:
+					read_bytes<int64_t>();
+					break;
+
+				default:
+					backtrace();
+					throw unpacker_error("Don't know how to skip MessagePack type " + to_string((int)leader));
+			}
+		}
+	}
+
 protected:
 	Stream &stream;
 };

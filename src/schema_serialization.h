@@ -106,7 +106,10 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 		} else if (attr_key == "default_function") {
 			column.default_type = DefaultType::default_function;
 			unpacker >> column.default_value;
-		} // ignore anything else, for forward compatibility
+		} else {
+			// ignore anything else, for forward compatibility
+			unpacker.skip();
+		}
 	}
 }
 
@@ -123,7 +126,10 @@ void operator >> (Unpacker<InputStream> &unpacker, Key &key) {
 			unpacker >> key.unique;
 		} else if (attr_key == "columns") {
 			unpacker >> key.columns;
-		} // ignore anything else, for forward compatibility
+		} else {
+			// ignore anything else, for forward compatibility
+			unpacker.skip();
+		}
 	}
 }
 
@@ -142,7 +148,10 @@ void operator >> (Unpacker<InputStream> &unpacker, Table &table) {
 			unpacker >> table.primary_key_columns;
 		} else if (attr_key == "keys") {
 			unpacker >> table.keys;
-		} // ignore anything else, for forward compatibility
+		} else {
+			// ignore anything else, for forward compatibility
+			unpacker.skip();
+		}
 	}
 }
 
@@ -155,7 +164,10 @@ void operator >> (Unpacker<InputStream> &unpacker, Database &database) {
 
 		if (attr_key == "tables") {
 			unpacker >> database.tables;
-		} // ignore anything else, for forward compatibility
+		} else {
+			// ignore anything else, for forward compatibility
+			unpacker.skip();
+		}
 	}
 }
 

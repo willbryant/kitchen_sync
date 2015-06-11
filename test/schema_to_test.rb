@@ -817,4 +817,23 @@ SQL
     assert_equal [secondtbl_def["columns"][3]["name"], secondtbl_def["columns"][1]["name"]], connection.table_key_columns("secondtbl")[key["name"]]
     assert_secondtbl_rows_present
   end
+
+  test_each "skips schema definitions it doesn't recognise" do
+    clear_schema
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+
+    values_of_many_types = [-(2**33), -(2**17), -(2**9), -(2**4), *-16..16, 2**4, 2**9, 2**17, 2**33, 1.0, nil, true, false, "a", "a"*17, "a"*(2**17), ["foo", "bar"], {"foo" => "bar"}]
+    table = {"before_table_stuff" => values_of_many_types}.merge(secondtbl_def).merge("after_table_stuff" => values_of_many_types)
+    table["columns"][0] = {"before_column_stuff" => values_of_many_types}.merge(table["columns"][0]).merge("after_column_stuff" => values_of_many_types)
+    table["keys"][0] = {"before_key_stuff" => values_of_many_types}.merge(table["keys"][0]).merge("after_key_stuff" => values_of_many_types)
+    send_command Commands::SCHEMA, "before_tables" => values_of_many_types, "tables" => [table], "after_tables" => values_of_many_types
+    read_command
+
+    assert_equal secondtbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("secondtbl")
+    assert_match /^bigint/, connection.table_column_types("secondtbl")["tri"]
+    assert_equal true, connection.table_column_nullability("secondtbl")["tri"]
+    assert_equal nil, connection.table_column_defaults("secondtbl")["tri"]
+    assert_same_keys(secondtbl_def)
+  end
 end
