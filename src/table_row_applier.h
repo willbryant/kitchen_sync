@@ -151,7 +151,7 @@ struct TableRowApplier {
 	}
 
 	template <typename InputStream>
-	size_t stream_from_input(Unpacker<InputStream> &input, const ColumnValues &matched_up_to_key, const ColumnValues &last_not_matching_key) {
+	void stream_from_input(Unpacker<InputStream> &input, const ColumnValues &matched_up_to_key, const ColumnValues &last_not_matching_key) {
 		// we're being sent the range of rows > matched_up_to_key and <= last_not_matching_key; apply them to our end
 
 		RowsByPrimaryKey existing_rows;
@@ -166,14 +166,12 @@ struct TableRowApplier {
 		}
 
 		PackedRow row;
-		size_t rows_in_range = 0;
 
 		while (true) {
 			// command responses are a series of arrays, terminated by an empty array.  this avoids having
 			// to know the number of results in advance; an empty row is not valid, so it's unambiguous.
 			input >> row;
 			if (row.size() == 0) break;
-			rows_in_range++;
 
 			if (replace_row(existing_rows, row, last_not_matching_key.empty())) {
 				rows_changed++;
@@ -190,10 +188,7 @@ struct TableRowApplier {
 		for (RowsByPrimaryKey::const_iterator it = existing_rows.begin(); it != existing_rows.end(); ++it) {
 			replacer.primary_key_clearer.row(it->second);
 		}
-		rows_changed  += existing_rows.size();
-		rows_in_range += existing_rows.size();
-
-		return rows_in_range;
+		rows_changed += existing_rows.size();
 	}
 
 	bool replace_row(RowsByPrimaryKey &existing_rows, const PackedRow &row, bool end_of_table) {
