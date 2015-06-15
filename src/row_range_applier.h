@@ -85,6 +85,7 @@ struct RowRangeApplier {
 		while (client.retrieve_rows(*this, table, prev_key, curr_key, MAX_ROWS_TO_SELECT) == MAX_ROWS_TO_SELECT) {
 			apply_if_necessary();
 		}
+		apply_if_necessary();
 		prev_key = curr_key; // prev_key is iteratively updated in operator() to serve the loop above, but we may not have had the curr_key row locally
 	}
 
