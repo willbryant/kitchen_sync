@@ -19,7 +19,8 @@ struct SyncFromWorker {
 			status_area(status_area),
 			status_size(status_size),
 			protocol_version(0),
-			target_block_size(1) {
+			target_minimum_block_size(1),
+			target_maximum_block_size(DEFAULT_MAXIMUM_BLOCK_SIZE) {
 		if (!set_variables.empty()) {
 			client.execute("SET " + set_variables);
 		}
@@ -108,7 +109,7 @@ struct SyncFromWorker {
 		read_all_arguments(input, table_name);
 		const Table *table = tables_by_name.at(table_name); // throws out_of_range if not present in the map
 		show_status("syncing " + table_name);
-		hash_first_range(*this, *table, target_block_size);
+		hash_first_range(*this, *table, target_minimum_block_size);
 		return table;
 	}
 
@@ -117,7 +118,7 @@ struct SyncFromWorker {
 		ColumnValues prev_key, last_key;
 		string hash;
 		read_all_arguments(input, prev_key, last_key, hash);
-		check_hash_and_choose_next_range(*this, *table, nullptr, prev_key, last_key, nullptr, hash, target_block_size);
+		check_hash_and_choose_next_range(*this, *table, nullptr, prev_key, last_key, nullptr, hash, target_minimum_block_size, target_maximum_block_size);
 	}
 
 	void handle_hash_fail_command(const Table *table) {
@@ -125,7 +126,7 @@ struct SyncFromWorker {
 		ColumnValues prev_key, last_key, failed_last_key;
 		string hash;
 		read_all_arguments(input, prev_key, last_key, failed_last_key, hash);
-		check_hash_and_choose_next_range(*this, *table, nullptr, prev_key, last_key, &failed_last_key, hash, target_block_size);
+		check_hash_and_choose_next_range(*this, *table, nullptr, prev_key, last_key, &failed_last_key, hash, target_minimum_block_size, target_maximum_block_size);
 	}
 
 	void handle_rows_command(const Table *table) {
@@ -140,7 +141,7 @@ struct SyncFromWorker {
 		ColumnValues prev_key, last_key, next_key;
 		string hash;
 		read_all_arguments(input, prev_key, last_key, next_key, hash);
-		check_hash_and_choose_next_range(*this, *table, &prev_key, last_key, next_key, nullptr, hash, target_block_size);
+		check_hash_and_choose_next_range(*this, *table, &prev_key, last_key, next_key, nullptr, hash, target_minimum_block_size, target_maximum_block_size);
 	}
 
 	void handle_rows_and_hash_fail_command(const Table *table) {
@@ -148,7 +149,7 @@ struct SyncFromWorker {
 		ColumnValues prev_key, last_key, next_key, failed_last_key;
 		string hash;
 		read_all_arguments(input, prev_key, last_key, next_key, failed_last_key, hash);
-		check_hash_and_choose_next_range(*this, *table, &prev_key, last_key, next_key, &failed_last_key, hash, target_block_size);
+		check_hash_and_choose_next_range(*this, *table, &prev_key, last_key, next_key, &failed_last_key, hash, target_minimum_block_size, target_maximum_block_size);
 	}
 
 	void handle_export_snapshot_command() {
@@ -184,8 +185,8 @@ struct SyncFromWorker {
 	}
 
 	void handle_target_block_size_command() {
-		read_all_arguments(input, target_block_size);
-		send_command(output, Commands::TARGET_BLOCK_SIZE, target_block_size); // we always accept the requested size and send it back (but the test suite doesn't)
+		read_all_arguments(input, target_minimum_block_size);
+		send_command(output, Commands::TARGET_BLOCK_SIZE, target_minimum_block_size); // we always accept the requested size and send it back (but the test suite doesn't)
 	}
 
 	inline void send_hash_next_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
@@ -272,7 +273,8 @@ struct SyncFromWorker {
 	size_t status_size;
 
 	int protocol_version;
-	size_t target_block_size;
+	size_t target_minimum_block_size;
+	size_t target_maximum_block_size;
 };
 
 template<class DatabaseClient, typename... Options>

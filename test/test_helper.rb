@@ -315,10 +315,10 @@ module KitchenSync
       spawner.send_results(*args)
     end
 
-    def send_handshake_commands(target_block_size = 1)
+    def send_handshake_commands(target_minimum_block_size = 1)
       send_protocol_command
       send_without_snapshot_command
-      send_target_block_size_command(target_block_size)
+      send_target_minimum_block_size_command(target_minimum_block_size)
     end
 
     def send_protocol_command
@@ -331,19 +331,19 @@ module KitchenSync
       expect_command Commands::WITHOUT_SNAPSHOT
     end
 
-    def send_target_block_size_command(target_block_size = 1)
-      send_command   Commands::TARGET_BLOCK_SIZE, target_block_size
-      expect_command Commands::TARGET_BLOCK_SIZE, [target_block_size]
+    def send_target_minimum_block_size_command(target_minimum_block_size = 1)
+      send_command   Commands::TARGET_BLOCK_SIZE, target_minimum_block_size
+      expect_command Commands::TARGET_BLOCK_SIZE, [target_minimum_block_size]
     end
 
-    def expect_handshake_commands(target_block_size = 1)
+    def expect_handshake_commands(target_minimum_block_size = 1)
       # checking how protocol versions are handled is covered in protocol_versions_test; here we just need to get past that to get on to the commands we want to test
       expect_command Commands::PROTOCOL, [PROTOCOL_VERSION_SUPPORTED]
       send_command   Commands::PROTOCOL, PROTOCOL_VERSION_SUPPORTED
 
       # we force the block size down to 1 by default so we can test out our algorithms row-by-row, but real runs would use a bigger size
       assert_equal   Commands::TARGET_BLOCK_SIZE, read_command.first
-      send_command   Commands::TARGET_BLOCK_SIZE, target_block_size
+      send_command   Commands::TARGET_BLOCK_SIZE, target_minimum_block_size
 
       # since we haven't asked for multiple workers, we'll always get sent the snapshot-less start command
       expect_command Commands::WITHOUT_SNAPSHOT
