@@ -6,6 +6,7 @@
 template <typename DatabaseClient>
 struct RowRangeApplier {
 	static const size_t MAX_BYTES_TO_BUFFER = 16*1024*1024; // no particular rationale for this value - just large enough that it isn't usually the deciding factor in when we apply statements
+	static const size_t MAX_ROWS_TO_SELECT = 10000; // also somewhat arbitrary, but because we can't send DELETE statements while we are still receiving the results of a SELECT query on the same connection, this can effectively determine how many IDs we list in a single DELETE statement
 
 	typedef map<PackedRow, PackedRow> RowsByPrimaryKey;
 
@@ -59,7 +60,6 @@ struct RowRangeApplier {
 		if (approx_buffered_bytes > MAX_BYTES_TO_BUFFER) {
 			check_rows_to_curr_key();
 			insert_remaining_rows(false);
-			prev_key = curr_key;
 		}
 	}
 
@@ -80,14 +80,19 @@ struct RowRangeApplier {
 	}
 
 	void check_rows_to_curr_key() {
-		client.retrieve_rows(*this, table, prev_key, curr_key);
+		// we select in batches to avoid large buffering in clients that can't turn buffering off; and in those
+		// that can, we also need to execute DML periodically (but can't do that while SELECT is returning results)
+		while (client.retrieve_rows(*this, table, prev_key, curr_key, MAX_ROWS_TO_SELECT) == MAX_ROWS_TO_SELECT) {
+		}
+		prev_key = curr_key; // prev_key is iteratively updated in operator() to serve the loop above, but we may not have had the curr_key row locally
 	}
 
 	void operator()(const typename DatabaseClient::RowType &database_row) {
 		PackedRow row;
 		database_row.pack_row_into(row);
+		prev_key = primary_key_of(row);
 
-		RowsByPrimaryKey::iterator source_row = source_rows.find(primary_key_of(row));
+		RowsByPrimaryKey::iterator source_row = source_rows.find(prev_key);
 
 		if (source_row == source_rows.end()) {
 			// we have a row that we shouldn't have, so we need to remove it
