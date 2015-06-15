@@ -35,10 +35,6 @@ struct UniqueKeyClearer {
 			delete_sql += '=';
 			delete_sql += encode(*client, table->columns[column], row[column]);
 		}
-
-		if (delete_sql.curr.size() > BaseSQL::MAX_SENSIBLE_DELETE_COMMAND_SIZE) {
-			apply();
-		}
 	}
 
 	inline void apply() {

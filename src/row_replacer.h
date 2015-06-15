@@ -39,12 +39,6 @@ struct RowReplacer {
 		// so unlike insert_row we don't need to clear later conflicting unique key values.
 		append_row_tuple(client, columns, insert_sql, row);
 
-		// to reduce the trips to the database server, we don't execute a statement for each row -
-		// but we do it periodically, as it's not efficient to build up enormous strings either
-		if (insert_sql.curr.size() > BaseSQL::MAX_SENSIBLE_INSERT_COMMAND_SIZE) {
-			apply();
-		}
-
 		rows_changed++;
 	}
 
@@ -118,12 +112,6 @@ struct RowReplacer<DatabaseClient, true> {
 
 	inline void replace_row(const PackedRow &row) {
 		append_row_tuple(client, columns, insert_sql, row);
-
-		// to reduce the trips to the database server, we don't execute a statement for each row -
-		// but we do it periodically, as it's not efficient to build up enormous strings either
-		if (insert_sql.curr.size() > BaseSQL::MAX_SENSIBLE_INSERT_COMMAND_SIZE) {
-			apply();
-		}
 
 		rows_changed++;
 	}

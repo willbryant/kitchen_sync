@@ -83,6 +83,7 @@ struct RowRangeApplier {
 		// we select in batches to avoid large buffering in clients that can't turn buffering off; and in those
 		// that can, we also need to execute DML periodically (but can't do that while SELECT is returning results)
 		while (client.retrieve_rows(*this, table, prev_key, curr_key, MAX_ROWS_TO_SELECT) == MAX_ROWS_TO_SELECT) {
+			apply_if_necessary();
 		}
 		prev_key = curr_key; // prev_key is iteratively updated in operator() to serve the loop above, but we may not have had the curr_key row locally
 	}
@@ -114,9 +115,22 @@ struct RowRangeApplier {
 	void insert_remaining_rows(bool end_of_table) {
 		for (RowsByPrimaryKey::iterator source_row = source_rows.begin(); source_row != source_rows.end(); ++source_row) {
 			end_of_table ? replacer.append_row(source_row->second) : replacer.insert_row(source_row->second);
+			apply_if_necessary();
 		}
 		source_rows.clear();
 		approx_buffered_bytes = 0;
+	}
+
+	inline void apply_if_necessary() {
+		// to reduce the trips to the database server, we don't execute a statement for each row -
+		// but we do it periodically, as it's not efficient to build up enormous strings either.
+		// note that this method is only called while retrieve_rows is not running - we can't
+		// execute another statement while one is already running, because we turn off database
+		// client row buffering for efficiency.
+		if (replacer.insert_sql.curr.size() > BaseSQL::MAX_SENSIBLE_INSERT_COMMAND_SIZE ||
+			replacer.primary_key_clearer.delete_sql.curr.size() > BaseSQL::MAX_SENSIBLE_DELETE_COMMAND_SIZE) {
+			replacer.apply();
+		}
 	}
 
 	RowReplacer<DatabaseClient> &replacer;
