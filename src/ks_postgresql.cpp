@@ -132,8 +132,8 @@ public:
 	~PostgreSQLClient();
 
 	template <typename RowReceiver>
-	size_t retrieve_rows(RowReceiver &row_packer, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, ssize_t row_count = NO_ROW_COUNT_LIMIT) {
-		return query(retrieve_rows_sql(*this, table, prev_key, last_key, row_count), row_packer);
+	size_t retrieve_rows(RowReceiver &row_receiver, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, ssize_t row_count = NO_ROW_COUNT_LIMIT) {
+		return query(retrieve_rows_sql(*this, table, prev_key, last_key, row_count), row_receiver);
 	}
 
 	size_t count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
