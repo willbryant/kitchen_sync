@@ -135,11 +135,8 @@ struct RowReplacer<DatabaseClient, true> {
 	}
 
 	inline void apply() {
-		// although we don't need or use primary_key_clearer ourself, if the RowRangeApplier has listed some rows to
-		// delete, we want to do that too
 		primary_key_clearer.apply();
 
-		// aside from that, we're simply running batched REPLACE statements
 		insert_sql.apply(client);
 
 		if (commit_often) {
