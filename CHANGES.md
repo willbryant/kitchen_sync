@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.41
+----
+* Fix regression in 0.40 where a DELETE query could be run while an unbuferred SELECT query was run on MySQL.
+
 0.40
 ----
 * Better algorithm for applying row changes that avoids using large amounts of memory when the 'from' end has deleted a large set of rows.
