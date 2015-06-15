@@ -7,6 +7,8 @@ template <typename DatabaseClient>
 struct RowRangeApplier {
 	static const size_t MAX_BYTES_TO_BUFFER = 16*1024*1024; // no particular rationale for this value - just large enough that it isn't usually the deciding factor in when we apply statements
 	static const size_t MAX_ROWS_TO_SELECT = 10000; // also somewhat arbitrary, but because we can't send DELETE statements while we are still receiving the results of a SELECT query on the same connection, this can effectively determine how many IDs we list in a single DELETE statement
+	static const size_t MAX_SENSIBLE_INSERT_STATEMENT_SIZE = 4*1024*1024;
+	static const size_t MAX_SENSIBLE_DELETE_STATEMENT_SIZE =     16*1024;
 
 	typedef map<PackedRow, PackedRow> RowsByPrimaryKey;
 
@@ -128,8 +130,8 @@ struct RowRangeApplier {
 		// note that this method is only called while retrieve_rows is not running - we can't
 		// execute another statement while one is already running, because we turn off database
 		// client row buffering for efficiency.
-		if (replacer.insert_sql.curr.size() > BaseSQL::MAX_SENSIBLE_INSERT_COMMAND_SIZE ||
-			replacer.primary_key_clearer.delete_sql.curr.size() > BaseSQL::MAX_SENSIBLE_DELETE_COMMAND_SIZE) {
+		if (replacer.insert_sql.curr.size() > MAX_SENSIBLE_INSERT_STATEMENT_SIZE ||
+			replacer.primary_key_clearer.delete_sql.curr.size() > MAX_SENSIBLE_DELETE_STATEMENT_SIZE) {
 			replacer.apply();
 		}
 	}
