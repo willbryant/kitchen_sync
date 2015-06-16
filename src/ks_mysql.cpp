@@ -243,10 +243,10 @@ string MySQLClient::select_one(const string &sql) {
 }
 
 string MySQLClient::sql_error(const string &sql) {
-	if (sql.size() < 100) {
+	if (sql.size() < 200) {
 		return mysql_error(&mysql) + string("\n") + sql;
 	} else {
-		return mysql_error(&mysql) + string("\n") + sql.substr(0, 100) + "...";
+		return mysql_error(&mysql) + string("\n") + sql.substr(0, 200) + "...";
 	}
 }
 
