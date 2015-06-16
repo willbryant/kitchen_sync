@@ -61,8 +61,8 @@ public:
 	inline         int length_of(int column_number) const { return _lengths[column_number]; }
 	inline      string string_at(int column_number) const { return string((char *)result_at(column_number), length_of(column_number)); }
 	inline        bool   bool_at(int column_number) const { return (strcmp((const char *)result_at(column_number), "1") == 0); }
-	inline   int64_t      int_at(int column_number) const { return strtoll((const char *)result_at(column_number), NULL, 10); }
-	inline  uint64_t     uint_at(int column_number) const { return strtoull((const char *)result_at(column_number), NULL, 10); }
+	inline     int64_t    int_at(int column_number) const { return strtoll((const char *)result_at(column_number), NULL, 10); }
+	inline    uint64_t   uint_at(int column_number) const { return strtoull((const char *)result_at(column_number), NULL, 10); }
 
 	template <typename Packer>
 	inline void pack_column_into(Packer &packer, int column_number) const {
@@ -125,10 +125,7 @@ public:
 		return query(retrieve_rows_sql(*this, table, prev_key, last_key, row_count), row_receiver, false /* nb. n_tuples won't work, which is ok since we send rows individually */);
 	}
 
-	size_t count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
-		return atoi(select_one(count_rows_sql(*this, table, prev_key, last_key)).c_str());
-	}
-
+	size_t count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key);
 	void execute(const string &sql);
 	void disable_referential_integrity();
 	void enable_referential_integrity();
@@ -177,28 +174,8 @@ protected:
 		return res.n_tuples();
 	}
 
-	string select_one(const string &sql) {
-		if (mysql_real_query(&mysql, sql.c_str(), sql.length())) {
-			backtrace();
-			throw runtime_error(sql_error(sql));
-		}
-
-		MySQLRes res(mysql, true);
-
-		if (res.n_tuples() != 1 || res.n_columns() != 1) {
-			throw runtime_error("Expected query to return only one row with only one column\n" + sql);
-		}
-
-		return MySQLRow(res, mysql_fetch_row(res.res())).string_at(0);
-	}
-
-	string sql_error(const string &sql) {
-		if (sql.size() < 100) {
-			return mysql_error(&mysql) + string("\n") + sql;
-		} else {
-			return mysql_error(&mysql) + string("\n") + sql.substr(0, 100) + "...";
-		}
-	}
+	string select_one(const string &sql);
+	string sql_error(const string &sql);
 
 private:
 	MYSQL mysql;
@@ -240,11 +217,39 @@ MySQLClient::~MySQLClient() {
 	mysql_close(&mysql);
 }
 
+size_t MySQLClient::count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
+	return atoi(select_one(count_rows_sql(*this, table, prev_key, last_key)).c_str());
+}
+
 void MySQLClient::execute(const string &sql) {
 	if (mysql_real_query(&mysql, sql.c_str(), sql.size())) {
 		throw runtime_error(sql_error(sql));
 	}
 }
+
+string MySQLClient::select_one(const string &sql) {
+	if (mysql_real_query(&mysql, sql.c_str(), sql.length())) {
+		backtrace();
+		throw runtime_error(sql_error(sql));
+	}
+
+	MySQLRes res(mysql, true);
+
+	if (res.n_tuples() != 1 || res.n_columns() != 1) {
+		throw runtime_error("Expected query to return only one row with only one column\n" + sql);
+	}
+
+	return MySQLRow(res, mysql_fetch_row(res.res())).string_at(0);
+}
+
+string MySQLClient::sql_error(const string &sql) {
+	if (sql.size() < 100) {
+		return mysql_error(&mysql) + string("\n") + sql;
+	} else {
+		return mysql_error(&mysql) + string("\n") + sql.substr(0, 100) + "...";
+	}
+}
+
 
 void MySQLClient::start_read_transaction() {
 	execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");

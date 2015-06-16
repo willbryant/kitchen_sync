@@ -136,10 +136,7 @@ public:
 		return query(retrieve_rows_sql(*this, table, prev_key, last_key, row_count), row_receiver);
 	}
 
-	size_t count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
-		return atoi(select_one(count_rows_sql(*this, table, prev_key, last_key)).c_str());
-	}
-
+	size_t count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key);
 	void execute(const string &sql);
 	void disable_referential_integrity();
 	void enable_referential_integrity();
@@ -181,28 +178,8 @@ protected:
 		return res.n_tuples();
 	}
 
-	string select_one(const string &sql) {
-		PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, nullptr, nullptr, nullptr, nullptr, 0 /* text-format results only */));
-
-		if (res.status() != PGRES_TUPLES_OK) {
-			backtrace();
-			throw runtime_error(sql_error(sql));
-		}
-
-		if (res.n_tuples() != 1 || res.n_columns() != 1) {
-			throw runtime_error("Expected query to return only one row with only one column\n" + sql);
-		}
-		
-		return PostgreSQLRow(res, 0).string_at(0);
-	}
-
-	string sql_error(const string &sql) {
-		if (sql.size() < 100) {
-			return PQerrorMessage(conn) + string("\n") + sql;
-		} else {
-			return PQerrorMessage(conn) + string("\n") + sql.substr(0, 100) + "...";
-		}
-	}
+	string select_one(const string &sql);
+	string sql_error(const string &sql);
 
 private:
 	PGconn *conn;
@@ -239,12 +216,39 @@ PostgreSQLClient::~PostgreSQLClient() {
 	}
 }
 
+size_t PostgreSQLClient::count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
+	return atoi(select_one(count_rows_sql(*this, table, prev_key, last_key)).c_str());
+}
+
 void PostgreSQLClient::execute(const string &sql) {
     PostgreSQLRes res(PQexec(conn, sql.c_str()));
 
     if (res.status() != PGRES_COMMAND_OK && res.status() != PGRES_TUPLES_OK) {
 		throw runtime_error(sql_error(sql));
     }
+}
+
+string PostgreSQLClient::select_one(const string &sql) {
+	PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, nullptr, nullptr, nullptr, nullptr, 0 /* text-format results only */));
+
+	if (res.status() != PGRES_TUPLES_OK) {
+		backtrace();
+		throw runtime_error(sql_error(sql));
+	}
+
+	if (res.n_tuples() != 1 || res.n_columns() != 1) {
+		throw runtime_error("Expected query to return only one row with only one column\n" + sql);
+	}
+
+	return PostgreSQLRow(res, 0).string_at(0);
+}
+
+string PostgreSQLClient::sql_error(const string &sql) {
+	if (sql.size() < 100) {
+		return PQerrorMessage(conn) + string("\n") + sql;
+	} else {
+		return PQerrorMessage(conn) + string("\n") + sql.substr(0, 100) + "...";
+	}
 }
 
 void PostgreSQLClient::start_read_transaction() {
