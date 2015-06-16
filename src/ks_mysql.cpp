@@ -156,7 +156,7 @@ protected:
 	size_t query(const string &sql, RowFunction &row_handler, bool buffer) {
 		if (mysql_real_query(&mysql, sql.c_str(), sql.length())) {
 			backtrace();
-			throw runtime_error(mysql_error(&mysql) + string("\n") + sql);
+			throw runtime_error(sql_error(sql));
 		}
 
 		MySQLRes res(mysql, buffer);
@@ -171,7 +171,7 @@ protected:
 		// check again for errors, as mysql_fetch_row would return NULL for both errors & no more rows
 		if (mysql_errno(&mysql)) {
 			backtrace();
-			throw runtime_error(mysql_error(&mysql) + string("\n") + sql);
+			throw runtime_error(sql_error(sql));
 		}
 
 		return res.n_tuples();
@@ -180,7 +180,7 @@ protected:
 	string select_one(const string &sql) {
 		if (mysql_real_query(&mysql, sql.c_str(), sql.length())) {
 			backtrace();
-			throw runtime_error(mysql_error(&mysql) + string("\n") + sql);
+			throw runtime_error(sql_error(sql));
 		}
 
 		MySQLRes res(mysql, true);
@@ -190,6 +190,14 @@ protected:
 		}
 
 		return MySQLRow(res, mysql_fetch_row(res.res())).string_at(0);
+	}
+
+	string sql_error(const string &sql) {
+		if (sql.size() < 100) {
+			return mysql_error(&mysql) + string("\n") + sql;
+		} else {
+			return mysql_error(&mysql) + string("\n") + sql.substr(0, 100) + "...";
+		}
 	}
 
 private:
@@ -234,7 +242,7 @@ MySQLClient::~MySQLClient() {
 
 void MySQLClient::execute(const string &sql) {
 	if (mysql_real_query(&mysql, sql.c_str(), sql.size())) {
-		throw runtime_error(mysql_error(&mysql) + string("\n") + sql);
+		throw runtime_error(sql_error(sql));
 	}
 }
 

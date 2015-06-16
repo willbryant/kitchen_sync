@@ -170,7 +170,7 @@ protected:
 
 		if (res.status() != PGRES_TUPLES_OK) {
 			backtrace();
-			throw runtime_error(PQerrorMessage(conn) + string("\n") + sql);
+			throw runtime_error(sql_error(sql));
 		}
 
 		for (int row_number = 0; row_number < res.n_tuples(); row_number++) {
@@ -186,7 +186,7 @@ protected:
 
 		if (res.status() != PGRES_TUPLES_OK) {
 			backtrace();
-			throw runtime_error(PQerrorMessage(conn) + string("\n") + sql);
+			throw runtime_error(sql_error(sql));
 		}
 
 		if (res.n_tuples() != 1 || res.n_columns() != 1) {
@@ -194,6 +194,14 @@ protected:
 		}
 		
 		return PostgreSQLRow(res, 0).string_at(0);
+	}
+
+	string sql_error(const string &sql) {
+		if (sql.size() < 100) {
+			return PQerrorMessage(conn) + string("\n") + sql;
+		} else {
+			return PQerrorMessage(conn) + string("\n") + sql.substr(0, 100) + "...";
+		}
 	}
 
 private:
@@ -235,7 +243,7 @@ void PostgreSQLClient::execute(const string &sql) {
     PostgreSQLRes res(PQexec(conn, sql.c_str()));
 
     if (res.status() != PGRES_COMMAND_OK && res.status() != PGRES_TUPLES_OK) {
-		throw runtime_error(PQerrorMessage(conn) + string("\n") + sql);
+		throw runtime_error(sql_error(sql));
     }
 }
 
