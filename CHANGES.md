@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.42
+----
+* Limit the maximum block size for a single hash command to reduce rework.
+* Optimisations from testing of the 0.40 and 0.41 changes.
+
 0.41
 ----
 * Fix regression in 0.40 where a DELETE query could be run while an unbuferred SELECT query was run on MySQL.
