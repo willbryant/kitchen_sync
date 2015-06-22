@@ -11,8 +11,8 @@ If you'd like to see the wide range of exciting and confusing command-line optio
 To synchronize between two databases on the local machine, you might start with:
 
 ```
-ks --from postgresql://someuser:mypassword/localhost/sourcedb \
-   --to postgresql://someuser:mypassword/localhost/targetdb
+ks --from postgresql://someuser:mypassword@localhost/sourcedb \
+   --to postgresql://someuser:mypassword@localhost/targetdb
 ```
 
 The --from and --to arguments are both "dburls" (database URLs).  This version supports protocols "postgresql" and "mysql" (which works equally well for mariadb).
@@ -20,15 +20,15 @@ The --from and --to arguments are both "dburls" (database URLs).  This version s
 To synchronise between machines on the same network, simply use the hostnames in the URL.  For example, to copy from a local database server to your own machine:
 
 ```
-ks --from postgresql://myuser:secretpassword/ourserver.ourofficelan/sourcedb \
-   --to postgresql://someuser:mypassword/localhost/targetdb
+ks --from postgresql://myuser:secretpassword@ourserver.ourofficelan/sourcedb \
+   --to postgresql://someuser:mypassword@localhost/targetdb
 ```
 
 Or to synchronize between two directly-accessible database servers, but from a third machine which has Kitchen Sync installed on it:
 
 ```
-ks --from postgresql://myuser:secretpassword/server1.cluster1/sourcedb \
-   --to postgresql://anotheruser:greatpassword/server2.cluster2/targetdb
+ks --from postgresql://myuser:secretpassword@server1.cluster1/sourcedb \
+   --to postgresql://anotheruser:greatpassword@server2.cluster2/targetdb
 ```
 
 Please see "Transporting Kitchen Sync over SSH" below for more options, especially if you want to synchronize over the Internet or a WAN.
@@ -39,8 +39,8 @@ Parallelizing
 By default Kitchen Sync will start only one worker.  To parallelize, use the --workers option:
 
 ```
-ks --from postgresql://someuser:mypassword/localhost/sourcedb \
-   --to postgresql://someuser:mypassword/localhost/targetdb \
+ks --from postgresql://someuser:mypassword@localhost/sourcedb \
+   --to postgresql://someuser:mypassword@localhost/targetdb \
    --workers 4
 ```
 
@@ -74,16 +74,16 @@ For example, if you want to copy from a database server called `server1.sourcecl
 
 ```
 ks --via console1.sourcecluster
-   --from postgresql://myuser:secretpassword/server1.sourcecluster/sourcedb \
-   --to postgresql://anotheruser:greatpassword/server2.localcluster/targetdb
+   --from postgresql://myuser:secretpassword@server1.sourcecluster/sourcedb \
+   --to postgresql://anotheruser:greatpassword@server2.localcluster/targetdb
 ```
 
 Of course, it is always more efficient to install Kitchen Sync directly on the source and target database servers itself, and avoid even the LANs at each end becoming a bottleneck:
 
 ```
 ks --via server1.sourcecluster \
-   --from postgresql://myuser:secretpassword/localhost/sourcedb \
-   --to postgresql://anotheruser:greatpassword/localhost/targetdb
+   --from postgresql://myuser:secretpassword@localhost/sourcedb \
+   --to postgresql://anotheruser:greatpassword@localhost/targetdb
 ```
 
 Note that in this case the `localhost` specified in the two connection strings is different - at the 'from' end it will be the `--via` server, but at the 'to' end it will be the server you are starting Kitchen Sync on.
