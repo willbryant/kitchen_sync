@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
 
 		if (options.verbose >= VERY_VERBOSE) {
 			cout << "from command:";
-			for (const char **p = from_args; *p; p++) cout << ' ' << (**p ? *p : "''");
+			for (const char **p = applicable_from_args; *p; p++) cout << ' ' << (**p ? *p : "''");
 			cout << endl;
 
 			cout << "to command:";
