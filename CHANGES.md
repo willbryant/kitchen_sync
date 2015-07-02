@@ -1,9 +1,13 @@
 Changelog
 =========
 
+0.44
+----
+* Fix `ks_mysql` or `ks_postgresql` not being found on some installs because PATH was not used in all cases.
+
 0.43
 ----
-* Fix --debug listing arguments it wouldn't actually use if --via was not given.
+* Fix `--debug` listing arguments it wouldn't actually use if `--via` was not given.
 * Fixes URL examples in usage documentation.
 
 0.42
