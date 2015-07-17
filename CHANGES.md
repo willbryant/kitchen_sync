@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.45
+----
+* Fix pthreads link problems on newer Linux distros.
+
 0.44
 ----
 * Fix `ks_mysql` or `ks_postgresql` not being found on some installs because PATH was not used in all cases.
