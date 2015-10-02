@@ -5,10 +5,11 @@
 #include <cstring>
 #include <stdexcept>
 #include "commit_level.h"
+#include "hash_algorithm.h"
 #include "db_url.h"
 
 struct Options {
-	inline Options(): workers(1), verbose(0), snapshot(true), alter(false), commit_level(CommitLevel::success) {}
+	inline Options(): workers(1), verbose(0), snapshot(true), alter(false), commit_level(CommitLevel::success), hash_algorithm(HashAlgorithm::md5) {}
 
 	void help() {
 		cerr <<
@@ -77,6 +78,12 @@ struct Options {
 			"                             and if it doesn't match the statements --alter\n"
 			"                             would use are printed as suggestions.)"
 			"\n"
+			"  --hash arg                 Use the specified checksum algorithm.  The default\n"
+			"                             is MD5.  You can downgrade to XXH64 if you are more\n"
+			"                             interested in performance than data integrity.\n"
+			"                             This is not considered appropriate for production\n"
+			"                             use, but may be useful for dev/test machines.\n"
+			"\n"
 			"  --verbose                  Log more information as the program works.\n"
 			"\n"
 			"  --debug                    Log debugging information as the program works.\n";
@@ -102,6 +109,7 @@ struct Options {
 					{ "partial",					no_argument,		NULL,	'p' }, // deprecated - use '--commit often' instead
 					{ "rollback-after",				no_argument,		NULL,	'r' }, // deprecated - use '--commit never', which is equivalent
 					{ "alter",						no_argument,		NULL,	'a' },
+					{ "hash",					    required_argument,	NULL,	'h' },
 					{ "verbose",					no_argument,		NULL,	'V' },
 					{ "debug",						no_argument,		NULL,	'd' },
 					{ NULL,							0,					NULL,	0 },
@@ -180,6 +188,15 @@ struct Options {
 						alter = true;
 						break;
 
+					case 'h':
+						if (!strcmp(optarg, "MD5")) {
+							hash_algorithm = HashAlgorithm::md5;
+						} else if (!strcmp(optarg, "XXH64")) {
+							hash_algorithm = HashAlgorithm::xxh64;
+						} else {
+							throw invalid_argument("Unknown hash algorithm: " + string(optarg));
+						}
+
 					case 'V':
 						verbose = 1;
 						break;
@@ -217,6 +234,7 @@ struct Options {
 	bool snapshot;
 	bool alter;
 	CommitLevel commit_level;
+	HashAlgorithm hash_algorithm;
 	string ignore, only;
 };
 

@@ -4,6 +4,7 @@
 #include "schema.h"
 #include "row_serialization.h"
 #include "command.h"
+#include "hash_algorithm.h"
 
 struct sync_error: public runtime_error {
 	sync_error(): runtime_error("Sync error") { }
@@ -18,7 +19,7 @@ void check_hash_and_choose_next_range(Worker &worker, const Table &table, const 
 	if (last_key.empty()) throw logic_error("No range end given");
 
 	// the other end has given us their hash for the key range (prev_key, last_key], calculate our hash
-	RowHasher hasher;
+	RowHasher hasher(worker.hash_algorithm);
 	worker.client.retrieve_rows(hasher, table, prev_key, last_key);
 
 	if (hasher.finish() == hash) {
@@ -85,7 +86,7 @@ template <typename Worker>
 void hash_failed_range(Worker &worker, const Table &table, size_t rows_to_hash, const ColumnValues *failed_prev_key, const ColumnValues &prev_key, const ColumnValues &failed_last_key) {
 	if (!rows_to_hash) throw logic_error("Can't hash 0 rows");
 
-	RowHasherAndLastKey hasher(table.primary_key_columns);
+	RowHasherAndLastKey hasher(worker.hash_algorithm, table.primary_key_columns);
 	worker.client.retrieve_rows(hasher, table, prev_key, ColumnValues(), rows_to_hash);
 
 	if (failed_prev_key) {
@@ -99,7 +100,7 @@ template <typename Worker>
 void hash_next_range(Worker &worker, const Table &table, const ColumnValues &prev_key, size_t rows_to_hash, size_t target_minimum_block_size) {
 	if (!rows_to_hash) throw logic_error("Can't hash 0 rows");
 	
-	RowHasherAndLastKey hasher(table.primary_key_columns);
+	RowHasherAndLastKey hasher(worker.hash_algorithm, table.primary_key_columns);
 	worker.client.retrieve_rows(hasher, table, prev_key, ColumnValues(), rows_to_hash);
 	hash_to_target_minimum_block_size(worker, table, hasher, target_minimum_block_size);
 
@@ -138,7 +139,7 @@ void rows_and_next_hash(Worker &worker, const Table &table, const ColumnValues &
 		worker.send_rows_command(table, prev_key, last_key /* will be [] */);
 	} else {
 		// find the hash for the range *after* the rows that we will send
-		RowHasherAndLastKey hasher(table.primary_key_columns);
+		RowHasherAndLastKey hasher(worker.hash_algorithm, table.primary_key_columns);
 		worker.client.retrieve_rows(hasher, table, last_key, ColumnValues(), 1 /* rows to hash */);
 
 		// hash more rows if we're not even close to the target block size, so we don't spend

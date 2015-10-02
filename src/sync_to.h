@@ -1,5 +1,6 @@
 #include "command.h"
 #include "commit_level.h"
+#include "hash_algorithm.h"
 #include "sync_algorithm.h"
 #include "schema_functions.h"
 #include "schema_matcher.h"
@@ -20,7 +21,7 @@ struct SyncToWorker {
 		Database &database, SyncQueue &sync_queue, bool leader, int read_from_descriptor, int write_to_descriptor,
 		const string &database_host, const string &database_port, const string &database_name, const string &database_username, const string &database_password,
 		const string &set_variables, const set<string> &ignore_tables, const set<string> &only_tables,
-		int verbose, bool snapshot, bool alter, CommitLevel commit_level):
+		int verbose, bool snapshot, bool alter, CommitLevel commit_level, HashAlgorithm hash_algorithm):
 			database(database),
 			sync_queue(sync_queue),
 			leader(leader),
@@ -35,6 +36,7 @@ struct SyncToWorker {
 			snapshot(snapshot),
 			alter(alter),
 			commit_level(commit_level),
+			hash_algorithm(hash_algorithm),
 			protocol_version(0),
 			target_minimum_block_size(1),
 			target_maximum_block_size(DEFAULT_MAXIMUM_BLOCK_SIZE),
@@ -52,6 +54,7 @@ struct SyncToWorker {
 		try {
 			negotiate_protocol();
 			negotiate_target_minimum_block_size();
+			negotiate_hash_algorithm();
 
 			share_snapshot();
 			retrieve_database_schema();
@@ -85,7 +88,7 @@ struct SyncToWorker {
 
 	void negotiate_protocol() {
 		const int EARLIEST_PROTOCOL_VERSION_SUPPORTED = 5;
-		const int LATEST_PROTOCOL_VERSION_SUPPORTED = 5;
+		const int LATEST_PROTOCOL_VERSION_SUPPORTED = 6;
 
 		// tell the other end what version of the protocol we can speak, and have them tell us which version we're able to converse in
 		send_command(output, Commands::PROTOCOL, LATEST_PROTOCOL_VERSION_SUPPORTED);
@@ -104,6 +107,17 @@ struct SyncToWorker {
 
 		// the real app always accepts the block size we request, but the test suite uses smaller block sizes to make it easier to set up different scenarios
 		read_expected_command(input, Commands::TARGET_BLOCK_SIZE, target_minimum_block_size);
+	}
+
+	void negotiate_hash_algorithm() {
+		const int EARLIEST_HASH_ALGORITHM_PROTOCOL_VERSION_SUPPORTED = 6;
+
+		if (protocol_version >= EARLIEST_HASH_ALGORITHM_PROTOCOL_VERSION_SUPPORTED) {
+			send_command(output, Commands::HASH_ALGORITHM, hash_algorithm);
+			read_expected_command(input, Commands::HASH_ALGORITHM, hash_algorithm);
+		} else if (hash_algorithm != HashAlgorithm::md5) {
+			throw runtime_error("The version of Kitchen Sync at the other endpoint supports only MD5.");
+		}
 	}
 
 	void share_snapshot() {
@@ -453,6 +467,7 @@ struct SyncToWorker {
 	bool snapshot;
 	bool alter;
 	CommitLevel commit_level;
+	HashAlgorithm hash_algorithm;
 
 	int protocol_version;
 	size_t target_minimum_block_size;

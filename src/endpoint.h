@@ -42,7 +42,8 @@ int endpoint_main(int argc, char *argv[]) {
 			char *last_arg = argv[argc - 1];
 			char *end_of_last_arg = last_arg + strlen(last_arg);
 			size_t status_size = end_of_last_arg - status_area;
-			sync_from<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, set_variables, filters_file, STDIN_FILENO, STDOUT_FILENO, status_area, status_size);
+			HashAlgorithm hash_algorithm(HashAlgorithm::md5); // until advised otherwise by the 'to' end
+			sync_from<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, set_variables, filters_file, hash_algorithm, STDIN_FILENO, STDOUT_FILENO, status_area, status_size);
 		} else {
 			set <string> ignore(split_list(argc > 8 ? argv[8] : ""));
 			set <string> only(split_list(argc > 9 ? argv[9] : ""));
@@ -52,7 +53,8 @@ int endpoint_main(int argc, char *argv[]) {
 			bool snapshot = argc > 13 ? atoi(argv[13]) : false;
 			bool alter = argc > 14 ? atoi(argv[14]) : true;
 			CommitLevel commit_level = argc > 15 ? CommitLevel(atoi(argv[15])) : CommitLevel::success;
-			sync_to<DatabaseClient>(workers, startfd, database_host, database_port, database_name, database_username, database_password, set_variables, ignore, only, verbose, snapshot, alter, commit_level);
+			HashAlgorithm hash_algorithm = argc > 16 ? HashAlgorithm(atoi(argv[16])) : HashAlgorithm::md5;
+			sync_to<DatabaseClient>(workers, startfd, database_host, database_port, database_name, database_username, database_password, set_variables, ignore, only, verbose, snapshot, alter, commit_level, hash_algorithm);
 		}
 	} catch (const sync_error& e) {
 		// the worker thread has already output the error to cerr

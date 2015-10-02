@@ -39,6 +39,7 @@ int main(int argc, char *argv[]) {
 		string workers_str(to_string(options.workers));
 		string verbose_str(to_string(options.verbose));
 		string  commit_str(to_string(options.commit_level));
+		string    hash_str(to_string(options.hash_algorithm));
 		string startfd_str(to_string(to_descriptor_list_start));
 
 		// unfortunately when we transport program arguments over SSH it flattens them into a string and so empty arguments get lost; we work around by using "-"
@@ -53,7 +54,7 @@ int main(int argc, char *argv[]) {
 
 		const char *from_args[] = { ssh_binary.c_str(), "-C", "-c", "blowfish", options.via.c_str(),
 									from_binary.c_str(), "from", options.from.host.c_str(), options.from.port.c_str(), options.from.database.c_str(), options.from.username.c_str(), options.from.password.c_str(), options.set_from_variables.c_str(), options.filters.c_str(), nullptr };
-		const char *  to_args[] = {   to_binary.c_str(),   "to",   options.to.host.c_str(),   options.to.port.c_str(),   options.to.database.c_str(),   options.to.username.c_str(),   options.to.password.c_str(), options.set_to_variables.c_str(), options.ignore.c_str(), options.only.c_str(), workers_str.c_str(), startfd_str.c_str(), verbose_str.c_str(), options.snapshot ? "1" : "0", options.alter ? "1" : "0", commit_str.c_str(), nullptr };
+		const char *  to_args[] = {   to_binary.c_str(),   "to",   options.to.host.c_str(),   options.to.port.c_str(),   options.to.database.c_str(),   options.to.username.c_str(),   options.to.password.c_str(), options.set_to_variables.c_str(), options.ignore.c_str(), options.only.c_str(), workers_str.c_str(), startfd_str.c_str(), verbose_str.c_str(), options.snapshot ? "1" : "0", options.alter ? "1" : "0", commit_str.c_str(), hash_str.c_str(), nullptr };
 		const char **applicable_from_args = (options.via.empty() ? from_args + 5 : from_args);
 
 		if (options.verbose >= VERY_VERBOSE) {

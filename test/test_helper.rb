@@ -8,6 +8,7 @@ require 'msgpack'
 require 'pg'
 require 'mysql2'
 require 'openssl'
+require 'ruby-xxhash'
 
 require File.expand_path(File.join(File.dirname(__FILE__), 'kitchen_sync_spawner'))
 require File.expand_path(File.join(File.dirname(__FILE__), 'test_table_schemas'))
@@ -268,14 +269,20 @@ module Commands
   WITHOUT_SNAPSHOT = 36
   SCHEMA = 37
   TARGET_BLOCK_SIZE = 38
+  HASH_ALGORITHM = 39
   QUIT = 0
+end
+
+module HashAlgorithm
+  MD5 = 0
+  XXH64 = 1
 end
 
 Verbs = Commands.constants.each_with_object({}) {|k, results| results[Commands.const_get(k)] = k.to_s.downcase}.freeze
 
 module KitchenSync
   class TestCase < Test::Unit::TestCase
-    PROTOCOL_VERSION_SUPPORTED = 5
+    PROTOCOL_VERSION_SUPPORTED = 6
 
     undef_method :default_test if instance_methods.include? 'default_test' or
                                   instance_methods.include? :default_test
@@ -315,10 +322,11 @@ module KitchenSync
       spawner.send_results(*args)
     end
 
-    def send_handshake_commands(target_minimum_block_size = 1)
+    def send_handshake_commands(target_minimum_block_size = 1, hash_algorithm = HashAlgorithm::MD5)
       send_protocol_command
       send_without_snapshot_command
       send_target_minimum_block_size_command(target_minimum_block_size)
+      send_hash_algorithm_command(hash_algorithm)
     end
 
     def send_protocol_command
@@ -331,12 +339,17 @@ module KitchenSync
       expect_command Commands::WITHOUT_SNAPSHOT
     end
 
-    def send_target_minimum_block_size_command(target_minimum_block_size = 1)
+    def send_target_minimum_block_size_command(target_minimum_block_size)
       send_command   Commands::TARGET_BLOCK_SIZE, target_minimum_block_size
       expect_command Commands::TARGET_BLOCK_SIZE, [target_minimum_block_size]
     end
 
-    def expect_handshake_commands(target_minimum_block_size = 1)
+    def send_hash_algorithm_command(hash_algorithm)
+      send_command   Commands::HASH_ALGORITHM, hash_algorithm
+      expect_command Commands::HASH_ALGORITHM, [hash_algorithm]
+    end
+
+    def expect_handshake_commands(target_minimum_block_size = 1, hash_algorithm = HashAlgorithm::MD5)
       # checking how protocol versions are handled is covered in protocol_versions_test; here we just need to get past that to get on to the commands we want to test
       expect_command Commands::PROTOCOL, [PROTOCOL_VERSION_SUPPORTED]
       send_command   Commands::PROTOCOL, PROTOCOL_VERSION_SUPPORTED
@@ -344,6 +357,9 @@ module KitchenSync
       # we force the block size down to 1 by default so we can test out our algorithms row-by-row, but real runs would use a bigger size
       assert_equal   Commands::TARGET_BLOCK_SIZE, read_command.first
       send_command   Commands::TARGET_BLOCK_SIZE, target_minimum_block_size
+
+      assert_equal   Commands::HASH_ALGORITHM, read_command.first
+      send_command   Commands::HASH_ALGORITHM, hash_algorithm
 
       # since we haven't asked for multiple workers, we'll always get sent the snapshot-less start command
       expect_command Commands::WITHOUT_SNAPSHOT
@@ -409,9 +425,17 @@ module KitchenSync
       connection.tables.each {|table_name| execute "DROP TABLE #{table_name}"}
     end
 
-    def hash_of(rows)
-      md5 = OpenSSL::Digest::MD5.new
-      md5.digest(rows.collect(&:to_msgpack).join)
+    def hash_of(rows, hash_algorithm = HashAlgorithm::MD5)
+      data = rows.collect(&:to_msgpack).join
+
+      case hash_algorithm
+      when HashAlgorithm::MD5
+        OpenSSL::Digest::MD5.new.digest(data)
+
+      when HashAlgorithm::XXH64
+        result = XXhash.xxh64(data)
+        [result >> 32, result & 0xFFFFFFFF].pack("NN")
+      end
     end
 
     def hash_and_count_of(rows)

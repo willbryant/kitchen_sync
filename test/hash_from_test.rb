@@ -7,7 +7,7 @@ class HashFromTest < KitchenSync::EndpointTestCase
     :from
   end
 
-  def setup_with_footbl
+  def setup_with_footbl(*handshake_args)
     clear_schema
     create_footbl
     execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str'), (100, 0, 'last')"
@@ -17,7 +17,7 @@ class HashFromTest < KitchenSync::EndpointTestCase
              [8,    -1, "longer str"],
              [100,   0,       "last"]]
     @keys = @rows.collect {|row| [row[0]]}
-    send_handshake_commands
+    send_handshake_commands(*handshake_args)
   end
 
   test_each "calculates the hash of all the rows whose key is greater than the first argument and not greater than the last argument, and if it matches, responds likewise with the hash of the next rows (doubling the count of rows hashed)" do
@@ -189,5 +189,17 @@ class HashFromTest < KitchenSync::EndpointTestCase
     send_command   Commands::HASH_NEXT, @keys[0], ["aa", "101"], hash_of(@rows[1..1])
     expect_command Commands::ROWS_AND_HASH_NEXT, [@keys[0], @keys[1], @keys[2], hash_of(@rows[2..2])],
                    @rows[1]
+  end
+
+  test_each "optionally supports xxHash64 hashes" do
+    setup_with_footbl(1, HashAlgorithm::XXH64)
+    send_command   Commands::OPEN, "footbl"
+    expect_command Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0], HashAlgorithm::XXH64)]
+
+    send_command   Commands::HASH_NEXT, @keys[0], @keys[1], hash_of(@rows[1..1], HashAlgorithm::XXH64)
+    expect_command Commands::HASH_NEXT, [@keys[1], @keys[3], hash_of(@rows[2..3], HashAlgorithm::XXH64)]
+
+    send_command   Commands::HASH_NEXT, @keys[0], @keys[2], hash_of(@rows[1..2], HashAlgorithm::XXH64)
+    expect_command Commands::HASH_NEXT, [@keys[2], @keys[4], hash_of(@rows[3..4], HashAlgorithm::XXH64)]
   end
 end

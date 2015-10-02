@@ -2,13 +2,14 @@
 #include "schema_serialization.h"
 #include "filters.h"
 #include "fdstream.h"
+#include "hash_algorithm.h"
 #include "sync_algorithm.h"
 
 template<class DatabaseClient>
 struct SyncFromWorker {
 	SyncFromWorker(
 		const string &database_host, const string &database_port, const string &database_name, const string &database_username, const string &database_password,
-		const string &set_variables, const string &filter_file,
+		const string &set_variables, const string &filter_file, HashAlgorithm hash_algorithm,
 		int read_from_descriptor, int write_to_descriptor, char *status_area, size_t status_size):
 			client(database_host, database_port, database_name, database_username, database_password),
 			filter_file(filter_file),
@@ -20,7 +21,8 @@ struct SyncFromWorker {
 			status_size(status_size),
 			protocol_version(0),
 			target_minimum_block_size(1),
-			target_maximum_block_size(DEFAULT_MAXIMUM_BLOCK_SIZE) {
+			target_maximum_block_size(DEFAULT_MAXIMUM_BLOCK_SIZE),
+			hash_algorithm(hash_algorithm) {
 		if (!set_variables.empty()) {
 			client.execute("SET " + set_variables);
 		}
@@ -85,6 +87,10 @@ struct SyncFromWorker {
 
 					case Commands::TARGET_BLOCK_SIZE:
 						handle_target_block_size_command();
+						break;
+
+					case Commands::HASH_ALGORITHM:
+						handle_hash_algorithm_command();
 						break;
 
 					case Commands::QUIT:
@@ -189,6 +195,11 @@ struct SyncFromWorker {
 		send_command(output, Commands::TARGET_BLOCK_SIZE, target_minimum_block_size); // we always accept the requested size and send it back (but the test suite doesn't)
 	}
 
+	void handle_hash_algorithm_command() {
+		read_all_arguments(input, hash_algorithm);
+		send_command(output, Commands::HASH_ALGORITHM, hash_algorithm); // we always accept the requested algorithm and send it back (but maybe one day we won't)
+	}
+
 	inline void send_hash_next_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
 		send_command(output, Commands::HASH_NEXT, prev_key, last_key, hash);
 	}
@@ -231,7 +242,7 @@ struct SyncFromWorker {
 
 	void negotiate_protocol_version() {
 		const int EARLIEST_PROTOCOL_VERSION_SUPPORTED = 5;
-		const int LATEST_PROTOCOL_VERSION_SUPPORTED = 5;
+		const int LATEST_PROTOCOL_VERSION_SUPPORTED = 6;
 
 		// all conversations must start with a Commands::PROTOCOL command to establish the language to be used
 		int their_protocol_version;
@@ -275,6 +286,7 @@ struct SyncFromWorker {
 	int protocol_version;
 	size_t target_minimum_block_size;
 	size_t target_maximum_block_size;
+	HashAlgorithm hash_algorithm;
 };
 
 template<class DatabaseClient, typename... Options>

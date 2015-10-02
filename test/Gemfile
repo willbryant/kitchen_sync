@@ -3,3 +3,4 @@ source 'https://rubygems.org'
 gem 'msgpack'
 gem 'mysql2'
 gem 'pg', :git => 'https://github.com/willbryant/ruby-pg.git' # branch from larskanis which typecasts properly, unlike stock pg, plus gemspec from ldmosquera
+gem 'ruby-xxHash'

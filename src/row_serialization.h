@@ -9,6 +9,10 @@
 	#include <openssl/md5.h>
 #endif
 
+#include "xxHash/xxhash.h"
+
+#include "hash_algorithm.h"
+
 struct RowCounter {
 	RowCounter(): row_count(0) {}
 
@@ -57,28 +61,69 @@ inline bool operator == (const Hash &hash, const string &str) {
 }
 
 struct RowHasher: RowCounter {
-	RowHasher(): size(0), row_packer(*this) {
-		MD5_Init(&mdctx);
+	RowHasher(HashAlgorithm hash_algorithm): hash_algorithm(hash_algorithm), size(0), row_packer(*this) {
+		switch (hash_algorithm) {
+			case HashAlgorithm::md5:
+				MD5_Init(&mdctx);
+				break;
+
+			case HashAlgorithm::xxh64:
+				xxh64_state = XXH64_createState();
+				XXH64_reset(xxh64_state, 0);
+				break;
+		}
 	}
 
-	const Hash &finish() {
-		hash.md_len = MD5_DIGEST_LENGTH;
-		MD5_Final(hash.md_value, &mdctx);
-		return hash;
+	inline ~RowHasher() {
+		switch (hash_algorithm) {
+			case HashAlgorithm::md5:
+				break;
+
+			case HashAlgorithm::xxh64:
+				XXH64_freeState(xxh64_state);
+				break;
+		}
 	}
 
 	template <typename DatabaseRow>
-	void operator()(const DatabaseRow &row) {
+	inline void operator()(const DatabaseRow &row) {
 		RowCounter::operator()(row);
 		row.pack_row_into(row_packer);
 	}
 
 	inline void write(const uint8_t *buf, size_t bytes) {
-		MD5_Update(&mdctx, buf, bytes);
 		size += bytes;
+
+		switch (hash_algorithm) {
+			case HashAlgorithm::md5:
+				MD5_Update(&mdctx, buf, bytes);
+				break;
+
+			case HashAlgorithm::xxh64:
+				XXH64_update(xxh64_state, buf, bytes);
+				break;
+		}
 	}
 
-	MD5_CTX mdctx;
+	const Hash &finish() {
+		switch (hash_algorithm) {
+			case HashAlgorithm::md5:
+				hash.md_len = MD5_DIGEST_LENGTH;
+				MD5_Final(hash.md_value, &mdctx);
+				return hash;
+
+			case HashAlgorithm::xxh64:
+				hash.md_len = sizeof(uint64_t);
+				*((uint64_t*)&hash.md_value) = htonll(XXH64_digest(xxh64_state));
+				return hash;
+		}
+	}
+
+	HashAlgorithm hash_algorithm;
+	union {
+		MD5_CTX mdctx;
+		XXH64_state_t* xxh64_state;
+	};
 	size_t size;
 	Packer<RowHasher> row_packer;
 	Hash hash;
@@ -103,7 +148,7 @@ struct RowLastKey {
 };
 
 struct RowHasherAndLastKey: RowHasher, RowLastKey {
-	RowHasherAndLastKey(const vector<size_t> &primary_key_columns): RowLastKey(primary_key_columns) {
+	RowHasherAndLastKey(HashAlgorithm hash_algorithm, const vector<size_t> &primary_key_columns): RowHasher(hash_algorithm), RowLastKey(primary_key_columns) {
 	}
 
 	template <typename DatabaseRow>
