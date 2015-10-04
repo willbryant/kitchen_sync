@@ -8,13 +8,13 @@
 
 #include "unidirectional_pipe.h"
 
-string Process::related_binary_path(const string &argv0, const string &this_program_name, const string &desired_binary_name) {
+string Process::binary_path_only(const string &argv0, const string &this_program_name) {
 	if (argv0.length() > this_program_name.length() &&
 		argv0[argv0.length() - this_program_name.length() - 1] == '/' &&
 		argv0.substr(argv0.length() - this_program_name.length(), this_program_name.length()) == this_program_name) {
-		return argv0.substr(0, argv0.length() - this_program_name.length()) + desired_binary_name;
+		return argv0.substr(0, argv0.length() - this_program_name.length());
 	} else {
-		return desired_binary_name;
+		return "";
 	}
 }
 

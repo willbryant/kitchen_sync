@@ -84,6 +84,13 @@ struct Options {
 			"                             This is not considered appropriate for production\n"
 			"                             use, but may be useful for dev/test machines.\n"
 			"\n"
+			"  --from-path                Directory in which to find the Kitchen Sync binaries\n"
+			"                             on the source end.  Normally you should not need this\n"
+			"                             but if you use the --via option and the binaries are\n"
+			"                             neither installed in the same place on your local and\n"
+			"                             remote systems, nor are in the PATH on both systems,\n"
+			"                             you may need to use this option.\n"
+			"\n"
 			"  --verbose                  Log more information as the program works.\n"
 			"\n"
 			"  --debug                    Log debugging information as the program works.\n";
@@ -98,6 +105,7 @@ struct Options {
 					{ "from",						required_argument,	NULL,	'f' },
 					{ "to",							required_argument,	NULL,	't' },
 					{ "via",						required_argument,	NULL,	'v' },
+					{ "from-path",					required_argument,	NULL,	'P' },
 					{ "workers",					required_argument,	NULL,	'w' },
 					{ "ignore",						required_argument,	NULL,	'i' },
 					{ "only",						required_argument,	NULL,	'o' },
@@ -131,6 +139,13 @@ struct Options {
 
 					case 'v':
 						via = optarg;
+						break;
+
+					case 'P':
+						from_path = optarg;
+						if (from_path.size() > 0 && from_path[from_path.size() - 1] != '/') {
+							from_path += '/';
+						}
 						break;
 
 					case 'w':
@@ -226,6 +241,7 @@ struct Options {
 
 	DbUrl from, to;
 	string via;
+	string from_path;
 	string filters;
 	string set_from_variables;
 	string set_to_variables;

@@ -27,14 +27,15 @@ void be_christmassy() {
 int main(int argc, char *argv[]) {
 	try
 	{
+		string binary_path(Process::binary_path_only(argv[0], this_program_name));
 		Options options;
+		options.from_path = binary_path;
 		if (!options.parse(argc, argv)) return 1;
 
 		cout << "Kitchen Sync" << endl;
 
-		string self_binary(argv[0]);
-		string from_binary(Process::related_binary_path(self_binary, this_program_name, "ks_" + options.from.protocol));
-		string   to_binary(Process::related_binary_path(self_binary, this_program_name, "ks_" +   options.to.protocol));
+		string from_binary(options.from_path + "ks_" + options.from.protocol);
+		string   to_binary(binary_path + "ks_" +   options.to.protocol);
 		string  ssh_binary("/usr/bin/ssh");
 		string workers_str(to_string(options.workers));
 		string verbose_str(to_string(options.verbose));
