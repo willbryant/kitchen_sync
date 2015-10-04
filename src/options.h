@@ -114,8 +114,6 @@ struct Options {
 					{ "set-to-variables",			required_argument,	NULL,	'T' },
 					{ "without-snapshot-export",	no_argument,		NULL,	'W' },
 					{ "commit",						required_argument,	NULL,	'c' },
-					{ "partial",					no_argument,		NULL,	'p' }, // deprecated - use '--commit often' instead
-					{ "rollback-after",				no_argument,		NULL,	'r' }, // deprecated - use '--commit never', which is equivalent
 					{ "alter",						no_argument,		NULL,	'a' },
 					{ "hash",					    required_argument,	NULL,	'h' },
 					{ "verbose",					no_argument,		NULL,	'V' },
