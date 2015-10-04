@@ -1,6 +1,12 @@
 Changelog
 =========
 
+0.46
+----
+* Add a simple progress meter with --verbose.  Thanks @soundasleep.
+* Implement optional xxHash64 support.
+* Add an option to override the path the 'from' binaries are in when using `--via`.
+
 0.45
 ----
 * Fix pthreads link problems on newer Linux distros.
