@@ -264,7 +264,7 @@ struct SyncToWorker {
 		while (!finished) {
 			sync_queue.check_aborted(); // check each iteration, rather than wait until the end of the current table; this is a good place to do it since it's likely we'll have no work to do for a short while
 
-			if (verbose) {
+			if (verbose && verbose < VERY_VERBOSE) {
 				cout << "." << flush; // simple progress meter
 			}
 
