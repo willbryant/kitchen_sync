@@ -22,3 +22,8 @@ Usage
 -----
 
 Please see [Using Kitchen Sync](USAGE.md) to get started.
+
+Bugs
+----
+
+Please use Github issues and check if your issue has already been reported first.
