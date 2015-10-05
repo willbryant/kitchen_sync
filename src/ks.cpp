@@ -2,6 +2,7 @@
 #include <vector>
 
 #include "options.h"
+#include "env.h"
 #include "process.h"
 #include "unidirectional_pipe.h"
 #include "to_string.h"
@@ -37,34 +38,21 @@ int main(int argc, char *argv[]) {
 		string from_binary(options.from_path + "ks_" + options.from.protocol);
 		string   to_binary(binary_path + "ks_" +   options.to.protocol);
 		string  ssh_binary("/usr/bin/ssh");
-		string workers_str(to_string(options.workers));
-		string verbose_str(to_string(options.verbose));
-		string  commit_str(to_string(options.commit_level));
-		string    hash_str(to_string(options.hash_algorithm));
-		string startfd_str(to_string(to_descriptor_list_start));
 
-		// unfortunately when we transport program arguments over SSH it flattens them into a string and so empty arguments get lost; we work around by using "-"
+		// currently we still pass all options to the 'from' endpoint on the command line, but we've started preparing it to support environment variables.
+		// unfortunately when we transport program arguments over SSH it flattens them into a string and so empty arguments get lost; we work around by passing "-".
 		if (options.from.port    .empty()) options.from.port     = "-";
 		if (options.from.username.empty()) options.from.username = "-";
 		if (options.from.password.empty()) options.from.password = "-";
-		if (options.to  .port    .empty()) options.to  .port     = "-";
-		if (options.to  .username.empty()) options.to  .username = "-";
-		if (options.to  .password.empty()) options.to  .password = "-";
 		if (options.set_from_variables.empty()) options.set_from_variables = "-";
-		if (options.set_to_variables.empty())   options.set_to_variables = "-";
 
 		const char *from_args[] = { ssh_binary.c_str(), "-C", "-c", "blowfish", options.via.c_str(),
 									from_binary.c_str(), "from", options.from.host.c_str(), options.from.port.c_str(), options.from.database.c_str(), options.from.username.c_str(), options.from.password.c_str(), options.set_from_variables.c_str(), options.filters.c_str(), nullptr };
-		const char *  to_args[] = {   to_binary.c_str(),   "to",   options.to.host.c_str(),   options.to.port.c_str(),   options.to.database.c_str(),   options.to.username.c_str(),   options.to.password.c_str(), options.set_to_variables.c_str(), options.ignore.c_str(), options.only.c_str(), workers_str.c_str(), startfd_str.c_str(), verbose_str.c_str(), options.snapshot ? "1" : "0", options.alter ? "1" : "0", commit_str.c_str(), hash_str.c_str(), nullptr };
 		const char **applicable_from_args = (options.via.empty() ? from_args + 5 : from_args);
 
 		if (options.verbose >= VERY_VERBOSE) {
 			cout << "from command:";
 			for (const char **p = applicable_from_args; *p; p++) cout << ' ' << (**p ? *p : "''");
-			cout << endl;
-
-			cout << "to command:";
-			for (const char **p = to_args; *p; p++) cout << ' ' << (**p ? *p : "''");
 			cout << endl;
 		}
 
@@ -77,6 +65,25 @@ int main(int argc, char *argv[]) {
 			stdin_pipe.dup_write_to(to_descriptor_list_start + worker + options.workers);
 		}
 
+		// we pass all options to the 'to' end in the environment
+		setenv("ENDPOINT_DATABASE_HOST", options.to.host);
+		setenv("ENDPOINT_DATABASE_PORT", options.to.port);
+		setenv("ENDPOINT_DATABASE_NAME", options.to.database);
+		setenv("ENDPOINT_DATABASE_USERNAME", options.to.username);
+		setenv("ENDPOINT_DATABASE_PASSWORD", options.to.password);
+		setenv("ENDPOINT_SET_VARIABLES", options.set_to_variables);
+
+		setenv("ENDPOINT_IGNORE_TABLES", options.ignore);
+		setenv("ENDPOINT_ONLY_TABLES", options.only);
+		setenv("ENDPOINT_WORKERS", to_string(options.workers));
+		setenv("ENDPOINT_STARTFD", to_string(to_descriptor_list_start));
+		setenv("ENDPOINT_VERBOSE", to_string(options.verbose));
+		setenv("ENDPOINT_SNAPSHOT", options.snapshot ? "1" : "0", 1);
+		setenv("ENDPOINT_ALTER", options.alter ? "1" : "0", 1);
+		setenv("ENDPOINT_COMMIT_LEVEL", to_string(options.commit_level));
+		setenv("ENDPOINT_HASH_ALGORITHM", to_string(options.hash_algorithm));
+
+		const char *to_args[] = { to_binary.c_str(), "to", nullptr };
 		child_pids.push_back(Process::fork_and_exec(to_binary, to_args));
 
 		for (int worker = 0; worker < options.workers; ++worker) {

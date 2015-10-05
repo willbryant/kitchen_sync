@@ -7,9 +7,10 @@ class KitchenSyncSpawner
   
   attr_reader :program_binary, :capture_stderr_in
   
-  def initialize(program_binary, program_args, options = {})
+  def initialize(program_binary, program_args, program_env, options = {})
     @program_binary = program_binary
     @program_args = program_args
+    @program_env = program_env
     @capture_stderr_in = options[:capture_stderr_in]
     raise "Can't see a program binary at #{program_binary}" unless File.executable?(program_binary)
   end
@@ -46,7 +47,7 @@ class KitchenSyncSpawner
         puts e
         exit 1
       end
-      exec *exec_args
+      exec @program_env, *exec_args
     end
     stdin_r.close
     stdout_w.close

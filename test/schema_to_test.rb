@@ -177,7 +177,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
 
   test_each "doesn't complain about a missing table before other tables if told to ignore the table, and doesn't ask for its data" do
-    program_args << 'footbl'
+    program_env['ENDPOINT_IGNORE_TABLES'] = 'footbl'
     clear_schema
     create_middletbl
     create_secondtbl
@@ -193,7 +193,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   end
 
   test_each "doesn't complain about a missing table between other tables if told to ignore the table" do
-    program_args << 'middletbl'
+    program_env['ENDPOINT_IGNORE_TABLES'] = 'middletbl'
     clear_schema
     create_footbl
     create_secondtbl
@@ -209,7 +209,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   end
 
   test_each "doesn't complain about a missing table after other tables if told to ignore the table" do
-    program_args << 'secondtbl'
+    program_env['ENDPOINT_IGNORE_TABLES'] = 'secondtbl'
     clear_schema
     create_footbl
     create_middletbl
@@ -225,7 +225,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   end
 
   test_each "doesn't complain about extra tables before other tables if told to ignore the table" do
-    program_args << 'footbl'
+    program_env['ENDPOINT_IGNORE_TABLES'] = 'footbl'
     clear_schema
     create_footbl
     create_middletbl
@@ -242,7 +242,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   end
 
   test_each "doesn't complain about extra tables between other tables if told to ignore the table" do
-    program_args << 'middletbl'
+    program_env['ENDPOINT_IGNORE_TABLES'] = 'middletbl'
     clear_schema
     create_footbl
     create_middletbl
@@ -259,7 +259,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   end
 
   test_each "doesn't complain about extra tables after other tables if told to ignore the table" do
-    program_args << 'secondtbl'
+    program_env['ENDPOINT_IGNORE_TABLES'] = 'secondtbl'
     clear_schema
     create_footbl
     create_middletbl

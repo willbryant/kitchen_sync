@@ -14,7 +14,7 @@ class FilterFromTest < KitchenSync::EndpointTestCase
     file.write(contents)
     file.close
     begin
-      program_args << file.path
+      program_env['ENDPOINT_FILTERS_FILE'] = file.path
       yield
     ensure
       file.unlink

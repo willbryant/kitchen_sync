@@ -34,7 +34,7 @@ class SnapshotFromTest < KitchenSync::EndpointTestCase
     snapshot = args[0]
     assert_instance_of String, snapshot
 
-    extra_spawner = KitchenSyncSpawner.new(binary_path, program_args, :capture_stderr_in => captured_stderr_filename).tap(&:start_binary)
+    extra_spawner = KitchenSyncSpawner.new(binary_path, program_args, program_env, :capture_stderr_in => captured_stderr_filename).tap(&:start_binary)
     begin
       extra_spawner.send_command Commands::PROTOCOL, PROTOCOL_VERSION_SUPPORTED
       assert_equal [Commands::PROTOCOL, [PROTOCOL_VERSION_SUPPORTED]], extra_spawner.read_command

@@ -296,7 +296,7 @@ module KitchenSync
     end
 
     def spawner
-      @spawner ||= KitchenSyncSpawner.new(binary_path, program_args, :capture_stderr_in => captured_stderr_filename).tap(&:start_binary)
+      @spawner ||= KitchenSyncSpawner.new(binary_path, program_args, program_env, :capture_stderr_in => captured_stderr_filename).tap(&:start_binary)
     end
 
     def unpacker
@@ -406,7 +406,17 @@ module KitchenSync
     end
 
     def program_args
-      @program_args ||= [ from_or_to.to_s, database_host, database_port, database_name, database_username, database_password, "-" ]
+      @program_args ||= [ from_or_to.to_s ]
+    end
+
+    def program_env
+      @program_env ||= {
+        "ENDPOINT_DATABASE_HOST" => database_host,
+        "ENDPOINT_DATABASE_PORT" => database_port,
+        "ENDPOINT_DATABASE_NAME" => database_name,
+        "ENDPOINT_DATABASE_USERNAME" => database_username,
+        "ENDPOINT_DATABASE_PASSWORD" => database_password,
+      }
     end
 
     def connection
