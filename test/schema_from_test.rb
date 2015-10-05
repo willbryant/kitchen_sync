@@ -43,7 +43,7 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
     clear_schema
     create_noprimarytbl(false)
 
-    expect_stderr("Couldn't find a primary or non-nullable unique key on table noprimarytbl") do
+    expect_stderr("Error in the 'from' worker: Couldn't find a primary or non-nullable unique key on table noprimarytbl") do
       send_handshake_commands rescue nil
     end
   end

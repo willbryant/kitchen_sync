@@ -73,7 +73,7 @@ struct SyncToWorker {
 		} catch (const exception &e) {
 			// make sure all other workers terminate promptly, and if we are the first to fail, output the error
 			if (sync_queue.abort()) {
-				cerr << e.what() << endl;
+				cerr << "Error in the 'to' worker: " << e.what() << endl;
 			}
 
 			// optionally, try to commit the changes we've made, but ignore any errors, and don't bother outputting timings

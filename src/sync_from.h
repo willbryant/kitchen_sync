@@ -105,7 +105,7 @@ struct SyncFromWorker {
 			}
 		} catch (const exception &e) {
 			// in fact we just output these errors much the same way that our caller does, but we do it here (before the stream gets closed) to help tests
-			cerr << e.what() << endl;
+			cerr << "Error in the 'from' worker: " << e.what() << endl;
 			throw sync_error();
 		}
 	}
