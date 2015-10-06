@@ -1,9 +1,14 @@
 Changelog
 =========
 
+0.47
+----
+* Improve error messages from exceptions.
+* Start converting the endpoints to take their startup info from the environment rather than the command line.
+
 0.46
 ----
-* Add a simple progress meter with --verbose.  Thanks @soundasleep.
+* Add a simple progress meter with `--verbose`.  Thanks @soundasleep.
 * Implement optional xxHash64 support.
 * Add an option to override the path the 'from' binaries are in when using `--via`.
 
