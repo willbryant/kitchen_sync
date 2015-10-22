@@ -629,17 +629,19 @@ struct PostgreSQLTableLister {
 
 		PostgreSQLKeyLister key_lister(table);
 		client.query(
-			"SELECT index_class.relname, pg_index.indisunique, attname, attnotnull "
-			  "FROM pg_class table_class, pg_class index_class, pg_index, generate_subscripts(indkey, 1) AS position, pg_attribute "
-			 "WHERE table_class.relname = '" + table.name + "' AND "
-			       "table_class.relkind = 'r' AND "
-			       "index_class.relkind = 'i' AND "
-			       "pg_index.indrelid = table_class.oid AND "
-			       "pg_index.indexrelid = index_class.oid AND "
-			       "pg_attribute.attrelid = table_class.oid AND "
-			       "pg_attribute.attnum = indkey[position] AND "
-			       "NOT pg_index.indisprimary "
-			 "ORDER BY relname, position",
+			"SELECT indexname, indisunique, attname, attnotnull "
+			  "FROM (SELECT table_class.oid AS table_oid, index_class.relname AS indexname, pg_index.indisunique, generate_series(1, array_length(indkey, 1)) AS position, unnest(indkey) AS attnum "
+			          "FROM pg_class table_class, pg_class index_class, pg_index "
+			         "WHERE table_class.relname = '" + table.name + "' AND "
+			               "table_class.relkind = 'r' AND "
+			               "index_class.relkind = 'i' AND "
+			               "pg_index.indrelid = table_class.oid AND "
+			               "pg_index.indexrelid = index_class.oid AND "
+			               "NOT pg_index.indisprimary) index_attrs,"
+			       "pg_attribute "
+			 "WHERE pg_attribute.attrelid = table_oid AND "
+			       "pg_attribute.attnum = index_attrs.attnum "
+			 "ORDER BY indexname, index_attrs.position",
 			key_lister);
 
 		// if the table has no primary key, we need to find a unique key with no nullable columns to act as a surrogate primary key
