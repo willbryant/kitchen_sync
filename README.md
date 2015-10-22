@@ -25,8 +25,10 @@ Please see [Using Kitchen Sync](USAGE.md) to get started.
 
 Supported databases
 -------------------
-* MySQL/Percona Server/MariaDB (5.5 and above)
-* PostgreSQL (9.2 and above)
+* MySQL/Percona Server/MariaDB (tested with 5.5 and above)
+* PostgreSQL (tested with 9.2 and above)
+
+PostgreSQL 9.1 has also been tested and mostly works - but it can't export snapshots for multiple workers.
 
 Bugs
 ----
