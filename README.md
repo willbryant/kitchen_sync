@@ -23,6 +23,11 @@ Usage
 
 Please see [Using Kitchen Sync](USAGE.md) to get started.
 
+Supported databases
+-------------------
+* MySQL/Percona Server/MariaDB (5.5 and above)
+* PostgreSQL (9.3 and above)
+
 Bugs
 ----
 
