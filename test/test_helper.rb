@@ -84,17 +84,22 @@ class PGconn
     SQL
   end
 
+  def key_definition_columns(definition)
+    if definition =~ /\((.*)\)$/
+      $1.split(', ')
+    end
+  end
+
   def table_key_columns(table_name)
-    query(<<-SQL).each_with_object({}) {|row, results| (results[row["relname"]] ||= []) << row["attname"]}
-      SELECT index_class.relname, attname
-        FROM pg_class table_class, pg_index, pg_class index_class, generate_subscripts(indkey, 1) AS position, pg_attribute
+    query(<<-SQL).each_with_object({}) {|row, results| results[row["relname"]] = key_definition_columns(row["definition"])}
+      SELECT index_class.relname, pg_get_indexdef(indexrelid) AS definition
+        FROM pg_class table_class, pg_class index_class, pg_index
        WHERE table_class.relname = '#{table_name}' AND
-             table_class.oid = pg_index.indrelid AND
-             index_class.oid = pg_index.indexrelid AND
+             table_class.relkind = 'r' AND
              index_class.relkind = 'i' AND
-             table_class.oid = pg_attribute.attrelid AND
-             pg_attribute.attnum = indkey[position]
-       ORDER BY position
+             pg_index.indrelid = table_class.oid AND
+             pg_index.indexrelid = index_class.oid
+       ORDER BY relname
     SQL
   end
 
