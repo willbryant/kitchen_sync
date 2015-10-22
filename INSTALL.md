@@ -5,9 +5,9 @@ To compile Kitchen Sync, you will need:
 * a C++11 compiler
 * cmake
 * boost headers
+* openssl library headers (except on OS X where Apple's Common Crypto library is used instead)
 * postgresql client library headers; and/or
 * mysql client library headers
-* openssl library headers (except on OS X where Apple's Common Crypto library is used instead)
 
 Kitchen Sync needs at least one database client library to do something useful, but it will produce a separate binary for each different database, so you don't need to compile or deploy all the binaries on systems where you won't use them.
 
@@ -16,7 +16,7 @@ Ubuntu
 
 You can install these on Ubuntu using:
 ```
-apt-get install build-essential cmake libboost-program-options-dev libssl-dev
+apt-get install build-essential cmake libboost-dev libssl-dev
 ```
 
 And one or both of:
