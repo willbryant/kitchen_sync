@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.48
+----
+* Work around CMake not finding PostgreSQL unless the server development header files are present.
+
 0.47
 ----
 * Improve error messages from exceptions.
