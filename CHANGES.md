@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.49
+----
+* Avoid PostgreSQL 9.3 syntax to add support for 9.2 (and partial support for earlier versions).
+
 0.48
 ----
 * Work around CMake not finding PostgreSQL unless the server development header files are present.
