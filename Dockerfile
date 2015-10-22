@@ -10,7 +10,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 		git python-software-properties && \
 	(wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -) && \
 	echo "deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main" >>/etc/apt/sources.list && \
-	apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql-9.3 libpq-dev && \
+	apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql-9.2 libpq-dev && \
 	rm -f /etc/apt/apt.conf.d/20auto-upgrades && \
 	apt-get clean -y && \
 	rm -rf /var/cache/apt/archives/*
