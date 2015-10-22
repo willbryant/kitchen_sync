@@ -630,11 +630,14 @@ struct PostgreSQLTableLister {
 		PostgreSQLKeyLister key_lister(table);
 		client.query(
 			"SELECT index_class.relname, pg_index.indisunique, attname, attnotnull "
-			  "FROM pg_class table_class, pg_index, pg_class index_class, generate_subscripts(indkey, 1) AS position, pg_attribute "
-			 "WHERE table_class.oid = pg_index.indrelid AND "
-			       "pg_index.indexrelid = index_class.oid AND index_class.relkind = 'i' AND "
-			       "table_class.oid = pg_attribute.attrelid AND pg_attribute.attnum = indkey[position] AND "
-			       "table_class.relname = '" + table.name + "' AND "
+			  "FROM pg_class table_class, pg_class index_class, pg_index, generate_subscripts(indkey, 1) AS position, pg_attribute "
+			 "WHERE table_class.relname = '" + table.name + "' AND "
+			       "table_class.relkind = 'r' AND "
+			       "index_class.relkind = 'i' AND "
+			       "pg_index.indrelid = table_class.oid AND "
+			       "pg_index.indexrelid = index_class.oid AND "
+			       "pg_attribute.attrelid = table_class.oid AND "
+			       "pg_attribute.attnum = indkey[position] AND "
 			       "NOT pg_index.indisprimary "
 			 "ORDER BY relname, position",
 			key_lister);
