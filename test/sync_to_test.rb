@@ -27,9 +27,9 @@ class SyncToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [footbl_def]
+    send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
     expect_command Commands::OPEN, ["footbl"]
-    send_command   Commands::ROWS, [], []
+    send_command   Commands::ROWS, [[], []]
     expect_quit_and_close
 
     assert_equal [],
@@ -42,9 +42,9 @@ class SyncToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [footbl_def]
+    send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
     expect_command Commands::OPEN, ["footbl"]
-    send_command   Commands::ROWS, [], []
+    send_command   Commands::ROWS, [[], []]
     expect_quit_and_close
 
     assert_equal [],
@@ -56,13 +56,13 @@ class SyncToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [footbl_def]
+    send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
     expect_command Commands::OPEN, ["footbl"]
-    send_command   Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])
+    send_command   Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
     expect_command Commands::HASH_NEXT, [@keys[0], @keys[2], hash_of(@rows[1..2])]
-    send_command   Commands::HASH_NEXT, @keys[2], @keys[6], hash_of(@rows[3..6])
+    send_command   Commands::HASH_NEXT, [@keys[2], @keys[6], hash_of(@rows[3..6])]
     expect_command Commands::ROWS, [@keys[-1], []]
-    send_command   Commands::ROWS, @keys[-1], []
+    send_command   Commands::ROWS, [@keys[-1], []]
     expect_quit_and_close
 
     assert_equal @rows,
@@ -75,16 +75,16 @@ class SyncToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [footbl_def]
+    send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
     expect_command Commands::OPEN, ["footbl"]
-    send_command   Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])
+    send_command   Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
     expect_command Commands::ROWS_AND_HASH_NEXT, [[], @keys[0], @keys[1], hash_of(@rows[1..1])]
     send_results   Commands::ROWS, # we could combo this and do a rows_and_hash back, but that wouldn't always be possible - we might need a rows PLUS a rows_and_hash (if they next hash they'd given didn't match), and we might need a rows plus a gap plus a hash, so we haven't implemented that
                    [[], @keys[0]],
                    @rows[0]
-    send_command   Commands::HASH_NEXT, @keys[1], @keys[3], hash_of(@rows[2..3])
+    send_command   Commands::HASH_NEXT, [@keys[1], @keys[3], hash_of(@rows[2..3])]
     expect_command Commands::HASH_NEXT, [@keys[3], @keys[-1], hash_of(@rows[4..-1])]
-    send_command   Commands::ROWS, @keys[-1], []
+    send_command   Commands::ROWS, [@keys[-1], []]
     expect_quit_and_close
 
     assert_equal @rows,
@@ -97,20 +97,20 @@ class SyncToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [footbl_def]
+    send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
     expect_command Commands::OPEN, ["footbl"]
-    send_command   Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])
+    send_command   Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
     expect_command Commands::HASH_NEXT, [@keys[0], @keys[2], hash_of(@rows[1..2])]
-    send_command   Commands::HASH_NEXT, @keys[2], @keys[6], hash_of(@rows[3..6])
+    send_command   Commands::HASH_NEXT, [@keys[2], @keys[6], hash_of(@rows[3..6])]
     expect_command Commands::HASH_FAIL, [@keys[2], @keys[4], @keys[6], hash_of([@rows[3], [101, 0, "different"]])]
-    send_command   Commands::HASH_FAIL, @keys[2], @keys[3], @keys[4], hash_of(@rows[3..3])
+    send_command   Commands::HASH_FAIL, [@keys[2], @keys[3], @keys[4], hash_of(@rows[3..3])]
     expect_command Commands::ROWS_AND_HASH_NEXT, [@keys[3], @keys[4], @keys[5], hash_of(@rows[5..5])] # note that the other end has deduced that rows[4] is the problem, so it is requesting that directly rather than giving its hash
     send_results   Commands::ROWS,
                    [@keys[3], @keys[4]],
                    @rows[4]
-    send_command   Commands::HASH_NEXT, @keys[4], @keys[5], hash_of(@rows[5..5])
+    send_command   Commands::HASH_NEXT, [@keys[4], @keys[5], hash_of(@rows[5..5])]
     expect_command Commands::HASH_NEXT, [@keys[5], @keys[6], hash_of(@rows[6..6])]
-    send_command   Commands::ROWS, @keys[-1], []
+    send_command   Commands::ROWS, [@keys[-1], []]
     expect_quit_and_close
 
     assert_equal @rows,
@@ -122,7 +122,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     create_footbl
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [footbl_def]
+    send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
     expect_command Commands::OPEN, ["footbl"]
     send_results   Commands::ROWS,
                    [[], []],
@@ -146,11 +146,11 @@ class SyncToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [texttbl_def]
+    send_command   Commands::SCHEMA, ["tables" => [texttbl_def]]
     expect_command Commands::OPEN, ["texttbl"]
-    send_command   Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])
+    send_command   Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
     expect_command Commands::HASH_NEXT, [@keys[0], @keys[1], hash_of(@rows[1..1])]
-    send_command   Commands::ROWS, @keys[1], []
+    send_command   Commands::ROWS, [@keys[1], []]
     expect_quit_and_close
 
     assert_equal @rows,
@@ -166,9 +166,9 @@ class SyncToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [texttbl_def]
+    send_command   Commands::SCHEMA, ["tables" => [texttbl_def]]
     expect_command Commands::OPEN, ["texttbl"]
-    send_command   Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])
+    send_command   Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
     expect_command Commands::ROWS, [[], []]
     send_results   Commands::ROWS,
                    [[], []],
@@ -190,11 +190,11 @@ class SyncToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [texttbl_def]
+    send_command   Commands::SCHEMA, ["tables" => [texttbl_def]]
     expect_command Commands::OPEN, ["texttbl"]
-    send_command   Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])
+    send_command   Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
     expect_command Commands::HASH_NEXT, [@keys[0], @keys[1], hash_of(@rows[1..1])]
-    send_command   Commands::ROWS, @keys[1], []
+    send_command   Commands::ROWS, [@keys[1], []]
     expect_quit_and_close
 
     assert_equal @rows,
@@ -210,9 +210,9 @@ class SyncToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [texttbl_def]
+    send_command   Commands::SCHEMA, ["tables" => [texttbl_def]]
     expect_command Commands::OPEN, ["texttbl"]
-    send_command   Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])
+    send_command   Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
     expect_command Commands::ROWS, [[], []]
     send_results   Commands::ROWS,
                    [[], []],
@@ -235,9 +235,9 @@ class SyncToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [misctbl_def]
+    send_command   Commands::SCHEMA, ["tables" => [misctbl_def]]
     expect_command Commands::OPEN, ["misctbl"]
-    send_command   Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])
+    send_command   Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
     expect_command Commands::ROWS, [[], []]
     send_results   Commands::ROWS,
                    [[], []],
@@ -258,16 +258,16 @@ class SyncToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [footbl_def.merge("keys" => [{"name" => "unique_key", "unique" => true, "columns" => [2]}])]
+    send_command   Commands::SCHEMA, ["tables" => [footbl_def.merge("keys" => [{"name" => "unique_key", "unique" => true, "columns" => [2]}])]]
     expect_command Commands::OPEN, ["footbl"]
-    send_command   Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])
+    send_command   Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
     expect_command Commands::ROWS_AND_HASH_NEXT, [[], @keys[0], @keys[1], hash_of(@orig_rows[1..1])]
     send_results   Commands::ROWS,
                    [[], @keys[0]],
                    @rows[0]
-    send_command   Commands::HASH_NEXT, @keys[1], @keys[3], hash_of(@rows[2..3])
+    send_command   Commands::HASH_NEXT, [@keys[1], @keys[3], hash_of(@rows[2..3])]
     expect_command Commands::HASH_NEXT, [@keys[3], @keys[6], hash_of(@orig_rows[4..6])]
-    send_command   Commands::HASH_NEXT, @keys[3], @keys[4], hash_of(@rows[4..4])
+    send_command   Commands::HASH_NEXT, [@keys[3], @keys[4], hash_of(@rows[4..4])]
     expect_command Commands::HASH_NEXT, [@keys[4], @keys[6], hash_of(@orig_rows[5..6])]
     send_results   Commands::ROWS,
                    [@keys[6], []],
@@ -287,10 +287,8 @@ class SyncToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [texttbl_def]
+    send_command   Commands::SCHEMA, ["tables" => [texttbl_def]]
     expect_command Commands::OPEN, ["texttbl"]
-    # send_command   Commands::HASH_NEXT, [], @keys[0], hash_of(@rows[0..0])
-    # expect_command Commands::HASH_NEXT, [@keys[0], @keys[1], hash_of(@rows[1..1])]
     send_results   Commands::ROWS,
                    [[], []],
                    *@rows

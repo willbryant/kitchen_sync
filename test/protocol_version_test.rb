@@ -10,19 +10,19 @@ class ProtocolVersionTest < KitchenSync::EndpointTestCase
 
   test_each "gives back the current version if the client supports it" do
     clear_schema
-    send_command   Commands::PROTOCOL, LATEST_PROTOCOL_VERSION_SUPPORTED
+    send_command   Commands::PROTOCOL, [LATEST_PROTOCOL_VERSION_SUPPORTED]
     expect_command Commands::PROTOCOL, [LATEST_PROTOCOL_VERSION_SUPPORTED]
   end
 
   test_each "gives back its version if the client supports a later version" do
     clear_schema
-    send_command   Commands::PROTOCOL, LATEST_PROTOCOL_VERSION_SUPPORTED + 1
+    send_command   Commands::PROTOCOL, [LATEST_PROTOCOL_VERSION_SUPPORTED + 1]
     expect_command Commands::PROTOCOL, [LATEST_PROTOCOL_VERSION_SUPPORTED]
   end
 
   test_each "gives back the clients version if the client only supports an earlier version" do
     clear_schema
-    send_command   Commands::PROTOCOL, EARLIEST_PROTOCOL_VERSION_SUPPORTED
+    send_command   Commands::PROTOCOL, [EARLIEST_PROTOCOL_VERSION_SUPPORTED]
     expect_command Commands::PROTOCOL, [EARLIEST_PROTOCOL_VERSION_SUPPORTED]
   end if EARLIEST_PROTOCOL_VERSION_SUPPORTED < LATEST_PROTOCOL_VERSION_SUPPORTED
 end

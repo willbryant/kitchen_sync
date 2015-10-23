@@ -45,7 +45,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => []
+    send_command   Commands::SCHEMA, ["tables" => []]
     expect_quit_and_close
   end
 
@@ -57,13 +57,13 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [footbl_def, middletbl_def, secondtbl_def]
+    send_command   Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
     expect_command Commands::OPEN, ["footbl"]
-    send_command   Commands::ROWS, [], []
+    send_command   Commands::ROWS, [[], []]
     expect_command Commands::OPEN, ["middletbl"]
-    send_command   Commands::ROWS, [], []
+    send_command   Commands::ROWS, [[], []]
     expect_command Commands::OPEN, ["secondtbl"]
-    send_command   Commands::ROWS, [], []
+    send_command   Commands::ROWS, [[], []]
     expect_quit_and_close
   end
 
@@ -75,7 +75,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def, middletbl_def, secondtbl_def]
+    send_command Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
     read_command
     assert_equal %w(footbl middletbl secondtbl), connection.tables
   end
@@ -87,7 +87,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def, middletbl_def, secondtbl_def]
+    send_command Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
     read_command
     assert_equal %w(footbl middletbl secondtbl), connection.tables
   end
@@ -99,7 +99,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def, middletbl_def, secondtbl_def]
+    send_command Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
     read_command
     assert_equal %w(footbl middletbl secondtbl), connection.tables
   end
@@ -109,7 +109,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def, middletbl_def, secondtbl_def]
+    send_command Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
     read_command
     assert_equal %w(footbl middletbl secondtbl), connection.tables
   end
@@ -122,7 +122,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [middletbl_def, secondtbl_def]
+    send_command Commands::SCHEMA, ["tables" => [middletbl_def, secondtbl_def]]
     read_command
     assert_equal %w(middletbl secondtbl), connection.tables
   end
@@ -135,7 +135,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def, secondtbl_def]
+    send_command Commands::SCHEMA, ["tables" => [footbl_def, secondtbl_def]]
     read_command
     assert_equal %w(footbl secondtbl), connection.tables
   end
@@ -148,7 +148,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def, middletbl_def]
+    send_command Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def]]
     read_command
     assert_equal %w(footbl middletbl), connection.tables
   end
@@ -159,7 +159,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => []
+    send_command Commands::SCHEMA, ["tables" => []]
     read_command
     assert_equal %w(), connection.tables
   end
@@ -170,7 +170,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [misctbl_def]
+    send_command Commands::SCHEMA, ["tables" => [misctbl_def]]
     read_command
     assert_equal %w(misctbl), connection.tables
   end
@@ -184,11 +184,11 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [footbl_def, middletbl_def, secondtbl_def]
+    send_command   Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
     expect_command Commands::OPEN, ["middletbl"]
-    send_command   Commands::ROWS, [], []
+    send_command   Commands::ROWS, [[], []]
     expect_command Commands::OPEN, ["secondtbl"]
-    send_command   Commands::ROWS, [], []
+    send_command   Commands::ROWS, [[], []]
     read_command
   end
 
@@ -200,11 +200,11 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [footbl_def, middletbl_def, secondtbl_def]
+    send_command   Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
     expect_command Commands::OPEN, ["footbl"]
-    send_command   Commands::ROWS, [], []
+    send_command   Commands::ROWS, [[], []]
     expect_command Commands::OPEN, ["secondtbl"]
-    send_command   Commands::ROWS, [], []
+    send_command   Commands::ROWS, [[], []]
     read_command
   end
 
@@ -216,11 +216,11 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [footbl_def, middletbl_def, secondtbl_def]
+    send_command   Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
     expect_command Commands::OPEN, ["footbl"]
-    send_command   Commands::ROWS, [], []
+    send_command   Commands::ROWS, [[], []]
     expect_command Commands::OPEN, ["middletbl"]
-    send_command   Commands::ROWS, [], []
+    send_command   Commands::ROWS, [[], []]
     read_command
   end
 
@@ -233,11 +233,11 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [middletbl_def, secondtbl_def]
+    send_command   Commands::SCHEMA, ["tables" => [middletbl_def, secondtbl_def]]
     expect_command Commands::OPEN, ["middletbl"]
-    send_command   Commands::ROWS, [], []
+    send_command   Commands::ROWS, [[], []]
     expect_command Commands::OPEN, ["secondtbl"]
-    send_command   Commands::ROWS, [], []
+    send_command   Commands::ROWS, [[], []]
     read_command
   end
 
@@ -250,11 +250,11 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [footbl_def, secondtbl_def]
+    send_command   Commands::SCHEMA, ["tables" => [footbl_def, secondtbl_def]]
     expect_command Commands::OPEN, ["footbl"]
-    send_command   Commands::ROWS, [], []
+    send_command   Commands::ROWS, [[], []]
     expect_command Commands::OPEN, ["secondtbl"]
-    send_command   Commands::ROWS, [], []
+    send_command   Commands::ROWS, [[], []]
     read_command
   end
 
@@ -267,11 +267,11 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, "tables" => [footbl_def, middletbl_def]
+    send_command   Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def]]
     expect_command Commands::OPEN, ["footbl"]
-    send_command   Commands::ROWS, [], []
+    send_command   Commands::ROWS, [[], []]
     expect_command Commands::OPEN, ["middletbl"]
-    send_command   Commands::ROWS, [], []
+    send_command   Commands::ROWS, [[], []]
     read_command
   end
 
@@ -283,7 +283,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [secondtbl_def]
+    send_command Commands::SCHEMA, ["tables" => [secondtbl_def]]
     read_command
     assert_equal secondtbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("secondtbl")
     assert_match /^bigint/, connection.table_column_types("secondtbl")["tri"]
@@ -299,7 +299,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def]
+    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
     read_command
     assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_match /^smallint/, connection.table_column_types("footbl")["another_col"]
@@ -322,7 +322,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def]
+    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
     read_command
     assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_match /char.*10/, connection.table_column_types("footbl")["col3"]
@@ -348,7 +348,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [table_def]
+    send_command Commands::SCHEMA, ["tables" => [table_def]]
     read_command
     assert_equal table_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_match /^smallint/, connection.table_column_types("footbl")["another_col"]
@@ -377,7 +377,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [table_def]
+    send_command Commands::SCHEMA, ["tables" => [table_def]]
     read_command
     assert_equal table_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_match /char.*10/, connection.table_column_types("footbl")["col3"]
@@ -402,7 +402,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def]
+    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
     read_command
     assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_footbl_rows_present
@@ -424,7 +424,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def]
+    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
     read_command
     assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_footbl_rows_present
@@ -446,7 +446,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def]
+    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
     read_command
     assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_footbl_rows_present
@@ -475,7 +475,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [secondtbl_def]
+    send_command Commands::SCHEMA, ["tables" => [secondtbl_def]]
     read_command
     assert_equal secondtbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("secondtbl")
     assert_secondtbl_rows_present
@@ -495,7 +495,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def]
+    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
     read_command
     assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_same_keys(footbl_def)
@@ -508,7 +508,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def.merge("columns" => footbl_def["columns"][1..-1] + footbl_def["columns"][0..0])]
+    send_command Commands::SCHEMA, ["tables" => [footbl_def.merge("columns" => footbl_def["columns"][1..-1] + footbl_def["columns"][0..0])]]
     assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     read_command
   end
@@ -522,7 +522,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def]
+    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
     read_command
     assert_match /^smallint/, connection.table_column_types("footbl")["another_col"]
   end
@@ -537,7 +537,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def]
+    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
     read_command
     assert_equal({"col1" => false, "another_col" => true, "col3" => true}, connection.table_column_nullability("footbl"))
     assert_equal [[2,     10,       "test"],
@@ -557,7 +557,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [table_def]
+    send_command Commands::SCHEMA, ["tables" => [table_def]]
     read_command
     assert_equal({"col1" => false, "another_col" => false, "col3" => true}, connection.table_column_nullability("footbl"))
     assert_equal [[2,     10,       "test"],
@@ -577,7 +577,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [table_def]
+    send_command Commands::SCHEMA, ["tables" => [table_def]]
     read_command
     assert_equal({"col1" => false, "another_col" => false, "col3" => true}, connection.table_column_nullability("footbl"))
     assert_equal [[2,     10,       "test"],
@@ -597,7 +597,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [table_def]
+    send_command Commands::SCHEMA, ["tables" => [table_def]]
     read_command
     assert_equal([false], connection.table_column_nullability("misctbl").values.uniq)
     rows = query("SELECT * FROM misctbl")
@@ -626,7 +626,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [table_def]
+    send_command Commands::SCHEMA, ["tables" => [table_def]]
     read_command
     assert_equal table_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_equal false, connection.table_column_nullability("footbl")["another_col"]
@@ -642,7 +642,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def]
+    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
     read_command
     assert_equal({"col1" => nil, "another_col" => nil, "col3" => nil}, connection.table_column_defaults("footbl"))
     assert_footbl_rows_present
@@ -656,7 +656,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [footbl_def]
+    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
     read_command
     assert_equal({"col1" => nil, "another_col" => nil, "col3" => nil}, connection.table_column_defaults("footbl"))
     assert_footbl_rows_present
@@ -671,7 +671,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [table_def]
+    send_command Commands::SCHEMA, ["tables" => [table_def]]
     read_command
     assert_equal({"col1" => nil, "another_col" => "42", "col3" => nil}, connection.table_column_defaults("footbl"))
     assert_footbl_rows_present
@@ -687,7 +687,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [table_def]
+    send_command Commands::SCHEMA, ["tables" => [table_def]]
     read_command
     assert_equal({"col1" => nil, "another_col" => "23", "col3" => nil}, connection.table_column_defaults("footbl"))
     assert_footbl_rows_present
@@ -702,7 +702,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [table_def]
+    send_command Commands::SCHEMA, ["tables" => [table_def]]
     read_command
     assert_equal({"col1" => nil, "another_col" => nil, "col3" => "foo"}, connection.table_column_defaults("footbl"))
     assert_footbl_rows_present
@@ -714,7 +714,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [autotbl_def]
+    send_command Commands::SCHEMA, ["tables" => [autotbl_def]]
     read_command
     assert_equal({"inc" => true, "payload" => false}, connection.table_column_sequences("autotbl"))
   end
@@ -727,7 +727,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("primary_key_columns" => [1, 2])]
+    send_command Commands::SCHEMA, ["tables" => [secondtbl_def.merge("primary_key_columns" => [1, 2])]]
     read_command
     assert_equal [1, 2].collect {|index| secondtbl_def["columns"][index]["name"]}, connection.table_key_columns("secondtbl")[connection.table_primary_key_name("secondtbl")]
     assert_equal [], query("SELECT * FROM secondtbl")
@@ -740,7 +740,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("primary_key_columns" => [2, 1, 3])]
+    send_command Commands::SCHEMA, ["tables" => [secondtbl_def.merge("primary_key_columns" => [2, 1, 3])]]
     read_command
     assert_equal [2, 1, 3].collect {|index| secondtbl_def["columns"][index]["name"]}, connection.table_key_columns("secondtbl")[connection.table_primary_key_name("secondtbl")]
     assert_equal [], query("SELECT * FROM secondtbl")
@@ -753,7 +753,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("primary_key_columns" => [3, 2, 1])]
+    send_command Commands::SCHEMA, ["tables" => [secondtbl_def.merge("primary_key_columns" => [3, 2, 1])]]
     read_command
     assert_equal [3, 2, 1].collect {|index| secondtbl_def["columns"][index]["name"]}, connection.table_key_columns("secondtbl")[connection.table_primary_key_name("secondtbl")]
     assert_equal [], query("SELECT * FROM secondtbl")
@@ -768,7 +768,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [secondtbl_def]
+    send_command Commands::SCHEMA, ["tables" => [secondtbl_def]]
     read_command
     assert_equal secondtbl_def["keys"].collect {|key| key["name"]}, connection.table_keys("secondtbl")
     assert_secondtbl_rows_present
@@ -781,7 +781,7 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("keys" => secondtbl_def["keys"] + [secondtbl_def["keys"].first.merge("name" => "missingkey")])]
+    send_command Commands::SCHEMA, ["tables" => [secondtbl_def.merge("keys" => secondtbl_def["keys"] + [secondtbl_def["keys"].first.merge("name" => "missingkey")])]]
     read_command
     assert_equal %w(missingkey) + secondtbl_def["keys"].collect {|key| key["name"]}, connection.table_keys("secondtbl").sort
     assert !connection.table_keys_unique("secondtbl")["missingkey"], "missingkey index should not be unique"
@@ -797,7 +797,7 @@ SQL
     expect_command Commands::SCHEMA
     key = secondtbl_def["keys"].first
     assert !connection.table_keys_unique("secondtbl")[key["name"]], "missingkey index should not be unique before test"
-    send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("keys" => [key.merge("unique" => true)])]
+    send_command Commands::SCHEMA, ["tables" => [secondtbl_def.merge("keys" => [key.merge("unique" => true)])]]
     read_command
     assert connection.table_keys_unique("secondtbl")[key["name"]], "missingkey index should be unique"
     assert_secondtbl_rows_present
@@ -812,7 +812,7 @@ SQL
     expect_command Commands::SCHEMA
     key = secondtbl_def["keys"].first
     assert_not_equal [secondtbl_def["columns"][3]["name"], secondtbl_def["columns"][1]["name"]], connection.table_key_columns("secondtbl")[key["name"]]
-    send_command Commands::SCHEMA, "tables" => [secondtbl_def.merge("keys" => [key.merge("columns" => [3, 1])])]
+    send_command Commands::SCHEMA, ["tables" => [secondtbl_def.merge("keys" => [key.merge("columns" => [3, 1])])]]
     read_command
     assert_equal [secondtbl_def["columns"][3]["name"], secondtbl_def["columns"][1]["name"]], connection.table_key_columns("secondtbl")[key["name"]]
     assert_secondtbl_rows_present
@@ -827,7 +827,7 @@ SQL
     table = {"before_table_stuff" => values_of_many_types}.merge(secondtbl_def).merge("after_table_stuff" => values_of_many_types)
     table["columns"][0] = {"before_column_stuff" => values_of_many_types}.merge(table["columns"][0]).merge("after_column_stuff" => values_of_many_types)
     table["keys"][0] = {"before_key_stuff" => values_of_many_types}.merge(table["keys"][0]).merge("after_key_stuff" => values_of_many_types)
-    send_command Commands::SCHEMA, "before_tables" => values_of_many_types, "tables" => [table], "after_tables" => values_of_many_types
+    send_command Commands::SCHEMA, ["before_tables" => values_of_many_types, "tables" => [table], "after_tables" => values_of_many_types]
     read_command
 
     assert_equal secondtbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("secondtbl")

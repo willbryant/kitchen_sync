@@ -335,7 +335,7 @@ module KitchenSync
     end
 
     def send_protocol_command
-      send_command   Commands::PROTOCOL, PROTOCOL_VERSION_SUPPORTED
+      send_command   Commands::PROTOCOL, [PROTOCOL_VERSION_SUPPORTED]
       expect_command Commands::PROTOCOL, [PROTOCOL_VERSION_SUPPORTED]
     end
 
@@ -345,26 +345,26 @@ module KitchenSync
     end
 
     def send_target_minimum_block_size_command(target_minimum_block_size)
-      send_command   Commands::TARGET_BLOCK_SIZE, target_minimum_block_size
+      send_command   Commands::TARGET_BLOCK_SIZE, [target_minimum_block_size]
       expect_command Commands::TARGET_BLOCK_SIZE, [target_minimum_block_size]
     end
 
     def send_hash_algorithm_command(hash_algorithm)
-      send_command   Commands::HASH_ALGORITHM, hash_algorithm
+      send_command   Commands::HASH_ALGORITHM, [hash_algorithm]
       expect_command Commands::HASH_ALGORITHM, [hash_algorithm]
     end
 
     def expect_handshake_commands(target_minimum_block_size = 1, hash_algorithm = HashAlgorithm::MD5)
       # checking how protocol versions are handled is covered in protocol_versions_test; here we just need to get past that to get on to the commands we want to test
       expect_command Commands::PROTOCOL, [PROTOCOL_VERSION_SUPPORTED]
-      send_command   Commands::PROTOCOL, PROTOCOL_VERSION_SUPPORTED
+      send_command   Commands::PROTOCOL, [PROTOCOL_VERSION_SUPPORTED]
 
       # we force the block size down to 1 by default so we can test out our algorithms row-by-row, but real runs would use a bigger size
       assert_equal   Commands::TARGET_BLOCK_SIZE, read_command.first
-      send_command   Commands::TARGET_BLOCK_SIZE, target_minimum_block_size
+      send_command   Commands::TARGET_BLOCK_SIZE, [target_minimum_block_size]
 
       assert_equal   Commands::HASH_ALGORITHM, read_command.first
-      send_command   Commands::HASH_ALGORITHM, hash_algorithm
+      send_command   Commands::HASH_ALGORITHM, [hash_algorithm]
 
       # since we haven't asked for multiple workers, we'll always get sent the snapshot-less start command
       expect_command Commands::WITHOUT_SNAPSHOT

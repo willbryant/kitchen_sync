@@ -121,8 +121,7 @@ class KitchenSyncSpawner
 
   def send_command(verb, *args)
     @program_stdin.write(verb.to_msgpack)
-    @program_stdin.write(args.to_msgpack) unless args.empty?
-    @program_stdin.write([].to_msgpack)
+    send_results(*args)
   end
 
   def send_results(*results)

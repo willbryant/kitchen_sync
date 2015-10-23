@@ -27,7 +27,7 @@ class FilterFromTest < KitchenSync::EndpointTestCase
     with_filter_file("footbl: clear \n") do # nonsignificant whitespace at the end should be ignored
       send_handshake_commands
 
-      send_command   Commands::OPEN, "footbl"
+      send_command   Commands::OPEN, ["footbl"]
       expect_command Commands::ROWS,
                      [[], []]
     end
@@ -42,22 +42,22 @@ class FilterFromTest < KitchenSync::EndpointTestCase
     with_filter_file("footbl:\n  only: col1 BETWEEN 4 AND 7") do
       send_handshake_commands
 
-      send_command   Commands::OPEN, "footbl"
+      send_command   Commands::OPEN, ["footbl"]
       expect_command Commands::HASH_NEXT,
                      [[], [4], hash_of(@filtered_rows[0..0])]
 
-      send_command   Commands::ROWS, [], []
+      send_command   Commands::ROWS, [[], []]
       expect_command Commands::ROWS,
                      [[], []],
                      @filtered_rows[0],
                      @filtered_rows[1]
 
-      send_command   Commands::ROWS, [4], []
+      send_command   Commands::ROWS, [[4], []]
       expect_command Commands::ROWS,
                      [[4], []],
                      @filtered_rows[1]
 
-      send_command   Commands::ROWS, [], [5]
+      send_command   Commands::ROWS, [[], [5]]
       expect_command Commands::ROWS,
                      [[], [5]],
                      @filtered_rows[0],
@@ -76,11 +76,11 @@ class FilterFromTest < KitchenSync::EndpointTestCase
     with_filter_file("footbl:\n  replace:\n    another_col: col1 + CHAR_LENGTH(col3)\n    col3: COALESCE(col3 || 'x', 'default')") do
       send_handshake_commands
 
-      send_command   Commands::OPEN, "footbl"
+      send_command   Commands::OPEN, ["footbl"]
       expect_command Commands::HASH_NEXT,
                      [[], [2], hash_of(@filtered_rows[0..0])]
 
-      send_command   Commands::ROWS, [], []
+      send_command   Commands::ROWS, [[], []]
       expect_command Commands::ROWS,
                      [[], []],
                      @filtered_rows[0],
@@ -98,11 +98,11 @@ class FilterFromTest < KitchenSync::EndpointTestCase
 
     with_filter_file("footbl:\n  replace:\n    another_col: col1 + CHAR_LENGTH(col3)\n    col3: COALESCE(col3, 'default')\n  only: col1 BETWEEN 4 AND 7") do
       send_handshake_commands
-      send_command   Commands::OPEN, "footbl"
+      send_command   Commands::OPEN, ["footbl"]
       expect_command Commands::HASH_NEXT,
                      [[], [4], hash_of(@filtered_rows[0..0])]
 
-      send_command   Commands::ROWS, [], []
+      send_command   Commands::ROWS, [[], []]
       expect_command Commands::ROWS,
                      [[], []],
                      @filtered_rows[0],
