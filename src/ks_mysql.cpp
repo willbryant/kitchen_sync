@@ -542,6 +542,7 @@ struct MySQLKeyLister {
 		string column_name = row.string_at(4);
 		size_t column_index = table.index_of_column(column_name);
 		// FUTURE: consider representing collation, sub_part, packed, index_type, and perhaps comment/index_comment
+		// string sub_part = row.string_at(7);
 
 		if (key_name == "PRIMARY") {
 			// there is of course only one primary key; we get a row for each column it includes
