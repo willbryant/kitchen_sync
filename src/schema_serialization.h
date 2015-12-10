@@ -51,13 +51,19 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 
 template <typename OutputStream>
 void operator << (Packer<OutputStream> &packer, const Key &key) {
-	pack_map_length(packer, 3);
+	int fields = 3;
+	if (key.sub_part) fields++;
+	pack_map_length(packer, fields);
 	packer << string("name");
 	packer << key.name;
 	packer << string("unique");
 	packer << key.unique;
 	packer << string("columns");
 	packer << key.columns;
+	if (key.sub_part) {
+		packer << string("sub_part");
+		packer << key.sub_part;
+	}
 }
 
 template <typename OutputStream>
@@ -126,6 +132,8 @@ void operator >> (Unpacker<InputStream> &unpacker, Key &key) {
 			unpacker >> key.unique;
 		} else if (attr_key == "columns") {
 			unpacker >> key.columns;
+		} else if (attr_key == "sub_part") {
+                        unpacker >> key.sub_part;
 		} else {
 			// ignore anything else, for forward compatibility
 			unpacker.skip();
