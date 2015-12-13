@@ -59,7 +59,7 @@ typedef vector<string> ColumnNames;
 struct Key {
 	string name;
 	bool unique;
-        size_t sub_part;
+	size_t sub_part;
 	ColumnIndices columns;
 
 	inline Key(const string &name, bool unique, size_t sub_part = 0): name(name), unique(unique), sub_part(sub_part) {}

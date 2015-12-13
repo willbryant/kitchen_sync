@@ -18,11 +18,11 @@ string columns_list(DatabaseClient &client, const Columns &columns, const Column
 	string result("(");
 	result += client.quote_identifiers_with();
 	result += columns[*column_indices.begin()].name;
-        if (sub_part != 0) {
-                result += "(";
-                result += to_string(sub_part);
-                result += ")";
-        }
+	if (sub_part != 0) {
+		result += "(";
+		result += to_string(sub_part);
+		result += ")";
+	}
 	result += client.quote_identifiers_with();
 	for (ColumnIndices::const_iterator column_index = column_indices.begin() + 1; column_index != column_indices.end(); ++column_index) {
 		result += ", ";

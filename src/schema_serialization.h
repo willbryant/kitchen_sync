@@ -133,7 +133,7 @@ void operator >> (Unpacker<InputStream> &unpacker, Key &key) {
 		} else if (attr_key == "columns") {
 			unpacker >> key.columns;
 		} else if (attr_key == "sub_part") {
-                        unpacker >> key.sub_part;
+			unpacker >> key.sub_part;
 		} else {
 			// ignore anything else, for forward compatibility
 			unpacker.skip();
