@@ -59,13 +59,14 @@ typedef vector<string> ColumnNames;
 struct Key {
 	string name;
 	bool unique;
+	size_t sub_part;
 	ColumnIndices columns;
 
-	inline Key(const string &name, bool unique): name(name), unique(unique) {}
+	inline Key(const string &name, bool unique, size_t sub_part = 0): name(name), unique(unique), sub_part(sub_part) {}
 	inline Key() {}
 
 	inline bool operator <(const Key &other) const { return (unique != other.unique ? unique : name < other.name); }
-	inline bool operator ==(const Key &other) const { return (name == other.name && unique == other.unique && columns == other.columns); }
+	inline bool operator ==(const Key &other) const { return (name == other.name && unique == other.unique && columns == other.columns && sub_part == other.sub_part); }
 	inline bool operator !=(const Key &other) const { return (!(*this == other)); }
 };
 

@@ -9,7 +9,10 @@ GEM
   specs:
     msgpack (0.5.9)
     mysql2 (0.3.15)
+    power_assert (0.2.2)
     ruby-xxHash (0.4.0.1)
+    test-unit (3.0.8)
+      power_assert
 
 PLATFORMS
   ruby
@@ -19,6 +22,7 @@ DEPENDENCIES
   mysql2
   pg!
   ruby-xxHash
+  test-unit
 
 BUNDLED WITH
    1.10.6

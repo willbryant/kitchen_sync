@@ -44,7 +44,7 @@ struct CreateKeyStatements {
 		result += " ON ";
 		result += table.name;
 		result += ' ';
-		result += columns_list(client, table.columns, key.columns);
+		result += columns_list(client, table.columns, key.columns, key.sub_part);
 		statements.push_back(result);
 	}
 };
