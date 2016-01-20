@@ -9,7 +9,8 @@
 #include "db_url.h"
 
 struct Options {
-	inline Options(): workers(1), verbose(0), snapshot(true), alter(false), commit_level(CommitLevel::success), hash_algorithm(HashAlgorithm::md5) {}
+	inline Options(): workers(1), verbose(0), snapshot(true), alter(false), structure_only(false),
+    commit_level(CommitLevel::success), hash_algorithm(HashAlgorithm::md5) {}
 
 	void help() {
 		cerr <<
@@ -35,6 +36,8 @@ struct Options {
 			"\n"
 			"  --only tables              Comma-separated list of tables to process (causing \n"
 			"                             all others to be ignored).\n"
+			"\n"
+			"  --structure-only           Create the database tables but do not populate them."
 			"\n"
 			"  --filters file.yml         YAML file to read table/column filtering \n"
 			"                             information from (if using --via, this is read at \n"
@@ -109,6 +112,7 @@ struct Options {
 					{ "workers",					required_argument,	NULL,	'w' },
 					{ "ignore",						required_argument,	NULL,	'i' },
 					{ "only",						required_argument,	NULL,	'o' },
+					{ "structure-only", no_argument, NULL, 's' },
 					{ "filters",					required_argument,	NULL,	'l' },
 					{ "set-from-variables",			required_argument,	NULL,	'F' },
 					{ "set-to-variables",			required_argument,	NULL,	'T' },
@@ -157,6 +161,10 @@ struct Options {
 
 					case 'o':
 						only = optarg;
+						break;
+
+					case 's':
+						structure_only = true;
 						break;
 
 					case 'l':
@@ -249,6 +257,7 @@ struct Options {
 	bool alter;
 	CommitLevel commit_level;
 	HashAlgorithm hash_algorithm;
+	bool structure_only;
 	string ignore, only;
 };
 
