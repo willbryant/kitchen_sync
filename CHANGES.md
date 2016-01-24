@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.50
+----
+* Add `--structure-only` option, usually used with `--alter` to populate a database's schema.  Thanks @dylanmckay.
+
 0.49
 ----
 * Avoid PostgreSQL 9.3 syntax to add support for 9.2 (and partial support for earlier versions).
