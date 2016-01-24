@@ -37,7 +37,8 @@ struct Options {
 			"  --only tables              Comma-separated list of tables to process (causing \n"
 			"                             all others to be ignored).\n"
 			"\n"
-			"  --structure-only           Create the database tables but do not populate them."
+			"  --structure-only           Check/alter the database tables but do not populate them.\n"
+			"                             Generally used with --alter.\n"
 			"\n"
 			"  --filters file.yml         YAML file to read table/column filtering \n"
 			"                             information from (if using --via, this is read at \n"
@@ -112,7 +113,7 @@ struct Options {
 					{ "workers",					required_argument,	NULL,	'w' },
 					{ "ignore",						required_argument,	NULL,	'i' },
 					{ "only",						required_argument,	NULL,	'o' },
-					{ "structure-only", no_argument, NULL, 's' },
+					{ "structure-only",				no_argument,		NULL,	's' },
 					{ "filters",					required_argument,	NULL,	'l' },
 					{ "set-from-variables",			required_argument,	NULL,	'F' },
 					{ "set-to-variables",			required_argument,	NULL,	'T' },
