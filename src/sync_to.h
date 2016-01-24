@@ -21,7 +21,8 @@ struct SyncToWorker {
 		Database &database, SyncQueue &sync_queue, bool leader, int read_from_descriptor, int write_to_descriptor,
 		const string &database_host, const string &database_port, const string &database_name, const string &database_username, const string &database_password,
 		const string &set_variables, const set<string> &ignore_tables, const set<string> &only_tables,
-		int verbose, bool snapshot, bool alter, CommitLevel commit_level, HashAlgorithm hash_algorithm):
+		int verbose, bool snapshot, bool alter, CommitLevel commit_level, HashAlgorithm hash_algorithm,
+    bool structure_only) :
 			database(database),
 			sync_queue(sync_queue),
 			leader(leader),
@@ -37,6 +38,7 @@ struct SyncToWorker {
 			alter(alter),
 			commit_level(commit_level),
 			hash_algorithm(hash_algorithm),
+			structure_only(structure_only),
 			protocol_version(0),
 			target_minimum_block_size(1),
 			target_maximum_block_size(DEFAULT_MAXIMUM_BLOCK_SIZE),
@@ -232,11 +234,13 @@ struct SyncToWorker {
 			// quit if there's no more tables to process
 			if (!table) break;
 
-			// synchronize that table (unfortunately we can't share this job with other workers because next-key
-			// locking is used for unique key indexes to enforce the uniqueness constraint, so we can't share
-			// write traffic to the database across connections, which makes it somewhat futile to try and farm the
-			// read work out since that needs to see changes made to satisfy unique indexes earlier in the table)
-			sync_table(*table);
+			if (!structure_only) {
+				// synchronize that table (unfortunately we can't share this job with other workers because next-key
+				// locking is used for unique key indexes to enforce the uniqueness constraint, so we can't share
+				// write traffic to the database across connections, which makes it somewhat futile to try and farm the
+				// read work out since that needs to see changes made to satisfy unique indexes earlier in the table)
+				sync_table(*table);
+			}
 		}
 
 		// send a quit so the other end closes its output and terminates gracefully
@@ -468,6 +472,7 @@ struct SyncToWorker {
 	bool alter;
 	CommitLevel commit_level;
 	HashAlgorithm hash_algorithm;
+	bool structure_only;
 
 	int protocol_version;
 	size_t target_minimum_block_size;

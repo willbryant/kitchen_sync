@@ -71,8 +71,9 @@ int endpoint_main(int argc, char *argv[]) {
 			bool alter = getenv_default("ENDPOINT_ALTER", true);
 			CommitLevel commit_level = CommitLevel(getenv_default("ENDPOINT_COMMIT_LEVEL", CommitLevel::success));
 			HashAlgorithm hash_algorithm = HashAlgorithm(getenv_default("ENDPOINT_HASH_ALGORITHM", HashAlgorithm::md5));
+			bool structure_only = getenv_default("ENDPOINT_STRUCTURE_ONLY", false);
 
-			sync_to<DatabaseClient>(workers, startfd, database_host, database_port, database_name, database_username, database_password, set_variables, ignore, only, verbose, snapshot, alter, commit_level, hash_algorithm);
+			sync_to<DatabaseClient>(workers, startfd, database_host, database_port, database_name, database_username, database_password, set_variables, ignore, only, verbose, snapshot, alter, commit_level, hash_algorithm, structure_only);
 		}
 	} catch (const sync_error& e) {
 		// the worker thread has already output the error to cerr

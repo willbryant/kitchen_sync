@@ -82,6 +82,7 @@ int main(int argc, char *argv[]) {
 		setenv("ENDPOINT_ALTER", options.alter ? "1" : "0", 1);
 		setenv("ENDPOINT_COMMIT_LEVEL", to_string(options.commit_level));
 		setenv("ENDPOINT_HASH_ALGORITHM", to_string(options.hash_algorithm));
+		setenv("ENDPOINT_STRUCTURE_ONLY", to_string(options.structure_only));
 
 		const char *to_args[] = { to_binary.c_str(), "to", nullptr };
 		child_pids.push_back(Process::fork_and_exec(to_binary, to_args));
