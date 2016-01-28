@@ -78,6 +78,7 @@ int main(int argc, char *argv[]) {
 		setenv("ENDPOINT_WORKERS", to_string(options.workers));
 		setenv("ENDPOINT_STARTFD", to_string(to_descriptor_list_start));
 		setenv("ENDPOINT_VERBOSE", to_string(options.verbose));
+		setenv("ENDPOINT_PROGRESS", options.progress ? "1" : "0", 1);
 		setenv("ENDPOINT_SNAPSHOT", options.snapshot ? "1" : "0", 1);
 		setenv("ENDPOINT_ALTER", options.alter ? "1" : "0", 1);
 		setenv("ENDPOINT_COMMIT_LEVEL", to_string(options.commit_level));

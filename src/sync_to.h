@@ -21,7 +21,7 @@ struct SyncToWorker {
 		Database &database, SyncQueue &sync_queue, bool leader, int read_from_descriptor, int write_to_descriptor,
 		const string &database_host, const string &database_port, const string &database_name, const string &database_username, const string &database_password,
 		const string &set_variables, const set<string> &ignore_tables, const set<string> &only_tables,
-		int verbose, bool snapshot, bool alter, CommitLevel commit_level, HashAlgorithm hash_algorithm,
+		int verbose, bool progress, bool snapshot, bool alter, CommitLevel commit_level, HashAlgorithm hash_algorithm,
     bool structure_only) :
 			database(database),
 			sync_queue(sync_queue),
@@ -34,6 +34,7 @@ struct SyncToWorker {
 			ignore_tables(ignore_tables),
 			only_tables(only_tables),
 			verbose(verbose),
+			progress(progress),
 			snapshot(snapshot),
 			alter(alter),
 			commit_level(commit_level),
@@ -268,7 +269,7 @@ struct SyncToWorker {
 		while (!finished) {
 			sync_queue.check_aborted(); // check each iteration, rather than wait until the end of the current table; this is a good place to do it since it's likely we'll have no work to do for a short while
 
-			if (verbose && verbose < VERY_VERBOSE) {
+			if (progress) {
 				cout << "." << flush; // simple progress meter
 			}
 
@@ -468,6 +469,7 @@ struct SyncToWorker {
 	const set<string> ignore_tables;
 	const set<string> only_tables;
 	int verbose;
+	bool progress;
 	bool snapshot;
 	bool alter;
 	CommitLevel commit_level;

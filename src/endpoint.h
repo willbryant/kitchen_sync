@@ -67,13 +67,14 @@ int endpoint_main(int argc, char *argv[]) {
 			int workers = getenv_default("ENDPOINT_WORKERS", 1);
 			int startfd = getenv_default("ENDPOINT_STARTFD", STDIN_FILENO);
 			int verbose = getenv_default("ENDPOINT_VERBOSE", 0);
+			bool progress = getenv_default("ENDPOINT_PROGRESS", false);
 			bool snapshot = getenv_default("ENDPOINT_SNAPSHOT", false);
 			bool alter = getenv_default("ENDPOINT_ALTER", true);
 			CommitLevel commit_level = CommitLevel(getenv_default("ENDPOINT_COMMIT_LEVEL", CommitLevel::success));
 			HashAlgorithm hash_algorithm = HashAlgorithm(getenv_default("ENDPOINT_HASH_ALGORITHM", HashAlgorithm::md5));
 			bool structure_only = getenv_default("ENDPOINT_STRUCTURE_ONLY", false);
 
-			sync_to<DatabaseClient>(workers, startfd, database_host, database_port, database_name, database_username, database_password, set_variables, ignore, only, verbose, snapshot, alter, commit_level, hash_algorithm, structure_only);
+			sync_to<DatabaseClient>(workers, startfd, database_host, database_port, database_name, database_username, database_password, set_variables, ignore, only, verbose, progress, snapshot, alter, commit_level, hash_algorithm, structure_only);
 		}
 	} catch (const sync_error& e) {
 		// the worker thread has already output the error to cerr

@@ -9,7 +9,7 @@
 #include "db_url.h"
 
 struct Options {
-	inline Options(): workers(1), verbose(0), snapshot(true), alter(false), structure_only(false),
+	inline Options(): workers(1), verbose(0), progress(false), snapshot(true), alter(false), structure_only(false),
     commit_level(CommitLevel::success), hash_algorithm(HashAlgorithm::md5) {}
 
 	void help() {
@@ -97,6 +97,8 @@ struct Options {
 			"\n"
 			"  --verbose                  Log more information as the program works.\n"
 			"\n"
+			"  --progress                 Indicate progress with dots.\n"
+			"\n"
 			"  --debug                    Log debugging information as the program works.\n";
 		cerr << endl;
 	}
@@ -122,6 +124,7 @@ struct Options {
 					{ "alter",						no_argument,		NULL,	'a' },
 					{ "hash",					    required_argument,	NULL,	'h' },
 					{ "verbose",					no_argument,		NULL,	'V' },
+					{ "progress",					no_argument,		NULL,	'p' },
 					{ "debug",						no_argument,		NULL,	'd' },
 					{ NULL,							0,					NULL,	0 },
 				};
@@ -198,14 +201,6 @@ struct Options {
 						}
 						break;
 
-					case 'p':
-						commit_level = CommitLevel::always;
-						break;
-
-					case 'r':
-						commit_level = CommitLevel::never;
-						break;
-
 					case 'a':
 						alter = true;
 						break;
@@ -225,6 +220,10 @@ struct Options {
 
 					case 'd':
 						verbose = 2;
+						break;
+
+					case 'p':
+						progress = true;
 						break;
 
 					case '?':
@@ -254,6 +253,7 @@ struct Options {
 	string set_to_variables;
 	int workers;
 	int verbose;
+	bool progress;
 	bool snapshot;
 	bool alter;
 	CommitLevel commit_level;
