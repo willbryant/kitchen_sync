@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.51
+----
+* Add `--progress` option to print progress dots, which used to come on automatically with `--verbose` mode, not always useful in scripts.
+* Add progress dots during the long series of inserts at the end of a table.
+
 0.50
 ----
 * Add `--structure-only` option, usually used with `--alter` to populate a database's schema.  Thanks @dylanmckay.
