@@ -253,7 +253,8 @@ struct SyncToWorker {
 	}
 
 	void sync_table(const Table &table) {
-		RowReplacer<DatabaseClient> row_replacer(client, table, commit_level >= CommitLevel::often);
+		RowReplacer<DatabaseClient> row_replacer(client, table, commit_level >= CommitLevel::often,
+			[&] { if (progress) { cout << "." << flush; } });
 		size_t hash_commands = 0;
 		size_t rows_commands = 0;
 		time_t started = time(nullptr);
