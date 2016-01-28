@@ -49,7 +49,7 @@ Changelog
 
 0.41
 ----
-* Fix regression in 0.40 where a DELETE query could be run while an unbuferred SELECT query was run on MySQL.
+* Fix regression in 0.40 where a DELETE query could be run while an unbufferred SELECT query was run on MySQL.
 
 0.40
 ----
