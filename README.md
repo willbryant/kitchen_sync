@@ -34,3 +34,6 @@ Bugs
 ----
 
 Please use Github issues and check if your issue has already been reported first.
+
+
+![alt text](http://i.imgur.com/xtAPDKO.png "now KS")
