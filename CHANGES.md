@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.52
+----
+* Look for MariaDB client libraries as well.
+* Enhanced readme.
+
 0.51
 ----
 * Add `--progress` option to print progress dots, which used to come on automatically with `--verbose` mode, not always useful in scripts.
