@@ -15,7 +15,7 @@ FIND_PATH(MYSQL_INCLUDE_DIR mysql.h
   /usr/include/mysql
 )
 
-SET(MYSQL_NAMES mysqlclient mysqlclient_r)
+SET(MYSQL_NAMES mysqlclient mysqlclient_r mariadbclient mariadbclient_r)
 FIND_LIBRARY(MYSQL_LIBRARY
   NAMES ${MYSQL_NAMES}
   PATHS /usr/lib /usr/local/lib
