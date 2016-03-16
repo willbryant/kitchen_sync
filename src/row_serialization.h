@@ -61,7 +61,7 @@ inline bool operator == (const Hash &hash, const string &str) {
 }
 
 struct RowHasher: RowCounter {
-	RowHasher(HashAlgorithm hash_algorithm): hash_algorithm(hash_algorithm), size(0), row_packer(*this) {
+	RowHasher(HashAlgorithm hash_algorithm): hash_algorithm(hash_algorithm), size(0), finished(false), row_packer(*this) {
 		switch (hash_algorithm) {
 			case HashAlgorithm::md5:
 				MD5_Init(&mdctx);
@@ -106,6 +106,10 @@ struct RowHasher: RowCounter {
 	}
 
 	const Hash &finish() {
+		if (finished) {
+			return hash;
+		}
+		finished = true;
 		switch (hash_algorithm) {
 			case HashAlgorithm::md5:
 				hash.md_len = MD5_DIGEST_LENGTH;
@@ -127,6 +131,7 @@ struct RowHasher: RowCounter {
 	size_t size;
 	Packer<RowHasher> row_packer;
 	Hash hash;
+	bool finished;
 };
 
 struct RowLastKey {
