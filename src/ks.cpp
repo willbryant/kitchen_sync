@@ -45,8 +45,9 @@ int main(int argc, char *argv[]) {
 		if (options.from.username.empty()) options.from.username = "-";
 		if (options.from.password.empty()) options.from.password = "-";
 		if (options.set_from_variables.empty()) options.set_from_variables = "-";
+		if (options.cipher.empty()) options.cipher = "aes256-gcm@openssh.com";
 
-		const char *from_args[] = { ssh_binary.c_str(), "-C", "-c", "blowfish", options.via.c_str(),
+		const char *from_args[] = { ssh_binary.c_str(), "-C", "-c", options.cipher.c_str(), options.via.c_str(),
 									from_binary.c_str(), "from", options.from.host.c_str(), options.from.port.c_str(), options.from.database.c_str(), options.from.username.c_str(), options.from.password.c_str(), options.set_from_variables.c_str(), options.filters.c_str(), nullptr };
 		const char **applicable_from_args = (options.via.empty() ? from_args + 5 : from_args);
 
@@ -97,7 +98,7 @@ int main(int argc, char *argv[]) {
 		for (pid_t pid : child_pids) {
 			success &= Process::wait_for_and_check(pid);
 		}
-		
+
 		if (success) {
 			cout << "Finished Kitchen Syncing." << endl;
 			time_t t = time(NULL);
