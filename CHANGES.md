@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.53
+----
+* Look for MariaDB client libraries in mariadb-specific directories as well for compatibility with Ubuntu 16.04.  Thanks @normanv.
+* Declare license (MIT).
+
 0.52
 ----
 * Look for MariaDB client libraries as well.
