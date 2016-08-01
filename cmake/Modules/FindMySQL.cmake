@@ -13,6 +13,8 @@ ENDIF (MYSQL_INCLUDE_DIR)
 FIND_PATH(MYSQL_INCLUDE_DIR mysql.h
   /usr/local/include/mysql
   /usr/include/mysql
+  /usr/include/mariadb
+  /usr/local/include/mariadb
 )
 
 SET(MYSQL_NAMES mysqlclient mysqlclient_r mariadbclient mariadbclient_r)
