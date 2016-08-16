@@ -29,6 +29,9 @@ struct Options {
 			"                             datacentre, and may even be the case on local LANs\n"
 			"                             if you have very fast disks.\n"
 			"\n"
+			"  --cipher                   Specify the cipher when using 'via' option.\n"
+			"                             Default to arcfour.\n"
+			"\n"
 			"  --workers num              The number of concurrent workers to use at each end.\n"
 			"                             Defaults to 1.\n"
 			"\n"
@@ -111,6 +114,7 @@ struct Options {
 					{ "from",						required_argument,	NULL,	'f' },
 					{ "to",							required_argument,	NULL,	't' },
 					{ "via",						required_argument,	NULL,	'v' },
+					{ "cipher",						required_argument,	NULL,	'C' },
 					{ "from-path",					required_argument,	NULL,	'P' },
 					{ "workers",					required_argument,	NULL,	'w' },
 					{ "ignore",						required_argument,	NULL,	'i' },
@@ -187,6 +191,10 @@ struct Options {
 						snapshot = false;
 						break;
 
+					case 'C':
+						cipher = optarg;
+						break;
+
 					case 'c':
 						if (!strcmp(optarg, "never")) {
 							commit_level = CommitLevel::never;
@@ -247,6 +255,7 @@ struct Options {
 
 	DbUrl from, to;
 	string via;
+	string cipher;
 	string from_path;
 	string filters;
 	string set_from_variables;
