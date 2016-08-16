@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.54
+----
+* Add an option to change the SSH cipher, and default to aes-256-gcm for compatibility with OpenSSH 7.2 and better speed.  Thanks @normanv.
+
 0.53
 ----
 * Look for MariaDB client libraries in mariadb-specific directories as well for compatibility with Ubuntu 16.04.  Thanks @normanv.
