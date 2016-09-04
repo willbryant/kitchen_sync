@@ -30,7 +30,7 @@ struct Options {
 			"                             if you have very fast disks.\n"
 			"\n"
 			"  --cipher                   Specify the cipher when using 'via' option.\n"
-			"                             Default to arcfour.\n"
+			"                             Defaults to aes-256-gcm.\n"
 			"\n"
 			"  --workers num              The number of concurrent workers to use at each end.\n"
 			"                             Defaults to 1.\n"
