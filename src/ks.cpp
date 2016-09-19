@@ -35,6 +35,10 @@ int main(int argc, char *argv[]) {
 
 		cout << "Kitchen Sync" << endl;
 
+		// the ks binary is ks_postgresql, but often urls will be of the form 'postgres://'
+		if (options.from.protocol == "postgres") options.from.protocol = "postgresql";
+		if (options.to.protocol == "postgres") options.to.protocol = "postgresql";
+
 		string from_binary(options.from_path + "ks_" + options.from.protocol);
 		string   to_binary(binary_path + "ks_" +   options.to.protocol);
 		string  ssh_binary("/usr/bin/ssh");
