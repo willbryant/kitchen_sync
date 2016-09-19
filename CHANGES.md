@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.55
+----
+* Interpret `postgres://` URLs to mean `postgresql://` for compatibility.  Thanks @aclemons.
+
 0.54
 ----
 * Add an option to change the SSH cipher, and default to aes-256-gcm for compatibility with OpenSSH 7.2 and better speed.  Thanks @normanv.
