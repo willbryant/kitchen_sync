@@ -55,6 +55,15 @@ if(NOT APPLE)
 	include_directories(${OPENSSL_INCLUDE_DIRS})
 endif()
 
+# is backtrace in libc?
+if(NOT APPLE)
+	find_package(Backtrace)
+endif()
+
+if(Backtrace_FOUND OR APPLE)
+	ADD_DEFINITIONS("-DUSE_BACKTRACE")
+endif()
+
 # the endpoints do the actual work
 set(ks_endpoint_SRCS src/schema.cpp src/filters.cpp src/abortable_barrier.cpp src/sync_queue.cpp src/xxHash/xxhash.cpp)
 set(ks_endpoint_LIBS ${OPENSSL_LIBRARIES} ${YamlCPP_LIBRARIES} ${Boost_LIBRARIES})
@@ -70,6 +79,9 @@ if (MYSQL_FOUND)
 	set(ks_mysql_SRCS src/ks_mysql.cpp)
 	add_executable(ks_mysql ${ks_mysql_SRCS} ${ks_endpoint_SRCS})
 	target_link_libraries(ks_mysql ${MYSQL_LIBRARIES} ${ks_endpoint_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+	if(Backtrace_FOUND)
+		target_link_libraries(ks_mysql ${Backtrace_LIBRARIES})
+	endif()
 	install(TARGETS ks_mysql RUNTIME DESTINATION bin)
 endif()
 
@@ -83,6 +95,9 @@ if (PostgreSQL_FOUND)
 	set(ks_postgresql_SRCS src/ks_postgresql.cpp)
 	add_executable(ks_postgresql ${ks_postgresql_SRCS} ${ks_endpoint_SRCS})
 	target_link_libraries(ks_postgresql ${PostgreSQL_LIBRARIES} ${ks_endpoint_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+	if(Backtrace_FOUND)
+		target_link_libraries(ks_postgresql ${Backtrace_LIBRARIES})
+	endif()
 	install(TARGETS ks_postgresql RUNTIME DESTINATION bin)
 endif()
 

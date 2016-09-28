@@ -6,7 +6,12 @@
 		#define htonll OSSwapHostToBigInt64
 	#endif
 #else
-	#include <endian.h>
+	#ifdef __FreeBSD__
+		#include <sys/endian.h>
+	#else
+		#include <endian.h>
+	#endif
+
 	#include <arpa/inet.h>
 	#define ntohll be64toh
 	#define htonll htobe64

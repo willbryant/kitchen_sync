@@ -13,6 +13,8 @@
 #include "../to_string.h"
 #include "../backtrace.h"
 
+using namespace std;
+
 struct packer_error: public std::runtime_error {
 	packer_error(const std::string &error): runtime_error(error) {}
 };
