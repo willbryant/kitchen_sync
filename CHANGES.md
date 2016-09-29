@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.56
+----
+* Fixes to compilation on OpenBSD and FreeBSD.  Thanks @aclemons.
+
 0.55
 ----
 * Interpret `postgres://` URLs to mean `postgresql://` for compatibility.  Thanks @aclemons.
