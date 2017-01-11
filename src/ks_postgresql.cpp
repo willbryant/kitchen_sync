@@ -166,7 +166,6 @@ protected:
 		PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, nullptr, nullptr, nullptr, nullptr, 0 /* text-format results only */));
 
 		if (res.status() != PGRES_TUPLES_OK) {
-			backtrace();
 			throw runtime_error(sql_error(sql));
 		}
 
@@ -232,7 +231,6 @@ string PostgreSQLClient::select_one(const string &sql) {
 	PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, nullptr, nullptr, nullptr, nullptr, 0 /* text-format results only */));
 
 	if (res.status() != PGRES_TUPLES_OK) {
-		backtrace();
 		throw runtime_error(sql_error(sql));
 	}
 

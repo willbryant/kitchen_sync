@@ -152,7 +152,6 @@ protected:
 	template <typename RowFunction>
 	size_t query(const string &sql, RowFunction &row_handler, bool buffer) {
 		if (mysql_real_query(&mysql, sql.c_str(), sql.length())) {
-			backtrace();
 			throw runtime_error(sql_error(sql));
 		}
 
@@ -167,7 +166,6 @@ protected:
 
 		// check again for errors, as mysql_fetch_row would return NULL for both errors & no more rows
 		if (mysql_errno(&mysql)) {
-			backtrace();
 			throw runtime_error(sql_error(sql));
 		}
 
@@ -229,7 +227,6 @@ void MySQLClient::execute(const string &sql) {
 
 string MySQLClient::select_one(const string &sql) {
 	if (mysql_real_query(&mysql, sql.c_str(), sql.length())) {
-		backtrace();
 		throw runtime_error(sql_error(sql));
 	}
 
