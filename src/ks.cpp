@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 		if (options.from.username.empty()) options.from.username = "-";
 		if (options.from.password.empty()) options.from.password = "-";
 		if (options.set_from_variables.empty()) options.set_from_variables = "-";
-		if (options.cipher.empty()) options.cipher = "aes256-gcm@openssh.com";
+		if (options.cipher.empty()) options.cipher = "aes256-ctr";
 
 		const char *from_args[] = { ssh_binary.c_str(), "-C", "-c", options.cipher.c_str(), options.via.c_str(),
 									from_binary.c_str(), "from", options.from.host.c_str(), options.from.port.c_str(), options.from.database.c_str(), options.from.username.c_str(), options.from.password.c_str(), options.set_from_variables.c_str(), options.filters.c_str(), nullptr };
