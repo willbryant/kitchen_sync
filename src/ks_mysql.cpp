@@ -537,7 +537,13 @@ struct MySQLKeyLister {
 		bool unique = (row.string_at(1) == "0");
 		string key_name = row.string_at(2);
 		string column_name = row.string_at(4);
+		size_t sub_part = atoi(row.string_at(7).c_str());
 		size_t column_index = table.index_of_column(column_name);
+		// MySQL sets a sub_part on a per-column basis, we don't store this
+		// keys with single column + sub_part work
+		// keys with multiple columns & no sub_part work
+		// keys with multiple columns & sub_part don't work
+		
 		// FUTURE: consider representing collation, sub_part, packed, index_type, and perhaps comment/index_comment
 
 		if (key_name == "PRIMARY") {
@@ -547,7 +553,7 @@ struct MySQLKeyLister {
 		} else {
 			// a column in a generic key, which may or may not be unique
 			if (table.keys.empty() || table.keys.back().name != key_name) {
-				table.keys.push_back(Key(key_name, unique));
+				table.keys.push_back(Key(key_name, unique, sub_part));
 			}
 			table.keys.back().columns.push_back(column_index);
 
