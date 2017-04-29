@@ -180,7 +180,7 @@ class Mysql2::Client
   end
 
   def table_keys(table_name)
-    query("SHOW KEYS FROM #{table_name}").collect {|row| row["Key_name"] unless row["Key_name"] == "PRIMARY"}.compact
+    query("SHOW KEYS FROM #{table_name}").collect {|row| row["Key_name"] unless row["Key_name"] == "PRIMARY"}.compact.uniq
   end
 
   def table_keys_unique(table_name)
