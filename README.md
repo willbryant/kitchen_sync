@@ -30,6 +30,11 @@ Supported databases
 
 PostgreSQL 9.1 has also been tested and mostly works - but it can't export snapshots for multiple workers.
 
+Feature support
+---------------
+
+Please see [Supported schema](SCHEMA.md) for a list of the currently supported database objects and types.
+
 Bugs
 ----
 
