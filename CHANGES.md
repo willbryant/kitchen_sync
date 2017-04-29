@@ -1,6 +1,13 @@
 Changelog
 =========
 
+0.57
+----
+* Change default SSH cipher to aes256-ctr for compatibility with more platforms.  Thanks @soundasleep and @aclemons.
+* Don't complain about tables that are missing a primary key (or suitable unique key) if they are ignored.
+* Stop printing debugging backtraces on SQL errors.
+* Document schema support.
+
 0.56
 ----
 * Fixes to compilation on OpenBSD and FreeBSD.  Thanks @aclemons.
