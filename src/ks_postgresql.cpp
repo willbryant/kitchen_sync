@@ -581,7 +581,7 @@ struct PostgreSQLKeyLister {
 		table.keys.back().columns.push_back(column_index);
 
 		if (table.primary_key_columns.empty()) {
-			// if we have no primary key, we might need to use another unique key as a surrogate - see MySQLTableLister below -
+			// if we have no primary key, we might need to use another unique key as a surrogate - see PostgreSQLTableLister below -
 			// but this key must have no NULLable columns, as they effectively make the index not unique
 			bool nullable = (row.string_at(3) == "f");
 			if (unique && nullable) {
