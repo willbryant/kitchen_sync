@@ -19,7 +19,7 @@ struct DropKeyStatements {
 		result += client.quote_identifiers_with();
 		result += key.name;
 		result += client.quote_identifiers_with();
-		statements.push_back(result);
+		statements.push_front(result);
 	}
 };
 
@@ -30,7 +30,7 @@ struct DropKeyStatements <DatabaseClient, true> {
 		result += client.quote_identifiers_with();
 		result += key.name;
 		result += client.quote_identifiers_with();
-		statements.push_back(result);
+		statements.push_front(result);
 	}
 };
 
@@ -289,7 +289,7 @@ struct UpdateKeyForDroppedColumn <DatabaseClient, true> {
 
 template <typename DatabaseClient>
 struct DropColumnClauses {
-	static void add_to(string &alter_table_clauses, DatabaseClient &client, Table &table, size_t column_index) {
+	static void add_to(string &alter_table_clauses, Statements &alter_statements, DatabaseClient &client, Table &table, size_t column_index) {
 		if (!alter_table_clauses.empty()) {
 			alter_table_clauses += ",";
 		}
@@ -303,6 +303,9 @@ struct DropColumnClauses {
 			if (UpdateKeyForDroppedColumn<DatabaseClient>::update_key_columns(key->columns, column_index)) {
 				++key;
 			} else {
+				// proactively drop the key at the start to work around one case of https://bugs.mysql.com/bug.php?id=57497 -
+				// the single-column index case.
+				DropKeyStatements<DatabaseClient>::add_to(alter_statements, client, table, *key);
 				key = table.keys.erase(key);
 			}
 		}
@@ -476,7 +479,7 @@ struct SchemaMatcher {
 			Columns::iterator         to_column(  to_table.columns.begin() + column_index);
 
 			if (column_index >= from_table.columns.size() || to_column->name != from_column->name) {
-				DropColumnClauses<DatabaseClient>::add_to(alter_table_clauses, client, to_table, column_index);
+				DropColumnClauses<DatabaseClient>::add_to(alter_table_clauses, alter_statements, client, to_table, column_index);
 				to_table.columns.erase(to_column);
 			} else {
 				if (from_column->nullable && !to_column->nullable) {

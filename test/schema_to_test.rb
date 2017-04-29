@@ -557,6 +557,61 @@ SQL
     read_command
   end
 
+  test_each "updates or recreates keys that consisted solely of columns that it moves" do
+    # this scenario can create https://bugs.mysql.com/bug.php?id=57497
+    clear_schema
+    execute(<<-SQL)
+      CREATE TABLE secondtbl (
+        tri BIGINT,
+        sec INT,
+        pri1 INT NOT NULL,
+        pri2 CHAR(2) NOT NULL,
+        PRIMARY KEY(pri2, pri1))
+SQL
+    execute(<<-SQL)
+      CREATE INDEX secidx ON secondtbl (sec)
+SQL
+    insert_secondtbl_rows
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command Commands::SCHEMA, ["tables" => [secondtbl_def]]
+    read_command
+    assert_equal secondtbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("secondtbl")
+    assert_equal [[9, 968116383, 'aa', nil],
+                  [2,   2349174, 'xy', nil]], # sec value has been lost
+                 query("SELECT * FROM secondtbl ORDER BY pri2, pri1")
+    assert_same_keys(secondtbl_def)
+  end
+
+  test_each "updates or recreates keys that included columns that it moves" do
+    # this scenario can create https://bugs.mysql.com/bug.php?id=57497
+    clear_schema
+    execute(<<-SQL)
+      CREATE TABLE secondtbl (
+        tri BIGINT,
+        sec INT,
+        pri1 INT NOT NULL,
+        pri2 CHAR(2) NOT NULL,
+        PRIMARY KEY(pri2, pri1))
+SQL
+    execute(<<-SQL)
+      CREATE INDEX secidx ON secondtbl (sec, tri)
+SQL
+    insert_secondtbl_rows
+    added_def = secondtbl_def.merge("keys" => [secondtbl_def["keys"].first.merge("columns" => [3, 0])]) # note these indexes are for columns in the secondtbl_def order, not the above order
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command Commands::SCHEMA, ["tables" => [added_def]]
+    read_command
+    assert_equal added_def["columns"].collect {|column| column["name"]}, connection.table_column_names("secondtbl")
+    assert_equal [[9, 968116383, 'aa', nil],
+                  [2,   2349174, 'xy', nil]], # sec value has been lost
+                 query("SELECT * FROM secondtbl ORDER BY pri2, pri1")
+    assert_same_keys(added_def)
+  end
+
 
   test_each "recreates the table if column types don't match" do
     clear_schema
