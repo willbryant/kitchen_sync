@@ -133,21 +133,21 @@ SQL
     execute "CREATE INDEX not_unique_key ON noprimarytbl (non_nullable)"
   end
 
-  def noprimarytbl_def
+  def noprimarytbl_def(create_suitable_keys = true)
     { "name" => "noprimarytbl",
       "columns" => [
         {"name" => "nullable",     "column_type" => ColumnTypes::SINT, "size" =>   4},
         {"name" => "version",      "column_type" => ColumnTypes::VCHR, "size" => 255, "nullable" => false},
         {"name" => "name",         "column_type" => ColumnTypes::VCHR, "size" => 255},
         {"name" => "non_nullable", "column_type" => ColumnTypes::SINT, "size" =>   4, "nullable" => false}],
-      "primary_key_columns" => [1],
+      "primary_key_columns" => (create_suitable_keys ? [1] : []),
       "keys" => [ # sorted in uniqueness then alphabetic name order, but otherwise a transcription of the above create index statements
-        {"name" => "correct_key",          "unique" => true,  "columns" => [1]},
+        ({"name" => "correct_key",          "unique" => true,  "columns" => [1]} if create_suitable_keys),
         {"name" => "ignored_key",          "unique" => true,  "columns" => [0, 1]},
-        {"name" => "non_nullable_key",     "unique" => true,  "columns" => [3]},
+        ({"name" => "non_nullable_key",     "unique" => true,  "columns" => [3]} if create_suitable_keys),
         {"name" => "version_and_name_key", "unique" => true,  "columns" => [1, 2]},
         {"name" => "everything_key",       "unique" => false, "columns" => [2, 0, 1]},
-        {"name" => "not_unique_key",       "unique" => false, "columns" => [3]} ] }
+        {"name" => "not_unique_key",       "unique" => false, "columns" => [3]} ].compact }
   end
 
   def create_some_tables

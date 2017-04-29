@@ -276,6 +276,50 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   end
 
 
+  test_each "complains if there's a table that has no unique key with only non-nullable columns" do
+    clear_schema
+    create_noprimarytbl(false)
+    create_secondtbl
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+
+    expect_stderr("Error in the 'to' worker: Couldn't find a primary or non-nullable unique key on table noprimarytbl") do
+      send_command Commands::SCHEMA, ["tables" => [noprimarytbl_def(false), secondtbl_def]]
+      read_command rescue nil
+    end
+  end
+
+  test_each "doesn't complain if there's a table that has no primary key but that has unique key with only non-nullable columns" do
+    clear_schema
+    create_noprimarytbl(true)
+    create_secondtbl
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command   Commands::SCHEMA, ["tables" => [noprimarytbl_def(true), secondtbl_def]]
+    expect_command Commands::OPEN, ["noprimarytbl"]
+    send_command   Commands::ROWS, [[], []]
+    expect_command Commands::OPEN, ["secondtbl"]
+    send_command   Commands::ROWS, [[], []]
+    read_command
+  end
+
+  test_each "doesn't complain if there's an ignored table that has no unique key with only non-nullable columns" do
+    program_env['ENDPOINT_IGNORE_TABLES'] = 'noprimarytbl'
+    clear_schema
+    create_noprimarytbl(false)
+    create_secondtbl
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command   Commands::SCHEMA, ["tables" => [noprimarytbl_def(true), secondtbl_def]]
+    expect_command Commands::OPEN, ["secondtbl"]
+    send_command   Commands::ROWS, [[], []]
+    read_command
+  end
+
+
   test_each "adds missing columns before other columns" do
     clear_schema
     create_secondtbl

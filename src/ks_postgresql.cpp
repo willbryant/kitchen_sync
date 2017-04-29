@@ -643,16 +643,13 @@ struct PostgreSQLTableLister {
 			key_lister);
 
 		// if the table has no primary key, we need to find a unique key with no nullable columns to act as a surrogate primary key
+		// of course this falls apart if there are no unique keys, so we don't allow that - we let sync_to's compare_schema() handle that so it can tell the user
 		sort(table.keys.begin(), table.keys.end()); // order is arbitrary for keys, but both ends must be consistent, so we sort the keys by name
 		
 		for (Keys::const_iterator key = table.keys.begin(); key != table.keys.end() && table.primary_key_columns.empty(); ++key) {
 			if (key->unique && !key_lister.unique_but_nullable_keys.count(key->name)) {
 				table.primary_key_columns = key->columns;
 			}
-		}
-		if (table.primary_key_columns.empty()) {
-			// of course this falls apart if there are no unique keys, so we don't allow that
-			throw runtime_error("Couldn't find a primary or non-nullable unique key on table " + table.name);
 		}
 
 		database.tables.push_back(table);

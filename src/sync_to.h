@@ -167,6 +167,7 @@ struct SyncToWorker {
 			read_expected_command(input, Commands::SCHEMA, database);
 			client.convert_unsupported_database_schema(database);
 			filter_tables(database.tables);
+			check_tables_usable(database.tables);
 		}
 	}
 
@@ -210,6 +211,14 @@ struct SyncToWorker {
 				table = tables.erase(table);
 			} else {
 				++table;
+			}
+		}
+	}
+
+	void check_tables_usable(Tables &tables) {
+		for (Table &table : tables) {
+			if (table.primary_key_columns.empty()) {
+				throw runtime_error("Couldn't find a primary or non-nullable unique key on table " + table.name);
 			}
 		}
 	}

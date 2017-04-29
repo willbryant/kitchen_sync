@@ -29,7 +29,7 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
                    [{"tables" => [footbl_def, misctbl_def, secondtbl_def, texttbl_def]}]
   end
 
-  test_each "selects the first unique key with no nullable columns if there is no primary key" do
+  test_each "selects the first unique key with no nullable columns if there is no primary key" do # rejecting the case where there is no such table is handled at the 'to' end
     clear_schema
     create_noprimarytbl
     send_handshake_commands
@@ -37,15 +37,6 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
     send_command   Commands::SCHEMA
     expect_command Commands::SCHEMA,
                    [{"tables" => [noprimarytbl_def]}]
-  end
-
-  test_each "complains if there's no unique key with no nullable columns" do
-    clear_schema
-    create_noprimarytbl(false)
-
-    expect_stderr("Error in the 'from' worker: Couldn't find a primary or non-nullable unique key on table noprimarytbl") do
-      send_handshake_commands rescue nil
-    end
   end
 
   test_each "shows the default values for columns" do
