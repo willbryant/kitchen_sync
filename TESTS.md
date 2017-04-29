@@ -36,13 +36,13 @@ To run the suite, change to the kitchen_sync directory where you checked out the
 
 ```
   cd build
-  cmake .. && make test
+  cmake .. && make && make test
 ```
 
 The normal cmake behavior is to report failures without giving any actual information about
 them.  To get cmake to output on failures, use `CTEST_OUTPUT_ON_FAILURE`:
 ```
-  cmake .. && CTEST_OUTPUT_ON_FAILURE=1 make test
+  cmake .. && make && CTEST_OUTPUT_ON_FAILURE=1 make test
 ```
 
 You can also inspect the full test output in `Testing/Temporary/LastTest.log`.

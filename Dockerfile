@@ -1,16 +1,13 @@
 # this dockerfile builds kitchen sync on ubuntu and runs the test suite.
 
-# ubuntu 12.04 is considered the oldest currently supported distro.
-FROM ubuntu:12.04
+# ubuntu 14.04 is considered the oldest currently supported distro.
+FROM ubuntu:14.04
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 	DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
 	DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential cmake libboost-dev libssl-dev \
-		mysql-server libmysqlclient-dev wget \
-		git python-software-properties && \
-	(wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -) && \
-	echo "deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main" >>/etc/apt/sources.list && \
-	apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql-9.2 libpq-dev && \
+		mysql-server libmysqlclient-dev postgresql-9.3 libpq-dev \
+		git software-properties-common wget && \
 	rm -f /etc/apt/apt.conf.d/20auto-upgrades && \
 	apt-get clean -y && \
 	rm -rf /var/cache/apt/archives/*
@@ -19,9 +16,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 RUN sed -i 's/key_buffer/key_buffer_size/' /etc/mysql/my.cnf
 RUN sed -i 's/myisam-recover/myisam-recover-options/' /etc/mysql/my.cnf
 
-RUN add-apt-repository -y "deb http://ppa.launchpad.net/powershop/ppa/ubuntu precise main" && \
+RUN add-apt-repository -y ppa:powershop/ppa && \
     DEBIAN_FRONTEND=noninteractive apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y ruby2 && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y ruby2.3 && \
     apt-get clean -y && \
     rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
 
