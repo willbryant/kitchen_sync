@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.58
+----
+* When using `--alter`, change the order in which keys are dropped, to work around https://bugs.mysql.com/bug.php?id=57497.
+
 0.57
 ----
 * Change default SSH cipher to aes256-ctr for compatibility with more platforms.  Thanks @soundasleep and @aclemons.
