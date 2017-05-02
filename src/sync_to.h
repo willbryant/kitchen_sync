@@ -22,7 +22,7 @@ struct SyncToWorker {
 		const string &database_host, const string &database_port, const string &database_name, const string &database_username, const string &database_password,
 		const string &set_variables, const set<string> &ignore_tables, const set<string> &only_tables,
 		int verbose, bool progress, bool snapshot, bool alter, CommitLevel commit_level, HashAlgorithm hash_algorithm,
-    bool structure_only) :
+		bool structure_only) :
 			database(database),
 			sync_queue(sync_queue),
 			leader(leader),
