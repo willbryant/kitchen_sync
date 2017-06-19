@@ -467,7 +467,9 @@ string PostgreSQLClient::column_definition(const Table &table, const Column &col
 
 	result += column_type(column);
 
-	if (!column.nullable) {
+	if (column.nullable) {
+		result += " NULL";
+	} else {
 		result += " NOT NULL";
 	}
 

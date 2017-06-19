@@ -453,7 +453,9 @@ string MySQLClient::column_definition(const Table &table, const Column &column) 
 
 	result += column_type(column);
 
-	if (!column.nullable) {
+	if (column.nullable) {
+		result += " NULL";
+	} else {
 		result += " NOT NULL";
 	}
 
