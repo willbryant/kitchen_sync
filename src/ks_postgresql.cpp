@@ -491,13 +491,23 @@ struct PostgreSQLColumnLister {
 		if (row.string_at(3) == "t") {
 			default_type = DefaultType::default_value;
 			default_value = row.string_at(4);
+
 			if (default_value.length() > 20 &&
 				default_value.substr(0, 9) == "nextval('" &&
 				default_value.substr(default_value.length() - 12, 12) == "'::regclass)") {
 				default_type = DefaultType::sequence;
 				default_value = "";
+
 			} else if (default_value.length() > 2 && default_value[0] == '\'') {
 				default_value = unescape_value(default_value.substr(1, default_value.rfind('\'') - 1));
+
+			} else if (default_value.length() > 0 && (default_value[0] < '0' || default_value[0] > '9') && default_value != "false" && default_value != "true") {
+				default_type = DefaultType::default_function;
+
+				// postgresql converts CURRENT_TIMESTAMP to now(); convert it back for portability
+				if (default_value == "now()") {
+					default_value = "CURRENT_TIMESTAMP";
+				}
 			}
 		}
 

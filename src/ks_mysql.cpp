@@ -440,7 +440,7 @@ string MySQLClient::column_default(const Table &table, const Column &column) {
 		}
 
 		case DefaultType::default_function:
-			throw runtime_error("Can't implement default function " + column.default_value);
+			return " DEFAULT " + column.default_value;
 	}
 }
 
@@ -521,6 +521,9 @@ struct MySQLColumnLister {
 		} else if (db_type == "time") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TIME);
 		} else if (db_type == "datetime") {
+			if (default_value == "CURRENT_TIMESTAMP") {
+				default_type = DefaultType::default_function;
+			}
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM);
 		} else {
 			throw runtime_error("Don't know how to represent mysql type of " + table.name + '.' + name + " (" + db_type + ")");
