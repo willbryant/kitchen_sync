@@ -239,4 +239,44 @@ SQL
       "primary_key_columns" => [0],
       "keys" => [] }
   end
+
+  def create_adapterspecifictbl
+    case @database_server
+    when 'mysql'
+      execute(<<-SQL)
+        CREATE TABLE mysqltbl (
+          pri INT NOT NULL,
+          PRIMARY KEY(pri))
+SQL
+
+    when 'postgresql'
+      execute(<<-SQL)
+        CREATE TABLE postgresqltbl (
+          pri INT NOT NULL,
+          currentdatefield DATE DEFAULT CURRENT_DATE,
+          sqlspecialdefault VARCHAR(255) DEFAULT current_user,
+          PRIMARY KEY(pri))
+SQL
+    end
+  end
+
+  def adapterspecifictbl_def
+    case @database_server
+    when 'mysql'
+      { "name"    => "mysqltbl",
+        "columns" => [
+          {"name" => "pri",              "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false}],
+        "primary_key_columns" => [0],
+        "keys" => [] }
+
+    when 'postgresql'
+      { "name"    => "postgresqltbl",
+        "columns" => [
+          {"name" => "pri",              "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false},
+          {"name" => "currentdatefield", "column_type" => ColumnTypes::DATE,                "default_function" => "CURRENT_DATE"},
+          {"name" => "sqlspecialdefault", "column_type" => ColumnTypes::VCHR, "size" => 255, "default_function" => "\"current_user\"()"}], # special treatment noted on System Information Functions documentation page
+        "primary_key_columns" => [0],
+        "keys" => [] }
+    end
+  end
 end

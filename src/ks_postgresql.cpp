@@ -509,6 +509,10 @@ struct PostgreSQLColumnLister {
 				// postgresql converts CURRENT_TIMESTAMP to now(); convert it back for portability
 				if (default_value == "now()") {
 					default_value = "CURRENT_TIMESTAMP";
+
+				// do the same for its conversion of CURRENT_DATE
+				} else if (default_value == "('now'::text)::date") {
+					default_value = "CURRENT_DATE";
 				}
 			}
 		}

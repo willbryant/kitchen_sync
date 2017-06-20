@@ -58,4 +58,19 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA,
                    [{"tables" => [autotbl_def]}]
   end
+
+  test_each "returns the appropriate representation of adapter-specific column definitions" do
+    clear_schema
+    create_adapterspecifictbl
+
+    send_handshake_commands
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA,
+                   [{"tables" => [adapterspecifictbl_def]}]
+
+    send_command   Commands::OPEN, [adapterspecifictbl_def["name"]]
+    expect_command Commands::ROWS,
+                   [[], []]
+  end
 end
