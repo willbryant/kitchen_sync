@@ -254,7 +254,9 @@ SQL
         CREATE TABLE postgresqltbl (
           pri INT NOT NULL,
           currentdatefield DATE DEFAULT CURRENT_DATE,
-          sqlspecialdefault VARCHAR(255) DEFAULT current_user,
+          currentuserdefault VARCHAR(255) DEFAULT current_user,
+          sqlspecialdefault VARCHAR(255) DEFAULT current_schema,
+          pgfunctiondefault TEXT DEFAULT version(),
           PRIMARY KEY(pri))
 SQL
     end
@@ -265,16 +267,18 @@ SQL
     when 'mysql'
       { "name"    => "mysqltbl",
         "columns" => [
-          {"name" => "pri",              "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false}],
+          {"name" => "pri",                "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false}],
         "primary_key_columns" => [0],
         "keys" => [] }
 
     when 'postgresql'
       { "name"    => "postgresqltbl",
         "columns" => [
-          {"name" => "pri",              "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false},
-          {"name" => "currentdatefield", "column_type" => ColumnTypes::DATE,                "default_function" => "CURRENT_DATE"},
-          {"name" => "sqlspecialdefault", "column_type" => ColumnTypes::VCHR, "size" => 255, "default_function" => "\"current_user\"()"}], # special treatment noted on System Information Functions documentation page
+          {"name" => "pri",                "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false},
+          {"name" => "currentdatefield",   "column_type" => ColumnTypes::DATE,                "default_function" => "CURRENT_DATE"},
+          {"name" => "currentuserdefault", "column_type" => ColumnTypes::VCHR, "size" => 255, "default_function" => "current_user"},
+          {"name" => "sqlspecialdefault",  "column_type" => ColumnTypes::VCHR, "size" => 255, "default_function" => "current_schema"}, # special treatment noted on System Information Functions documentation page
+          {"name" => "pgfunctiondefault",  "column_type" => ColumnTypes::TEXT,                "default_function" => "version()"}],
         "primary_key_columns" => [0],
         "keys" => [] }
     end

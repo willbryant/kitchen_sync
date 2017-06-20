@@ -513,6 +513,11 @@ struct PostgreSQLColumnLister {
 				// do the same for its conversion of CURRENT_DATE
 				} else if (default_value == "('now'::text)::date") {
 					default_value = "CURRENT_DATE";
+
+				// other SQL-reserved zero-argument functions come back with quoted identifiers and brackets, see Note on the
+				// 'System Information Functions' page; the list here is shorter because some get converted to one of the others by pg
+				} else if (default_value == "\"current_schema\"()" || default_value == "\"current_user\"()" || default_value == "\"session_user\"()") {
+					default_value = default_value.substr(1, default_value.length() - 4);
 				}
 			}
 		}
