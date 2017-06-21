@@ -157,7 +157,7 @@ public:
 	string column_definition(const Table &table, const Column &column);
 
 	inline char quote_identifiers_with() const { return '"'; }
-	inline ColumnFlags supported_flags() const { return ColumnFlags::nothing; }
+	inline ColumnFlags supported_flags() const { return ColumnFlags::time_zone; }
 
 protected:
 	friend class PostgreSQLTableLister;
@@ -409,10 +409,18 @@ string PostgreSQLClient::column_type(const Column &column) {
 		return "date";
 
 	} else if (column.column_type == ColumnTypes::TIME) {
-		return "time without time zone";
+		if (column.flags & ColumnFlags::time_zone) {
+			return "time with time zone";
+		} else {
+			return "time without time zone";
+		}
 
 	} else if (column.column_type == ColumnTypes::DTTM) {
-		return "timestamp without time zone";
+		if (column.flags & ColumnFlags::time_zone) {
+			return "timestamp with time zone";
+		} else {
+			return "timestamp without time zone";
+		}
 
 	} else {
 		throw runtime_error("Don't know how to express column type of " + column.name + " (" + column.column_type + ")");
@@ -545,10 +553,14 @@ struct PostgreSQLColumnLister {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BLOB);
 		} else if (db_type == "date") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DATE);
-		} else if (db_type == "time without time zone") { // TODO: consider support for 'with time zone'
+		} else if (db_type == "time without time zone") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TIME);
-		} else if (db_type == "timestamp without time zone") { // TODO: consider support for 'with time zone'
+		} else if (db_type == "time with time zone") {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TIME, 0, 0, ColumnFlags::time_zone);
+		} else if (db_type == "timestamp without time zone") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM);
+		} else if (db_type == "timestamp with time zone") {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM, 0, 0, ColumnFlags::time_zone);
 		} else {
 			throw runtime_error("Don't know how to represent postgresql type of " + table.name + '.' + name + " (" + db_type + ")");
 		}

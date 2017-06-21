@@ -13,6 +13,7 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	if (column.default_type) fields++;
 	if (column.flags & mysql_timestamp) fields++;
 	if (column.flags & mysql_on_update_timestamp) fields++;
+	if (column.flags & time_zone) fields++;
 	pack_map_length(packer, fields);
 	packer << string("name");
 	packer << column.name;
@@ -55,6 +56,10 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	}
 	if (column.flags & ColumnFlags::mysql_on_update_timestamp) {
 		packer << string("mysql_on_update_timestamp");
+		packer << true;
+	}
+	if (column.flags & ColumnFlags::time_zone) {
+		packer << string("time_zone");
 		packer << true;
 	}
 }
@@ -124,6 +129,10 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 			bool flag;
 			unpacker >> flag;
 			if (flag) column.flags = (ColumnFlags)(column.flags | mysql_on_update_timestamp);
+		} else if (attr_key == "time_zone") {
+			bool flag;
+			unpacker >> flag;
+			if (flag) column.flags = (ColumnFlags)(column.flags | time_zone);
 		} else {
 			// ignore anything else, for forward compatibility
 			unpacker.skip();

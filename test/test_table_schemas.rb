@@ -259,6 +259,8 @@ SQL
           currentuserdefault VARCHAR(255) DEFAULT current_user,
           sqlspecialdefault VARCHAR(255) DEFAULT current_schema,
           pgfunctiondefault TEXT DEFAULT version(),
+          timewithzone time with time zone,
+          timestampwithzone timestamp with time zone,
           PRIMARY KEY(pri))
 SQL
     end
@@ -282,7 +284,9 @@ SQL
           {"name" => "currentdatefield",   "column_type" => ColumnTypes::DATE,                "default_function" => "CURRENT_DATE"},
           {"name" => "currentuserdefault", "column_type" => ColumnTypes::VCHR, "size" => 255, "default_function" => "current_user"},
           {"name" => "sqlspecialdefault",  "column_type" => ColumnTypes::VCHR, "size" => 255, "default_function" => "current_schema"}, # special treatment noted on System Information Functions documentation page
-          {"name" => "pgfunctiondefault",  "column_type" => ColumnTypes::TEXT,                "default_function" => "version()"}],
+          {"name" => "pgfunctiondefault",  "column_type" => ColumnTypes::TEXT,                "default_function" => "version()"},
+          {"name" => "timewithzone",       "column_type" => ColumnTypes::TIME, "time_zone" => true},
+          {"name" => "timestampwithzone",  "column_type" => ColumnTypes::DTTM, "time_zone" => true}],
         "primary_key_columns" => [0],
         "keys" => [] }
     end
