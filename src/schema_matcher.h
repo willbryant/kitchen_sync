@@ -322,7 +322,7 @@ struct AddColumnClauses {
 			alter_table_clauses += ",";
 		}
 		alter_table_clauses += " ADD ";
-		if (column.nullable || column.default_type == DefaultType::default_value) {
+		if (column.nullable || column.default_type == DefaultType::default_value || column.default_type == DefaultType::default_function) {
 			alter_table_clauses += client.column_definition(table, column);
 		} else {
 			// first add the column, with a default value to get past the non-nullability
@@ -399,6 +399,9 @@ struct SchemaMatcher {
 		sort(from_table.keys.begin(), from_table.keys.end());
 		sort(  to_table.keys.begin(),   to_table.keys.end());
 
+		// turn off any flags not supported by the target database
+		mask_unsupported_flags(from_table);
+
 		// if the tables match, we don't have to do anything
 		if (from_table == to_table) return;
 
@@ -417,6 +420,16 @@ struct SchemaMatcher {
 			DropTableStatements<DatabaseClient>::add_to(statements, client, to_table);
 			CreateTableStatements<DatabaseClient>::add_to(statements, client, from_table);
 			to_table = from_table;
+		}
+	}
+
+	void mask_unsupported_flags(Table &from_table) {
+		for (Column &column : from_table.columns) {
+			ColumnFlags masked_flags = (ColumnFlags)(column.flags & client.supported_flags());
+			if (column.flags != masked_flags) {
+				cerr << "Warning: the schema for column " << from_table.name << '.' << column.name << " is not fully supported by this database." << endl;
+				column.flags = masked_flags;
+			}
 		}
 	}
 

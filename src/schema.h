@@ -34,6 +34,12 @@ enum DefaultType {
 	default_function = 3,
 };
 
+enum ColumnFlags {
+	nothing = 0,
+	mysql_timestamp = 1,
+	mysql_on_update_timestamp = 2,
+};
+
 struct Column {
 	string name;
 	bool nullable;
@@ -42,14 +48,15 @@ struct Column {
 	size_t scale;
 	DefaultType default_type;
 	string default_value;
+	ColumnFlags flags;
 
 	// the following member isn't serialized currently (could be, but not required):
 	string filter_expression;
 
-	inline Column(const string &name, bool nullable, DefaultType default_type, string default_value, string column_type, size_t size = 0, size_t scale = 0): name(name), nullable(nullable), default_type(default_type), default_value(default_value), column_type(column_type), size(size), scale(scale) {}
-	inline Column(): nullable(true), size(0), scale(0), default_type(DefaultType::no_default) {}
+	inline Column(const string &name, bool nullable, DefaultType default_type, string default_value, string column_type, size_t size = 0, size_t scale = 0, ColumnFlags flags = ColumnFlags::nothing): name(name), nullable(nullable), default_type(default_type), default_value(default_value), column_type(column_type), size(size), scale(scale), flags(flags) {}
+	inline Column(): nullable(true), size(0), scale(0), default_type(DefaultType::no_default), flags(ColumnFlags::nothing) {}
 
-	inline bool operator ==(const Column &other) const { return (name == other.name && nullable == other.nullable && column_type == other.column_type && size == other.size && scale == other.scale && default_type == other.default_type && default_value == other.default_value); }
+	inline bool operator ==(const Column &other) const { return (name == other.name && nullable == other.nullable && column_type == other.column_type && size == other.size && scale == other.scale && default_type == other.default_type && default_value == other.default_value && flags == other.flags); }
 	inline bool operator !=(const Column &other) const { return (!(*this == other)); }
 };
 

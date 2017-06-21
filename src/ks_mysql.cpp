@@ -145,6 +145,7 @@ public:
 	string column_definition(const Table &table, const Column &column);
 
 	inline char quote_identifiers_with() const { return '`'; }
+	inline ColumnFlags supported_flags() const { return (ColumnFlags)(mysql_timestamp | mysql_on_update_timestamp); }
 
 protected:
 	friend class MySQLTableLister;
@@ -408,7 +409,11 @@ string MySQLClient::column_type(const Column &column) {
 		return "time";
 
 	} else if (column.column_type == ColumnTypes::DTTM) {
-		return "datetime";
+		if (column.flags & ColumnFlags::mysql_timestamp) {
+			return "timestamp";
+		} else {
+			return "datetime";
+		}
 
 	} else {
 		throw runtime_error("Don't know how to express column type of " + column.name + " (" + column.column_type + ")");
@@ -453,14 +458,18 @@ string MySQLClient::column_definition(const Table &table, const Column &column) 
 
 	result += column_type(column);
 
-	if (column.nullable) {
-		result += " NULL";
-	} else {
+	if (!column.nullable) {
 		result += " NOT NULL";
+	} else if (column.flags & ColumnFlags::mysql_timestamp) {
+		result += " NULL";
 	}
 
 	if (column.default_type) {
 		result += column_default(table, column);
+	}
+
+	if (column.flags & mysql_on_update_timestamp) {
+		result += " ON UPDATE CURRENT_TIMESTAMP";
 	}
 
 	return result;
@@ -476,7 +485,8 @@ struct MySQLColumnLister {
 		bool unsign(db_type.length() > 8 && db_type.substr(db_type.length() - 8, 8) == "unsigned");
 		DefaultType default_type(row.null_at(4) ? DefaultType::no_default : DefaultType::default_value);
 		string default_value(default_type ? row.string_at(4) : string(""));
-		if (row.string_at(5).find("auto_increment") != string::npos) default_type = DefaultType::sequence;
+		string extra(row.string_at(5));
+		if (extra.find("auto_increment") != string::npos) default_type = DefaultType::sequence;
 
 		if (db_type == "tinyint(1)" && (!default_type || default_value == "0" || default_value == "1")) {
 			if (default_type) default_value = (default_value == "1" ? "true" : "false");
@@ -522,11 +532,15 @@ struct MySQLColumnLister {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DATE);
 		} else if (db_type == "time") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TIME);
-		} else if (db_type == "datetime") {
+		} else if (db_type == "datetime" || db_type == "timestamp") {
+			ColumnFlags flags = db_type == "timestamp" ? ColumnFlags::mysql_timestamp : ColumnFlags::nothing;
 			if (default_value == "CURRENT_TIMESTAMP") {
 				default_type = DefaultType::default_function;
 			}
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM);
+			if (extra.find("on update CURRENT_TIMESTAMP") != string::npos) {
+				flags = (ColumnFlags)(flags | mysql_on_update_timestamp);
+			}
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM, 0, 0, flags);
 		} else {
 			throw runtime_error("Don't know how to represent mysql type of " + table.name + '.' + name + " (" + db_type + ")");
 		}

@@ -157,6 +157,7 @@ public:
 	string column_definition(const Table &table, const Column &column);
 
 	inline char quote_identifiers_with() const { return '"'; }
+	inline ColumnFlags supported_flags() const { return ColumnFlags::nothing; }
 
 protected:
 	friend class PostgreSQLTableLister;
@@ -467,9 +468,7 @@ string PostgreSQLClient::column_definition(const Table &table, const Column &col
 
 	result += column_type(column);
 
-	if (column.nullable) {
-		result += " NULL";
-	} else {
+	if (!column.nullable) {
 		result += " NOT NULL";
 	}
 

@@ -240,12 +240,14 @@ SQL
       "keys" => [] }
   end
 
-  def create_adapterspecifictbl
-    case @database_server
+  def create_adapterspecifictbl(database_server = @database_server)
+    case database_server
     when 'mysql'
       execute(<<-SQL)
         CREATE TABLE mysqltbl (
           pri INT NOT NULL,
+          timestampboth TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          timestampcreateonly TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY(pri))
 SQL
 
@@ -262,12 +264,14 @@ SQL
     end
   end
 
-  def adapterspecifictbl_def
-    case @database_server
+  def adapterspecifictbl_def(database_server = @database_server)
+    case database_server
     when 'mysql'
       { "name"    => "mysqltbl",
         "columns" => [
-          {"name" => "pri",                "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false}],
+          {"name" => "pri",                 "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false},
+          {"name" => "timestampboth",       "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true},
+          {"name" => "timestampcreateonly", "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true}],
         "primary_key_columns" => [0],
         "keys" => [] }
 

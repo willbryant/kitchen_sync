@@ -11,6 +11,8 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	if (column.scale) fields++;
 	if (!column.nullable) fields++;
 	if (column.default_type) fields++;
+	if (column.flags & mysql_timestamp) fields++;
+	if (column.flags & mysql_on_update_timestamp) fields++;
 	pack_map_length(packer, fields);
 	packer << string("name");
 	packer << column.name;
@@ -46,6 +48,14 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 			packer << string("default_function");
 			packer << column.default_value;
 			break;
+	}
+	if (column.flags & ColumnFlags::mysql_timestamp) {
+		packer << string("mysql_timestamp");
+		packer << true;
+	}
+	if (column.flags & ColumnFlags::mysql_on_update_timestamp) {
+		packer << string("mysql_on_update_timestamp");
+		packer << true;
 	}
 }
 
@@ -106,6 +116,14 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 		} else if (attr_key == "default_function") {
 			column.default_type = DefaultType::default_function;
 			unpacker >> column.default_value;
+		} else if (attr_key == "mysql_timestamp") {
+			bool flag;
+			unpacker >> flag;
+			if (flag) column.flags = (ColumnFlags)(column.flags | mysql_timestamp);
+		} else if (attr_key == "mysql_on_update_timestamp") {
+			bool flag;
+			unpacker >> flag;
+			if (flag) column.flags = (ColumnFlags)(column.flags | mysql_on_update_timestamp);
 		} else {
 			// ignore anything else, for forward compatibility
 			unpacker.skip();
