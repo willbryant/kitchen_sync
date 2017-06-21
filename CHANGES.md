@@ -1,6 +1,12 @@
 Changelog
 =========
 
+0.59
+----
+* Initial support for MySQL's special `timestamp` type and for `DEFAULT CURRENT_TIMESTAMP` and `ON UPDATE CURRENT_TIMESTAMP` behaviors on `timestamp` and `datetime` columns.
+* Support PostgreSQL's `time with time zone` and `timestamp with time zone` column types.
+* Fix support for PostgreSQL's default expressions.
+
 0.58
 ----
 * When using `--alter`, change the order in which keys are dropped, to work around https://bugs.mysql.com/bug.php?id=57497.
