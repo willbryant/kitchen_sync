@@ -92,7 +92,7 @@ struct SyncToWorker {
 	}
 
 	void negotiate_protocol() {
-		const int EARLIEST_PROTOCOL_VERSION_SUPPORTED = 5;
+		const int EARLIEST_PROTOCOL_VERSION_SUPPORTED = 6;
 		const int LATEST_PROTOCOL_VERSION_SUPPORTED = 6;
 
 		// tell the other end what version of the protocol we can speak, and have them tell us which version we're able to converse in
@@ -115,14 +115,8 @@ struct SyncToWorker {
 	}
 
 	void negotiate_hash_algorithm() {
-		const int EARLIEST_HASH_ALGORITHM_PROTOCOL_VERSION_SUPPORTED = 6;
-
-		if (protocol_version >= EARLIEST_HASH_ALGORITHM_PROTOCOL_VERSION_SUPPORTED) {
-			send_command(output, Commands::HASH_ALGORITHM, hash_algorithm);
-			read_expected_command(input, Commands::HASH_ALGORITHM, hash_algorithm);
-		} else if (hash_algorithm != HashAlgorithm::md5) {
-			throw runtime_error("The version of Kitchen Sync at the other endpoint supports only MD5.");
-		}
+		send_command(output, Commands::HASH_ALGORITHM, hash_algorithm);
+		read_expected_command(input, Commands::HASH_ALGORITHM, hash_algorithm);
 	}
 
 	void share_snapshot() {

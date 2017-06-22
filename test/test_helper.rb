@@ -287,7 +287,7 @@ Verbs = Commands.constants.each_with_object({}) {|k, results| results[Commands.c
 
 module KitchenSync
   class TestCase < Test::Unit::TestCase
-    EARLIEST_PROTOCOL_VERSION_SUPPORTED = 5
+    EARLIEST_PROTOCOL_VERSION_SUPPORTED = 6
     LATEST_PROTOCOL_VERSION_SUPPORTED = 6
 
     def protocol_version_supported
