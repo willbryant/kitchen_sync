@@ -4,6 +4,7 @@
 #include "fdstream.h"
 #include "hash_algorithm.h"
 #include "sync_algorithm.h"
+#include "defaults.h"
 
 template<class DatabaseClient>
 struct SyncFromWorker {

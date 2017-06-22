@@ -7,9 +7,6 @@
 #include "hash_algorithm.h"
 #include "sync_error.h"
 
-const size_t DEFAULT_MINIMUM_BLOCK_SIZE =       256*1024; // arbitrary, but needs to be big enough to cope with a moderate amount of latency
-const size_t DEFAULT_MAXIMUM_BLOCK_SIZE = 1024*1024*1024; // arbitrary, but needs to be small enough we don't waste unjustifiable amounts of CPU time if a block hash doesn't match
-
 template <typename Worker>
 void check_hash_and_choose_next_range(Worker &worker, const Table &table, const ColumnValues *failed_prev_key, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues *failed_last_key, const string &hash, size_t target_minimum_block_size, size_t target_maximum_block_size) {
 	if (hash.empty()) throw logic_error("No hash to check given");

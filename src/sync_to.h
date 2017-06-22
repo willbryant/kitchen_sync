@@ -1,3 +1,6 @@
+#include <boost/algorithm/string.hpp>
+#include <thread>
+
 #include "command.h"
 #include "commit_level.h"
 #include "hash_algorithm.h"
@@ -8,8 +11,7 @@
 #include "row_range_applier.h"
 #include "reset_table_sequences.h"
 #include "fdstream.h"
-#include <boost/algorithm/string.hpp>
-#include <thread>
+#include "defaults.h"
 
 using namespace std;
 
