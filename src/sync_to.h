@@ -69,7 +69,18 @@ struct SyncToWorker {
 			client.start_write_transaction();
 
 			enqueue_tables();
-			sync_tables();
+
+			client.disable_referential_integrity();
+			if (!structure_only) {
+				sync_tables();
+			}
+
+			// send a quit so the other end closes its output and terminates gracefully
+			send_quit_command();
+
+			// wait for all workers to finish their tables
+			sync_queue.wait_at_barrier();
+			client.enable_referential_integrity();
 
 			if (commit_level >= CommitLevel::success) {
 				commit();
@@ -116,8 +127,8 @@ struct SyncToWorker {
 	}
 
 	void negotiate_hash_algorithm() {
-		send_command(output, Commands::HASH_ALGORITHM, hash_algorithm);
-		read_expected_command(input, Commands::HASH_ALGORITHM, hash_algorithm);
+		send_command(output, Commands::HASH_ALGORITHM, sync_algorithm.hash_algorithm);
+		read_expected_command(input, Commands::HASH_ALGORITHM, sync_algorithm.hash_algorithm);
 	}
 
 	void share_snapshot() {
@@ -232,8 +243,6 @@ struct SyncToWorker {
 	}
 
 	void sync_tables() {
-		client.disable_referential_integrity();
-
 		while (true) {
 			// grab the next table to work on from the queue (blocking if it's empty)
 			const Table *table = sync_queue.pop();
@@ -241,21 +250,12 @@ struct SyncToWorker {
 			// quit if there's no more tables to process
 			if (!table) break;
 
-			if (!structure_only) {
-				// synchronize that table (unfortunately we can't share this job with other workers because next-key
-				// locking is used for unique key indexes to enforce the uniqueness constraint, so we can't share
-				// write traffic to the database across connections, which makes it somewhat futile to try and farm the
-				// read work out since that needs to see changes made to satisfy unique indexes earlier in the table)
-				sync_table(*table);
-			}
+			// synchronize that table (unfortunately we can't share this job with other workers because next-key
+			// locking is used for unique key indexes to enforce the uniqueness constraint, so we can't share
+			// write traffic to the database across connections, which makes it somewhat futile to try and farm the
+			// read work out since that needs to see changes made to satisfy unique indexes earlier in the table)
+			sync_table(*table);
 		}
-
-		// send a quit so the other end closes its output and terminates gracefully
-		send_quit_command();
-
-		// wait for all workers to finish their tables
-		sync_queue.wait_at_barrier();
-		client.enable_referential_integrity();
 	}
 
 	void sync_table(const Table &table) {
@@ -480,7 +480,6 @@ struct SyncToWorker {
 	bool snapshot;
 	bool alter;
 	CommitLevel commit_level;
-	HashAlgorithm hash_algorithm;
 	bool structure_only;
 
 	int protocol_version;
