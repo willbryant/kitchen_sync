@@ -50,14 +50,13 @@ int endpoint_main(int argc, char *argv[]) {
 			}
 
 			string filters_file(getenv_default("ENDPOINT_FILTERS_FILE", argc > 8 ? argv[8] : ""));
-			HashAlgorithm hash_algorithm(HashAlgorithm::md5); // until advised otherwise by the 'to' end
 
 			char *status_area = argv[1];
 			char *last_arg = argv[argc - 1];
 			char *end_of_last_arg = last_arg + strlen(last_arg);
 			size_t status_size = end_of_last_arg - status_area;
 
-			sync_from<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, set_variables, filters_file, hash_algorithm, STDIN_FILENO, STDOUT_FILENO, status_area, status_size);
+			sync_from<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, set_variables, filters_file, STDIN_FILENO, STDOUT_FILENO, status_area, status_size);
 		} else {
 			// the 'to' endpoint has already been converted to pass options using environment variables -
 			// since it's always on the same system as the ks command, it doesn't need legacy support.
@@ -71,7 +70,7 @@ int endpoint_main(int argc, char *argv[]) {
 			bool snapshot = getenv_default("ENDPOINT_SNAPSHOT", false);
 			bool alter = getenv_default("ENDPOINT_ALTER", true);
 			CommitLevel commit_level = CommitLevel(getenv_default("ENDPOINT_COMMIT_LEVEL", CommitLevel::success));
-			HashAlgorithm hash_algorithm = HashAlgorithm(getenv_default("ENDPOINT_HASH_ALGORITHM", HashAlgorithm::md5));
+			HashAlgorithm hash_algorithm = HashAlgorithm(getenv_default("ENDPOINT_HASH_ALGORITHM", DEFAULT_HASH_ALGORITHM));
 			bool structure_only = getenv_default("ENDPOINT_STRUCTURE_ONLY", false);
 
 			sync_to<DatabaseClient>(workers, startfd, database_host, database_port, database_name, database_username, database_password, set_variables, ignore, only, verbose, progress, snapshot, alter, commit_level, hash_algorithm, structure_only);

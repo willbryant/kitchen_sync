@@ -10,7 +10,7 @@ template<class DatabaseClient>
 struct SyncFromWorker {
 	SyncFromWorker(
 		const string &database_host, const string &database_port, const string &database_name, const string &database_username, const string &database_password,
-		const string &set_variables, const string &filter_file, HashAlgorithm hash_algorithm,
+		const string &set_variables, const string &filter_file,
 		int read_from_descriptor, int write_to_descriptor, char *status_area, size_t status_size):
 			client(database_host, database_port, database_name, database_username, database_password),
 			filter_file(filter_file),
@@ -23,7 +23,7 @@ struct SyncFromWorker {
 			protocol_version(0),
 			target_minimum_block_size(1),
 			target_maximum_block_size(DEFAULT_MAXIMUM_BLOCK_SIZE),
-			hash_algorithm(hash_algorithm) {
+			hash_algorithm(DEFAULT_HASH_ALGORITHM) { // until advised otherwise by the 'to' end
 		if (!set_variables.empty()) {
 			client.execute("SET " + set_variables);
 		}

@@ -5,12 +5,12 @@
 #include <cstring>
 #include <stdexcept>
 #include "commit_level.h"
-#include "hash_algorithm.h"
+#include "defaults.h"
 #include "db_url.h"
 
 struct Options {
 	inline Options(): workers(1), verbose(0), progress(false), snapshot(true), alter(false), structure_only(false),
-    commit_level(CommitLevel::success), hash_algorithm(HashAlgorithm::md5) {}
+    commit_level(CommitLevel::success), hash_algorithm(DEFAULT_HASH_ALGORITHM) {}
 
 	void help() {
 		cerr <<
