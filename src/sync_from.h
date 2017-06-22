@@ -34,80 +34,85 @@ struct SyncFromWorker {
 		negotiate_protocol_version();
 
 		show_status("ready");
-		const Table *table;
 
 		try {
-			while (true) {
-				verb_t verb;
-				input >> verb;
-
-				switch (verb) {
-					case Commands::OPEN:
-						table = handle_open_command();
-						break;
-
-					case Commands::HASH_NEXT:
-						handle_hash_next_command(table);
-						break;
-
-					case Commands::HASH_FAIL:
-						handle_hash_fail_command(table);
-						break;
-
-					case Commands::ROWS:
-						handle_rows_command(table);
-						break;
-
-					case Commands::ROWS_AND_HASH_NEXT:
-						handle_rows_and_hash_next_command(table);
-						break;
-
-					case Commands::ROWS_AND_HASH_FAIL:
-						handle_rows_and_hash_fail_command(table);
-						break;
-
-					case Commands::EXPORT_SNAPSHOT:
-						handle_export_snapshot_command();
-						break;
-
-					case Commands::IMPORT_SNAPSHOT:
-						handle_import_snapshot_command();
-						break;
-
-					case Commands::UNHOLD_SNAPSHOT:
-						handle_unhold_snapshot_command();
-						break;
-
-					case Commands::WITHOUT_SNAPSHOT:
-						handle_without_snapshot_command();
-						break;
-
-					case Commands::SCHEMA:
-						handle_schema_command();
-						break;
-
-					case Commands::TARGET_BLOCK_SIZE:
-						handle_target_block_size_command();
-						break;
-
-					case Commands::HASH_ALGORITHM:
-						handle_hash_algorithm_command();
-						break;
-
-					case Commands::QUIT:
-						read_all_arguments(input);
-						return;
-
-					default:
-						throw command_error("Unknown command " + to_string(verb));
-				}
-
-				output.flush();
-			}
+			handle_commands();
 		} catch (const exception &e) {
 			// in fact we just output these errors much the same way that our caller does, but we do it here (before the stream gets closed) to help tests
 			cerr << "Error in the 'from' worker: " << e.what() << endl;
 			throw sync_error();
+		}
+	}
+
+	void handle_commands() {
+		const Table *table;
+
+		while (true) {
+			verb_t verb;
+			input >> verb;
+
+			switch (verb) {
+				case Commands::OPEN:
+					table = handle_open_command();
+					break;
+
+				case Commands::HASH_NEXT:
+					handle_hash_next_command(table);
+					break;
+
+				case Commands::HASH_FAIL:
+					handle_hash_fail_command(table);
+					break;
+
+				case Commands::ROWS:
+					handle_rows_command(table);
+					break;
+
+				case Commands::ROWS_AND_HASH_NEXT:
+					handle_rows_and_hash_next_command(table);
+					break;
+
+				case Commands::ROWS_AND_HASH_FAIL:
+					handle_rows_and_hash_fail_command(table);
+					break;
+
+				case Commands::EXPORT_SNAPSHOT:
+					handle_export_snapshot_command();
+					break;
+
+				case Commands::IMPORT_SNAPSHOT:
+					handle_import_snapshot_command();
+					break;
+
+				case Commands::UNHOLD_SNAPSHOT:
+					handle_unhold_snapshot_command();
+					break;
+
+				case Commands::WITHOUT_SNAPSHOT:
+					handle_without_snapshot_command();
+					break;
+
+				case Commands::SCHEMA:
+					handle_schema_command();
+					break;
+
+				case Commands::TARGET_BLOCK_SIZE:
+					handle_target_block_size_command();
+					break;
+
+				case Commands::HASH_ALGORITHM:
+					handle_hash_algorithm_command();
+					break;
+
+				case Commands::QUIT:
+					read_all_arguments(input);
+					return;
+
+				default:
+					throw command_error("Unknown command " + to_string(verb));
+			}
+
+			output.flush();
 		}
 	}
 
