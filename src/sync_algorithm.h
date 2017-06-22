@@ -5,10 +5,7 @@
 #include "row_serialization.h"
 #include "command.h"
 #include "hash_algorithm.h"
-
-struct sync_error: public runtime_error {
-	sync_error(): runtime_error("Sync error") { }
-};
+#include "sync_error.h"
 
 const size_t DEFAULT_MINIMUM_BLOCK_SIZE =       256*1024; // arbitrary, but needs to be big enough to cope with a moderate amount of latency
 const size_t DEFAULT_MAXIMUM_BLOCK_SIZE = 1024*1024*1024; // arbitrary, but needs to be small enough we don't waste unjustifiable amounts of CPU time if a block hash doesn't match
