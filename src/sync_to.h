@@ -59,33 +59,29 @@ struct SyncToWorker {
 	void operator()() {
 		try {
 			negotiate_protocol();
-			negotiate_target_minimum_block_size();
-			negotiate_hash_algorithm();
 
 			share_snapshot();
 			retrieve_database_schema();
 			compare_schema();
 
-			client.start_write_transaction();
-
-			enqueue_tables();
-
-			client.disable_referential_integrity();
 			if (!structure_only) {
+				enqueue_tables();
+
+				client.start_write_transaction();
+				client.disable_referential_integrity();
+
+				negotiate_target_minimum_block_size();
+				negotiate_hash_algorithm();
+
 				sync_tables();
-			}
+				wait_for_finish();
 
-			// send a quit so the other end closes its output and terminates gracefully
-			send_quit_command();
-
-			// wait for all workers to finish their tables
-			sync_queue.wait_at_barrier();
-			client.enable_referential_integrity();
-
-			if (commit_level >= CommitLevel::success) {
-				commit();
-			} else {
-				rollback();
+				client.enable_referential_integrity();
+				if (commit_level >= CommitLevel::success) {
+					commit();
+				} else {
+					rollback();
+				}
 			}
 		} catch (const exception &e) {
 			// make sure all other workers terminate promptly, and if we are the first to fail, output the error
@@ -239,6 +235,14 @@ struct SyncToWorker {
 
 		// wait for the leader to do that (a barrier here is slightly excessive as we don't care if the other
 		// workers are ready to start work, but it's not worth having another synchronisation mechanism for this)
+		sync_queue.wait_at_barrier();
+	}
+
+	void wait_for_finish() {
+		// send a quit so the other end closes its output and terminates gracefully
+		send_quit_command();
+
+		// wait for all workers to finish their tables
 		sync_queue.wait_at_barrier();
 	}
 

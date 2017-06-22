@@ -46,6 +46,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => []]
+    expect_sync_start_commands
     expect_quit_and_close
   end
 
@@ -58,6 +59,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["footbl"]
     send_command   Commands::ROWS, [[], []]
     expect_command Commands::OPEN, ["middletbl"]
@@ -185,6 +187,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["middletbl"]
     send_command   Commands::ROWS, [[], []]
     expect_command Commands::OPEN, ["secondtbl"]
@@ -201,6 +204,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["footbl"]
     send_command   Commands::ROWS, [[], []]
     expect_command Commands::OPEN, ["secondtbl"]
@@ -217,6 +221,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["footbl"]
     send_command   Commands::ROWS, [[], []]
     expect_command Commands::OPEN, ["middletbl"]
@@ -234,6 +239,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [middletbl_def, secondtbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["middletbl"]
     send_command   Commands::ROWS, [[], []]
     expect_command Commands::OPEN, ["secondtbl"]
@@ -251,6 +257,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [footbl_def, secondtbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["footbl"]
     send_command   Commands::ROWS, [[], []]
     expect_command Commands::OPEN, ["secondtbl"]
@@ -268,6 +275,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["footbl"]
     send_command   Commands::ROWS, [[], []]
     expect_command Commands::OPEN, ["middletbl"]
@@ -298,6 +306,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [noprimarytbl_def(true), secondtbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["noprimarytbl"]
     send_command   Commands::ROWS, [[], []]
     expect_command Commands::OPEN, ["secondtbl"]
@@ -314,6 +323,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [noprimarytbl_def(true), secondtbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["secondtbl"]
     send_command   Commands::ROWS, [[], []]
     read_command

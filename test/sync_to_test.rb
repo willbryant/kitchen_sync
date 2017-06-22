@@ -28,6 +28,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["footbl"]
     send_command   Commands::ROWS, [[], []]
     expect_quit_and_close
@@ -43,6 +44,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["footbl"]
     send_command   Commands::ROWS, [[], []]
     expect_quit_and_close
@@ -57,6 +59,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["footbl"]
     send_command   Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
     expect_command Commands::HASH_NEXT, [@keys[0], @keys[2], hash_of(@rows[1..2])]
@@ -76,6 +79,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["footbl"]
     send_command   Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
     expect_command Commands::ROWS_AND_HASH_NEXT, [[], @keys[0], @keys[1], hash_of(@rows[1..1])]
@@ -98,6 +102,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["footbl"]
     send_command   Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
     expect_command Commands::HASH_NEXT, [@keys[0], @keys[2], hash_of(@rows[1..2])]
@@ -123,6 +128,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["footbl"]
     send_results   Commands::ROWS,
                    [[], []],
@@ -147,6 +153,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [texttbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["texttbl"]
     send_command   Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
     expect_command Commands::HASH_NEXT, [@keys[0], @keys[1], hash_of(@rows[1..1])]
@@ -167,6 +174,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [texttbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["texttbl"]
     send_command   Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
     expect_command Commands::ROWS, [[], []]
@@ -191,6 +199,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [texttbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["texttbl"]
     send_command   Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
     expect_command Commands::HASH_NEXT, [@keys[0], @keys[1], hash_of(@rows[1..1])]
@@ -211,6 +220,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [texttbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["texttbl"]
     send_command   Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
     expect_command Commands::ROWS, [[], []]
@@ -236,6 +246,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [misctbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["misctbl"]
     send_command   Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
     expect_command Commands::ROWS, [[], []]
@@ -259,6 +270,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [footbl_def.merge("keys" => [{"name" => "unique_key", "unique" => true, "columns" => [2]}])]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["footbl"]
     send_command   Commands::HASH_NEXT, [[], @keys[0], hash_of(@rows[0..0])]
     expect_command Commands::ROWS_AND_HASH_NEXT, [[], @keys[0], @keys[1], hash_of(@orig_rows[1..1])]
@@ -288,6 +300,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command   Commands::SCHEMA, ["tables" => [texttbl_def]]
+    expect_sync_start_commands
     expect_command Commands::OPEN, ["texttbl"]
     send_results   Commands::ROWS,
                    [[], []],
