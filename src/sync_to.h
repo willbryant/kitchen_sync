@@ -10,6 +10,7 @@
 #include "reset_table_sequences.h"
 #include "fdstream.h"
 #include "sync_to_protocol.h"
+#include "sync_to_protocol_6.h"
 #include "defaults.h"
 
 using namespace std;
@@ -66,8 +67,13 @@ struct SyncToWorker {
 				client.start_write_transaction();
 				client.disable_referential_integrity();
 
-				SyncToProtocol<SyncToWorker<DatabaseClient>, DatabaseClient> sync_to_protocol(*this);
-				sync_to_protocol.sync_tables();
+				if (protocol_version <= 6) {
+					SyncToProtocol6<SyncToWorker<DatabaseClient>, DatabaseClient> sync_to_protocol(*this);
+					sync_to_protocol.sync_tables();
+				} else {
+					SyncToProtocol<SyncToWorker<DatabaseClient>, DatabaseClient> sync_to_protocol(*this);
+					sync_to_protocol.sync_tables();
+				}
 
 				wait_for_finish();
 
