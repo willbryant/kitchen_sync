@@ -1,3 +1,6 @@
+#ifndef ROW_SERIALIZATION_H
+#define ROW_SERIALIZATION_H
+
 #ifdef __APPLE__
 	#include <CommonCrypto/CommonDigest.h>
 	#define MD5_CTX CC_MD5_CTX
@@ -174,3 +177,5 @@ struct RowPackerAndLastKey: RowPacker<OutputStream>, RowLastKey {
 		RowLastKey::operator()(row);
 	}
 };
+
+#endif
