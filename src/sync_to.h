@@ -40,11 +40,12 @@ struct SyncToWorker {
 			snapshot(snapshot),
 			alter(alter),
 			commit_level(commit_level),
-			hash_algorithm(hash_algorithm),
+			configured_hash_algorithm(hash_algorithm),
 			structure_only(structure_only),
 			protocol_version(0),
 			target_minimum_block_size(1),
 			target_maximum_block_size(DEFAULT_MAXIMUM_BLOCK_SIZE),
+			sync_algorithm(*this, client, hash_algorithm),
 			worker_thread(std::ref(*this)) {
 		if (!set_variables.empty()) {
 			client.execute("SET " + set_variables);
@@ -341,7 +342,7 @@ struct SyncToWorker {
 		if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
 
 		// after each hash command received it's our turn to send the next command
-		check_hash_and_choose_next_range(*this, table, nullptr, prev_key, last_key, nullptr, hash, target_minimum_block_size, target_maximum_block_size);
+		sync_algorithm.check_hash_and_choose_next_range(table, nullptr, prev_key, last_key, nullptr, hash, target_minimum_block_size, target_maximum_block_size);
 	}
 
 	void handle_hash_fail_command(const Table &table) {
@@ -353,7 +354,7 @@ struct SyncToWorker {
 		if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << " last-failure " << values_list(client, table, failed_last_key) << endl;
 
 		// after each hash command received it's our turn to send the next command
-		check_hash_and_choose_next_range(*this, table, nullptr, prev_key, last_key, &failed_last_key, hash, target_minimum_block_size, target_maximum_block_size);
+		sync_algorithm.check_hash_and_choose_next_range(table, nullptr, prev_key, last_key, &failed_last_key, hash, target_minimum_block_size, target_maximum_block_size);
 	}
 
 	bool handle_rows_command(const Table &table, RowReplacer<DatabaseClient> &row_replacer) {
@@ -386,7 +387,7 @@ struct SyncToWorker {
 		// fit the command we send back in the kernel send buffer to guarantee there is no
 		// deadlock; it's never been smaller than a page on any supported OS, and has been
 		// defaulted to much larger values for some years.
-		check_hash_and_choose_next_range(*this, table, nullptr, last_key, next_key, nullptr, hash, target_minimum_block_size, target_maximum_block_size);
+		sync_algorithm.check_hash_and_choose_next_range(table, nullptr, last_key, next_key, nullptr, hash, target_minimum_block_size, target_maximum_block_size);
 		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
 		// nb. it's implied last_key is not [], as we would have been sent back a plain rows command for the combined range if that was needed
 	}
@@ -400,7 +401,7 @@ struct SyncToWorker {
 		if (verbose >= VERY_VERBOSE) cout << "-> hash " << table.name << ' ' << values_list(client, table, last_key) << ' ' << values_list(client, table, next_key) << " last-failure " << values_list(client, table, failed_last_key) << endl;
 
 		// same pipelining as the previous case
-		check_hash_and_choose_next_range(*this, table, nullptr, last_key, next_key, &failed_last_key, hash, target_minimum_block_size, target_maximum_block_size);
+		sync_algorithm.check_hash_and_choose_next_range(table, nullptr, last_key, next_key, &failed_last_key, hash, target_minimum_block_size, target_maximum_block_size);
 		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
 	}
 
@@ -485,6 +486,8 @@ struct SyncToWorker {
 	int protocol_version;
 	size_t target_minimum_block_size;
 	size_t target_maximum_block_size;
+	HashAlgorithm configured_hash_algorithm;
+	SyncAlgorithm<SyncToWorker, DatabaseClient> sync_algorithm;
 	std::thread worker_thread;
 };
 

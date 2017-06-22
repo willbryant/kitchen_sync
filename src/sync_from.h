@@ -23,7 +23,7 @@ struct SyncFromWorker {
 			protocol_version(0),
 			target_minimum_block_size(1),
 			target_maximum_block_size(DEFAULT_MAXIMUM_BLOCK_SIZE),
-			hash_algorithm(DEFAULT_HASH_ALGORITHM) { // until advised otherwise by the 'to' end
+			sync_algorithm(*this, client, DEFAULT_HASH_ALGORITHM) { // until advised to use a different hash algorithm by the 'to' end
 		if (!set_variables.empty()) {
 			client.execute("SET " + set_variables);
 		}
@@ -121,7 +121,7 @@ struct SyncFromWorker {
 		read_all_arguments(input, table_name);
 		const Table *table = tables_by_name.at(table_name); // throws out_of_range if not present in the map
 		show_status("syncing " + table_name);
-		hash_first_range(*this, *table, target_minimum_block_size);
+		sync_algorithm.hash_first_range(*table, target_minimum_block_size);
 		return table;
 	}
 
@@ -130,7 +130,7 @@ struct SyncFromWorker {
 		ColumnValues prev_key, last_key;
 		string hash;
 		read_all_arguments(input, prev_key, last_key, hash);
-		check_hash_and_choose_next_range(*this, *table, nullptr, prev_key, last_key, nullptr, hash, target_minimum_block_size, target_maximum_block_size);
+		sync_algorithm.check_hash_and_choose_next_range(*table, nullptr, prev_key, last_key, nullptr, hash, target_minimum_block_size, target_maximum_block_size);
 	}
 
 	void handle_hash_fail_command(const Table *table) {
@@ -138,7 +138,7 @@ struct SyncFromWorker {
 		ColumnValues prev_key, last_key, failed_last_key;
 		string hash;
 		read_all_arguments(input, prev_key, last_key, failed_last_key, hash);
-		check_hash_and_choose_next_range(*this, *table, nullptr, prev_key, last_key, &failed_last_key, hash, target_minimum_block_size, target_maximum_block_size);
+		sync_algorithm.check_hash_and_choose_next_range(*table, nullptr, prev_key, last_key, &failed_last_key, hash, target_minimum_block_size, target_maximum_block_size);
 	}
 
 	void handle_rows_command(const Table *table) {
@@ -153,7 +153,7 @@ struct SyncFromWorker {
 		ColumnValues prev_key, last_key, next_key;
 		string hash;
 		read_all_arguments(input, prev_key, last_key, next_key, hash);
-		check_hash_and_choose_next_range(*this, *table, &prev_key, last_key, next_key, nullptr, hash, target_minimum_block_size, target_maximum_block_size);
+		sync_algorithm.check_hash_and_choose_next_range(*table, &prev_key, last_key, next_key, nullptr, hash, target_minimum_block_size, target_maximum_block_size);
 	}
 
 	void handle_rows_and_hash_fail_command(const Table *table) {
@@ -161,7 +161,7 @@ struct SyncFromWorker {
 		ColumnValues prev_key, last_key, next_key, failed_last_key;
 		string hash;
 		read_all_arguments(input, prev_key, last_key, next_key, failed_last_key, hash);
-		check_hash_and_choose_next_range(*this, *table, &prev_key, last_key, next_key, &failed_last_key, hash, target_minimum_block_size, target_maximum_block_size);
+		sync_algorithm.check_hash_and_choose_next_range(*table, &prev_key, last_key, next_key, &failed_last_key, hash, target_minimum_block_size, target_maximum_block_size);
 	}
 
 	void handle_export_snapshot_command() {
@@ -202,8 +202,8 @@ struct SyncFromWorker {
 	}
 
 	void handle_hash_algorithm_command() {
-		read_all_arguments(input, hash_algorithm);
-		send_command(output, Commands::HASH_ALGORITHM, hash_algorithm); // we always accept the requested algorithm and send it back (but maybe one day we won't)
+		read_all_arguments(input, sync_algorithm.hash_algorithm);
+		send_command(output, Commands::HASH_ALGORITHM, sync_algorithm.hash_algorithm); // we always accept the requested algorithm and send it back (but maybe one day we won't)
 	}
 
 	inline void send_hash_next_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
@@ -292,7 +292,7 @@ struct SyncFromWorker {
 	int protocol_version;
 	size_t target_minimum_block_size;
 	size_t target_maximum_block_size;
-	HashAlgorithm hash_algorithm;
+	SyncAlgorithm<SyncFromWorker, DatabaseClient> sync_algorithm;
 };
 
 template<class DatabaseClient, typename... Options>
