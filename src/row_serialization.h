@@ -56,7 +56,7 @@ struct Hash {
 
 template <typename OutputStream>
 inline void operator << (Packer<OutputStream> &packer, const Hash &hash) {
-	packer.pack_raw((const uint8_t *)hash.md_value, hash.md_len);
+	pack_raw(packer, (const uint8_t *)hash.md_value, hash.md_len);
 }
 
 inline bool operator == (const Hash &hash, const string &str) {
