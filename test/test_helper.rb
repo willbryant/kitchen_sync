@@ -464,8 +464,9 @@ module KitchenSync
       [hash_of(rows), rows.size]
     end
 
-    def self.test_each(description, &block)
+    def self.test_each(description, only: nil, &block)
       ENDPOINT_DATABASES.each do |database_server, settings|
+        next if only && only.to_s != database_server
         define_method("test #{description} for #{database_server}".gsub(/\W+/,'_').to_sym) do
           @database_server = database_server
           @database_settings = settings
