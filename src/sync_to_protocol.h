@@ -1,4 +1,14 @@
-#include "sync_algorithm.h"
+typedef tuple<ColumnValues, ColumnValues> KeyRange;
+typedef tuple<ColumnValues, ColumnValues, size_t> KeyRangeWithRowCount;
+
+struct TableJob {
+	TableJob(const Table &table): table(table) {}
+
+	const Table &table;
+	list<KeyRange> ranges_not_checked;
+	deque<KeyRange> ranges_to_retrieve;
+	list<KeyRangeWithRowCount> ranges_with_errors;
+};
 
 template <class Worker, class DatabaseClient>
 struct SyncToProtocol {
@@ -8,9 +18,10 @@ struct SyncToProtocol {
 		sync_queue(worker.sync_queue),
 		input(worker.input),
 		output(worker.output),
-		sync_algorithm(*this, worker.client, worker.configured_hash_algorithm),
+		hash_algorithm(worker.configured_hash_algorithm),
 		target_minimum_block_size(1),
-		target_maximum_block_size(DEFAULT_MAXIMUM_BLOCK_SIZE) {
+		target_maximum_block_size(DEFAULT_MAXIMUM_BLOCK_SIZE),
+		rows_to_scan_forward_next(1) {
 	}
 
 	void negotiate_target_minimum_block_size() {
@@ -21,8 +32,8 @@ struct SyncToProtocol {
 	}
 
 	void negotiate_hash_algorithm() {
-		send_command(output, Commands::HASH_ALGORITHM, sync_algorithm.hash_algorithm);
-		read_expected_command(input, Commands::HASH_ALGORITHM, sync_algorithm.hash_algorithm);
+		send_command(output, Commands::HASH_ALGORITHM, hash_algorithm);
+		read_expected_command(input, Commands::HASH_ALGORITHM, hash_algorithm);
 	}
 
 	void sync_tables() {
@@ -58,48 +69,126 @@ struct SyncToProtocol {
 			cout << "starting " << table.name << endl << flush;
 		}
 
-		send_command(output, Commands::OPEN, table.name);
+		TableJob table_job(table);
+
+		establish_range(table_job);
 
 		while (!finished) {
-			sync_queue.check_aborted(); // check each iteration, rather than wait until the end of the current table; this is a good place to do it since it's likely we'll have no work to do for a short while
+			sync_queue.check_aborted(); // check each iteration, rather than wait until the end of the current table
 
 			if (worker.progress) {
 				cout << "." << flush; // simple progress meter
 			}
 
-			verb_t verb;
-			input >> verb;
+			if (!table_job.ranges_to_retrieve.empty()) {
+				ColumnValues prev_key, last_key;
+				tie(prev_key, last_key) = table_job.ranges_to_retrieve.front();
+				table_job.ranges_to_retrieve.pop_front();
 
-			switch (verb) {
-				case Commands::HASH_NEXT:
-					handle_hash_next_command(table);
-					hash_commands++;
-					break;
+				if (worker.verbose > 1) cout << "<- rows " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << endl;
+				send_command(output, Commands::ROWS, table_job.table.name, prev_key, last_key);
 
-				case Commands::HASH_FAIL:
-					handle_hash_fail_command(table);
-					hash_commands++;
-					break;
+				expect_verb(Commands::ROWS);
+				handle_rows_command(table, row_replacer);
 
-				case Commands::ROWS:
-					finished = handle_rows_command(table, row_replacer);
-					rows_commands++;
-					break;
+			} else if (!table_job.ranges_with_errors.empty()) {
+				ColumnValues prev_key, last_key;
+				size_t our_row_count;
+				tie(prev_key, last_key, our_row_count) = table_job.ranges_with_errors.front();
+				table_job.ranges_with_errors.pop_front();
 
-				case Commands::ROWS_AND_HASH_NEXT:
-					handle_rows_and_hash_next_command(table, row_replacer);
-					hash_commands++;
-					rows_commands++;
-					break;
+				// break the range into two
+				size_t rows_to_hash = our_row_count/2;
+				if (rows_to_hash < 1) {
+					rows_to_hash = 1;
+				}
 
-				case Commands::ROWS_AND_HASH_FAIL:
-					handle_rows_and_hash_fail_command(table, row_replacer);
-					hash_commands++;
-					rows_commands++;
-					break;
+				// tell the other end to hash this range
+				if (worker.verbose > 1) cout << "<- hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << rows_to_hash << endl;
+				send_command(output, Commands::HASH, table_job.table.name, prev_key, last_key, rows_to_hash);
 
-				default:
-					throw command_error("Unknown command " + to_string(verb));
+				// while that end is working, do the same at our end
+				RowHasherAndLastKey hasher(hash_algorithm, table.primary_key_columns);
+				worker.client.retrieve_rows(hasher, table, prev_key, last_key, rows_to_hash);
+				const Hash &our_hash(hasher.finish());
+
+				// now read their response
+				expect_verb(Commands::HASH);
+				size_t their_row_count;
+				string their_hash;
+				string _table_name;
+				ColumnValues _prev_key, _last_key;
+				read_all_arguments(input, _table_name, _prev_key, _last_key, their_row_count, their_hash);
+				if (worker.verbose > 1) cout << "-> hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << their_row_count << endl;
+
+				if (our_hash == their_hash && hasher.row_count == their_row_count) {
+					// if the two hashes match, the part that we checked has no errors,
+					// which means that the part we didn't check this iteration has an error
+					table_job.ranges_with_errors.push_back(make_tuple(hasher.last_key, last_key, our_row_count - hasher.row_count));
+
+				} else {
+					// the part that we checked has an error; decide whether it's large enough to subdivide
+					handle_hash_not_matching(table_job, prev_key, hasher);
+
+					if (hasher.last_key != last_key) {
+						// we don't know whether there is also an error in the remaining part of the original range;
+						// we assume not and queue it to be scanned
+						table_job.ranges_not_checked.push_back(make_tuple(hasher.last_key, last_key));
+					}
+				}
+
+			} else if (!table_job.ranges_not_checked.empty()) {
+				ColumnValues prev_key, last_key;
+				tie(prev_key, last_key) = table_job.ranges_not_checked.front();
+				table_job.ranges_not_checked.pop_front();
+
+				// tell the other end to hash this range
+				if (worker.verbose > 1) cout << "<- hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << endl;
+				size_t rows_to_hash = rows_to_scan_forward_next;
+				send_command(output, Commands::HASH, table_job.table.name, prev_key, last_key, rows_to_hash);
+
+				// while that end is working, do the same at our end
+				RowHasherAndLastKey hasher(hash_algorithm, table.primary_key_columns);
+				worker.client.retrieve_rows(hasher, table, prev_key, last_key, rows_to_hash);
+				const Hash &our_hash(hasher.finish());
+
+				// now read their response
+				expect_verb(Commands::HASH);
+				size_t their_row_count;
+				string their_hash;
+				string _table_name;
+				ColumnValues _prev_key, _last_key;
+				read_all_arguments(input, _table_name, _prev_key, _last_key, their_row_count, their_hash);
+				if (worker.verbose > 1) cout << "-> hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << their_row_count << endl;
+
+				if (our_hash == their_hash && hasher.row_count == their_row_count) {
+					// success; scan more rows per iteration, to reduce the impact of latency between the ends -
+					// up to a point, after which the cost of re-work when we finally run into a mismatch
+					// outweights the benefit of the latency savings
+					if (hasher.size <= target_maximum_block_size/2) {
+						rows_to_scan_forward_next = hasher.row_count*2;
+					} else {
+						rows_to_scan_forward_next = max<size_t>(hasher.row_count*target_maximum_block_size/hasher.size, 1);
+					}
+				} else {
+					// there's an error somewhere in the range, queue it up for the code above
+					handle_hash_not_matching(table_job, prev_key, hasher);
+
+					// scan fewer rows per iteration, to reduce the cost of re-work, down to a point
+					if (hasher.size >= target_minimum_block_size*2) {
+						rows_to_scan_forward_next = max<size_t>(hasher.row_count/2, 1);
+					} else {
+						rows_to_scan_forward_next = max<size_t>(hasher.row_count*target_minimum_block_size/hasher.size, 1);
+					}
+				}
+
+				// queue the remaining rows to be checked, if any
+				if (hasher.last_key != last_key) {
+					table_job.ranges_not_checked.push_back(make_tuple(hasher.last_key, last_key));
+				}
+
+			} else {
+				finished = true;
 			}
 		}
 
@@ -121,102 +210,74 @@ struct SyncToProtocol {
 		}
 	}
 
-	void handle_hash_next_command(const Table &table) {
-		// the last hash we sent them matched, and so they've moved on to the next set of rows and sent us the hash
-		ColumnValues prev_key, last_key;
-		string hash;
-		read_all_arguments(input, prev_key, last_key, hash);
-		if (worker.verbose > 1) cout << "-> hash " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
-
-		// after each hash command received it's our turn to send the next command
-		sync_algorithm.check_hash_and_choose_next_range(table, nullptr, prev_key, last_key, nullptr, hash, target_minimum_block_size, target_maximum_block_size);
+	void expect_verb(verb_t expected) {
+		verb_t verb;
+		input >> verb;
+		if (verb != expected) {
+			throw command_error("Expected command " + to_string(verb) + " but received " + to_string(verb));
+		}
 	}
 
-	void handle_hash_fail_command(const Table &table) {
-		// the last hash we sent them didn't match, so they've reduced the key range and sent us back
-		// the hash for a smaller set of rows (but not so small that they sent back the data instead)
-		ColumnValues prev_key, last_key, failed_last_key;
-		string hash;
-		read_all_arguments(input, prev_key, last_key, failed_last_key, hash);
-		if (worker.verbose > 1) cout << "-> hash " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << " last-failure " << values_list(client, table, failed_last_key) << endl;
+	void establish_range(TableJob &table_job) {
+		send_command(output, Commands::RANGE, table_job.table.name);
+		if (worker.verbose > 1) cout << "<- range " << table_job.table.name << endl;
+		expect_verb(Commands::RANGE);
 
-		// after each hash command received it's our turn to send the next command
-		sync_algorithm.check_hash_and_choose_next_range(table, nullptr, prev_key, last_key, &failed_last_key, hash, target_minimum_block_size, target_maximum_block_size);
+		string _table_name;
+		ColumnValues their_first_key, their_last_key;
+		read_all_arguments(input, _table_name, their_first_key, their_last_key);
+		if (worker.verbose > 1) cout << "-> range " << table_job.table.name << ' ' << values_list(client, table_job.table, their_first_key) << ' ' << values_list(client, table_job.table, their_last_key) << endl;
+
+		if (their_first_key.empty()) {
+			client.execute("DELETE FROM " + table_job.table.name);
+			return;
+		}
+
+		// we immediately know that we need to clear everything < their_first_key or > their_last_key; do that now
+		string key_columns(columns_list(client, table_job.table.columns, table_job.table.primary_key_columns));
+		string delete_from("DELETE FROM " + table_job.table.name + " WHERE " + key_columns);
+		client.execute(delete_from + " < " + values_list(client, table_job.table, their_first_key));
+		client.execute(delete_from + " > " + values_list(client, table_job.table, their_last_key));
+
+		// having done that, find our last key, which must now be no greater than their_last_key
+		ColumnValues our_last_key(worker.client.last_key(table_job.table));
+
+		// we immediately know that we need to retrieve any new rows > our_last_key, unless their last key is the same;
+		// queue this up
+		if (our_last_key != their_last_key) {
+			table_job.ranges_to_retrieve.push_back(make_tuple(our_last_key, their_last_key));
+		}
+
+		// queue up a sync of everything up to our_last_key; the way we have defined key ranges to work, we have no way
+		// to express start-inclusive ranges to the sync methods, so we queue a sync from the start (empty key value)
+		// up to the last key, but this results in no actual inefficiency because they'd see the same rows anyway.
+		if (!our_last_key.empty()) {
+			KeyRange whole_table(ColumnValues(), our_last_key);
+			table_job.ranges_not_checked.push_back(whole_table);
+		}
 	}
 
-	bool handle_rows_command(const Table &table, RowReplacer<DatabaseClient> &row_replacer) {
+	void handle_hash_not_matching(TableJob &table_job, const ColumnValues &prev_key, const RowHasherAndLastKey &hasher) {
+		// the part that we checked has an error; decide whether it's large enough to subdivide
+		if (hasher.row_count > 1 && hasher.size > target_minimum_block_size) {
+			// yup, queue it up for another iteration of hashing
+			table_job.ranges_with_errors.push_back(make_tuple(prev_key, hasher.last_key, hasher.row_count));
+		} else {
+			// not worth subdividing the range any further, queue it to be retrieved
+			table_job.ranges_to_retrieve.push_back(make_tuple(prev_key, hasher.last_key));
+		}
+	}
+
+	void handle_rows_command(const Table &table, RowReplacer<DatabaseClient> &row_replacer) {
 		// we're being sent a range of rows; apply them to our end.  we do this in-context to
 		// provide flow control - if we buffered and used a separate apply thread, we would
 		// bloat up if this end couldn't write to disk as quickly as the other end sent data.
+		string _table_name;
 		ColumnValues prev_key, last_key;
-		read_array(input, prev_key, last_key); // the first array gives the range arguments, which is followed by one array for each row
+		read_array(input, _table_name, prev_key, last_key); // the first array gives the range arguments, which is followed by one array for each row
 		if (worker.verbose > 1) cout << "-> rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
 
 		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
-
-		// if the range extends to the end of their table, that means we're done with this table;
-		// otherwise, rows commands are immediately followed by another command
-		return (last_key.empty());
-	}
-
-	void handle_rows_and_hash_next_command(const Table &table, RowReplacer<DatabaseClient> &row_replacer) {
-		// combo of the above ROWS and HASH_NEXT commands
-		ColumnValues prev_key, last_key, next_key;
-		string hash;
-		read_array(input, prev_key, last_key, next_key, hash); // the first array gives the range arguments and hash, which is followed by one array for each row
-		if (worker.verbose > 1) cout << "-> rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << " +" << endl;
-		if (worker.verbose > 1) cout << "-> hash " << table.name << ' ' << values_list(client, table, last_key) << ' ' << values_list(client, table, next_key) << endl;
-
-		// after each hash command received it's our turn to send the next command; we check
-		// the hash and send the command *before* we stream in the rows that we're being sent
-		// with this command as a simple form of pipelining - our next hash is going back
-		// over the network at the same time as we are receiving rows.  we need to be able to
-		// fit the command we send back in the kernel send buffer to guarantee there is no
-		// deadlock; it's never been smaller than a page on any supported OS, and has been
-		// defaulted to much larger values for some years.
-		sync_algorithm.check_hash_and_choose_next_range(table, nullptr, last_key, next_key, nullptr, hash, target_minimum_block_size, target_maximum_block_size);
-		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
-		// nb. it's implied last_key is not [], as we would have been sent back a plain rows command for the combined range if that was needed
-	}
-
-	void handle_rows_and_hash_fail_command(const Table &table, RowReplacer<DatabaseClient> &row_replacer) {
-		// combo of the above ROWS and HASH_FAIL commands
-		ColumnValues prev_key, last_key, next_key, failed_last_key;
-		string hash;
-		read_array(input, prev_key, last_key, next_key, failed_last_key, hash); // the first array gives the range arguments, which is followed by one array for each row
-		if (worker.verbose > 1) cout << "-> rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << " +" << endl;
-		if (worker.verbose > 1) cout << "-> hash " << table.name << ' ' << values_list(client, table, last_key) << ' ' << values_list(client, table, next_key) << " last-failure " << values_list(client, table, failed_last_key) << endl;
-
-		// same pipelining as the previous case
-		sync_algorithm.check_hash_and_choose_next_range(table, nullptr, last_key, next_key, &failed_last_key, hash, target_minimum_block_size, target_maximum_block_size);
-		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
-	}
-
-	inline void send_hash_next_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
-		if (worker.verbose > 1) cout << "<- hash " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
-		send_command(output, Commands::HASH_NEXT, prev_key, last_key, hash);
-	}
-
-	inline void send_hash_fail_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &failed_last_key, const string &hash) {
-		if (worker.verbose > 1) cout << "<- hash " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << " last-failure " << values_list(client, table, failed_last_key) << endl;
-		send_command(output, Commands::HASH_FAIL, prev_key, last_key, failed_last_key, hash);
-	}
-
-	inline void send_rows_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
-		if (worker.verbose > 1) cout << "<- rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
-		send_command(output, Commands::ROWS, prev_key, last_key);
-	}
-
-	inline void send_rows_and_hash_next_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &next_key, const string &hash) {
-		if (worker.verbose > 1) cout << "<- rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << " +" << endl;
-		if (worker.verbose > 1) cout << "<- hash " << table.name << ' ' << values_list(client, table, last_key) << ' ' << values_list(client, table, next_key) << endl;
-		send_command(output, Commands::ROWS_AND_HASH_NEXT, prev_key, last_key, next_key, hash);
-	}
-
-	inline void send_rows_and_hash_fail_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &next_key, const ColumnValues &failed_last_key, const string &hash) {
-		if (worker.verbose > 1) cout << "<- rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << " +" << endl;
-		if (worker.verbose > 1) cout << "<- hash " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << " last-failure " << values_list(client, table, failed_last_key) << endl;
-		send_command(output, Commands::ROWS_AND_HASH_FAIL, prev_key, last_key, next_key, failed_last_key, hash);
 	}
 
 	Worker &worker;
@@ -224,7 +285,8 @@ struct SyncToProtocol {
 	SyncQueue &sync_queue;
 	Unpacker<FDReadStream> &input;
 	Packer<FDWriteStream> &output;
-	SyncAlgorithm<SyncToProtocol<Worker, DatabaseClient>, DatabaseClient> sync_algorithm;
+	HashAlgorithm hash_algorithm;
 	size_t target_minimum_block_size;
 	size_t target_maximum_block_size;
+	size_t rows_to_scan_forward_next;
 };
