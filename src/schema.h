@@ -10,7 +10,6 @@ using namespace std;
 
 typedef vector<size_t> ColumnIndices;
 typedef vector<PackedValue> ColumnValues;
-typedef vector<ColumnValues> Rows;
 
 namespace ColumnTypes {
 	const string BLOB = "BLOB";
