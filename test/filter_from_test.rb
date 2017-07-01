@@ -33,6 +33,18 @@ class FilterFromTest < KitchenSync::EndpointTestCase
     end
   end
 
+  test_each "sees an empty table for the RANGE command for tables with a clear attribute" do
+    create_some_tables
+    execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"
+    with_filter_file("footbl: clear \n") do # nonsignificant whitespace at the end should be ignored
+      send_handshake_commands
+
+      send_command   Commands::RANGE, ["footbl"]
+      expect_command Commands::RANGE,
+                     ["footbl", [], []]
+    end
+  end
+
   test_each "uses the given SQL expressions to filter which rows are seen in the table for tables with an only attribute" do
     create_some_tables
     execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"
@@ -41,6 +53,10 @@ class FilterFromTest < KitchenSync::EndpointTestCase
 
     with_filter_file("footbl:\n  only: col1 BETWEEN 4 AND 7") do
       send_handshake_commands
+
+      send_command   Commands::RANGE, ["footbl"]
+      expect_command Commands::RANGE,
+                     ["footbl", [4], [5]] # note 5 is the last actual key that's present, even though the filter allowed up to 7
 
       send_command   Commands::OPEN, ["footbl"]
       expect_command Commands::HASH_NEXT,

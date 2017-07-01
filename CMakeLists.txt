@@ -108,6 +108,7 @@ add_test(protocol_version_test   env BUNDLE_GEMFILE=../test/Gemfile bundle exec 
 add_test(snapshot_from_test      env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/snapshot_from_test.rb)
 add_test(schema_from_test        env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/schema_from_test.rb)
 add_test(schema_to_test          env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/schema_to_test.rb)
+add_test(range_from_test         env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/range_from_test.rb)
 add_test(hash_from_test          env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/hash_from_test.rb)
 add_test(rows_from_test          env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/rows_from_test.rb)
 add_test(rows_and_hash_from_test env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/rows_and_hash_from_test.rb)

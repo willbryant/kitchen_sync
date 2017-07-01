@@ -20,6 +20,10 @@ struct SyncFromProtocol {
 			input >> verb;
 
 			switch (verb) {
+				case Commands::RANGE:
+					handle_range_command();
+					break;
+
 				case Commands::OPEN:
 					table = handle_open_command();
 					break;
@@ -91,6 +95,15 @@ struct SyncFromProtocol {
 		worker.show_status("syncing " + table_name);
 		sync_algorithm.hash_first_range(*table, target_minimum_block_size);
 		return table;
+	}
+
+	void handle_range_command() {
+		string table_name;
+		read_all_arguments(input, table_name);
+		worker.show_status("syncing " + table_name);
+
+		const Table &table(*worker.tables_by_name.at(table_name));
+		send_command(output, Commands::RANGE, table_name, worker.client.first_key(table), worker.client.last_key(table));
 	}
 
 	void handle_hash_next_command(const Table *table) {
