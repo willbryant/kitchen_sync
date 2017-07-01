@@ -26,13 +26,13 @@ class ColumnTypesFromTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA,
                    [{"tables" => [trimmed_misctbl_def]}]
 
-    send_command   Commands::OPEN, ["misctbl"]
-    expect_command Commands::HASH_NEXT,
-                   [[], @keys[0], hash_of(@rows[0..0])]
+    send_command   Commands::HASH, ["misctbl", [], @keys[0], 1000]
+    expect_command Commands::HASH,
+                   ["misctbl", [], @keys[0], 1, hash_of(@rows[0..0])]
 
-    send_command   Commands::ROWS, [[], @keys[1]]
+    send_command   Commands::ROWS, ["misctbl", [], @keys[1]]
     expect_command Commands::ROWS,
-                   [[], @keys[1]],
+                   ["misctbl", [], @keys[1]],
                    @rows[0],
                    @rows[1]
 

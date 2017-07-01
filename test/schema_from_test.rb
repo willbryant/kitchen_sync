@@ -69,8 +69,8 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA,
                    [{"tables" => [adapterspecifictbl_def]}]
 
-    send_command   Commands::OPEN, [adapterspecifictbl_def["name"]]
+    send_command   Commands::ROWS, [adapterspecifictbl_def["name"], [], []]
     expect_command Commands::ROWS,
-                   [[], []]
+                   [adapterspecifictbl_def["name"], [], []]
   end
 end

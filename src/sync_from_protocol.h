@@ -41,7 +41,7 @@ struct SyncFromProtocol {
 					break;
 
 				case Commands::ROWS:
-					handle_rows_command(table);
+					handle_rows_command();
 					break;
 
 				case Commands::ROWS_AND_HASH_NEXT:
@@ -139,11 +139,15 @@ struct SyncFromProtocol {
 		sync_algorithm.check_hash_and_choose_next_range(*table, nullptr, prev_key, last_key, &failed_last_key, hash, target_minimum_block_size, target_maximum_block_size);
 	}
 
-	void handle_rows_command(const Table *table) {
-		if (!table) throw command_error("Expected a table command before rows command");
+	void handle_rows_command() {
+		string table_name;
 		ColumnValues prev_key, last_key;
-		read_all_arguments(input, prev_key, last_key);
-		send_rows_command(*table, prev_key, last_key);
+		read_all_arguments(input, table_name, prev_key, last_key);
+		worker.show_status("syncing " + table_name);
+
+		send_command_begin(output, Commands::ROWS, table_name, prev_key, last_key);
+		send_rows(*worker.tables_by_name.at(table_name), prev_key, last_key);
+		send_command_end(output);
 	}
 
 	void handle_rows_and_hash_next_command(const Table *table) {

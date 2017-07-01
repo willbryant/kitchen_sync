@@ -58,24 +58,24 @@ class FilterFromTest < KitchenSync::EndpointTestCase
       expect_command Commands::RANGE,
                      ["footbl", [4], [5]] # note 5 is the last actual key that's present, even though the filter allowed up to 7
 
-      send_command   Commands::OPEN, ["footbl"]
-      expect_command Commands::HASH_NEXT,
-                     [[], [4], hash_of(@filtered_rows[0..0])]
+      send_command   Commands::HASH, ["footbl", [], [4], 1000]
+      expect_command Commands::HASH,
+                     ["footbl", [], [4], 1, hash_of(@filtered_rows[0..0])]
 
-      send_command   Commands::ROWS, [[], []]
+      send_command   Commands::ROWS, ["footbl", [], []]
       expect_command Commands::ROWS,
-                     [[], []],
+                     ["footbl", [], []],
                      @filtered_rows[0],
                      @filtered_rows[1]
 
-      send_command   Commands::ROWS, [[4], []]
+      send_command   Commands::ROWS, ["footbl", [4], []]
       expect_command Commands::ROWS,
-                     [[4], []],
+                     ["footbl", [4], []],
                      @filtered_rows[1]
 
-      send_command   Commands::ROWS, [[], [5]]
+      send_command   Commands::ROWS, ["footbl", [], [5]]
       expect_command Commands::ROWS,
-                     [[], [5]],
+                     ["footbl", [], [5]],
                      @filtered_rows[0],
                      @filtered_rows[1]
     end
@@ -92,13 +92,13 @@ class FilterFromTest < KitchenSync::EndpointTestCase
     with_filter_file("footbl:\n  replace:\n    another_col: col1 + CHAR_LENGTH(col3)\n    col3: COALESCE(col3 || 'x', 'default')") do
       send_handshake_commands
 
-      send_command   Commands::OPEN, ["footbl"]
-      expect_command Commands::HASH_NEXT,
-                     [[], [2], hash_of(@filtered_rows[0..0])]
+      send_command   Commands::HASH, ["footbl", [], [2], 1000]
+      expect_command Commands::HASH,
+                     ["footbl", [], [2], 1, hash_of(@filtered_rows[0..0])]
 
-      send_command   Commands::ROWS, [[], []]
+      send_command   Commands::ROWS, ["footbl", [], []]
       expect_command Commands::ROWS,
-                     [[], []],
+                     ["footbl", [], []],
                      @filtered_rows[0],
                      @filtered_rows[1],
                      @filtered_rows[2],
@@ -114,13 +114,13 @@ class FilterFromTest < KitchenSync::EndpointTestCase
 
     with_filter_file("footbl:\n  replace:\n    another_col: col1 + CHAR_LENGTH(col3)\n    col3: COALESCE(col3, 'default')\n  only: col1 BETWEEN 4 AND 7") do
       send_handshake_commands
-      send_command   Commands::OPEN, ["footbl"]
-      expect_command Commands::HASH_NEXT,
-                     [[], [4], hash_of(@filtered_rows[0..0])]
+      send_command   Commands::HASH, ["footbl", [], [4], 1000]
+      expect_command Commands::HASH,
+                     ["footbl", [], [4], 1, hash_of(@filtered_rows[0..0])]
 
-      send_command   Commands::ROWS, [[], []]
+      send_command   Commands::ROWS, ["footbl", [], []]
       expect_command Commands::ROWS,
-                     [[], []],
+                     ["footbl", [], []],
                      @filtered_rows[0],
                      @filtered_rows[1]
     end
