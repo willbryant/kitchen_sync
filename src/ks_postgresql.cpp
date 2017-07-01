@@ -137,6 +137,9 @@ public:
 	}
 
 	size_t count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key);
+	ColumnValues first_key(const Table &table);
+	ColumnValues  last_key(const Table &table);
+
 	void execute(const string &sql);
 	void disable_referential_integrity();
 	void enable_referential_integrity();
@@ -218,6 +221,18 @@ PostgreSQLClient::~PostgreSQLClient() {
 
 size_t PostgreSQLClient::count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
 	return atoi(select_one(count_rows_sql(*this, table, prev_key, last_key)).c_str());
+}
+
+ColumnValues PostgreSQLClient::first_key(const Table &table) {
+	ValueCollector receiver;
+	query(select_first_key_sql(*this, table), receiver);
+	return receiver.values;
+}
+
+ColumnValues PostgreSQLClient::last_key(const Table &table) {
+	ValueCollector receiver;
+	query(select_last_key_sql(*this, table), receiver);
+	return receiver.values;
 }
 
 void PostgreSQLClient::execute(const string &sql) {

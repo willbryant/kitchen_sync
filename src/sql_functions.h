@@ -14,14 +14,14 @@ const string DESCENDING("DESC");
 
 template <typename DatabaseClient>
 string column_orders_list(DatabaseClient &client, const Columns &columns, const ColumnIndices &column_indices, const string &order = ASCENDING) {
-	if (column_indices.empty()) {
-		return "(NULL)";
-	}
+	string result(" ORDER BY ");
 
-	string result;
 	result += client.quote_identifiers_with();
 	result += columns[*column_indices.begin()].name;
 	result += client.quote_identifiers_with();
+	result += ' ';
+	result += order;
+
 	for (ColumnIndices::const_iterator column_index = column_indices.begin() + 1; column_index != column_indices.end(); ++column_index) {
 		result += ", ";
 		result += client.quote_identifiers_with();
@@ -30,27 +30,35 @@ string column_orders_list(DatabaseClient &client, const Columns &columns, const 
 		result += ' ';
 		result += order;
 	}
+
 	return result;
 }
 
 template <typename DatabaseClient>
 string columns_list(DatabaseClient &client, const Columns &columns, const ColumnIndices &column_indices) {
-	if (column_indices.empty()) {
-		return "(NULL)";
-	}
+	string result;
 
-	string result("(");
 	result += client.quote_identifiers_with();
 	result += columns[*column_indices.begin()].name;
 	result += client.quote_identifiers_with();
+
 	for (ColumnIndices::const_iterator column_index = column_indices.begin() + 1; column_index != column_indices.end(); ++column_index) {
 		result += ", ";
 		result += client.quote_identifiers_with();
 		result += columns[*column_index].name;
 		result += client.quote_identifiers_with();
 	}
-	result += ")";
+
 	return result;
+}
+
+template <typename DatabaseClient>
+string columns_tuple(DatabaseClient &client, const Columns &columns, const ColumnIndices &column_indices) {
+	if (column_indices.empty()) {
+		return "(NULL)";
+	}
+
+	return "(" + columns_list(client, columns, column_indices) + ")";
 }
 
 template <typename DatabaseClient>
@@ -72,7 +80,7 @@ string values_list(DatabaseClient &client, const Table &table, const ColumnValue
 
 template <typename DatabaseClient>
 string where_sql(DatabaseClient &client, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &extra_where_conditions = "", const char *prefix = " WHERE ") {
-	string key_columns(columns_list(client, table.columns, table.primary_key_columns));
+	string key_columns(columns_tuple(client, table.columns, table.primary_key_columns));
 	string result;
 	if (!prev_key.empty()) {
 		result += prefix;
@@ -115,14 +123,12 @@ const ssize_t NO_ROW_COUNT_LIMIT = -1;
 
 template <typename DatabaseClient>
 string retrieve_rows_sql(DatabaseClient &client, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, ssize_t row_count = NO_ROW_COUNT_LIMIT) {
-	string key_columns(column_orders_list(client, table.columns, table.primary_key_columns));
-
 	string result("SELECT ");
 	result += select_columns_sql(client, table);
 	result += " FROM ";
 	result += table.name;
 	result += where_sql(client, table, prev_key, last_key, table.where_conditions);
-	result += " ORDER BY " + key_columns;
+	result += column_orders_list(client, table.columns, table.primary_key_columns);
 	if (row_count != NO_ROW_COUNT_LIMIT) {
 		result += " LIMIT " + to_string(row_count);
 	}
@@ -134,6 +140,30 @@ string count_rows_sql(DatabaseClient &client, const Table &table, const ColumnVa
 	string result("SELECT COUNT(*) FROM ");
 	result += table.name;
 	result += where_sql(client, table, prev_key, last_key, table.where_conditions);
+	return result;
+}
+
+template <typename DatabaseClient>
+string select_first_key_sql(DatabaseClient &client, const Table &table) {
+	string result("SELECT ");
+	result += columns_list(client, table.columns, table.primary_key_columns);
+	result += " FROM ";
+	result += table.name;
+	result += where_sql(client, table, ColumnValues(), ColumnValues(), table.where_conditions);
+	result += column_orders_list(client, table.columns, table.primary_key_columns, ASCENDING);
+	result += " LIMIT 1";
+	return result;
+}
+
+template <typename DatabaseClient>
+string select_last_key_sql(DatabaseClient &client, const Table &table) {
+	string result("SELECT ");
+	result += columns_list(client, table.columns, table.primary_key_columns);
+	result += " FROM ";
+	result += table.name;
+	result += where_sql(client, table, ColumnValues(), ColumnValues(), table.where_conditions);
+	result += column_orders_list(client, table.columns, table.primary_key_columns, DESCENDING);
+	result += " LIMIT 1";
 	return result;
 }
 

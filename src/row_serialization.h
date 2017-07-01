@@ -27,6 +27,21 @@ struct RowCounter {
 	size_t row_count;
 };
 
+struct ValueCollector {
+	ValueCollector() {}
+
+	template <typename DatabaseRow>
+	inline void operator()(const DatabaseRow &row) {
+		values.resize(row.n_columns());
+		for (size_t i = 0; i < row.n_columns(); i++) {
+			values[i].clear();
+			row.pack_column_into(values[i], i);
+		}
+	}
+
+	vector<PackedValue> values;
+};
+
 template <typename OutputStream>
 struct RowPacker: RowCounter {
 	RowPacker(Packer<OutputStream> &packer): packer(packer) {}

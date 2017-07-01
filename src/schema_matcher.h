@@ -44,7 +44,7 @@ struct CreateKeyStatements {
 		result += " ON ";
 		result += table.name;
 		result += ' ';
-		result += columns_list(client, table.columns, key.columns);
+		result += columns_tuple(client, table.columns, key.columns);
 		statements.push_back(result);
 	}
 };
@@ -129,7 +129,7 @@ struct CreateTableStatements {
 			result += client.column_definition(table, *column);
 		}
 		result += ",\n  PRIMARY KEY";
-		result += columns_list(client, table.columns, table.primary_key_columns);
+		result += columns_tuple(client, table.columns, table.primary_key_columns);
 		result += ")";
 		statements.push_back(result);
 
