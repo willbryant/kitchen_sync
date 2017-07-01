@@ -21,18 +21,6 @@ class FilterFromTest < KitchenSync::EndpointTestCase
     end
   end
 
-  test_each "sends the empty range immediately for tables with a clear attribute" do
-    create_some_tables
-    execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"
-    with_filter_file("footbl: clear \n") do # nonsignificant whitespace at the end should be ignored
-      send_handshake_commands
-
-      send_command   Commands::OPEN, ["footbl"]
-      expect_command Commands::ROWS,
-                     [[], []]
-    end
-  end
-
   test_each "sees an empty table for the RANGE command for tables with a clear attribute" do
     create_some_tables
     execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"

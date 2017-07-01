@@ -28,28 +28,8 @@ struct SyncFromProtocol {
 					handle_hash_command();
 					break;
 
-				case Commands::OPEN:
-					table = handle_open_command();
-					break;
-
-				case Commands::HASH_NEXT:
-					handle_hash_next_command(table);
-					break;
-
-				case Commands::HASH_FAIL:
-					handle_hash_fail_command(table);
-					break;
-
 				case Commands::ROWS:
 					handle_rows_command();
-					break;
-
-				case Commands::ROWS_AND_HASH_NEXT:
-					handle_rows_and_hash_next_command(table);
-					break;
-
-				case Commands::ROWS_AND_HASH_FAIL:
-					handle_rows_and_hash_fail_command(table);
 					break;
 
 				case Commands::EXPORT_SNAPSHOT:
@@ -92,15 +72,6 @@ struct SyncFromProtocol {
 		}
 	}
 
-	const Table *handle_open_command() {
-		string table_name;
-		read_all_arguments(input, table_name);
-		const Table *table = worker.tables_by_name.at(table_name); // throws out_of_range if not present in the map
-		worker.show_status("syncing " + table_name);
-		sync_algorithm.hash_first_range(*table, target_minimum_block_size);
-		return table;
-	}
-
 	void handle_range_command() {
 		string table_name;
 		read_all_arguments(input, table_name);
@@ -123,22 +94,6 @@ struct SyncFromProtocol {
 		send_command(output, Commands::HASH, table_name, prev_key, last_key, hasher.row_count, hasher.finish());
 	}
 
-	void handle_hash_next_command(const Table *table) {
-		if (!table) throw command_error("Expected a table command before hash command");
-		ColumnValues prev_key, last_key;
-		string hash;
-		read_all_arguments(input, prev_key, last_key, hash);
-		sync_algorithm.check_hash_and_choose_next_range(*table, nullptr, prev_key, last_key, nullptr, hash, target_minimum_block_size, target_maximum_block_size);
-	}
-
-	void handle_hash_fail_command(const Table *table) {
-		if (!table) throw command_error("Expected a table command before hash command");
-		ColumnValues prev_key, last_key, failed_last_key;
-		string hash;
-		read_all_arguments(input, prev_key, last_key, failed_last_key, hash);
-		sync_algorithm.check_hash_and_choose_next_range(*table, nullptr, prev_key, last_key, &failed_last_key, hash, target_minimum_block_size, target_maximum_block_size);
-	}
-
 	void handle_rows_command() {
 		string table_name;
 		ColumnValues prev_key, last_key;
@@ -148,22 +103,6 @@ struct SyncFromProtocol {
 		send_command_begin(output, Commands::ROWS, table_name, prev_key, last_key);
 		send_rows(*worker.tables_by_name.at(table_name), prev_key, last_key);
 		send_command_end(output);
-	}
-
-	void handle_rows_and_hash_next_command(const Table *table) {
-		if (!table) throw command_error("Expected a table command before rows+hash next command");
-		ColumnValues prev_key, last_key, next_key;
-		string hash;
-		read_all_arguments(input, prev_key, last_key, next_key, hash);
-		sync_algorithm.check_hash_and_choose_next_range(*table, &prev_key, last_key, next_key, nullptr, hash, target_minimum_block_size, target_maximum_block_size);
-	}
-
-	void handle_rows_and_hash_fail_command(const Table *table) {
-		if (!table) throw command_error("Expected a table command before rows+hash fail command");
-		ColumnValues prev_key, last_key, next_key, failed_last_key;
-		string hash;
-		read_all_arguments(input, prev_key, last_key, next_key, failed_last_key, hash);
-		sync_algorithm.check_hash_and_choose_next_range(*table, &prev_key, last_key, next_key, &failed_last_key, hash, target_minimum_block_size, target_maximum_block_size);
 	}
 
 	inline void send_hash_next_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
