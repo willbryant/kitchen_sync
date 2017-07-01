@@ -36,8 +36,8 @@ class ColumnTypesFromTest < KitchenSync::EndpointTestCase
                    @rows[0],
                    @rows[1]
 
-    send_command   Commands::HASH_NEXT, [[], @keys[1], hash_of(@rows[0..1])]
-    expect_command Commands::ROWS,
-                   [@keys[1], []]
+    send_command   Commands::HASH, ["misctbl", [], @keys[1], 1000]
+    expect_command Commands::HASH,
+                   ["misctbl", [], @keys[1], 2, hash_of(@rows[0..1])]
   end
 end

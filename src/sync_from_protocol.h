@@ -24,6 +24,10 @@ struct SyncFromProtocol {
 					handle_range_command();
 					break;
 
+				case Commands::HASH:
+					handle_hash_command();
+					break;
+
 				case Commands::OPEN:
 					table = handle_open_command();
 					break;
@@ -104,6 +108,19 @@ struct SyncFromProtocol {
 
 		const Table &table(*worker.tables_by_name.at(table_name));
 		send_command(output, Commands::RANGE, table_name, worker.client.first_key(table), worker.client.last_key(table));
+	}
+
+	void handle_hash_command() {
+		string table_name;
+		ColumnValues prev_key, last_key;
+		size_t rows_to_hash;
+		read_all_arguments(input, table_name, prev_key, last_key, rows_to_hash);
+		worker.show_status("syncing " + table_name);
+
+		RowHasher hasher(sync_algorithm.hash_algorithm);
+		worker.client.retrieve_rows(hasher, *worker.tables_by_name.at(table_name), prev_key, last_key, rows_to_hash);
+
+		send_command(output, Commands::HASH, table_name, prev_key, last_key, hasher.row_count, hasher.finish());
 	}
 
 	void handle_hash_next_command(const Table *table) {
