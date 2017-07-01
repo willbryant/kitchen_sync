@@ -268,6 +268,8 @@ module Commands
   HASH_FAIL = 4
   ROWS_AND_HASH_NEXT = 5
   ROWS_AND_HASH_FAIL = 6
+  HASH = 7
+  RANGE = 8
 
   PROTOCOL = 32
   EXPORT_SNAPSHOT  = 33

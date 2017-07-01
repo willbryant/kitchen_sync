@@ -89,12 +89,9 @@ inline void send_command(Packer<OutputStream> &packer, verb_t verb, const Values
 }
 
 namespace Commands {
-	const verb_t OPEN = 1;
 	const verb_t ROWS = 2;
-	const verb_t HASH_NEXT = 3;
-	const verb_t HASH_FAIL = 4;
-	const verb_t ROWS_AND_HASH_NEXT = 5;
-	const verb_t ROWS_AND_HASH_FAIL = 6;
+	const verb_t HASH = 7;
+	const verb_t RANGE = 8;
 
 	const verb_t PROTOCOL = 32;
 	const verb_t EXPORT_SNAPSHOT  = 33;
@@ -105,6 +102,13 @@ namespace Commands {
 	const verb_t TARGET_BLOCK_SIZE = 38;
 	const verb_t HASH_ALGORITHM = 39;
 	const verb_t QUIT = 0;
+
+	// deprecated protocol 6 commands:
+	const verb_t OPEN = 1;
+	const verb_t HASH_NEXT = 3;
+	const verb_t HASH_FAIL = 4;
+	const verb_t ROWS_AND_HASH_NEXT = 5;
+	const verb_t ROWS_AND_HASH_FAIL = 6;
 };
 
 #endif
