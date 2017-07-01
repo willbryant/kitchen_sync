@@ -1,4 +1,8 @@
-#include "sync_algorithm.h"
+#include "schema.h"
+#include "row_serialization.h"
+#include "command.h"
+#include "hash_algorithm.h"
+#include "sync_error.h"
 #include "defaults.h"
 
 template <class Worker, class DatabaseClient>
@@ -7,9 +11,7 @@ struct SyncFromProtocol {
 		worker(worker),
 		input(worker.input),
 		output(worker.output),
-		sync_algorithm(*this, worker.client, DEFAULT_HASH_ALGORITHM), // until advised to use a different hash algorithm by the 'to' end
-		target_minimum_block_size(1),
-		target_maximum_block_size(DEFAULT_MAXIMUM_BLOCK_SIZE) {
+		hash_algorithm(DEFAULT_HASH_ALGORITHM) { // until advised to use a different hash algorithm by the 'to' end
 	}
 
 	void handle_commands() {
@@ -88,7 +90,7 @@ struct SyncFromProtocol {
 		read_all_arguments(input, table_name, prev_key, last_key, rows_to_hash);
 		worker.show_status("syncing " + table_name);
 
-		RowHasher hasher(sync_algorithm.hash_algorithm);
+		RowHasher hasher(hash_algorithm);
 		worker.client.retrieve_rows(hasher, *worker.tables_by_name.at(table_name), prev_key, last_key, rows_to_hash);
 
 		send_command(output, Commands::HASH, table_name, prev_key, last_key, hasher.row_count, hasher.finish());
@@ -105,32 +107,6 @@ struct SyncFromProtocol {
 		send_command_end(output);
 	}
 
-	inline void send_hash_next_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &hash) {
-		send_command(output, Commands::HASH_NEXT, prev_key, last_key, hash);
-	}
-
-	inline void send_hash_fail_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &failed_last_key, const string &hash) {
-		send_command(output, Commands::HASH_FAIL, prev_key, last_key, failed_last_key, hash);
-	}
-
-	inline void send_rows_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
-		send_command_begin(output, Commands::ROWS, prev_key, last_key);
-		send_rows(table, prev_key, last_key);
-		send_command_end(output);
-	}
-
-	inline void send_rows_and_hash_next_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &next_key, const string &hash) {
-		send_command_begin(output, Commands::ROWS_AND_HASH_NEXT, prev_key, last_key, next_key, hash);
-		send_rows(table, prev_key, last_key);
-		send_command_end(output);
-	}
-
-	inline void send_rows_and_hash_fail_command(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const ColumnValues &next_key, const ColumnValues &failed_last_key, const string &hash) {
-		send_command_begin(output, Commands::ROWS_AND_HASH_FAIL, prev_key, last_key, next_key, failed_last_key, hash);
-		send_rows(table, prev_key, last_key);
-		send_command_end(output);
-	}
-
 	void send_rows(const Table &table, ColumnValues prev_key, const ColumnValues &last_key) {
 		// we limit individual queries to an arbitrary limit of 10000 rows, to reduce annoying slow
 		// queries that would otherwise be logged on the server and reduce buffering.
@@ -138,7 +114,7 @@ struct SyncFromProtocol {
 		RowPackerAndLastKey<FDWriteStream> row_packer(output, table.primary_key_columns);
 
 		while (true) {
-			sync_algorithm.client.retrieve_rows(row_packer, table, prev_key, last_key, BATCH_SIZE);
+			worker.client.retrieve_rows(row_packer, table, prev_key, last_key, BATCH_SIZE);
 			if (row_packer.row_count < BATCH_SIZE) break;
 			prev_key = row_packer.last_key;
 			row_packer.reset_row_count();
@@ -146,8 +122,8 @@ struct SyncFromProtocol {
 	}
 
 	void handle_hash_algorithm_command() {
-		read_all_arguments(input, sync_algorithm.hash_algorithm);
-		send_command(output, Commands::HASH_ALGORITHM, sync_algorithm.hash_algorithm); // we always accept the requested algorithm and send it back (but maybe one day we won't)
+		read_all_arguments(input, hash_algorithm);
+		send_command(output, Commands::HASH_ALGORITHM, hash_algorithm); // we always accept the requested algorithm and send it back (but maybe one day we won't)
 	}
 
 	void handle_target_block_size_command() {
@@ -158,7 +134,7 @@ struct SyncFromProtocol {
 	Worker &worker;
 	Unpacker<FDReadStream> &input;
 	Packer<FDWriteStream> &output;
-	SyncAlgorithm<SyncFromProtocol<Worker, DatabaseClient>, DatabaseClient> sync_algorithm;
+	HashAlgorithm hash_algorithm;
 	size_t target_minimum_block_size;
 	size_t target_maximum_block_size;
 };
