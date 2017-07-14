@@ -114,11 +114,11 @@ struct SyncToProtocol {
 
 				// now read their response
 				expect_verb(Commands::HASH);
-				size_t their_row_count;
+				size_t _rows_to_hash, their_row_count;
 				string their_hash;
 				string _table_name;
 				ColumnValues _prev_key, _last_key;
-				read_all_arguments(input, _table_name, _prev_key, _last_key, their_row_count, their_hash);
+				read_all_arguments(input, _table_name, _prev_key, _last_key, _rows_to_hash, their_row_count, their_hash);
 				if (worker.verbose > 1) cout << "-> hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << their_row_count << endl;
 
 				if (our_hash == their_hash && hasher.row_count == their_row_count) {
@@ -154,11 +154,11 @@ struct SyncToProtocol {
 
 				// now read their response
 				expect_verb(Commands::HASH);
-				size_t their_row_count;
+				size_t _rows_to_hash, their_row_count;
 				string their_hash;
 				string _table_name;
 				ColumnValues _prev_key, _last_key;
-				read_all_arguments(input, _table_name, _prev_key, _last_key, their_row_count, their_hash);
+				read_all_arguments(input, _table_name, _prev_key, _last_key, _rows_to_hash, their_row_count, their_hash);
 				if (worker.verbose > 1) cout << "-> hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << their_row_count << endl;
 
 				if (our_hash == their_hash && hasher.row_count == their_row_count) {

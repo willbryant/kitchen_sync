@@ -28,7 +28,7 @@ class ColumnTypesFromTest < KitchenSync::EndpointTestCase
 
     send_command   Commands::HASH, ["misctbl", [], @keys[0], 1000]
     expect_command Commands::HASH,
-                   ["misctbl", [], @keys[0], 1, hash_of(@rows[0..0])]
+                   ["misctbl", [], @keys[0], 1000, 1, hash_of(@rows[0..0])]
 
     send_command   Commands::ROWS, ["misctbl", [], @keys[1]]
     expect_command Commands::ROWS,
@@ -38,6 +38,6 @@ class ColumnTypesFromTest < KitchenSync::EndpointTestCase
 
     send_command   Commands::HASH, ["misctbl", [], @keys[1], 1000]
     expect_command Commands::HASH,
-                   ["misctbl", [], @keys[1], 2, hash_of(@rows[0..1])]
+                   ["misctbl", [], @keys[1], 1000, 2, hash_of(@rows[0..1])]
   end
 end

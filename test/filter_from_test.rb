@@ -48,7 +48,7 @@ class FilterFromTest < KitchenSync::EndpointTestCase
 
       send_command   Commands::HASH, ["footbl", [], [4], 1000]
       expect_command Commands::HASH,
-                     ["footbl", [], [4], 1, hash_of(@filtered_rows[0..0])]
+                     ["footbl", [], [4], 1000, 1, hash_of(@filtered_rows[0..0])]
 
       send_command   Commands::ROWS, ["footbl", [], []]
       expect_command Commands::ROWS,
@@ -82,7 +82,7 @@ class FilterFromTest < KitchenSync::EndpointTestCase
 
       send_command   Commands::HASH, ["footbl", [], [2], 1000]
       expect_command Commands::HASH,
-                     ["footbl", [], [2], 1, hash_of(@filtered_rows[0..0])]
+                     ["footbl", [], [2], 1000, 1, hash_of(@filtered_rows[0..0])]
 
       send_command   Commands::ROWS, ["footbl", [], []]
       expect_command Commands::ROWS,
@@ -104,7 +104,7 @@ class FilterFromTest < KitchenSync::EndpointTestCase
       send_handshake_commands
       send_command   Commands::HASH, ["footbl", [], [4], 1000]
       expect_command Commands::HASH,
-                     ["footbl", [], [4], 1, hash_of(@filtered_rows[0..0])]
+                     ["footbl", [], [4], 1000, 1, hash_of(@filtered_rows[0..0])]
 
       send_command   Commands::ROWS, ["footbl", [], []]
       expect_command Commands::ROWS,

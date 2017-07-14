@@ -93,7 +93,7 @@ struct SyncFromProtocol {
 		RowHasher hasher(hash_algorithm);
 		worker.client.retrieve_rows(hasher, *worker.tables_by_name.at(table_name), prev_key, last_key, rows_to_hash);
 
-		send_command(output, Commands::HASH, table_name, prev_key, last_key, hasher.row_count, hasher.finish());
+		send_command(output, Commands::HASH, table_name, prev_key, last_key, rows_to_hash, hasher.row_count, hasher.finish());
 	}
 
 	void handle_rows_command() {

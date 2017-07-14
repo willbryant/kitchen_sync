@@ -36,7 +36,7 @@ class ColumnTypesToTest < KitchenSync::EndpointTestCase
     expect_command Commands::HASH,
                    ["misctbl", [], @keys[0], 1]
     send_results   Commands::HASH,
-                   ["misctbl", [], @keys[0], 1, hash_of(@rows[0..0])]
+                   ["misctbl", [], @keys[0], 1, 1, hash_of(@rows[0..0])]
     expect_quit_and_close
 
     assert_equal @rows,
