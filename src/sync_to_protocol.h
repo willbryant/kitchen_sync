@@ -1,13 +1,13 @@
 typedef tuple<ColumnValues, ColumnValues> KeyRange;
 typedef tuple<ColumnValues, ColumnValues, size_t> KeyRangeWithRowCount;
+const size_t UNKNOWN_ROW_COUNT = numeric_limits<size_t>::max();
 
 struct TableJob {
 	TableJob(const Table &table): table(table) {}
 
 	const Table &table;
-	list<KeyRange> ranges_not_checked;
 	deque<KeyRange> ranges_to_retrieve;
-	list<KeyRangeWithRowCount> ranges_with_errors;
+	deque<KeyRangeWithRowCount> ranges_to_check;
 };
 
 template <class Worker, class DatabaseClient>
@@ -91,17 +91,14 @@ struct SyncToProtocol {
 				expect_verb(Commands::ROWS);
 				handle_rows_command(table, row_replacer);
 
-			} else if (!table_job.ranges_with_errors.empty()) {
+			} else if (!table_job.ranges_to_check.empty()) {
 				ColumnValues prev_key, last_key;
-				size_t our_row_count;
-				tie(prev_key, last_key, our_row_count) = table_job.ranges_with_errors.front();
-				table_job.ranges_with_errors.pop_front();
+				size_t estimated_rows_in_range;
 
-				// break the range into two
-				size_t rows_to_hash = our_row_count/2;
-				if (rows_to_hash < 1) {
-					rows_to_hash = 1;
-				}
+				tie(prev_key, last_key, estimated_rows_in_range) = table_job.ranges_to_check.front();
+				table_job.ranges_to_check.pop_front();
+
+				size_t rows_to_hash = decide_rows_to_hash(estimated_rows_in_range);
 
 				// tell the other end to hash this range
 				if (worker.verbose > 1) cout << "<- hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << rows_to_hash << endl;
@@ -121,70 +118,28 @@ struct SyncToProtocol {
 				read_all_arguments(input, _table_name, _prev_key, _last_key, _rows_to_hash, their_row_count, their_hash);
 				if (worker.verbose > 1) cout << "-> hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << their_row_count << endl;
 
-				if (our_hash == their_hash && hasher.row_count == their_row_count) {
-					// if the two hashes match, the part that we checked has no errors,
-					// which means that the part we didn't check this iteration has an error
-					table_job.ranges_with_errors.push_back(make_tuple(hasher.last_key, last_key, our_row_count - hasher.row_count));
-
-				} else {
+				if (our_hash != their_hash || hasher.row_count != their_row_count) {
 					// the part that we checked has an error; decide whether it's large enough to subdivide
 					handle_hash_not_matching(table_job, prev_key, hasher);
 
-					if (hasher.last_key != last_key) {
-						// we don't know whether there is also an error in the remaining part of the original range;
-						// we assume not and queue it to be scanned
-						table_job.ranges_not_checked.push_back(make_tuple(hasher.last_key, last_key));
-					}
-				}
-
-			} else if (!table_job.ranges_not_checked.empty()) {
-				ColumnValues prev_key, last_key;
-				tie(prev_key, last_key) = table_job.ranges_not_checked.front();
-				table_job.ranges_not_checked.pop_front();
-
-				// tell the other end to hash this range
-				if (worker.verbose > 1) cout << "<- hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << endl;
-				size_t rows_to_hash = rows_to_scan_forward_next;
-				send_command(output, Commands::HASH, table_job.table.name, prev_key, last_key, rows_to_hash);
-
-				// while that end is working, do the same at our end
-				RowHasherAndLastKey hasher(hash_algorithm, table.primary_key_columns);
-				worker.client.retrieve_rows(hasher, table, prev_key, last_key, rows_to_hash);
-				const Hash &our_hash(hasher.finish());
-
-				// now read their response
-				expect_verb(Commands::HASH);
-				size_t _rows_to_hash, their_row_count;
-				string their_hash;
-				string _table_name;
-				ColumnValues _prev_key, _last_key;
-				read_all_arguments(input, _table_name, _prev_key, _last_key, _rows_to_hash, their_row_count, their_hash);
-				if (worker.verbose > 1) cout << "-> hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << their_row_count << endl;
-
-				if (our_hash == their_hash && hasher.row_count == their_row_count) {
-					// success; scan more rows per iteration, to reduce the impact of latency between the ends -
-					// up to a point, after which the cost of re-work when we finally run into a mismatch
-					// outweights the benefit of the latency savings
-					if (hasher.size <= target_maximum_block_size/2) {
-						rows_to_scan_forward_next = hasher.row_count*2;
-					} else {
-						rows_to_scan_forward_next = max<size_t>(hasher.row_count*target_maximum_block_size/hasher.size, 1);
+					if (estimated_rows_in_range == UNKNOWN_ROW_COUNT) {
+						// on the next iteration, scan fewer rows per iteration, to reduce the cost of re-work (down to a point)
+						decrease_scan_size(hasher);
 					}
 				} else {
-					// there's an error somewhere in the range, queue it up for the code above
-					handle_hash_not_matching(table_job, prev_key, hasher);
-
-					// scan fewer rows per iteration, to reduce the cost of re-work, down to a point
-					if (hasher.size >= target_minimum_block_size*2) {
-						rows_to_scan_forward_next = max<size_t>(hasher.row_count/2, 1);
-					} else {
-						rows_to_scan_forward_next = max<size_t>(hasher.row_count*target_minimum_block_size/hasher.size, 1);
+					if (estimated_rows_in_range == UNKNOWN_ROW_COUNT) {
+						// on the next iteration, scan more rows per iteration, to reduce the impact of latency between the ends -
+						// up to a point, after which the cost of re-work when we finally run into a mismatch outweights the
+						// benefit of the latency savings
+						increase_scan_size(hasher);
 					}
 				}
 
-				// queue the remaining rows to be checked, if any
 				if (hasher.last_key != last_key) {
-					table_job.ranges_not_checked.push_back(make_tuple(hasher.last_key, last_key));
+					// whether or not we found an error in the range we just did, we don't know whether
+					// there is an error in the remaining part of the original range; queue it to be scanned
+					size_t remaining_row_count = estimated_rows_in_range == UNKNOWN_ROW_COUNT ? UNKNOWN_ROW_COUNT : estimated_rows_in_range - hasher.row_count;
+					table_job.ranges_to_check.push_back(make_tuple(hasher.last_key, last_key, remaining_row_count));
 				}
 
 			} else {
@@ -252,8 +207,7 @@ struct SyncToProtocol {
 		// to express start-inclusive ranges to the sync methods, so we queue a sync from the start (empty key value)
 		// up to the last key, but this results in no actual inefficiency because they'd see the same rows anyway.
 		if (!our_last_key.empty()) {
-			KeyRange whole_table(ColumnValues(), our_last_key);
-			table_job.ranges_not_checked.push_back(whole_table);
+			table_job.ranges_to_check.push_back(make_tuple(ColumnValues(), our_last_key, UNKNOWN_ROW_COUNT));
 		}
 	}
 
@@ -261,10 +215,40 @@ struct SyncToProtocol {
 		// the part that we checked has an error; decide whether it's large enough to subdivide
 		if (hasher.row_count > 1 && hasher.size > target_minimum_block_size) {
 			// yup, queue it up for another iteration of hashing
-			table_job.ranges_with_errors.push_back(make_tuple(prev_key, hasher.last_key, hasher.row_count));
+			table_job.ranges_to_check.push_front(make_tuple(prev_key, hasher.last_key, hasher.row_count));
 		} else {
 			// not worth subdividing the range any further, queue it to be retrieved
 			table_job.ranges_to_retrieve.push_back(make_tuple(prev_key, hasher.last_key));
+		}
+	}
+
+	inline size_t decide_rows_to_hash(size_t estimated_rows_in_range) {
+		if (estimated_rows_in_range == UNKNOWN_ROW_COUNT) {
+			// scan forward
+			return rows_to_scan_forward_next;
+		} else if (estimated_rows_in_range > 3) {
+			// break the range into two
+			return  estimated_rows_in_range/2;
+		} else {
+			// down to single-row territory already
+			return 1;
+		}
+	}
+
+	inline void increase_scan_size(const RowHasher &hasher) {
+		if (hasher.size <= target_maximum_block_size/2) {
+			rows_to_scan_forward_next = hasher.row_count*2;
+		} else {
+			rows_to_scan_forward_next = max<size_t>(hasher.row_count*target_maximum_block_size/hasher.size, 1);
+		}
+	}
+
+	inline void decrease_scan_size(const RowHasher &hasher) {
+		// on the next iteration, scan fewer rows per iteration, to reduce the cost of re-work (down to a point)
+		if (hasher.size >= target_minimum_block_size*2) {
+			rows_to_scan_forward_next = max<size_t>(hasher.row_count/2, 1);
+		} else {
+			rows_to_scan_forward_next = max<size_t>(hasher.row_count*target_minimum_block_size/hasher.size, 1);
 		}
 	}
 

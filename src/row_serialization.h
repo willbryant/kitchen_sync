@@ -78,6 +78,18 @@ inline bool operator == (const Hash &hash, const string &str) {
 	return (hash.md_len == str.length() && memcmp(str.c_str(), hash.md_value, hash.md_len) == 0);
 }
 
+inline bool operator != (const Hash &hash, const string &str) {
+	return !(hash == str);
+}
+
+inline bool operator == (const string &str, const Hash &hash) {
+	return hash == str;
+}
+
+inline bool operator != (const string &str, const Hash &hash) {
+	return !(hash == str);
+}
+
 struct RowHasher: RowCounter {
 	RowHasher(HashAlgorithm hash_algorithm): hash_algorithm(hash_algorithm), size(0), finished(false), row_packer(*this) {
 		switch (hash_algorithm) {

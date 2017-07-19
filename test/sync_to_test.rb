@@ -158,6 +158,13 @@ class SyncToTest < KitchenSync::EndpointTestCase
     send_command   Commands::HASH, ["footbl", @keys[2], @keys[6], 2, 2, hash_of(@rows[3..4])]
     expect_command Commands::HASH, ["footbl", @keys[2], @keys[4], 1]
     send_command   Commands::HASH, ["footbl", @keys[2], @keys[4], 1, 1, hash_of(@rows[3..3])]
+    # order from here on is just an implementation detail, but we expect to see the following commands in some order
+    # note that the real error is in @rows[4], which is implied but which it will not yet have confirmed, so it
+    # interleaves the scan forward command
+    expect_command Commands::HASH, ["footbl", @keys[6], @keys[-1], 2]
+    send_command   Commands::HASH, ["footbl", @keys[6], @keys[-1], 2, 1, hash_of(@rows[7..7])]
+    expect_command Commands::HASH, ["footbl", @keys[4], @keys[6], 1]
+    send_command   Commands::HASH, ["footbl", @keys[4], @keys[6], 1, 1, hash_of(@rows[5..5])]
     expect_command Commands::HASH, ["footbl", @keys[3], @keys[4], 1]
     send_command   Commands::HASH, ["footbl", @keys[3], @keys[4], 1, 1, hash_of(@rows[4..4])]
     expect_command Commands::ROWS,
@@ -165,10 +172,8 @@ class SyncToTest < KitchenSync::EndpointTestCase
     send_results   Commands::ROWS,
                    ["footbl", @keys[3], @keys[4]],
                    @rows[4]
-    expect_command Commands::HASH, ["footbl", @keys[6], @keys[-1], 2]
-    send_command   Commands::HASH, ["footbl", @keys[6], @keys[-1], 2, 1, hash_of(@rows[7..7])]
-    expect_command Commands::HASH, ["footbl", @keys[4], @keys[6], 2]
-    send_command   Commands::HASH, ["footbl", @keys[4], @keys[6], 2, 2, hash_of(@rows[5..6])]
+    expect_command Commands::HASH, ["footbl", @keys[5], @keys[6], 1]
+    send_command   Commands::HASH, ["footbl", @keys[5], @keys[6], 1, 1, hash_of(@rows[6..6])]
     expect_quit_and_close
 
     assert_equal @rows,
