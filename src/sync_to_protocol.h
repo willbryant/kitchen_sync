@@ -211,6 +211,18 @@ struct SyncToProtocol {
 		}
 	}
 
+	void handle_rows_command(const Table &table, RowReplacer<DatabaseClient> &row_replacer) {
+		// we're being sent a range of rows; apply them to our end.  we do this in-context to
+		// provide flow control - if we buffered and used a separate apply thread, we would
+		// bloat up if this end couldn't write to disk as quickly as the other end sent data.
+		string _table_name;
+		ColumnValues prev_key, last_key;
+		read_array(input, _table_name, prev_key, last_key); // the first array gives the range arguments, which is followed by one array for each row
+		if (worker.verbose > 1) cout << "-> rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
+
+		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
+	}
+
 	void handle_hash_not_matching(TableJob &table_job, const ColumnValues &prev_key, const RowHasherAndLastKey &hasher) {
 		// the part that we checked has an error; decide whether it's large enough to subdivide
 		if (hasher.row_count > 1 && hasher.size > target_minimum_block_size) {
@@ -250,18 +262,6 @@ struct SyncToProtocol {
 		} else {
 			rows_to_scan_forward_next = max<size_t>(hasher.row_count*target_minimum_block_size/hasher.size, 1);
 		}
-	}
-
-	void handle_rows_command(const Table &table, RowReplacer<DatabaseClient> &row_replacer) {
-		// we're being sent a range of rows; apply them to our end.  we do this in-context to
-		// provide flow control - if we buffered and used a separate apply thread, we would
-		// bloat up if this end couldn't write to disk as quickly as the other end sent data.
-		string _table_name;
-		ColumnValues prev_key, last_key;
-		read_array(input, _table_name, prev_key, last_key); // the first array gives the range arguments, which is followed by one array for each row
-		if (worker.verbose > 1) cout << "-> rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
-
-		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
 	}
 
 	Worker &worker;
