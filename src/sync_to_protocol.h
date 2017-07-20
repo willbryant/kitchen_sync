@@ -127,28 +127,33 @@ struct SyncToProtocol {
 				bool match = (our_hash == their_hash && hasher.row_count == their_row_count);
 				if (worker.verbose > 1) cout << "-> hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << their_row_count << (match ? " matches" : " doesn't match") << endl;
 
-				if (!match) {
-					// the part that we checked has an error; decide whether it's large enough to subdivide
-					handle_hash_not_matching(table_job, prev_key, hasher);
+				if (hasher.last_key != last_key) {
+					// whether or not we found an error in the range we just did, we don't know whether
+					// there is an error in the remaining part of the original range (which could be simply
+					// the rest of the table); queue it to be scanned
+					if (estimated_rows_in_range == UNKNOWN_ROW_COUNT) {
+						// we're scanning forward, do that last
+						table_job.ranges_to_check.push_back(make_tuple(hasher.last_key, last_key, UNKNOWN_ROW_COUNT));
 
-					if (estimated_rows_in_range == UNKNOWN_ROW_COUNT) {
-						// on the next iteration, scan fewer rows per iteration, to reduce the cost of re-work (down to a point)
-						decrease_scan_size(hasher);
-					}
-				} else {
-					if (estimated_rows_in_range == UNKNOWN_ROW_COUNT) {
-						// on the next iteration, scan more rows per iteration, to reduce the impact of latency between the ends -
-						// up to a point, after which the cost of re-work when we finally run into a mismatch outweights the
-						// benefit of the latency savings
-						increase_scan_size(hasher);
+						if (match) {
+							// on the next iteration, scan more rows per iteration, to reduce the impact of latency between the ends -
+							// up to a point, after which the cost of re-work when we finally run into a mismatch outweights the
+							// benefit of the latency savings
+							increase_scan_size(hasher);
+						} else {
+							// on the next iteration, scan fewer rows per iteration, to reduce the cost of re-work (down to a point)
+							decrease_scan_size(hasher);
+						}
+					} else {
+						// we're hunting errors, do that first
+						size_t rows_remaining = estimated_rows_in_range - hasher.row_count;
+						table_job.ranges_to_check.push_front(make_tuple(hasher.last_key, last_key, rows_remaining));
 					}
 				}
 
-				if (hasher.last_key != last_key) {
-					// whether or not we found an error in the range we just did, we don't know whether
-					// there is an error in the remaining part of the original range; queue it to be scanned
-					size_t remaining_row_count = estimated_rows_in_range == UNKNOWN_ROW_COUNT ? UNKNOWN_ROW_COUNT : estimated_rows_in_range - hasher.row_count;
-					table_job.ranges_to_check.push_back(make_tuple(hasher.last_key, last_key, remaining_row_count));
+				if (!match) {
+					// the part that we checked has an error; decide whether it's large enough to subdivide
+					handle_hash_not_matching(table_job, prev_key, hasher);
 				}
 
 			} else {
