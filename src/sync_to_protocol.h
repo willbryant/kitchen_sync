@@ -87,6 +87,7 @@ struct SyncToProtocol {
 
 				if (worker.verbose > 1) cout << "<- rows " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << endl;
 				send_command(output, Commands::ROWS, table_job.table.name, prev_key, last_key);
+				rows_commands++;
 
 				expect_verb(Commands::ROWS);
 				handle_rows_command(table, row_replacer);
@@ -103,6 +104,7 @@ struct SyncToProtocol {
 				// tell the other end to hash this range
 				if (worker.verbose > 1) cout << "<- hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << rows_to_hash << endl;
 				send_command(output, Commands::HASH, table_job.table.name, prev_key, last_key, rows_to_hash);
+				hash_commands++;
 
 				// while that end is working, do the same at our end
 				RowHasherAndLastKey hasher(hash_algorithm, table.primary_key_columns);
