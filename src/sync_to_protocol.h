@@ -118,14 +118,16 @@ struct SyncToProtocol {
 				string _table_name;
 				ColumnValues _prev_key, _last_key;
 				read_all_arguments(input, _table_name, _prev_key, _last_key, _rows_to_hash, their_row_count, their_hash);
-				if (worker.verbose > 1) cout << "-> hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << their_row_count << endl;
 
 				if (_table_name != table_job.table.name || _prev_key != prev_key || _last_key != last_key || _rows_to_hash != rows_to_hash) {
 					throw command_error("Expected arguments " + table_job.table.name + ", " + values_list(client, table_job.table, prev_key) + ", " + values_list(client, table_job.table, last_key) + ", " + to_string(rows_to_hash) +
 							"but received " + _table_name + ", " + values_list(client, table_job.table, _prev_key) + ", " + values_list(client, table_job.table, _last_key) + ", " + to_string(_rows_to_hash));
 				}
 
-				if (our_hash != their_hash || hasher.row_count != their_row_count) {
+				bool match = (our_hash == their_hash && hasher.row_count == their_row_count);
+				if (worker.verbose > 1) cout << "-> hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << their_row_count << (match ? " matches" : " doesn't match") << endl;
+
+				if (!match) {
 					// the part that we checked has an error; decide whether it's large enough to subdivide
 					handle_hash_not_matching(table_job, prev_key, hasher);
 
