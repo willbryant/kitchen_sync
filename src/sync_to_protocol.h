@@ -62,7 +62,6 @@ struct SyncToProtocol {
 		size_t hash_commands = 0;
 		size_t rows_commands = 0;
 		time_t started = time(nullptr);
-		bool finished = false;
 
 		if (worker.verbose) {
 			unique_lock<mutex> lock(sync_queue.mutex);
@@ -73,7 +72,7 @@ struct SyncToProtocol {
 
 		establish_range(table_job);
 
-		while (!finished) {
+		while (true) {
 			sync_queue.check_aborted(); // check each iteration, rather than wait until the end of the current table
 
 			if (worker.progress) {
@@ -82,6 +81,7 @@ struct SyncToProtocol {
 
 			if (!table_job.ranges_to_retrieve.empty()) {
 				ColumnValues prev_key, last_key;
+
 				tie(prev_key, last_key) = table_job.ranges_to_retrieve.front();
 				table_job.ranges_to_retrieve.pop_front();
 
@@ -150,7 +150,7 @@ struct SyncToProtocol {
 				}
 
 			} else {
-				finished = true;
+				break;
 			}
 		}
 
