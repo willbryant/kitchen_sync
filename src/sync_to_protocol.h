@@ -87,7 +87,8 @@ struct SyncToProtocol {
 
 		TableJob table_job(table);
 
-		establish_range(table_job);
+		if (worker.verbose > 1) cout << timestamp() << " <- range " << table_job.table.name << endl;
+		send_command(output, Commands::RANGE, table_job.table.name);
 
 		while (true) {
 			sync_queue.check_aborted(); // check each iteration, rather than wait until the end of the current table
@@ -95,6 +96,9 @@ struct SyncToProtocol {
 			if (worker.progress) {
 				cout << "." << flush; // simple progress meter
 			}
+
+			// now read and act on their response to the last command
+			handle_response(table_job, row_replacer);
 
 			if (!table_job.ranges_to_retrieve.empty()) {
 				ColumnValues prev_key, last_key;
@@ -105,9 +109,6 @@ struct SyncToProtocol {
 				if (worker.verbose > 1) cout << timestamp() << " <- rows " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << endl;
 				send_command(output, Commands::ROWS, table_job.table.name, prev_key, last_key);
 				rows_commands++;
-
-				expect_verb(Commands::ROWS);
-				handle_rows_command(table, row_replacer);
 
 			} else if (!table_job.ranges_to_check.empty()) {
 				ColumnValues prev_key, last_key;
@@ -125,10 +126,6 @@ struct SyncToProtocol {
 				RowHasherAndLastKey hasher(hash_algorithm, table.primary_key_columns);
 				worker.client.retrieve_rows(hasher, table, prev_key, last_key, rows_to_hash);
 				table_job.ranges_hashed.push_back(HashResult(prev_key, last_key, estimated_rows_in_range, hasher.row_count, hasher.size, hasher.finish().to_string(), hasher.last_key));
-
-				// now read their response
-				expect_verb(Commands::HASH);
-				handle_hash_command(table_job);
 
 			} else {
 				break;
@@ -153,19 +150,29 @@ struct SyncToProtocol {
 		}
 	}
 
-	void expect_verb(verb_t expected) {
+	inline void handle_response(TableJob &table_job, RowReplacer<DatabaseClient> &row_replacer) {
 		verb_t verb;
 		input >> verb;
-		if (verb != expected) {
-			throw command_error("Expected command " + to_string(verb) + " but received " + to_string(verb));
+
+		switch (verb) {
+			case Commands::HASH:
+				handle_hash_response(table_job);
+				break;
+
+			case Commands::ROWS:
+				handle_rows_response(table_job.table, row_replacer);
+				break;
+
+			case Commands::RANGE:
+				handle_range_response(table_job);
+				break;
+
+			default:
+				throw command_error("Unexpected command " + to_string(verb));
 		}
 	}
 
-	void establish_range(TableJob &table_job) {
-		send_command(output, Commands::RANGE, table_job.table.name);
-		if (worker.verbose > 1) cout << timestamp() << " <- range " << table_job.table.name << endl;
-		expect_verb(Commands::RANGE);
-
+	void handle_range_response(TableJob &table_job) {
 		string _table_name;
 		ColumnValues their_first_key, their_last_key;
 		read_all_arguments(input, _table_name, their_first_key, their_last_key);
@@ -199,13 +206,13 @@ struct SyncToProtocol {
 		}
 	}
 
-	void handle_rows_command(const Table &table, RowReplacer<DatabaseClient> &row_replacer) {
+	void handle_rows_response(const Table &table, RowReplacer<DatabaseClient> &row_replacer) {
 		// we're being sent a range of rows; apply them to our end.  we do this in-context to
 		// provide flow control - if we buffered and used a separate apply thread, we would
 		// bloat up if this end couldn't write to disk as quickly as the other end sent data.
-		string _table_name;
+		string table_name;
 		ColumnValues prev_key, last_key;
-		read_array(input, _table_name, prev_key, last_key); // the first array gives the range arguments, which is followed by one array for each row
+		read_array(input, table_name, prev_key, last_key); // the first array gives the range arguments, which is followed by one array for each row
 		if (worker.verbose > 1) cout << timestamp() << " -> rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
 
 		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
@@ -220,7 +227,7 @@ struct SyncToProtocol {
 		throw command_error("Haven't issued a hash command for " + table_job.table.name + " " + values_list(client, table_job.table, prev_key) + " " + values_list(client, table_job.table, last_key));
 	}
 
-	void handle_hash_command(TableJob &table_job) {
+	void handle_hash_response(TableJob &table_job) {
 		size_t rows_to_hash, their_row_count;
 		string their_hash;
 		string table_name;
