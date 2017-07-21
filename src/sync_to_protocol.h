@@ -137,7 +137,7 @@ struct SyncToProtocol {
 					} else {
 						// we're hunting errors, do that first
 						size_t rows_remaining = estimated_rows_in_range - hasher.row_count;
-						table_job.ranges_to_check.push_front(make_tuple(hasher.last_key, last_key, rows_remaining, decide_rows_to_hash(rows_remaining)));
+						table_job.ranges_to_check.push_front(make_tuple(hasher.last_key, last_key, rows_remaining, rows_remaining));
 					}
 				}
 
