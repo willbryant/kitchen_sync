@@ -1,3 +1,5 @@
+#include "timestamp.h"
+
 typedef tuple<ColumnValues, ColumnValues> KeyRange;
 typedef tuple<ColumnValues, ColumnValues, size_t> KeyRangeWithRowCount;
 const size_t UNKNOWN_ROW_COUNT = numeric_limits<size_t>::max();
@@ -65,7 +67,8 @@ struct SyncToProtocol {
 
 		if (worker.verbose) {
 			unique_lock<mutex> lock(sync_queue.mutex);
-			cout << "starting " << table.name << endl << flush;
+			cout << fixed << setw(5);
+			cout << timestamp() << " starting " << table.name << endl << flush;
 		}
 
 		TableJob table_job(table);
@@ -85,7 +88,7 @@ struct SyncToProtocol {
 				tie(prev_key, last_key) = table_job.ranges_to_retrieve.front();
 				table_job.ranges_to_retrieve.pop_front();
 
-				if (worker.verbose > 1) cout << "<- rows " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << endl;
+				if (worker.verbose > 1) cout << timestamp() << " <- rows " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << endl;
 				send_command(output, Commands::ROWS, table_job.table.name, prev_key, last_key);
 				rows_commands++;
 
@@ -102,7 +105,7 @@ struct SyncToProtocol {
 				size_t rows_to_hash = decide_rows_to_hash(estimated_rows_in_range);
 
 				// tell the other end to hash this range
-				if (worker.verbose > 1) cout << "<- hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << rows_to_hash << endl;
+				if (worker.verbose > 1) cout << timestamp() << " <- hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << rows_to_hash << endl;
 				send_command(output, Commands::HASH, table_job.table.name, prev_key, last_key, rows_to_hash);
 				hash_commands++;
 
@@ -125,7 +128,7 @@ struct SyncToProtocol {
 				}
 
 				bool match = (our_hash == their_hash && hasher.row_count == their_row_count);
-				if (worker.verbose > 1) cout << "-> hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << their_row_count << (match ? " matches" : " doesn't match") << endl;
+				if (worker.verbose > 1) cout << timestamp() << " -> hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << their_row_count << (match ? " matches" : " doesn't match") << endl;
 
 				if (hasher.last_key != last_key) {
 					// whether or not we found an error in the range we just did, we don't know whether
@@ -170,7 +173,7 @@ struct SyncToProtocol {
 		if (worker.verbose) {
 			time_t now = time(nullptr);
 			unique_lock<mutex> lock(sync_queue.mutex);
-			cout << "finished " << table.name << " in " << (now - started) << "s using " << hash_commands << " hash commands and " << rows_commands << " rows commands changing " << row_replacer.rows_changed << " rows" << endl << flush;
+			cout << timestamp() << " finished " << table.name << " in " << (now - started) << "s using " << hash_commands << " hash commands and " << rows_commands << " rows commands changing " << row_replacer.rows_changed << " rows" << endl << flush;
 		}
 
 		if (worker.commit_level >= CommitLevel::tables) {
@@ -189,13 +192,13 @@ struct SyncToProtocol {
 
 	void establish_range(TableJob &table_job) {
 		send_command(output, Commands::RANGE, table_job.table.name);
-		if (worker.verbose > 1) cout << "<- range " << table_job.table.name << endl;
+		if (worker.verbose > 1) cout << timestamp() << " <- range " << table_job.table.name << endl;
 		expect_verb(Commands::RANGE);
 
 		string _table_name;
 		ColumnValues their_first_key, their_last_key;
 		read_all_arguments(input, _table_name, their_first_key, their_last_key);
-		if (worker.verbose > 1) cout << "-> range " << table_job.table.name << ' ' << values_list(client, table_job.table, their_first_key) << ' ' << values_list(client, table_job.table, their_last_key) << endl;
+		if (worker.verbose > 1) cout << timestamp() << " -> range " << table_job.table.name << ' ' << values_list(client, table_job.table, their_first_key) << ' ' << values_list(client, table_job.table, their_last_key) << endl;
 
 		if (their_first_key.empty()) {
 			client.execute("DELETE FROM " + table_job.table.name);
@@ -232,7 +235,7 @@ struct SyncToProtocol {
 		string _table_name;
 		ColumnValues prev_key, last_key;
 		read_array(input, _table_name, prev_key, last_key); // the first array gives the range arguments, which is followed by one array for each row
-		if (worker.verbose > 1) cout << "-> rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
+		if (worker.verbose > 1) cout << timestamp() << " -> rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
 
 		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
 	}
