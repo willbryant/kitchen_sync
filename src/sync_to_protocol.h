@@ -90,6 +90,9 @@ struct SyncToProtocol {
 		if (worker.verbose > 1) cout << timestamp() << " <- range " << table_job.table.name << endl;
 		send_command(output, Commands::RANGE, table_job.table.name);
 
+		size_t outstanding_commands = 1;
+		size_t max_outstanding_commands = 2;
+
 		while (true) {
 			sync_queue.check_aborted(); // check each iteration, rather than wait until the end of the current table
 
@@ -97,10 +100,7 @@ struct SyncToProtocol {
 				cout << "." << flush; // simple progress meter
 			}
 
-			// now read and act on their response to the last command
-			handle_response(table_job, row_replacer);
-
-			if (!table_job.ranges_to_retrieve.empty()) {
+			if (outstanding_commands < max_outstanding_commands && !table_job.ranges_to_retrieve.empty()) {
 				ColumnValues prev_key, last_key;
 
 				tie(prev_key, last_key) = table_job.ranges_to_retrieve.front();
@@ -109,8 +109,9 @@ struct SyncToProtocol {
 				if (worker.verbose > 1) cout << timestamp() << " <- rows " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << endl;
 				send_command(output, Commands::ROWS, table_job.table.name, prev_key, last_key);
 				rows_commands++;
+				outstanding_commands++;
 
-			} else if (!table_job.ranges_to_check.empty()) {
+			} else if (outstanding_commands < max_outstanding_commands && !table_job.ranges_to_check.empty()) {
 				ColumnValues prev_key, last_key;
 				size_t estimated_rows_in_range, rows_to_hash;
 
@@ -121,13 +122,19 @@ struct SyncToProtocol {
 				if (worker.verbose > 1) cout << timestamp() << " <- hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << rows_to_hash << endl;
 				send_command(output, Commands::HASH, table_job.table.name, prev_key, last_key, rows_to_hash);
 				hash_commands++;
+				outstanding_commands++;
 
 				// while that end is working, do the same at our end
 				RowHasherAndLastKey hasher(hash_algorithm, table.primary_key_columns);
 				worker.client.retrieve_rows(hasher, table, prev_key, last_key, rows_to_hash);
 				table_job.ranges_hashed.push_back(HashResult(prev_key, last_key, estimated_rows_in_range, hasher.row_count, hasher.size, hasher.finish().to_string(), hasher.last_key));
 
+			} else if (outstanding_commands > 0) {
+				handle_response(table_job, row_replacer);
+				outstanding_commands--;
+
 			} else {
+				// nothing left to do on this table
 				break;
 			}
 		}
@@ -220,9 +227,11 @@ struct SyncToProtocol {
 
 	HashResult find_hash_result_for(TableJob &table_job, const ColumnValues &prev_key, const ColumnValues &last_key) {
 		for (auto it = table_job.ranges_hashed.begin(); it != table_job.ranges_hashed.end(); ++it) {
-			HashResult result(*it);
-			table_job.ranges_hashed.erase(it);
-			return result;
+			if (it->prev_key == prev_key && it->last_key == last_key) {
+				HashResult result(*it);
+				table_job.ranges_hashed.erase(it);
+				return result;
+			}
 		}
 		throw command_error("Haven't issued a hash command for " + table_job.table.name + " " + values_list(client, table_job.table, prev_key) + " " + values_list(client, table_job.table, last_key));
 	}

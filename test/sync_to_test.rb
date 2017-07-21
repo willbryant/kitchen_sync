@@ -156,9 +156,14 @@ class SyncToTest < KitchenSync::EndpointTestCase
     send_command   Commands::HASH, ["footbl", @keys[2], @keys[-1], 4, 4, hash_of(@rows[3..6])]
     expect_command Commands::HASH, ["footbl", @keys[2], @keys[6], 2]
     send_command   Commands::HASH, ["footbl", @keys[2], @keys[6], 2, 2, hash_of(@rows[3..4])]
+
+    # order from here on is just an implementation detail, but we expect to see the following commands in some order
+    expect_command Commands::HASH, ["footbl", @keys[6], @keys[-1], 2]
+    send_command   Commands::HASH, ["footbl", @keys[6], @keys[-1], 2, 1, hash_of(@rows[7..7])]
     expect_command Commands::HASH, ["footbl", @keys[2], @keys[4], 1]
     send_command   Commands::HASH, ["footbl", @keys[2], @keys[4], 1, 1, hash_of(@rows[3..3])]
-    # order from here on is just an implementation detail, but we expect to see the following commands in some order
+    expect_command Commands::HASH, ["footbl", @keys[4], @keys[6], 2]
+    send_command   Commands::HASH, ["footbl", @keys[4], @keys[6], 2, 2, hash_of(@rows[5..6])]
     expect_command Commands::HASH, ["footbl", @keys[3], @keys[4], 1]
     send_command   Commands::HASH, ["footbl", @keys[3], @keys[4], 1, 1, hash_of(@rows[4..4])]
     expect_command Commands::ROWS,
@@ -166,10 +171,6 @@ class SyncToTest < KitchenSync::EndpointTestCase
     send_results   Commands::ROWS,
                    ["footbl", @keys[3], @keys[4]],
                    @rows[4]
-    expect_command Commands::HASH, ["footbl", @keys[4], @keys[6], 2]
-    send_command   Commands::HASH, ["footbl", @keys[4], @keys[6], 2, 2, hash_of(@rows[5..6])]
-    expect_command Commands::HASH, ["footbl", @keys[6], @keys[-1], 2]
-    send_command   Commands::HASH, ["footbl", @keys[6], @keys[-1], 2, 1, hash_of(@rows[7..7])]
     expect_quit_and_close
 
     assert_equal @rows,
