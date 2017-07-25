@@ -58,7 +58,9 @@ struct SyncToWorker {
 			retrieve_database_schema();
 			compare_schema();
 
-			if (!structure_only) {
+			if (structure_only) {
+				wait_for_finish();
+			} else {
 				enqueue_tables();
 
 				client.start_write_transaction();
