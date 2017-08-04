@@ -80,6 +80,8 @@ users:
     password_hash: NULL
 ```
 
+Finally, please note that using the `replace` option with the primary key column is not supported, and will cause errors.
+
 ### Combinining options
 
 Although it doesn't make sense to combine the `clear` option with the other options, it is legal and common to combine the `only` and `replace` options on a single table.  For example:
