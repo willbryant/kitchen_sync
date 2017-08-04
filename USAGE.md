@@ -15,9 +15,9 @@ ks --from postgresql://someuser:mypassword@localhost/sourcedb \
    --to postgresql://someuser:mypassword@localhost/targetdb
 ```
 
-The --from and --to arguments are both "dburls" (database URLs).  This version supports protocols "postgresql" and "mysql" (which works equally well for mariadb).
+The `--from` and `--to` arguments are both "dburls" (database URLs).  This version supports protocols "postgresql" and "mysql" (which works equally well for mariadb).
 
-To synchronise between machines on the same network, simply use the hostnames in the URL.  For example, to copy from a local database server to your own machine:
+To synchronize between machines on the same network, simply use the hostnames in the URL.  For example, to copy from a local database server to your own machine:
 
 ```
 ks --from postgresql://myuser:secretpassword@ourserver.ourofficelan/sourcedb \
@@ -36,7 +36,7 @@ Please see "Transporting Kitchen Sync over SSH" below for more options, especial
 Parallelizing
 -------------
 
-By default Kitchen Sync will start only one worker.  To parallelize, use the --workers option:
+By default Kitchen Sync will start only one worker.  To parallelize, use the `--workers` option:
 
 ```
 ks --from postgresql://someuser:mypassword@localhost/sourcedb \
@@ -53,7 +53,7 @@ What is it doing?
 
 Kitchen Sync is not very chatty by default.  Add the `--verbose` argument if you would like to see what it is working on.
 
-Or, take to the next level and use `--debug` instead, if you would like to see how well/badly its synchronisation protocol is working.
+Or, take to the next level and use `--debug` instead, if you would like to see how well/badly its synchronization protocol is working.
 
 Transporting Kitchen Sync over SSH
 ----------------------------------
@@ -89,3 +89,8 @@ ks --via server1.sourcecluster \
 Note that in this case the `localhost` specified in the two connection strings is different - at the 'from' end it will be the `--via` server, but at the 'to' end it will be the server you are starting Kitchen Sync on.
 
 (The `--via` option always controls what machine Kitchen Sync runs on for the 'from' end; there is no option to run Kitchen Sync's 'to' end on a different machine.)
+
+Filtering data
+--------------
+
+Kitchen Sync allows you to filter the data as it is read from the source database.  You can filter out rows, replace the values in columns, or filter out entire tables.  See [Filtering data|FILTERING.md].
