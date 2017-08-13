@@ -93,4 +93,4 @@ Note that in this case the `localhost` specified in the two connection strings i
 Filtering data
 --------------
 
-Kitchen Sync allows you to filter the data as it is read from the source database.  You can filter out rows, replace the values in columns, or filter out entire tables.  See [Filtering data|FILTERING.md].
+Kitchen Sync allows you to filter the data as it is read from the source database.  You can filter out rows, replace the values in columns, or filter out entire tables.  See [Filtering data](FILTERING.md).

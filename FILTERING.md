@@ -113,12 +113,12 @@ This option will leave the data in any other tables in your target database unch
 
 ## Syncing all except a subset of tables
 
-The `--except` option can be used to specify the names of tables _not_ to sync (ie. the opposite of `--only`).  For example:
+The `--ignore` option can be used to specify the names of tables _not_ to sync (ie. the opposite of `--only`).  For example:
 
 ```
 ks --from postgresql://someuser:mypassword@localhost/sourcedb \
    --to postgresql://someuser:mypassword@localhost/targetdb \
-   --except table4,table5
+   --ignore table4,table5
 ```
 
 This option will leave the data in the given tables in your target database unchanged.
