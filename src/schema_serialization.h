@@ -31,6 +31,10 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 		packer << string("nullable");
 		packer << column.nullable;
 	}
+	if (!column.db_type_def.empty()) {
+		packer << string("db_type_def");
+		packer << column.db_type_def;
+	}
 	switch (column.default_type) {
 		case DefaultType::no_default:
 			break;
@@ -112,6 +116,8 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 			unpacker >> column.scale;
 		} else if (attr_key == "nullable") {
 			unpacker >> column.nullable;
+		} else if (attr_key == "db_type_def") {
+			unpacker >> column.db_type_def;
 		} else if (attr_key == "sequence") {
 			column.default_type = DefaultType::sequence;
 			unpacker >> column.default_value; // currently unused, but allowed for forward compatibility

@@ -291,4 +291,31 @@ SQL
         "keys" => [] }
     end
   end
+
+  def create_unsupportedtbl
+    execute(<<-SQL)
+      CREATE TABLE unsupportedtbl (
+        col1 INT NOT NULL,
+        unsupported #{unsupported_column_type},
+        PRIMARY KEY(col1))
+SQL
+  end
+
+  def unsupported_column_type(database_server = @database_server)
+    case database_server
+    when 'mysql'
+      'BIT(8)'
+    when 'postgresql'
+      'tsvector'
+    end
+  end
+
+  def unsupportedtbl_def(database_server = @database_server)
+    { "name"    => "unsupportedtbl",
+      "columns" => [
+        {"name" => "pri",         "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
+        {"name" => "unsupported", "column_type" => ColumnTypes::UNKN, "db_type_def" => unsupported_column_type(database_server)}],
+      "primary_key_columns" => [0],
+      "keys" => [] }
+  end
 end

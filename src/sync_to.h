@@ -203,9 +203,14 @@ struct SyncToWorker {
 	}
 
 	void check_tables_usable(Tables &tables) {
-		for (Table &table : tables) {
+		for (const Table &table : tables) {
 			if (table.primary_key_columns.empty()) {
 				throw runtime_error("Couldn't find a primary or non-nullable unique key on table " + table.name);
+			}
+			for (const Column &column : table.columns) {
+				if (column.column_type == ColumnTypes::UNKN) {
+					throw runtime_error("Don't know how to interpret type of " + table.name + '.' + column.name + " (" + column.db_type_def + ")");
+				}
 			}
 		}
 	}

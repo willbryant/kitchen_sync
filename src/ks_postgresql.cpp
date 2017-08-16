@@ -577,7 +577,8 @@ struct PostgreSQLColumnLister {
 		} else if (db_type == "timestamp with time zone") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM, 0, 0, ColumnFlags::time_zone);
 		} else {
-			throw runtime_error("Don't know how to represent postgresql type of " + table.name + '.' + name + " (" + db_type + ")");
+			// not supported, but leave it till sync_to's check_tables_usable to complain about it so that it can be ignored
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UNKN, 0, 0, ColumnFlags::nothing, db_type);
 		}
 	}
 

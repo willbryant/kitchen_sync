@@ -329,6 +329,61 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     read_command
   end
 
+  test_each "doesn't complain if there's an ignored table that has on unsupported column type" do
+    program_env['ENDPOINT_IGNORE_TABLES'] = 'unsupportedtbl'
+    clear_schema
+    create_unsupportedtbl
+    create_secondtbl
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command   Commands::SCHEMA, ["tables" => [secondtbl_def]]
+    expect_sync_start_commands
+    expect_command Commands::OPEN, ["secondtbl"]
+    send_command   Commands::ROWS, [[], []]
+    read_command
+  end
+
+  test_each "complains if there's a non-ignored table that has on unsupported column type at both ends" do
+    clear_schema
+    create_unsupportedtbl
+    create_secondtbl
+
+    expect_handshake_commands
+    expect_stderr("Error in the 'to' worker: Don't know how to interpret type of unsupportedtbl.unsupported (#{unsupported_column_type})") do
+      expect_command Commands::SCHEMA
+      send_command   Commands::SCHEMA, ["tables" => [unsupportedtbl_def, secondtbl_def]]
+      read_command rescue nil
+    end
+  end
+
+  test_each "complains if there's a non-ignored table that has on unsupported column type at the from end" do
+    clear_schema
+    create_secondtbl
+
+    expect_handshake_commands
+    expect_stderr("Error in the 'to' worker: Don't know how to interpret type of unsupportedtbl.unsupported (#{unsupported_column_type})") do
+      expect_command Commands::SCHEMA
+      send_command   Commands::SCHEMA, ["tables" => [unsupportedtbl_def, secondtbl_def]]
+      read_command rescue nil
+    end
+  end
+
+  test_each "drops non-ignored tables that have on unsupported column type that exist only at the to end" do
+    clear_schema
+    create_unsupportedtbl
+    create_secondtbl
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command   Commands::SCHEMA, ["tables" => [secondtbl_def]]
+    expect_sync_start_commands
+    expect_command Commands::OPEN, ["secondtbl"]
+    send_command   Commands::ROWS, [[], []]
+    read_command
+    assert_equal %w(secondtbl), connection.tables
+  end
+
 
   test_each "adds missing columns before other columns" do
     clear_schema

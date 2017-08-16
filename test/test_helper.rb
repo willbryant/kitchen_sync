@@ -257,6 +257,8 @@ module ColumnTypes
   DATE = "DATE"
   TIME = "TIME"
   DTTM = "DATETIME"
+
+  UNKN = "UNKNOWN"
 end
 
 module Commands
