@@ -1,6 +1,12 @@
 Changelog
 =========
 
+0.60
+----
+* Don't complain about unsupported column types on ignored tables or tables that are going to be dropped anyway.
+* Reduce max block size in order to reduce rework when mismatches with certain patterns are detected.
+* Drop support for the protocol used by version 0.45 and earlier.
+
 0.59
 ----
 * Initial support for MySQL's special `timestamp` type and for `DEFAULT CURRENT_TIMESTAMP` and `ON UPDATE CURRENT_TIMESTAMP` behaviors on `timestamp` and `datetime` columns.
