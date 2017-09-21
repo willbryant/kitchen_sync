@@ -1,5 +1,19 @@
 #include "timestamp.h"
 
+struct HashResult {
+	HashResult(ColumnValues prev_key, ColumnValues last_key, size_t estimated_rows_in_range, size_t our_row_count, size_t our_size, string our_hash, ColumnValues our_last_key):
+		prev_key(prev_key), last_key(last_key), estimated_rows_in_range(estimated_rows_in_range), our_row_count(our_row_count), our_size(our_size), our_hash(our_hash), our_last_key(our_last_key) {}
+
+	ColumnValues prev_key;
+	ColumnValues last_key;
+	size_t estimated_rows_in_range;
+
+	size_t our_row_count;
+	size_t our_size;
+	string our_hash;
+	ColumnValues our_last_key;
+};
+
 typedef tuple<ColumnValues, ColumnValues> KeyRange;
 typedef tuple<ColumnValues, ColumnValues, size_t, size_t> KeyRangeWithRowCount;
 const size_t UNKNOWN_ROW_COUNT = numeric_limits<size_t>::max();
@@ -10,6 +24,7 @@ struct TableJob {
 	const Table &table;
 	deque<KeyRange> ranges_to_retrieve;
 	deque<KeyRangeWithRowCount> ranges_to_check;
+	deque<HashResult> ranges_hashed;
 };
 
 template <class Worker, class DatabaseClient>
@@ -109,52 +124,11 @@ struct SyncToProtocol {
 				// while that end is working, do the same at our end
 				RowHasherAndLastKey hasher(hash_algorithm, table.primary_key_columns);
 				worker.client.retrieve_rows(hasher, table, prev_key, last_key, rows_to_hash);
-				const Hash &our_hash(hasher.finish());
+				table_job.ranges_hashed.push_back(HashResult(prev_key, last_key, estimated_rows_in_range, hasher.row_count, hasher.size, hasher.finish().to_string(), hasher.last_key));
 
 				// now read their response
 				expect_verb(Commands::HASH);
-				size_t _rows_to_hash, their_row_count;
-				string their_hash;
-				string _table_name;
-				ColumnValues _prev_key, _last_key;
-				read_all_arguments(input, _table_name, _prev_key, _last_key, _rows_to_hash, their_row_count, their_hash);
-
-				if (_table_name != table_job.table.name || _prev_key != prev_key || _last_key != last_key || _rows_to_hash != rows_to_hash) {
-					throw command_error("Expected arguments " + table_job.table.name + ", " + values_list(client, table_job.table, prev_key) + ", " + values_list(client, table_job.table, last_key) + ", " + to_string(rows_to_hash) +
-							"but received " + _table_name + ", " + values_list(client, table_job.table, _prev_key) + ", " + values_list(client, table_job.table, _last_key) + ", " + to_string(_rows_to_hash));
-				}
-
-				bool match = (our_hash == their_hash && hasher.row_count == their_row_count);
-				if (worker.verbose > 1) cout << timestamp() << " -> hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << their_row_count << (match ? " matches" : " doesn't match") << endl;
-
-				if (hasher.last_key != last_key) {
-					// whether or not we found an error in the range we just did, we don't know whether
-					// there is an error in the remaining part of the original range (which could be simply
-					// the rest of the table); queue it to be scanned
-					if (estimated_rows_in_range == UNKNOWN_ROW_COUNT) {
-						// we're scanning forward, do that last
-						size_t rows_to_hash = rows_to_scan_forward_next(rows_to_hash, match, hasher.row_count, hasher.size);
-						table_job.ranges_to_check.push_back(make_tuple(hasher.last_key, last_key, UNKNOWN_ROW_COUNT, rows_to_hash));
-					} else {
-						// we're hunting errors, do that first.  if the part just checked matched, then the
-						// error must be in the remaining part, so consider subdividing it; if it didn't match,
-						// then we don't know if the remaining part has error or not, so don't subdivide it yet.
-						size_t rows_remaining = estimated_rows_in_range - hasher.row_count;
-						size_t rows_to_hash = match && rows_remaining > 1 && hasher.size > target_minimum_block_size ? rows_remaining/2 : rows_remaining;
-						table_job.ranges_to_check.push_front(make_tuple(hasher.last_key, last_key, rows_remaining, rows_to_hash));
-					}
-				}
-
-				if (!match) {
-					// the part that we checked has an error; decide whether it's large enough to subdivide
-					if (hasher.row_count > 1 && hasher.size > target_minimum_block_size) {
-						// yup, queue it up for another iteration of hashing, subdividing the range
-						table_job.ranges_to_check.push_front(make_tuple(prev_key, hasher.last_key, hasher.row_count, hasher.row_count/2));
-					} else {
-						// not worth subdividing the range any further, queue it to be retrieved
-						table_job.ranges_to_retrieve.push_back(make_tuple(prev_key, hasher.last_key));
-					}
-				}
+				handle_hash_command(table_job);
 
 			} else {
 				break;
@@ -235,6 +209,57 @@ struct SyncToProtocol {
 		if (worker.verbose > 1) cout << timestamp() << " -> rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
 
 		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
+	}
+
+	HashResult find_hash_result_for(TableJob &table_job, const ColumnValues &prev_key, const ColumnValues &last_key) {
+		for (auto it = table_job.ranges_hashed.begin(); it != table_job.ranges_hashed.end(); ++it) {
+			HashResult result(*it);
+			table_job.ranges_hashed.erase(it);
+			return result;
+		}
+		throw command_error("Haven't issued a hash command for " + table_job.table.name + " " + values_list(client, table_job.table, prev_key) + " " + values_list(client, table_job.table, last_key));
+	}
+
+	void handle_hash_command(TableJob &table_job) {
+		size_t rows_to_hash, their_row_count;
+		string their_hash;
+		string table_name;
+		ColumnValues prev_key, last_key;
+		read_all_arguments(input, table_name, prev_key, last_key, rows_to_hash, their_row_count, their_hash);
+		
+		HashResult hash_result(find_hash_result_for(table_job, prev_key, last_key));
+
+		bool match = (hash_result.our_hash == their_hash && hash_result.our_row_count == their_row_count);
+		if (worker.verbose > 1) cout << timestamp() << " -> hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << their_row_count << (match ? " matches" : " doesn't match") << endl;
+
+		if (hash_result.our_last_key != last_key) {
+			// whether or not we found an error in the range we just did, we don't know whether
+			// there is an error in the remaining part of the original range (which could be simply
+			// the rest of the table); queue it to be scanned
+			if (hash_result.estimated_rows_in_range == UNKNOWN_ROW_COUNT) {
+				// we're scanning forward, do that last
+				size_t rows_to_hash = rows_to_scan_forward_next(rows_to_hash, match, hash_result.our_row_count, hash_result.our_size);
+				table_job.ranges_to_check.push_back(make_tuple(hash_result.our_last_key, last_key, UNKNOWN_ROW_COUNT, rows_to_hash));
+			} else {
+				// we're hunting errors, do that first.  if the part just checked matched, then the
+				// error must be in the remaining part, so consider subdividing it; if it didn't match,
+				// then we don't know if the remaining part has error or not, so don't subdivide it yet.
+				size_t rows_remaining = hash_result.estimated_rows_in_range - hash_result.our_row_count;
+				size_t rows_to_hash = match && rows_remaining > 1 && hash_result.our_size > target_minimum_block_size ? rows_remaining/2 : rows_remaining;
+				table_job.ranges_to_check.push_front(make_tuple(hash_result.our_last_key, last_key, rows_remaining, rows_to_hash));
+			}
+		}
+
+		if (!match) {
+			// the part that we checked has an error; decide whether it's large enough to subdivide
+			if (hash_result.our_row_count > 1 && hash_result.our_size > target_minimum_block_size) {
+				// yup, queue it up for another iteration of hashing, subdividing the range
+				table_job.ranges_to_check.push_front(make_tuple(prev_key, hash_result.our_last_key, hash_result.our_row_count, hash_result.our_row_count/2));
+			} else {
+				// not worth subdividing the range any further, queue it to be retrieved
+				table_job.ranges_to_retrieve.push_back(make_tuple(prev_key, hash_result.our_last_key));
+			}
+		}
 	}
 
 	inline size_t rows_to_scan_forward_next(size_t rows_scanned, bool match, size_t our_row_count, size_t our_size) {
