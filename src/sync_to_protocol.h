@@ -133,7 +133,8 @@ struct SyncToProtocol {
 					// the rest of the table); queue it to be scanned
 					if (estimated_rows_in_range == UNKNOWN_ROW_COUNT) {
 						// we're scanning forward, do that last
-						table_job.ranges_to_check.push_back(make_tuple(hasher.last_key, last_key, UNKNOWN_ROW_COUNT, rows_to_scan_forward_next(rows_to_hash, match, hasher)));
+						size_t rows_to_hash = rows_to_scan_forward_next(rows_to_hash, match, hasher.row_count, hasher.size);
+						table_job.ranges_to_check.push_back(make_tuple(hasher.last_key, last_key, UNKNOWN_ROW_COUNT, rows_to_hash));
 					} else {
 						// we're hunting errors, do that first.  if the part just checked matched, then the
 						// error must be in the remaining part, so consider subdividing it; if it didn't match,
@@ -236,22 +237,22 @@ struct SyncToProtocol {
 		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
 	}
 
-	inline size_t rows_to_scan_forward_next(size_t rows_scanned, bool match, const RowHasher &hasher) {
+	inline size_t rows_to_scan_forward_next(size_t rows_scanned, bool match, size_t our_row_count, size_t our_size) {
 		if (match) {
 			// on the next iteration, scan more rows per iteration, to reduce the impact of latency between the ends -
 			// up to a point, after which the cost of re-work when we finally run into a mismatch outweights the
 			// benefit of the latency savings
-			if (hasher.size <= target_maximum_block_size/2) {
-				return hasher.row_count*2;
+			if (our_size <= target_maximum_block_size/2) {
+				return our_row_count*2;
 			} else {
-				return max<size_t>(hasher.row_count*target_maximum_block_size/hasher.size, 1);
+				return max<size_t>(our_row_count*target_maximum_block_size/our_size, 1);
 			}
 		} else {
 			// on the next iteration, scan fewer rows per iteration, to reduce the cost of re-work (down to a point)
-			if (hasher.size >= target_minimum_block_size*2) {
-				return max<size_t>(hasher.row_count/2, 1);
+			if (our_size >= target_minimum_block_size*2) {
+				return max<size_t>(our_row_count/2, 1);
 			} else {
-				return max<size_t>(hasher.row_count*target_minimum_block_size/hasher.size, 1);
+				return max<size_t>(our_row_count*target_minimum_block_size/our_size, 1);
 			}
 		}
 	}
