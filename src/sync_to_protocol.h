@@ -135,9 +135,12 @@ struct SyncToProtocol {
 						// we're scanning forward, do that last
 						table_job.ranges_to_check.push_back(make_tuple(hasher.last_key, last_key, UNKNOWN_ROW_COUNT, rows_to_scan_forward_next(rows_to_hash, match, hasher)));
 					} else {
-						// we're hunting errors, do that first
+						// we're hunting errors, do that first.  if the part just checked matched, then the
+						// error must be in the remaining part, so consider subdividing it; if it didn't match,
+						// then we don't know if the remaining part has error or not, so don't subdivide it yet.
 						size_t rows_remaining = estimated_rows_in_range - hasher.row_count;
-						table_job.ranges_to_check.push_front(make_tuple(hasher.last_key, last_key, rows_remaining, rows_remaining));
+						size_t rows_to_hash = match && rows_remaining > 1 && hasher.size > target_minimum_block_size ? rows_remaining/2 : rows_remaining;
+						table_job.ranges_to_check.push_front(make_tuple(hasher.last_key, last_key, rows_remaining, rows_to_hash));
 					}
 				}
 
