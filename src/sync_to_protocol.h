@@ -146,7 +146,13 @@ struct SyncToProtocol {
 
 				if (!match) {
 					// the part that we checked has an error; decide whether it's large enough to subdivide
-					handle_hash_not_matching(table_job, prev_key, hasher);
+					if (hasher.row_count > 1 && hasher.size > target_minimum_block_size) {
+						// yup, queue it up for another iteration of hashing, subdividing the range
+						table_job.ranges_to_check.push_front(make_tuple(prev_key, hasher.last_key, hasher.row_count, hasher.row_count/2));
+					} else {
+						// not worth subdividing the range any further, queue it to be retrieved
+						table_job.ranges_to_retrieve.push_back(make_tuple(prev_key, hasher.last_key));
+					}
 				}
 
 			} else {
@@ -228,27 +234,6 @@ struct SyncToProtocol {
 		if (worker.verbose > 1) cout << timestamp() << " -> rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
 
 		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
-	}
-
-	void handle_hash_not_matching(TableJob &table_job, const ColumnValues &prev_key, const RowHasherAndLastKey &hasher) {
-		// the part that we checked has an error; decide whether it's large enough to subdivide
-		if (hasher.row_count > 1 && hasher.size > target_minimum_block_size) {
-			// yup, queue it up for another iteration of hashing
-			table_job.ranges_to_check.push_front(make_tuple(prev_key, hasher.last_key, hasher.row_count, decide_rows_to_hash(hasher.row_count)));
-		} else {
-			// not worth subdividing the range any further, queue it to be retrieved
-			table_job.ranges_to_retrieve.push_back(make_tuple(prev_key, hasher.last_key));
-		}
-	}
-
-	inline size_t decide_rows_to_hash(size_t rows_in_range) {
-		if (rows_in_range > 3) {
-			// break the range into two
-			return rows_in_range/2;
-		} else {
-			// down to single-row territory already
-			return 1;
-		}
 	}
 
 	inline size_t rows_to_scan_forward_next(size_t rows_scanned, bool match, const RowHasher &hasher) {
