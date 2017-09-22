@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.99
+----
+* Release candidate for 1.0
+* Rewrite protocol and sync algorithm to hash concurrently at the two ends, and pipeline commands where possible.
+
 0.60
 ----
 * Don't complain about unsupported column types on ignored tables or tables that are going to be dropped anyway.
