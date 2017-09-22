@@ -9,7 +9,7 @@ struct SyncFromProtocol6 {
 		output(worker.output),
 		sync_algorithm(*this, worker.client, DEFAULT_HASH_ALGORITHM), // until advised to use a different hash algorithm by the 'to' end
 		target_minimum_block_size(1),
-		target_maximum_block_size(DEFAULT_MAXIMUM_BLOCK_SIZE) {
+		target_maximum_block_size(DEFAULT_MAXIMUM_BLOCK_SIZE6) {
 	}
 
 	void handle_commands() {

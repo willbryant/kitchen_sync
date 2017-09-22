@@ -10,11 +10,11 @@ struct SyncToProtocol6 {
 		output(worker.output),
 		sync_algorithm(*this, worker.client, worker.configured_hash_algorithm),
 		target_minimum_block_size(1),
-		target_maximum_block_size(DEFAULT_MAXIMUM_BLOCK_SIZE) {
+		target_maximum_block_size(DEFAULT_MAXIMUM_BLOCK_SIZE6) {
 	}
 
 	void negotiate_target_minimum_block_size() {
-		send_command(output, Commands::TARGET_BLOCK_SIZE, DEFAULT_MINIMUM_BLOCK_SIZE);
+		send_command(output, Commands::TARGET_BLOCK_SIZE, DEFAULT_MINIMUM_BLOCK_SIZE6);
 
 		// the real app always accepts the block size we request, but the test suite uses smaller block sizes to make it easier to set up different scenarios
 		read_expected_command(input, Commands::TARGET_BLOCK_SIZE, target_minimum_block_size);
