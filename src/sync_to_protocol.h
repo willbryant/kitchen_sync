@@ -261,7 +261,7 @@ struct SyncToProtocol {
 				// we're hunting errors, do that first.  if the part just checked matched, then the
 				// error must be in the remaining part, so consider subdividing it; if it didn't match,
 				// then we don't know if the remaining part has error or not, so don't subdivide it yet.
-				size_t rows_remaining = hash_result.estimated_rows_in_range - hash_result.our_row_count;
+				size_t rows_remaining = hash_result.estimated_rows_in_range > hash_result.our_row_count ? hash_result.estimated_rows_in_range - hash_result.our_row_count : 1; // conditional to protect against underflow
 				size_t rows_to_hash = match && rows_remaining > 1 && hash_result.our_size > target_minimum_block_size ? rows_remaining/2 : rows_remaining;
 				table_job.ranges_to_check.push_front(make_tuple(hash_result.our_last_key, last_key, rows_remaining, rows_to_hash));
 			}
@@ -285,7 +285,7 @@ struct SyncToProtocol {
 			// up to a point, after which the cost of re-work when we finally run into a mismatch outweights the
 			// benefit of the latency savings
 			if (our_size <= target_maximum_block_size/2) {
-				return our_row_count*2;
+				return max<size_t>(our_row_count*2, 1);
 			} else {
 				return max<size_t>(our_row_count*target_maximum_block_size/our_size, 1);
 			}
