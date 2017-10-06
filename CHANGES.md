@@ -1,6 +1,12 @@
 Changelog
 =========
 
+0.99.1
+------
+* Second release candidate for 1.0
+* Fix algorithm problem in a special case involving unique keys and the last row of the table being replaced by a later one
+* Tune some block size numbers
+
 0.99
 ----
 * Release candidate for 1.0
