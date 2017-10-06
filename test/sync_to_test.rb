@@ -177,6 +177,37 @@ class SyncToTest < KitchenSync::EndpointTestCase
                  query("SELECT * FROM footbl ORDER BY col1")
   end
 
+  test_each "handles the last row being replaced by a row with the same unique key and a later primary key" do
+    clear_schema
+    create_uniquetbl
+    execute "INSERT INTO uniquetbl VALUES (1, 10, 'kept'), (2, 20, 'replaced')"
+    @rows = [[1, 10,       "kept"],
+             [3, 30, "irrelevant"],
+             [4, 20,   "replacer"]]
+    @rows << [@rows[-1][0] + 1, nil, "irrelevant"*100] while @rows.size < 100000 # add enough data to make the 'to' end apply the replace statement when it receives the 'replacer' row
+    @keys = @rows.collect {|row| [row[0]]}
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command   Commands::SCHEMA, ["tables" => [uniquetbl_def]]
+    expect_sync_start_commands
+    expect_command Commands::RANGE, ["uniquetbl"]
+    send_command   Commands::RANGE, ["uniquetbl", @keys[0], @keys[-1]]
+    expect_command Commands::ROWS, ["uniquetbl", [2], @keys[-1]]
+    send_results   Commands::ROWS,
+                   ["uniquetbl", [2], @keys[-1]],
+                   *@rows[1..-1]
+    expect_command Commands::HASH, ["uniquetbl", [], [2], 1]
+    send_command   Commands::HASH, ["uniquetbl", [], [2], 1, 1, hash_of(@rows[0..0])]
+    expect_command Commands::HASH, ["uniquetbl", [1], [2], 2]
+    send_command   Commands::HASH, ["uniquetbl", [1], [2], 2, 0, hash_of([])]
+    # if you receive a command here to hash 0 rows, issue 36 has regressed
+    expect_quit_and_close
+
+    assert_equal @rows,
+                 query("SELECT * FROM uniquetbl ORDER BY pri")
+  end
+
   test_each "handles data after nil elements" do
     clear_schema
     create_footbl
