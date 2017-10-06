@@ -117,6 +117,7 @@ struct SyncToProtocol {
 
 				tie(prev_key, last_key, estimated_rows_in_range, rows_to_hash) = table_job.ranges_to_check.front();
 				table_job.ranges_to_check.pop_front();
+				if (rows_to_hash == 0) throw logic_error("Can't hash 0 rows");
 
 				// tell the other end to hash this range
 				if (worker.verbose > 1) cout << timestamp() << " <- hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << rows_to_hash << endl;
@@ -248,7 +249,7 @@ struct SyncToProtocol {
 		bool match = (hash_result.our_hash == their_hash && hash_result.our_row_count == their_row_count);
 		if (worker.verbose > 1) cout << timestamp() << " -> hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << their_row_count << (match ? " matches" : " doesn't match") << endl;
 
-		if (hash_result.our_last_key != last_key) {
+		if (hash_result.our_row_count == rows_to_hash && hash_result.our_last_key != last_key) {
 			// whether or not we found an error in the range we just did, we don't know whether
 			// there is an error in the remaining part of the original range (which could be simply
 			// the rest of the table); queue it to be scanned
