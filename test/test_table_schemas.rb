@@ -45,6 +45,30 @@ SQL
         {"name" => "secidx", "unique" => false, "columns" => [3]}] }
   end
 
+  def create_uniquetbl
+    execute(<<-SQL)
+      CREATE TABLE uniquetbl (
+        pri INT NOT NULL,
+        sec INT,
+        col3 VARCHAR(1000),
+        PRIMARY KEY(pri))
+SQL
+    execute(<<-SQL)
+      CREATE UNIQUE INDEX secidx ON uniquetbl (sec)
+SQL
+  end
+
+  def uniquetbl_def
+    { "name"    => "uniquetbl",
+      "columns" => [
+        {"name" => "pri", "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
+        {"name" => "sec", "column_type" => ColumnTypes::SINT, "size" => 4},
+        {"name" => "col3", "column_type" => ColumnTypes::VCHR, "size" => 1000}],
+      "primary_key_columns" => [0], # note order is that listed in the key, not the index of the column in the table
+      "keys" => [
+        {"name" => "secidx", "unique" => true, "columns" => [1]}] }
+  end
+
   def create_middletbl
     execute(<<-SQL)
       CREATE TABLE middletbl (

@@ -117,6 +117,7 @@ struct SyncToProtocol {
 
 				tie(prev_key, last_key, estimated_rows_in_range, rows_to_hash) = table_job.ranges_to_check.front();
 				table_job.ranges_to_check.pop_front();
+				if (rows_to_hash == 0) throw logic_error("Can't hash 0 rows");
 
 				// tell the other end to hash this range
 				if (worker.verbose > 1) cout << timestamp() << " <- hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << rows_to_hash << endl;
@@ -248,7 +249,7 @@ struct SyncToProtocol {
 		bool match = (hash_result.our_hash == their_hash && hash_result.our_row_count == their_row_count);
 		if (worker.verbose > 1) cout << timestamp() << " -> hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << their_row_count << (match ? " matches" : " doesn't match") << endl;
 
-		if (hash_result.our_last_key != last_key) {
+		if (hash_result.our_row_count == rows_to_hash && hash_result.our_last_key != last_key) {
 			// whether or not we found an error in the range we just did, we don't know whether
 			// there is an error in the remaining part of the original range (which could be simply
 			// the rest of the table); queue it to be scanned
@@ -260,7 +261,7 @@ struct SyncToProtocol {
 				// we're hunting errors, do that first.  if the part just checked matched, then the
 				// error must be in the remaining part, so consider subdividing it; if it didn't match,
 				// then we don't know if the remaining part has error or not, so don't subdivide it yet.
-				size_t rows_remaining = hash_result.estimated_rows_in_range - hash_result.our_row_count;
+				size_t rows_remaining = hash_result.estimated_rows_in_range > hash_result.our_row_count ? hash_result.estimated_rows_in_range - hash_result.our_row_count : 1; // conditional to protect against underflow
 				size_t rows_to_hash = match && rows_remaining > 1 && hash_result.our_size > target_minimum_block_size ? rows_remaining/2 : rows_remaining;
 				table_job.ranges_to_check.push_front(make_tuple(hash_result.our_last_key, last_key, rows_remaining, rows_to_hash));
 			}
@@ -284,7 +285,7 @@ struct SyncToProtocol {
 			// up to a point, after which the cost of re-work when we finally run into a mismatch outweights the
 			// benefit of the latency savings
 			if (our_size <= target_maximum_block_size/2) {
-				return our_row_count*2;
+				return max<size_t>(our_row_count*2, 1);
 			} else {
 				return max<size_t>(our_row_count*target_maximum_block_size/our_size, 1);
 			}
