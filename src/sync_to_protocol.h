@@ -82,7 +82,8 @@ struct SyncToProtocol {
 		if (worker.verbose) {
 			unique_lock<mutex> lock(sync_queue.mutex);
 			cout << fixed << setw(5);
-			cout << timestamp() << " starting " << table.name << endl << flush;
+			if (worker.verbose > 1) cout << timestamp() << ' ';
+			cout << "starting " << table.name << endl << flush;
 		}
 
 		TableJob table_job(table);
@@ -149,7 +150,8 @@ struct SyncToProtocol {
 		if (worker.verbose) {
 			time_t now = time(nullptr);
 			unique_lock<mutex> lock(sync_queue.mutex);
-			cout << timestamp() << " finished " << table.name << " in " << (now - started) << "s using " << hash_commands << " hash commands and " << rows_commands << " rows commands changing " << row_replacer.rows_changed << " rows" << endl << flush;
+			if (worker.verbose > 1) cout << timestamp() << ' ';
+			cout << "finished " << table.name << " in " << (now - started) << "s using " << hash_commands << " hash commands and " << rows_commands << " rows commands changing " << row_replacer.rows_changed << " rows" << endl << flush;
 		}
 
 		if (worker.commit_level >= CommitLevel::tables) {
