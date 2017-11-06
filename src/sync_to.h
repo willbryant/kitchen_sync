@@ -53,7 +53,7 @@ struct SyncToWorker {
 
 	void operator()() {
 		try {
-			negotiate_protocol();
+			negotiate_protocol_version();
 
 			share_snapshot();
 			retrieve_database_schema();
@@ -100,7 +100,7 @@ struct SyncToWorker {
 		output_stream.close();
 	}
 
-	void negotiate_protocol() {
+	void negotiate_protocol_version() {
 		const int EARLIEST_PROTOCOL_VERSION_SUPPORTED = 6;
 		const int LATEST_PROTOCOL_VERSION_SUPPORTED = 7;
 
