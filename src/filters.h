@@ -1,8 +1,19 @@
 #ifndef FILTERS_H
 #define FILTERS_H
 
-#include "schema.h"
+#include <string>
+#include <vector>
+#include <map>
 
-void load_filters(const string &filters_file, map<string, Table*> &tables_by_name);
+using namespace std;
+
+struct TableFilter {
+	string where_conditions;
+	map<string, string> filter_expressions;
+};
+
+typedef map<string, TableFilter> TableFilters;
+
+TableFilters load_filters(const string &filters_file);
 
 #endif

@@ -101,7 +101,38 @@ struct SyncFromWorker {
 		}
 
 		if (!filter_file.empty()) {
-			load_filters(filter_file, tables_by_name);
+			apply_filters(load_filters(filter_file));
+		}
+	}
+
+	void apply_filters(const TableFilters &table_filters) {
+		for (auto const &it : table_filters) {
+			const string &table_name(it.first);
+			const TableFilter &table_filter(it.second);
+
+			Table *table = tables_by_name[table_name];
+			if (!table) throw runtime_error("Filtered table '" + table_name + "' not found");
+
+			apply_filter(*table, table_filter);
+		}
+	}
+
+	void apply_filter(Table &table, const TableFilter &table_filter) {
+		table.where_conditions = table_filter.where_conditions;
+
+		map<string, Column*> columns_by_name;
+		for (Column &column : table.columns) {
+			columns_by_name[column.name] = &column;
+		}
+
+		for (auto const &it : table_filter.filter_expressions) {
+			const string &column_name(it.first);
+			const string &filter_expression(it.second);
+
+			Column *column = columns_by_name[column_name];
+			if (!column) throw runtime_error("Can't find column '" + column_name + "' to filter in table '" + table.name + "'");
+
+			column->filter_expression = filter_expression;
 		}
 	}
 
