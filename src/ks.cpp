@@ -76,13 +76,27 @@ int main(int argc, char *argv[]) {
 		if (options.set_from_variables.empty()) options.set_from_variables = "-";
 		if (options.cipher.empty()) options.cipher = "aes256-ctr";
 
-		const char *from_args[] = { ssh_binary.c_str(), "-C", "-c", options.cipher.c_str(), options.via.c_str(),
-									from_binary.c_str(), "from", options.from.host.c_str(), options.from.port.c_str(), options.from.database.c_str(), options.from.username.c_str(), options.from.password.c_str(), options.set_from_variables.c_str(), nullptr };
-		const char **applicable_from_args = (options.via.empty() ? from_args + 5 : from_args);
+		vector<const char*> from_args;
+		if (!options.via.empty()) {
+			from_args.push_back(ssh_binary.c_str());
+			from_args.push_back("-C");
+			from_args.push_back("-c");
+			from_args.push_back(options.cipher.c_str());
+			from_args.push_back(options.via.c_str());
+		}
+		from_args.push_back(from_binary.c_str());
+		from_args.push_back("from");
+		from_args.push_back(options.from.host.c_str());
+		from_args.push_back(options.from.port.c_str());
+		from_args.push_back(options.from.database.c_str());
+		from_args.push_back(options.from.username.c_str());
+		from_args.push_back(options.from.password.c_str());
+		from_args.push_back(options.set_from_variables.c_str());
+		from_args.push_back(nullptr);
 
 		if (options.verbose >= VERY_VERBOSE) {
 			cout << "from command:";
-			for (const char **p = applicable_from_args; *p; p++) cout << ' ' << (**p ? *p : "''");
+			for (const char *p : from_args) if (p) cout << ' ' << (*p ? p : "''");
 			cout << endl;
 		}
 
@@ -96,7 +110,7 @@ int main(int argc, char *argv[]) {
 		for (int worker = 0; worker < options.workers; ++worker) {
 			UnidirectionalPipe stdin_pipe;
 			UnidirectionalPipe stdout_pipe;
-			child_pids.push_back(Process::fork_and_exec(*applicable_from_args, applicable_from_args, stdin_pipe, stdout_pipe));
+			child_pids.push_back(Process::fork_and_exec(from_args.front(), from_args.data(), stdin_pipe, stdout_pipe));
 			stdout_pipe.dup_read_to(to_descriptor_list_start + worker);
 			stdin_pipe.dup_write_to(to_descriptor_list_start + worker + options.workers);
 		}
