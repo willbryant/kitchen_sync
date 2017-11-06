@@ -159,7 +159,7 @@ struct SyncToWorker {
 			send_command(output, Commands::SCHEMA);
 			read_expected_command(input, Commands::SCHEMA, database);
 			client.convert_unsupported_database_schema(database);
-			filter_tables(database.tables);
+			restrict_tables(database.tables);
 			check_tables_usable(database.tables);
 		}
 	}
@@ -169,7 +169,7 @@ struct SyncToWorker {
 			// get our schema
 			Database to_database;
 			client.populate_database_schema(to_database);
-			filter_tables(to_database.tables);
+			restrict_tables(to_database.tables);
 
 			// check they match, and if not, figure out what DDL we would need to run to fix the 'to' end's schema
 			SchemaMatcher<DatabaseClient> matcher(client);
@@ -196,7 +196,7 @@ struct SyncToWorker {
 		}
 	}
 
-	void filter_tables(Tables &tables) {
+	void restrict_tables(Tables &tables) {
 		Tables::iterator table = tables.begin();
 		while (table != tables.end()) {
 			if (ignore_tables.count(table->name) ||
