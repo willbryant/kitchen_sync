@@ -25,6 +25,29 @@ void be_christmassy() {
 	     << "           | |" << endl;
 }
 
+void greet_remote_server(Options &options, const string &ssh_binary, const string &from_binary) {
+	string from_binary_cmd(from_binary.c_str() + string(" ") + string("do-nothing"));
+
+	const char *ssh_greeting_args[] = {
+		ssh_binary.c_str(),
+		options.via.c_str(),
+		from_binary_cmd.c_str(), nullptr };
+
+	if (options.verbose >= VERY_VERBOSE) {
+		cout << "ssh greeting command:";
+		for (const char **p = ssh_greeting_args; *p; p++) cout << ' ' << (**p ? *p : "''");
+		cout << endl;
+	}
+
+	pid_t pid = Process::fork_and_exec(ssh_binary, ssh_greeting_args);
+	bool success = Process::wait_for_and_check(pid);
+
+	if (!success) {
+		cerr << "failed to perform initial SSH greeting" << endl;
+		return;
+	}
+}
+
 int main(int argc, char *argv[]) {
 	try
 	{
@@ -59,6 +82,10 @@ int main(int argc, char *argv[]) {
 			cout << "from command:";
 			for (const char **p = applicable_from_args; *p; p++) cout << ' ' << (**p ? *p : "''");
 			cout << endl;
+		}
+
+		if (!options.via.empty()) {
+			greet_remote_server(options, ssh_binary, from_binary);
 		}
 
 		vector<pid_t> child_pids;
