@@ -306,8 +306,8 @@ SQL
         "columns" => [
           {"name" => "pri",                "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false},
           {"name" => "currentdatefield",   "column_type" => ColumnTypes::DATE,                "default_function" => "CURRENT_DATE"},
-          {"name" => "currentuserdefault", "column_type" => ColumnTypes::VCHR, "size" => 255, "default_function" => "current_user"},
-          {"name" => "sqlspecialdefault",  "column_type" => ColumnTypes::VCHR, "size" => 255, "default_function" => "current_schema"}, # special treatment noted on System Information Functions documentation page
+          {"name" => "currentuserdefault", "column_type" => ColumnTypes::VCHR, "size" => 255, "default_function" => "CURRENT_USER"},
+          {"name" => "sqlspecialdefault",  "column_type" => ColumnTypes::VCHR, "size" => 255, "default_function" => "CURRENT_SCHEMA"}, # special treatment noted on System Information Functions documentation page
           {"name" => "pgfunctiondefault",  "column_type" => ColumnTypes::TEXT,                "default_function" => "version()"},
           {"name" => "timewithzone",       "column_type" => ColumnTypes::TIME, "time_zone" => true},
           {"name" => "timestampwithzone",  "column_type" => ColumnTypes::DTTM, "time_zone" => true}],
