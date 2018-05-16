@@ -12,10 +12,6 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 	apt-get clean -y && \
 	rm -rf /var/cache/apt/archives/*
 
-# suppress warnings
-#RUN sed -i 's/key_buffer/key_buffer_size/' /etc/mysql/my.cnf
-#RUN sed -i 's/myisam-recover/myisam-recover-options/' /etc/mysql/my.cnf
-
 RUN gem install bundler --no-ri --no-rdoc
 
 WORKDIR /tmp
