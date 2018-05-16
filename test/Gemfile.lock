@@ -8,7 +8,7 @@ GEM
   remote: https://rubygems.org/
   specs:
     msgpack (0.5.9)
-    mysql2 (0.3.15)
+    mysql2 (0.5.1)
     power_assert (0.2.6)
     ruby-xxHash (0.4.0.1)
     test-unit (3.1.5)
@@ -25,4 +25,4 @@ DEPENDENCIES
   test-unit
 
 BUNDLED WITH
-   1.14.6
+   1.16.1
