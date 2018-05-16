@@ -28,9 +28,13 @@ void load_filter_columns(const string &table_name, TableFilter &table_filter, co
 }
 
 void load_filter_rows(const string &table_name, TableFilter &table_filter, const YAML::Node &node) {
-	table_filter.where_conditions += table_filter.where_conditions.empty() ? "(" : " AND (";
-	table_filter.where_conditions += node.as<string>();
-	table_filter.where_conditions += ")";
+	if (table_filter.where_conditions.empty()) { // actually currently always true, since you can't combine 'clear' and 'only'
+		table_filter.where_conditions = node.as<string>();
+	} else {
+		table_filter.where_conditions += " AND (";
+		table_filter.where_conditions += node.as<string>();
+		table_filter.where_conditions += ")";
+	}
 }
 
 void load_filter_map(const string &table_name, TableFilter &table_filter, const YAML::Node &node) {
@@ -48,8 +52,13 @@ void load_filter_map(const string &table_name, TableFilter &table_filter, const 
 }
 
 TableFilters load_filters(const string &filters_file) {
-	YAML::Node config(YAML::LoadFile(filters_file));
 	TableFilters table_filters;
+
+	if (filters_file.empty()) {
+		return table_filters;
+	}
+
+	YAML::Node config(YAML::LoadFile(filters_file));
 
 	for (YAML::const_iterator table_it = config.begin(); table_it != config.end(); ++table_it) {
 		string table_name(table_it->first.as<string>());

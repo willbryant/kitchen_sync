@@ -98,7 +98,9 @@ string where_sql(DatabaseClient &client, const Table &table, const ColumnValues 
 	}
 	if (!extra_where_conditions.empty()) {
 		result += prefix;
+		result += "(";
 		result += extra_where_conditions;
+		result += ")";
 	}
 	return result;
 }

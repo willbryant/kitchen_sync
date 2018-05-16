@@ -6,11 +6,20 @@
 
 template <typename OutputStream>
 void operator << (Packer<OutputStream> &packer, const TableFilter &table_filter) {
-	pack_map_length(packer, 2);
-	packer << string("where_conditions");
-	packer << table_filter.where_conditions;
-	packer << string("filter_expressions");
-	packer << table_filter.filter_expressions;
+	int fields = 0;
+	if (!table_filter.where_conditions.empty()) fields++;
+	if (!table_filter.filter_expressions.empty()) fields++;
+
+	pack_map_length(packer, fields);
+
+	if (!table_filter.where_conditions.empty()) {
+		packer << string("where_conditions");
+		packer << table_filter.where_conditions;
+	}
+	if (!table_filter.filter_expressions.empty()) {
+		packer << string("filter_expressions");
+		packer << table_filter.filter_expressions;
+	}
 }
 
 template <typename InputStream>
