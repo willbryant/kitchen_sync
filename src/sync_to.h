@@ -223,7 +223,21 @@ struct SyncToWorker {
 		}
 	}
 
+	void restrict_table_filters() {
+		TableFilters::iterator it = table_filters.begin();
+		while (it != table_filters.end()) {
+			if (ignore_tables.count(it->first) ||
+				(!only_tables.empty() && !only_tables.count(it->first))) {
+				it = table_filters.erase(it);
+			} else {
+				++it;
+			}
+		}
+	}
+
 	void send_filters() {
+		restrict_table_filters();
+
 		if (!table_filters.empty()) {
 			if (leader) {
 				// we can give better error feedback to the user if we check the filters before we send them
