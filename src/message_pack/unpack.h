@@ -101,10 +101,13 @@ public:
 		} else if (leader >= MSGPACK_FIXRAW_MIN && leader <= MSGPACK_FIXRAW_MAX) {
 			stream.skip(leader & 31);
 
-		} else if (leader == MSGPACK_RAW16) {
+		} else if (leader == MSGPACK_BIN8) {
+			stream.skip(read_bytes<uint8_t>());
+
+		} else if (leader == MSGPACK_RAW16 || leader == MSGPACK_BIN16) {
 			stream.skip(ntohs(read_bytes<uint16_t>()));
 
-		} else if (leader == MSGPACK_RAW32) {
+		} else if (leader == MSGPACK_RAW32 || leader == MSGPACK_BIN32) {
 			stream.skip(ntohl(read_bytes<uint32_t>()));
 
 		} else if (leader >= MSGPACK_FIXARRAY_MIN && leader <= MSGPACK_FIXARRAY_MAX) {
@@ -260,11 +263,17 @@ Unpacker<Stream> &operator >>(Unpacker<Stream> &unpacker, std::string &obj) {
 		obj.resize(leader & 31);
 	} else {
 		switch(leader) {
+			case MSGPACK_BIN8:
+				obj.resize(unpacker.template read_bytes<uint8_t>());
+				break;
+
 			case MSGPACK_RAW16:
+			case MSGPACK_BIN16:
 				obj.resize(ntohs(unpacker.template read_bytes<uint16_t>()));
 				break;
 
 			case MSGPACK_RAW32:
+			case MSGPACK_BIN32:
 				obj.resize(ntohl(unpacker.template read_bytes<uint32_t>()));
 				break;
 

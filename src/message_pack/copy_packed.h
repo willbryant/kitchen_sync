@@ -72,11 +72,17 @@ void copy_object(Unpacker<Stream> &unpacker, PackedValue &obj) {
 				copy_bytes(unpacker, obj, sizeof(int64_t));
 				break;
 
+			case MSGPACK_BIN8:
+				copy_bytes(unpacker, obj, *(uint8_t *)copy_bytes(unpacker, obj, sizeof(uint8_t)));
+				break;
+
 			case MSGPACK_RAW16:
+			case MSGPACK_BIN16:
 				copy_bytes(unpacker, obj, ntohs(*(uint16_t *)copy_bytes(unpacker, obj, sizeof(uint16_t))));
 				break;
 
 			case MSGPACK_RAW32:
+			case MSGPACK_BIN32:
 				copy_bytes(unpacker, obj, ntohl(*(uint32_t *)copy_bytes(unpacker, obj, sizeof(uint32_t))));
 				break;
 
