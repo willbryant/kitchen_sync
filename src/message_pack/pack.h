@@ -267,7 +267,7 @@ void pack_map_length(Packer<Stream> &packer, size_t size) {
 
 template <typename Stream, typename K, typename V>
 Packer<Stream> &operator <<(Packer<Stream> &packer, const std::map<K, V> &obj) {
-	packer.pack_map_length(obj.size());
+	pack_map_length(packer, obj.size());
 	for (const std::pair<const K, V> &pair : obj) {
 		packer << pair.first;
 		packer << pair.second;
