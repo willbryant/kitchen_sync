@@ -302,7 +302,6 @@ template <typename Stream, typename K, typename V>
 Unpacker<Stream> &operator >>(Unpacker<Stream> &unpacker, std::map<K, V> &obj) {
 	size_t map_length = unpacker.next_map_length();
 	obj.clear();
-	obj.reserve(map_length);
 	while (map_length--) {
 		K key = unpacker.template next<K>();
 		V val = unpacker.template next<V>();
