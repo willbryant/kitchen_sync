@@ -1,15 +1,22 @@
 Changelog
 =========
 
+0.99.2
+------
+Third release candidate for 1.0
+* Only --debug logging will output timestamps, not --verbose
+* Forward compatibility with forthcoming behavior changes to filtering
+* Forward compatibility with later msgpack versions and with setting up the test suite with later versions of mysql
+
 0.99.1
 ------
-* Second release candidate for 1.0
+Second release candidate for 1.0
 * Fix algorithm problem in a special case involving unique keys and the last row of the table being replaced by a later one
 * Tune some block size numbers
 
 0.99
 ----
-* Release candidate for 1.0
+Release candidate for 1.0
 * Rewrite protocol and sync algorithm to hash concurrently at the two ends, and pipeline commands where possible.
 
 0.60
