@@ -2,7 +2,7 @@ require File.expand_path(File.join(File.dirname(__FILE__), 'test_helper'))
 
 require 'tempfile'
 
-class FilterFromTest < KitchenSync::EndpointTestCase
+class FilterFromFileTest < KitchenSync::EndpointTestCase
   include TestTableSchemas
 
   def from_or_to
