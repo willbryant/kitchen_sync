@@ -12,6 +12,11 @@ endif()
 if(POLICY CMP0015)
 	cmake_policy(SET CMP0015 OLD)
 endif()
+# see https://cmake.org/cmake/help/latest/policy/CMP0042.html
+if(POLICY CMP0042)
+	# Enable MACOSX_RPATH by default.
+	cmake_policy(SET CMP0042 NEW)
+endif()
 
 include(CheckCXXCompilerFlag)
 
@@ -22,8 +27,8 @@ include(CheckCXXCompilerFlag)
 project(YAML_CPP)
 
 set(YAML_CPP_VERSION_MAJOR "0")
-set(YAML_CPP_VERSION_MINOR "5")
-set(YAML_CPP_VERSION_PATCH "1")
+set(YAML_CPP_VERSION_MINOR "6")
+set(YAML_CPP_VERSION_PATCH "2")
 set(YAML_CPP_VERSION "${YAML_CPP_VERSION_MAJOR}.${YAML_CPP_VERSION_MINOR}.${YAML_CPP_VERSION_PATCH}")
 
 enable_testing()
@@ -33,7 +38,8 @@ enable_testing()
 ### Project options
 ###
 ## Project stuff
-option(YAML_CPP_BUILD_TOOLS "Enable testing and parse tools" ON)
+option(YAML_CPP_BUILD_TESTS "Enable testing" ON)
+option(YAML_CPP_BUILD_TOOLS "Enable parse tools" ON)
 option(YAML_CPP_BUILD_CONTRIB "Enable contrib stuff in library" ON)
 
 ## Build options
@@ -54,6 +60,29 @@ option(MSVC_STHREADED_RT "MSVC: Build with single-threaded static runtime libs (
 ###
 ### Sources, headers, directories and libs
 ###
+
+# From http://www.cmake.org/pipermail/cmake/2010-March/035992.html:
+# function to collect all the sources from sub-directories
+# into a single list
+function(add_sources)
+  get_property(is_defined GLOBAL PROPERTY SRCS_LIST DEFINED)
+  if(NOT is_defined)
+    define_property(GLOBAL PROPERTY SRCS_LIST
+      BRIEF_DOCS "List of source files"
+      FULL_DOCS "List of all source files in the entire project")
+  endif()
+  # make absolute paths
+  set(SRCS)
+  foreach(s IN LISTS ARGN)
+    if(NOT IS_ABSOLUTE "${s}")
+      get_filename_component(s "${s}" ABSOLUTE)
+    endif()
+    list(APPEND SRCS "${s}")
+  endforeach()
+  # append to global list
+  set_property(GLOBAL APPEND PROPERTY SRCS_LIST "${SRCS}")
+endfunction(add_sources)
+
 set(header_directory "include/yaml-cpp/")
 
 file(GLOB sources "src/[a-zA-Z]*.cpp")
@@ -68,6 +97,16 @@ else()
 	add_definitions(-DYAML_CPP_NO_CONTRIB)
 endif()
 
+set(library_sources
+  ${sources}
+  ${public_headers}
+  ${private_headers}
+  ${contrib_sources}
+  ${contrib_public_headers}
+  ${contrib_private_headers}
+)
+add_sources(${library_sources})
+
 if(VERBOSE)
 	message(STATUS "sources: ${sources}")
 	message(STATUS "public_headers: ${public_headers}")
@@ -80,13 +119,14 @@ endif()
 include_directories(${YAML_CPP_SOURCE_DIR}/src)
 include_directories(${YAML_CPP_SOURCE_DIR}/include)
 
-find_package(Boost REQUIRED)
-include_directories(${Boost_INCLUDE_DIRS})
 
 
 ###
 ### General compilation settings
 ###
+set(yaml_c_flags ${CMAKE_C_FLAGS})
+set(yaml_cxx_flags ${CMAKE_CXX_FLAGS})
+
 if(BUILD_SHARED_LIBS)
 	set(LABEL_SUFFIX "shared")
 else()
@@ -113,8 +153,11 @@ if(WIN32)
 	endif()
 endif()
 
-# GCC specialities
-if(CMAKE_COMPILER_IS_GNUCXX)
+# GCC or Clang or Intel Compiler specialities
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR
+   CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR
+   CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+
 	### General stuff
 	if(WIN32)
 		set(CMAKE_SHARED_LIBRARY_PREFIX "")	# DLLs do not have a "lib" prefix
@@ -134,22 +177,29 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 	#
 	set(GCC_EXTRA_OPTIONS "")
 	#
+	if(BUILD_SHARED_LIBS)
+		set(GCC_EXTRA_OPTIONS "${GCC_EXTRA_OPTIONS} -fPIC")
+	endif()
+	#
 	set(FLAG_TESTED "-Wextra")
 	check_cxx_compiler_flag(${FLAG_TESTED} FLAG_WEXTRA)
 	if(FLAG_WEXTRA)
 		set(GCC_EXTRA_OPTIONS "${GCC_EXTRA_OPTIONS} ${FLAG_TESTED}")
 	endif()
 	#
-	set(CMAKE_CXX_FLAGS "-Wall ${GCC_EXTRA_OPTIONS} -pedantic -Wno-long-long ${CMAKE_CXX_FLAGS}")
-	#
-	add_custom_target(debuggable $(MAKE) clean
-		COMMAND ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=Debug ${CMAKE_SOURCE_DIR}
-		COMMENT "Adjusting settings for debug compilation"
-		VERBATIM)
-	add_custom_target(releasable $(MAKE) clean
-		COMMAND ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=Release ${CMAKE_SOURCE_DIR}
-		COMMENT "Adjusting settings for release compilation"
-		VERBATIM)
+	set(yaml_cxx_flags "-Wall ${GCC_EXTRA_OPTIONS} -pedantic -Wno-long-long -std=c++11 ${yaml_cxx_flags}")
+
+	### Make specific
+	if(${CMAKE_BUILD_TOOL} MATCHES make OR ${CMAKE_BUILD_TOOL} MATCHES gmake)
+		add_custom_target(debuggable $(MAKE) clean
+			COMMAND ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=Debug ${CMAKE_SOURCE_DIR}
+			COMMENT "Adjusting settings for debug compilation"
+			VERBATIM)
+		add_custom_target(releasable $(MAKE) clean
+			COMMAND ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=Release ${CMAKE_SOURCE_DIR}
+			COMMENT "Adjusting settings for release compilation"
+			VERBATIM)
+	endif()
 endif()
 
 # Microsoft VisualC++ specialities
@@ -182,6 +232,7 @@ if(MSVC)
 					set(var_name "${var_name}_${config_name}")
 				endif()
 				string(REPLACE "/MD" "${LIB_RT_OPTION}" ${var_name} "${${var_name}}")
+				set(${var_name} "${${var_name}}" CACHE STRING "" FORCE)
 			endforeach()
 		endforeach()
 	endif()
@@ -201,41 +252,31 @@ if(MSVC)
 	# /W3 = set warning level; see http://msdn.microsoft.com/en-us/library/thxezb7y.aspx
 	# /wd4127 = disable warning C4127 "conditional expression is constant"; see http://msdn.microsoft.com/en-us/library/6t66728h.aspx
 	# /wd4355 = disable warning C4355 "'this' : used in base member initializer list"; http://msdn.microsoft.com/en-us/library/3c594ae3.aspx
-	set(CMAKE_CXX_FLAGS "/W3 /wd4127 /wd4355 /D_SCL_SECURE_NO_WARNINGS ${CMAKE_CXX_FLAGS}")
+	set(yaml_cxx_flags "/W3 /wd4127 /wd4355 ${yaml_cxx_flags}")
 endif()
 
 
 ###
 ### General install settings
 ###
-if(WIN32)
-	set(_library_dir bin)	# .dll are in PATH, like executables
-else()
-	set(_library_dir lib)
-endif()
-
 set(INCLUDE_INSTALL_ROOT_DIR include)
 
 set(INCLUDE_INSTALL_DIR ${INCLUDE_INSTALL_ROOT_DIR}/yaml-cpp)
-set(LIB_INSTALL_DIR "${_library_dir}${LIB_SUFFIX}")
+set(LIB_INSTALL_DIR "lib${LIB_SUFFIX}")
 
 set(_INSTALL_DESTINATIONS
 	RUNTIME DESTINATION bin
 	LIBRARY DESTINATION ${LIB_INSTALL_DIR}
-	ARCHIVE DESTINATION "lib${LIB_SUFFIX}"
+	ARCHIVE DESTINATION ${LIB_INSTALL_DIR}
 )
 
 
 ###
 ### Library
 ###
-add_library(yaml-cpp
-	${sources}
-	${public_headers}
-	${private_headers}
-	${contrib_sources}
-	${contrib_public_headers}
-	${contrib_private_headers}
+add_library(yaml-cpp ${library_sources})
+set_target_properties(yaml-cpp PROPERTIES
+  COMPILE_FLAGS "${yaml_c_flags} ${yaml_cxx_flags}"
 )
 
 set_target_properties(yaml-cpp PROPERTIES
@@ -262,12 +303,42 @@ if(MSVC)
 	endif()
 endif()
 
-install(TARGETS yaml-cpp ${_INSTALL_DESTINATIONS})
+install(TARGETS yaml-cpp EXPORT yaml-cpp-targets ${_INSTALL_DESTINATIONS})
 install(
 	DIRECTORY ${header_directory}
 	DESTINATION ${INCLUDE_INSTALL_DIR}
 	FILES_MATCHING PATTERN "*.h"
 )
+
+export(
+    TARGETS yaml-cpp
+    FILE "${PROJECT_BINARY_DIR}/yaml-cpp-targets.cmake")
+export(PACKAGE yaml-cpp)
+set(EXPORT_TARGETS yaml-cpp CACHE INTERNAL "export targets")
+
+set(CONFIG_INCLUDE_DIRS "${YAML_CPP_SOURCE_DIR}/include")
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/yaml-cpp-config.cmake.in
+	"${PROJECT_BINARY_DIR}/yaml-cpp-config.cmake" @ONLY)
+
+if(WIN32 AND NOT CYGWIN)
+	set(INSTALL_CMAKE_DIR CMake)
+else()
+	set(INSTALL_CMAKE_DIR ${LIB_INSTALL_DIR}/cmake/yaml-cpp)
+endif()
+
+file(RELATIVE_PATH REL_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/${INSTALL_CMAKE_DIR}" "${CMAKE_INSTALL_PREFIX}/${INCLUDE_INSTALL_ROOT_DIR}")
+set(CONFIG_INCLUDE_DIRS "\${YAML_CPP_CMAKE_DIR}/${REL_INCLUDE_DIR}")
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/yaml-cpp-config.cmake.in
+	"${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/yaml-cpp-config.cmake" @ONLY)
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/yaml-cpp-config-version.cmake.in
+	"${PROJECT_BINARY_DIR}/yaml-cpp-config-version.cmake" @ONLY)
+
+install(FILES
+	"${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/yaml-cpp-config.cmake"
+	"${PROJECT_BINARY_DIR}/yaml-cpp-config-version.cmake"
+	DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT dev)
+install(EXPORT yaml-cpp-targets DESTINATION ${INSTALL_CMAKE_DIR})
 
 if(UNIX)
 	set(PC_FILE ${CMAKE_BINARY_DIR}/yaml-cpp.pc)
@@ -279,7 +350,16 @@ endif()
 ###
 ### Extras
 ###
-if(YAML_CPP_BUILD_TOOLS)
+if(YAML_CPP_BUILD_TESTS)
 	add_subdirectory(test)
+endif()
+if(YAML_CPP_BUILD_TOOLS)
 	add_subdirectory(util)
 endif()
+
+### Formatting
+get_property(all_sources GLOBAL PROPERTY SRCS_LIST)
+add_custom_target(format
+	COMMAND clang-format --style=file -i ${all_sources}
+	COMMENT "Running clang-format"
+	VERBATIM)

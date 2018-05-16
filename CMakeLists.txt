@@ -46,7 +46,7 @@ endif()
 # the main program knows nothing but how to hook up the endpoints
 set(ks_SRCS src/ks.cpp src/db_url.cpp src/process.cpp src/unidirectional_pipe.cpp)
 add_executable(ks ${ks_SRCS})
-target_link_libraries(ks ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(ks ${CMAKE_THREAD_LIBS_INIT})
 install(TARGETS ks RUNTIME DESTINATION bin)
 
 # the endpoints hash data using OpenSSL; on OS X we use Apple's Common Crypto fork instead

@@ -1,7 +1,7 @@
 prefix=@CMAKE_INSTALL_PREFIX@
-exec_prefix=@CMAKE_INSTALL_PREFIX@
-libdir=${prefix}/@LIB_INSTALL_DIR@
+exec_prefix=${prefix}
 includedir=${prefix}/@INCLUDE_INSTALL_ROOT_DIR@
+libdir=${exec_prefix}/@LIB_INSTALL_DIR@
 
 Name: Yaml-cpp
 Description: A YAML parser and emitter for C++
