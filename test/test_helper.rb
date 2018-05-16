@@ -279,6 +279,7 @@ module Commands
   SCHEMA = 37
   TARGET_BLOCK_SIZE = 38
   HASH_ALGORITHM = 39
+  FILTERS = 40
   QUIT = 0
 end
 

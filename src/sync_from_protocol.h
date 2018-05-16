@@ -62,6 +62,10 @@ struct SyncFromProtocol {
 					handle_hash_algorithm_command();
 					break;
 
+				case Commands::FILTERS:
+					worker.handle_filters_command();
+					break;
+
 				case Commands::QUIT:
 					read_all_arguments(input);
 					return;

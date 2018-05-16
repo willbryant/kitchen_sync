@@ -1,5 +1,6 @@
 #include "command.h"
 #include "schema_serialization.h"
+#include "filter_serialization.h"
 #include "filters.h"
 #include "fdstream.h"
 #include "sync_from_protocol.h"
@@ -100,9 +101,20 @@ struct SyncFromWorker {
 			tables_by_name[table.name] = &table;
 		}
 
+		// older versions pass the file to be read to the 'from' endpoint as a startup option
 		if (!filter_file.empty()) {
 			apply_filters(load_filters(filter_file));
 		}
+	}
+
+	void handle_filters_command() {
+		// newer versions pass the parsed contents of the file from the 'to' endpoint over the connection
+		TableFilters table_filters;
+		read_all_arguments(input, table_filters);
+
+		apply_filters(table_filters);
+
+		send_command(output, Commands::FILTERS);
 	}
 
 	void apply_filters(const TableFilters &table_filters) {

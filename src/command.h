@@ -101,6 +101,7 @@ namespace Commands {
 	const verb_t SCHEMA = 37;
 	const verb_t TARGET_BLOCK_SIZE = 38;
 	const verb_t HASH_ALGORITHM = 39;
+	const verb_t FILTERS = 40;
 	const verb_t QUIT = 0;
 
 	// deprecated protocol 6 commands:
