@@ -103,7 +103,7 @@ struct SyncFromWorker {
 
 		// older versions pass the file to be read to the 'from' endpoint as a startup option
 		if (!filter_file.empty()) {
-			apply_filters(load_filters(filter_file));
+			apply_filters(load_filters(filter_file), database.tables);
 		}
 	}
 
@@ -112,40 +112,9 @@ struct SyncFromWorker {
 		TableFilters table_filters;
 		read_all_arguments(input, table_filters);
 
-		apply_filters(table_filters);
+		apply_filters(table_filters, database.tables);
 
 		send_command(output, Commands::FILTERS);
-	}
-
-	void apply_filters(const TableFilters &table_filters) {
-		for (auto const &it : table_filters) {
-			const string &table_name(it.first);
-			const TableFilter &table_filter(it.second);
-
-			Table *table = tables_by_name[table_name];
-			if (!table) throw runtime_error("Filtered table '" + table_name + "' not found");
-
-			apply_filter(*table, table_filter);
-		}
-	}
-
-	void apply_filter(Table &table, const TableFilter &table_filter) {
-		table.where_conditions = table_filter.where_conditions;
-
-		map<string, Column*> columns_by_name;
-		for (Column &column : table.columns) {
-			columns_by_name[column.name] = &column;
-		}
-
-		for (auto const &it : table_filter.filter_expressions) {
-			const string &column_name(it.first);
-			const string &filter_expression(it.second);
-
-			Column *column = columns_by_name[column_name];
-			if (!column) throw runtime_error("Can't find column '" + column_name + "' to filter in table '" + table.name + "'");
-
-			column->filter_expression = filter_expression;
-		}
 	}
 
 	void show_status(string message) {

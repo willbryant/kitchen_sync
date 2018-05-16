@@ -5,6 +5,8 @@
 #include <vector>
 #include <map>
 
+#include "schema.h"
+
 using namespace std;
 
 struct TableFilter {
@@ -15,5 +17,7 @@ struct TableFilter {
 typedef map<string, TableFilter> TableFilters;
 
 TableFilters load_filters(const string &filters_file);
+
+void apply_filters(const TableFilters &table_filters, Tables &tables);
 
 #endif
