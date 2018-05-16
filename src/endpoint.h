@@ -61,6 +61,7 @@ int endpoint_main(int argc, char *argv[]) {
 			// the 'to' endpoint has already been converted to pass options using environment variables -
 			// since it's always on the same system as the ks command, it doesn't need legacy support.
 			// the only time these values won't be set is running the test suite.
+			string filters_file(getenv_default("ENDPOINT_FILTERS_FILE", ""));
 			set <string> ignore(split_list(getenv_default("ENDPOINT_IGNORE_TABLES", "")));
 			set <string> only(split_list(getenv_default("ENDPOINT_ONLY_TABLES", "")));
 			int workers = getenv_default("ENDPOINT_WORKERS", 1);
@@ -73,7 +74,7 @@ int endpoint_main(int argc, char *argv[]) {
 			HashAlgorithm hash_algorithm = HashAlgorithm(getenv_default("ENDPOINT_HASH_ALGORITHM", DEFAULT_HASH_ALGORITHM));
 			bool structure_only = getenv_default("ENDPOINT_STRUCTURE_ONLY", false);
 
-			sync_to<DatabaseClient>(workers, startfd, database_host, database_port, database_name, database_username, database_password, set_variables, ignore, only, verbose, progress, snapshot, alter, commit_level, hash_algorithm, structure_only);
+			sync_to<DatabaseClient>(workers, startfd, database_host, database_port, database_name, database_username, database_password, set_variables, filters_file, ignore, only, verbose, progress, snapshot, alter, commit_level, hash_algorithm, structure_only);
 		}
 	} catch (const sync_error& e) {
 		// the worker thread has already output the error to cerr

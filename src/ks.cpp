@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
 		if (options.cipher.empty()) options.cipher = "aes256-ctr";
 
 		const char *from_args[] = { ssh_binary.c_str(), "-C", "-c", options.cipher.c_str(), options.via.c_str(),
-									from_binary.c_str(), "from", options.from.host.c_str(), options.from.port.c_str(), options.from.database.c_str(), options.from.username.c_str(), options.from.password.c_str(), options.set_from_variables.c_str(), options.filters.c_str(), nullptr };
+									from_binary.c_str(), "from", options.from.host.c_str(), options.from.port.c_str(), options.from.database.c_str(), options.from.username.c_str(), options.from.password.c_str(), options.set_from_variables.c_str(), nullptr };
 		const char **applicable_from_args = (options.via.empty() ? from_args + 5 : from_args);
 
 		if (options.verbose >= VERY_VERBOSE) {
@@ -77,6 +77,7 @@ int main(int argc, char *argv[]) {
 		setenv("ENDPOINT_DATABASE_USERNAME", options.to.username);
 		setenv("ENDPOINT_DATABASE_PASSWORD", options.to.password);
 		setenv("ENDPOINT_SET_VARIABLES", options.set_to_variables);
+		setenv("ENDPOINT_FILTERS_FILE", options.filters);
 
 		setenv("ENDPOINT_IGNORE_TABLES", options.ignore);
 		setenv("ENDPOINT_ONLY_TABLES", options.only);
