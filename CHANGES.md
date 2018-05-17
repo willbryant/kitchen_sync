@@ -1,10 +1,14 @@
 Changelog
 =========
 
+1.0
+---
+* Behavior change: when using `--via` and the `--filter` option, the filter file is read locally rather than at the `--via` end.
+
 0.99.2
 ------
 Third release candidate for 1.0
-* Only --debug logging will output timestamps, not --verbose
+* Only `--debug` logging will output timestamps, not `--verbose`
 * Forward compatibility with forthcoming behavior changes to filtering
 * Forward compatibility with later msgpack versions and with setting up the test suite with later versions of mysql
 
