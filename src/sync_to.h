@@ -17,7 +17,7 @@ using namespace std;
 template <typename DatabaseClient>
 struct SyncToWorker {
 	SyncToWorker(
-		Database &database, SyncQueue &sync_queue, bool leader, int read_from_descriptor, int write_to_descriptor,
+		Database &database, SyncQueue<DatabaseClient> &sync_queue, bool leader, int read_from_descriptor, int write_to_descriptor,
 		const string &database_host, const string &database_port, const string &database_name, const string &database_username, const string &database_password,
 		const string &set_variables, const string &filter_file, const set<string> &ignore_tables, const set<string> &only_tables,
 		int verbose, bool progress, bool snapshot, bool alter, CommitLevel commit_level, HashAlgorithm hash_algorithm,
@@ -250,7 +250,7 @@ struct SyncToWorker {
 	void enqueue_tables() {
 		// queue up all the tables
 		if (leader) {
-			sync_queue.enqueue(database.tables);
+			sync_queue.enqueue_tables_to_process(database.tables);
 		}
 
 		// wait for the leader to do that (a barrier here is slightly excessive as we don't care if the other
@@ -299,7 +299,7 @@ struct SyncToWorker {
 	}
 
 	Database &database;
-	SyncQueue &sync_queue;
+	SyncQueue<DatabaseClient> &sync_queue;
 	bool leader;
 	FDWriteStream output_stream;
 	FDReadStream input_stream;
@@ -325,7 +325,7 @@ struct SyncToWorker {
 template <typename DatabaseClient, typename... Options>
 void sync_to(int num_workers, int startfd, const Options &...options) {
 	Database database;
-	SyncQueue sync_queue(num_workers);
+	SyncQueue<DatabaseClient> sync_queue(num_workers);
 	vector<SyncToWorker<DatabaseClient>*> workers;
 
 	workers.resize(num_workers);

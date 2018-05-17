@@ -58,7 +58,7 @@ struct SyncToProtocol {
 
 		while (true) {
 			// grab the next table to work on from the queue (blocking if it's empty)
-			const Table *table = sync_queue.pop();
+			const Table *table = sync_queue.pop_table_to_process();
 
 			// quit if there's no more tables to process
 			if (!table) break;
@@ -303,7 +303,7 @@ struct SyncToProtocol {
 
 	Worker &worker;
 	DatabaseClient &client;
-	SyncQueue &sync_queue;
+	SyncQueue<DatabaseClient> &sync_queue;
 	Unpacker<FDReadStream> &input;
 	Packer<FDWriteStream> &output;
 	HashAlgorithm hash_algorithm;

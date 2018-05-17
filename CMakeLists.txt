@@ -65,7 +65,7 @@ if(Backtrace_FOUND OR APPLE)
 endif()
 
 # the endpoints do the actual work
-set(ks_endpoint_SRCS src/schema.cpp src/filters.cpp src/abortable_barrier.cpp src/sync_queue.cpp src/xxHash/xxhash.cpp)
+set(ks_endpoint_SRCS src/schema.cpp src/filters.cpp src/abortable_barrier.cpp src/xxHash/xxhash.cpp)
 set(ks_endpoint_LIBS ${OPENSSL_LIBRARIES} ${YamlCPP_LIBRARIES} ${Boost_LIBRARIES})
 
 # turn on debugging symbols
