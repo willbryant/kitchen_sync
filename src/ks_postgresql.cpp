@@ -128,7 +128,8 @@ public:
 		const string &database_port,
 		const string &database_name,
 		const string &database_username,
-		const string &database_password);
+		const string &database_password,
+		const string &variables);
 	~PostgreSQLClient();
 
 	template <typename RowReceiver>
@@ -196,7 +197,8 @@ PostgreSQLClient::PostgreSQLClient(
 	const string &database_port,
 	const string &database_name,
 	const string &database_username,
-	const string &database_password) {
+	const string &database_password,
+	const string &variables) {
 
 	const char *keywords[] = { "host",                "port",                "dbname",              "user",                    "password",                nullptr };
 	const char *values[]   = { database_host.c_str(), database_port.c_str(), database_name.c_str(), database_username.c_str(), database_password.c_str(), nullptr };
@@ -211,6 +213,10 @@ PostgreSQLClient::PostgreSQLClient(
 	}
 
 	execute("SET client_min_messages TO WARNING");
+
+	if (!variables.empty()) {
+		execute("SET " + variables);
+	}
 }
 
 PostgreSQLClient::~PostgreSQLClient() {

@@ -29,7 +29,7 @@ struct SyncToWorker {
 			output_stream(write_to_descriptor),
 			input(input_stream),
 			output(output_stream),
-			client(database_host, database_port, database_name, database_username, database_password),
+			client(database_host, database_port, database_name, database_username, database_password, set_variables),
 			table_filters(load_filters(filter_file)),
 			ignore_tables(ignore_tables),
 			only_tables(only_tables),
@@ -42,9 +42,6 @@ struct SyncToWorker {
 			structure_only(structure_only),
 			protocol_version(0),
 			worker_thread(std::ref(*this)) {
-		if (!set_variables.empty()) {
-			client.execute("SET " + set_variables);
-		}
 	}
 
 	~SyncToWorker() {

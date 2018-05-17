@@ -11,7 +11,7 @@ struct SyncFromWorker {
 		const string &database_host, const string &database_port, const string &database_name, const string &database_username, const string &database_password,
 		const string &set_variables, const string &filter_file,
 		int read_from_descriptor, int write_to_descriptor, char *status_area, size_t status_size):
-			client(database_host, database_port, database_name, database_username, database_password),
+			client(database_host, database_port, database_name, database_username, database_password, set_variables),
 			filter_file(filter_file),
 			in(read_from_descriptor),
 			input(in),
@@ -20,9 +20,6 @@ struct SyncFromWorker {
 			status_area(status_area),
 			status_size(status_size),
 			protocol_version(0) {
-		if (!set_variables.empty()) {
-			client.execute("SET " + set_variables);
-		}
 	}
 
 	void operator()() {
