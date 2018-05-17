@@ -262,12 +262,7 @@ module ColumnTypes
 end
 
 module Commands
-  OPEN = 1
   ROWS = 2
-  HASH_NEXT = 3
-  HASH_FAIL = 4
-  ROWS_AND_HASH_NEXT = 5
-  ROWS_AND_HASH_FAIL = 6
   HASH = 7
   RANGE = 8
 
@@ -292,7 +287,7 @@ Verbs = Commands.constants.each_with_object({}) {|k, results| results[Commands.c
 
 module KitchenSync
   class TestCase < Test::Unit::TestCase
-    EARLIEST_PROTOCOL_VERSION_SUPPORTED = 6
+    EARLIEST_PROTOCOL_VERSION_SUPPORTED = 7
     CURRENT_PROTOCOL_VERSION_USED = 7
     LATEST_PROTOCOL_VERSION_SUPPORTED = 7
 

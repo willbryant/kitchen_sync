@@ -103,13 +103,6 @@ namespace Commands {
 	const verb_t HASH_ALGORITHM = 39;
 	const verb_t FILTERS = 40;
 	const verb_t QUIT = 0;
-
-	// deprecated protocol 6 commands:
-	const verb_t OPEN = 1;
-	const verb_t HASH_NEXT = 3;
-	const verb_t HASH_FAIL = 4;
-	const verb_t ROWS_AND_HASH_NEXT = 5;
-	const verb_t ROWS_AND_HASH_FAIL = 6;
 };
 
 #endif

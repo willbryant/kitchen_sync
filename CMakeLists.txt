@@ -117,10 +117,3 @@ add_test(filter_to_test          env BUNDLE_GEMFILE=../test/Gemfile bundle exec 
 add_test(column_types_to_test    env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/column_types_to_test.rb)
 add_test(column_types_from_test  env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/column_types_from_test.rb)
 add_test(sync_to_test            env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/sync_to_test.rb)
-
-# regression tests for legacy protocol version 6
-add_test(hash_from_test6          env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/p6/hash_from_test.rb)
-add_test(rows_from_test6          env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/p6/rows_from_test.rb)
-add_test(rows_and_hash_from_test6 env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/p6/rows_and_hash_from_test.rb)
-add_test(sync_to_test6            env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/p6/sync_to_test.rb)
-add_test(filter_from_test6        env BUNDLE_GEMFILE=../test/Gemfile bundle exec ruby ../test/p6/filter_from_test.rb)

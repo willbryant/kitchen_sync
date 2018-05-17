@@ -4,7 +4,6 @@
 #include "filters.h"
 #include "fdstream.h"
 #include "sync_from_protocol.h"
-#include "sync_from_protocol_6.h"
 
 template<class DatabaseClient>
 struct SyncFromWorker {
@@ -33,13 +32,8 @@ struct SyncFromWorker {
 		show_status("ready");
 
 		try {
-			if (protocol_version <= 6) {
-				SyncFromProtocol6<SyncFromWorker<DatabaseClient>, DatabaseClient> sync_from_protocol(*this);
-				sync_from_protocol.handle_commands();
-			} else {
-				SyncFromProtocol<SyncFromWorker<DatabaseClient>, DatabaseClient> sync_from_protocol(*this);
-				sync_from_protocol.handle_commands();
-			}
+			SyncFromProtocol<SyncFromWorker<DatabaseClient>, DatabaseClient> sync_from_protocol(*this);
+			sync_from_protocol.handle_commands();
 		} catch (const exception &e) {
 			// in fact we just output these errors much the same way that our caller does, but we do it here (before the stream gets closed) to help tests
 			cerr << "Error in the 'from' worker: " << e.what() << endl;
@@ -80,7 +74,7 @@ struct SyncFromWorker {
 	}
 
 	void negotiate_protocol_version() {
-		const int EARLIEST_PROTOCOL_VERSION_SUPPORTED = 6;
+		const int EARLIEST_PROTOCOL_VERSION_SUPPORTED = 7;
 		const int LATEST_PROTOCOL_VERSION_SUPPORTED = 7;
 
 		// all conversations must start with a Commands::PROTOCOL command to establish the language to be used

@@ -10,7 +10,6 @@
 #include "reset_table_sequences.h"
 #include "fdstream.h"
 #include "sync_to_protocol.h"
-#include "sync_to_protocol_6.h"
 #include "defaults.h"
 
 using namespace std;
@@ -69,13 +68,8 @@ struct SyncToWorker {
 				client.start_write_transaction();
 				client.disable_referential_integrity();
 
-				if (protocol_version <= 6) {
-					SyncToProtocol6<SyncToWorker<DatabaseClient>, DatabaseClient> sync_to_protocol(*this);
-					sync_to_protocol.sync_tables();
-				} else {
-					SyncToProtocol<SyncToWorker<DatabaseClient>, DatabaseClient> sync_to_protocol(*this);
-					sync_to_protocol.sync_tables();
-				}
+				SyncToProtocol<SyncToWorker<DatabaseClient>, DatabaseClient> sync_to_protocol(*this);
+				sync_to_protocol.sync_tables();
 
 				wait_for_finish();
 
@@ -103,7 +97,7 @@ struct SyncToWorker {
 	}
 
 	void negotiate_protocol_version() {
-		const int EARLIEST_PROTOCOL_VERSION_SUPPORTED = 6;
+		const int EARLIEST_PROTOCOL_VERSION_SUPPORTED = 7;
 		const int LATEST_PROTOCOL_VERSION_SUPPORTED = 7;
 
 		// tell the other end what version of the protocol we can speak, and have them tell us which version we're able to converse in
