@@ -24,7 +24,6 @@ struct TableJob {
 	const Table &table;
 	list<KeyRange> ranges_to_retrieve;
 	list<KeyRangeWithRowCount> ranges_to_check;
-	list<HashResult> ranges_hashed;
 };
 
 template <class Worker, class DatabaseClient>
@@ -86,6 +85,8 @@ struct SyncToProtocol {
 		size_t outstanding_commands = 1;
 		size_t max_outstanding_commands = 2;
 
+		list<HashResult> ranges_hashed;
+
 		while (true) {
 			sync_queue.check_aborted(); // check each iteration, rather than wait until the end of the current table
 
@@ -121,10 +122,10 @@ struct SyncToProtocol {
 				// while that end is working, do the same at our end
 				RowHasherAndLastKey hasher(hash_algorithm, table.primary_key_columns);
 				size_t row_count = worker.client.retrieve_rows(hasher, table, prev_key, last_key, rows_to_hash);
-				table_job.ranges_hashed.emplace_back(prev_key, last_key, estimated_rows_in_range, row_count, hasher.size, hasher.finish().to_string(), hasher.last_key);
+				ranges_hashed.emplace_back(prev_key, last_key, estimated_rows_in_range, row_count, hasher.size, hasher.finish().to_string(), hasher.last_key);
 
 			} else if (outstanding_commands > 0) {
-				handle_response(table_job, row_replacer);
+				handle_response(table_job, ranges_hashed, row_replacer);
 				outstanding_commands--;
 
 			} else {
@@ -152,13 +153,13 @@ struct SyncToProtocol {
 		}
 	}
 
-	inline void handle_response(TableJob &table_job, RowReplacer<DatabaseClient> &row_replacer) {
+	inline void handle_response(TableJob &table_job, list<HashResult> &ranges_hashed, RowReplacer<DatabaseClient> &row_replacer) {
 		verb_t verb;
 		input >> verb;
 
 		switch (verb) {
 			case Commands::HASH:
-				handle_hash_response(table_job);
+				handle_hash_response(table_job, ranges_hashed);
 				break;
 
 			case Commands::ROWS:
@@ -220,16 +221,16 @@ struct SyncToProtocol {
 		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
 	}
 
-	void handle_hash_response(TableJob &table_job) {
+	void handle_hash_response(TableJob &table_job, list<HashResult> &ranges_hashed) {
 		size_t rows_to_hash, their_row_count;
 		string their_hash;
 		string table_name;
 		ColumnValues prev_key, last_key;
 		read_all_arguments(input, table_name, prev_key, last_key, rows_to_hash, their_row_count, their_hash);
 		
-		if (table_job.ranges_hashed.empty()) throw command_error("Haven't issued a hash command for " + table_job.table.name + ", received " + values_list(client, table_job.table, prev_key) + " " + values_list(client, table_job.table, last_key));
-		HashResult hash_result(move(table_job.ranges_hashed.front()));
-		table_job.ranges_hashed.pop_front();
+		if (ranges_hashed.empty()) throw command_error("Haven't issued a hash command for " + table_job.table.name + ", received " + values_list(client, table_job.table, prev_key) + " " + values_list(client, table_job.table, last_key));
+		HashResult hash_result(move(ranges_hashed.front()));
+		ranges_hashed.pop_front();
 		if (table_name != table_job.table.name || prev_key != hash_result.prev_key || last_key != hash_result.last_key) throw command_error("Didn't issue hash command for " + table_job.table.name + " " + values_list(client, table_job.table, prev_key) + " " + values_list(client, table_job.table, last_key));
 
 		bool match = (hash_result.our_hash == their_hash && hash_result.our_row_count == their_row_count);
