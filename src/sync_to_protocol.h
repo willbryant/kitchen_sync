@@ -129,7 +129,7 @@ struct SyncToProtocol {
 				// while that end is working, do the same at our end
 				RowHasherAndLastKey hasher(hash_algorithm, table.primary_key_columns);
 				worker.client.retrieve_rows(hasher, table, prev_key, last_key, rows_to_hash);
-				table_job.ranges_hashed.push_back(HashResult(prev_key, last_key, estimated_rows_in_range, hasher.row_count, hasher.size, hasher.finish().to_string(), hasher.last_key));
+				table_job.ranges_hashed.emplace_back(prev_key, last_key, estimated_rows_in_range, hasher.row_count, hasher.size, hasher.finish().to_string(), hasher.last_key);
 
 			} else if (outstanding_commands > 0) {
 				handle_response(table_job, row_replacer);
@@ -205,14 +205,14 @@ struct SyncToProtocol {
 		// we immediately know that we need to retrieve any new rows > our_last_key, unless their last key is the same;
 		// queue this up
 		if (our_last_key != their_last_key) {
-			table_job.ranges_to_retrieve.push_back(make_tuple(our_last_key, their_last_key));
+			table_job.ranges_to_retrieve.emplace_back(our_last_key, their_last_key);
 		}
 
 		// queue up a sync of everything up to our_last_key; the way we have defined key ranges to work, we have no way
 		// to express start-inclusive ranges to the sync methods, so we queue a sync from the start (empty key value)
 		// up to the last key, but this results in no actual inefficiency because they'd see the same rows anyway.
 		if (!our_last_key.empty()) {
-			table_job.ranges_to_check.push_back(make_tuple(ColumnValues(), our_last_key, UNKNOWN_ROW_COUNT, 1 /* start with 1 row and build up */));
+			table_job.ranges_to_check.emplace_back(ColumnValues(), our_last_key, UNKNOWN_ROW_COUNT, 1 /* start with 1 row and build up */);
 		}
 	}
 
@@ -258,14 +258,14 @@ struct SyncToProtocol {
 			if (hash_result.estimated_rows_in_range == UNKNOWN_ROW_COUNT) {
 				// we're scanning forward, do that last
 				size_t rows_to_hash = rows_to_scan_forward_next(rows_to_hash, match, hash_result.our_row_count, hash_result.our_size);
-				table_job.ranges_to_check.push_back(make_tuple(hash_result.our_last_key, last_key, UNKNOWN_ROW_COUNT, rows_to_hash));
+				table_job.ranges_to_check.emplace_back(hash_result.our_last_key, last_key, UNKNOWN_ROW_COUNT, rows_to_hash);
 			} else {
 				// we're hunting errors, do that first.  if the part just checked matched, then the
 				// error must be in the remaining part, so consider subdividing it; if it didn't match,
 				// then we don't know if the remaining part has error or not, so don't subdivide it yet.
 				size_t rows_remaining = hash_result.estimated_rows_in_range > hash_result.our_row_count ? hash_result.estimated_rows_in_range - hash_result.our_row_count : 1; // conditional to protect against underflow
 				size_t rows_to_hash = match && rows_remaining > 1 && hash_result.our_size > target_minimum_block_size ? rows_remaining/2 : rows_remaining;
-				table_job.ranges_to_check.push_front(make_tuple(hash_result.our_last_key, last_key, rows_remaining, rows_to_hash));
+				table_job.ranges_to_check.emplace_front(hash_result.our_last_key, last_key, rows_remaining, rows_to_hash);
 			}
 		}
 
@@ -273,10 +273,10 @@ struct SyncToProtocol {
 			// the part that we checked has an error; decide whether it's large enough to subdivide
 			if (hash_result.our_row_count > 1 && hash_result.our_size > target_minimum_block_size) {
 				// yup, queue it up for another iteration of hashing, subdividing the range
-				table_job.ranges_to_check.push_front(make_tuple(prev_key, hash_result.our_last_key, hash_result.our_row_count, hash_result.our_row_count/2));
+				table_job.ranges_to_check.emplace_front(prev_key, hash_result.our_last_key, hash_result.our_row_count, hash_result.our_row_count/2);
 			} else {
 				// not worth subdividing the range any further, queue it to be retrieved
-				table_job.ranges_to_retrieve.push_back(make_tuple(prev_key, hash_result.our_last_key));
+				table_job.ranges_to_retrieve.emplace_back(prev_key, hash_result.our_last_key);
 			}
 		}
 	}
