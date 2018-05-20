@@ -22,9 +22,9 @@ struct TableJob {
 	TableJob(const Table &table): table(table) {}
 
 	const Table &table;
-	deque<KeyRange> ranges_to_retrieve;
-	deque<KeyRangeWithRowCount> ranges_to_check;
-	deque<HashResult> ranges_hashed;
+	list<KeyRange> ranges_to_retrieve;
+	list<KeyRangeWithRowCount> ranges_to_check;
+	list<HashResult> ranges_hashed;
 };
 
 template <class Worker, class DatabaseClient>
