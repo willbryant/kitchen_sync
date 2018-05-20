@@ -107,8 +107,8 @@ struct SyncToProtocol {
 				tie(prev_key, last_key) = table_job.ranges_to_retrieve.front();
 				table_job.ranges_to_retrieve.pop_front();
 
-				if (worker.verbose > 1) cout << timestamp() << " <- rows " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << endl;
-				send_command(output, Commands::ROWS, table_job.table.name, prev_key, last_key);
+				if (worker.verbose > 1) cout << timestamp() << " <- rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
+				send_command(output, Commands::ROWS, table.name, prev_key, last_key);
 				rows_commands++;
 				outstanding_commands++;
 
@@ -121,8 +121,8 @@ struct SyncToProtocol {
 				if (rows_to_hash == 0) throw logic_error("Can't hash 0 rows");
 
 				// tell the other end to hash this range
-				if (worker.verbose > 1) cout << timestamp() << " <- hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << rows_to_hash << endl;
-				send_command(output, Commands::HASH, table_job.table.name, prev_key, last_key, rows_to_hash);
+				if (worker.verbose > 1) cout << timestamp() << " <- hash " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << ' ' << rows_to_hash << endl;
+				send_command(output, Commands::HASH, table.name, prev_key, last_key, rows_to_hash);
 				hash_commands++;
 				outstanding_commands++;
 
