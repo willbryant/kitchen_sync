@@ -228,17 +228,6 @@ struct SyncToProtocol {
 		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
 	}
 
-	HashResult find_hash_result_for(TableJob &table_job, const ColumnValues &prev_key, const ColumnValues &last_key) {
-		for (auto it = table_job.ranges_hashed.begin(); it != table_job.ranges_hashed.end(); ++it) {
-			if (it->prev_key == prev_key && it->last_key == last_key) {
-				HashResult result(*it);
-				table_job.ranges_hashed.erase(it);
-				return result;
-			}
-		}
-		throw command_error("Haven't issued a hash command for " + table_job.table.name + " " + values_list(client, table_job.table, prev_key) + " " + values_list(client, table_job.table, last_key));
-	}
-
 	void handle_hash_response(TableJob &table_job) {
 		size_t rows_to_hash, their_row_count;
 		string their_hash;
@@ -246,7 +235,10 @@ struct SyncToProtocol {
 		ColumnValues prev_key, last_key;
 		read_all_arguments(input, table_name, prev_key, last_key, rows_to_hash, their_row_count, their_hash);
 		
-		HashResult hash_result(find_hash_result_for(table_job, prev_key, last_key));
+		if (table_job.ranges_hashed.empty()) throw command_error("Haven't issued a hash command for " + table_job.table.name + ", received " + values_list(client, table_job.table, prev_key) + " " + values_list(client, table_job.table, last_key));
+		HashResult hash_result(move(table_job.ranges_hashed.front()));
+		table_job.ranges_hashed.pop_front();
+		if (table_name != table_job.table.name || prev_key != hash_result.prev_key || last_key != hash_result.last_key) throw command_error("Didn't issue hash command for " + table_job.table.name + " " + values_list(client, table_job.table, prev_key) + " " + values_list(client, table_job.table, last_key));
 
 		bool match = (hash_result.our_hash == their_hash && hash_result.our_row_count == their_row_count);
 		if (worker.verbose > 1) cout << timestamp() << " -> hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << their_row_count << (match ? " matches" : " doesn't match") << endl;
