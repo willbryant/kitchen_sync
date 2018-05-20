@@ -103,34 +103,20 @@ struct SyncToProtocol {
 			}
 
 			if (outstanding_commands < max_outstanding_commands && !table_job.ranges_to_retrieve.empty()) {
-				ColumnValues prev_key, last_key;
-
-				tie(prev_key, last_key) = table_job.ranges_to_retrieve.front();
+				KeyRange range_to_retrieve(move(table_job.ranges_to_retrieve.front()));
 				table_job.ranges_to_retrieve.pop_front();
 
-				if (worker.verbose > 1) cout << timestamp() << " <- rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
-				send_command(output, Commands::ROWS, table.name, prev_key, last_key);
 				rows_commands++;
 				outstanding_commands++;
+				send_rows_command(table, range_to_retrieve);
 
 			} else if (outstanding_commands < max_outstanding_commands && !table_job.ranges_to_check.empty()) {
-				ColumnValues prev_key, last_key;
-				size_t estimated_rows_in_range, rows_to_hash;
-
-				tie(prev_key, last_key, estimated_rows_in_range, rows_to_hash) = table_job.ranges_to_check.front();
+				KeyRangeWithRowCount range_to_check(move(table_job.ranges_to_check.front()));
 				table_job.ranges_to_check.pop_front();
-				if (rows_to_hash == 0) throw logic_error("Can't hash 0 rows");
 
-				// tell the other end to hash this range
-				if (worker.verbose > 1) cout << timestamp() << " <- hash " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << ' ' << rows_to_hash << endl;
-				send_command(output, Commands::HASH, table.name, prev_key, last_key, rows_to_hash);
 				hash_commands++;
 				outstanding_commands++;
-
-				// while that end is working, do the same at our end
-				RowHasherAndLastKey hasher(hash_algorithm, table.primary_key_columns);
-				worker.client.retrieve_rows(hasher, table, prev_key, last_key, rows_to_hash);
-				ranges_hashed.emplace_back(prev_key, last_key, estimated_rows_in_range, hasher.row_count, hasher.size, hasher.finish().to_string(), hasher.last_key);
+				send_hash_command(table, range_to_check, ranges_hashed);
 
 			} else if (outstanding_commands > 0) {
 				handle_response(table_job, ranges_hashed, row_replacer);
@@ -159,6 +145,32 @@ struct SyncToProtocol {
 			worker.commit();
 			client.start_write_transaction();
 		}
+	}
+
+	inline void send_rows_command(const Table &table, const KeyRange &range_to_retrieve) {
+		const ColumnValues &prev_key(get<0>(range_to_retrieve));
+		const ColumnValues &last_key(get<1>(range_to_retrieve));
+		if (worker.verbose > 1) cout << timestamp() << " <- rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
+		send_command(output, Commands::ROWS, table.name, prev_key, last_key);
+	}
+
+	inline void send_hash_command(const Table &table, const KeyRangeWithRowCount &range_to_check, list<HashResult> &ranges_hashed) {
+		const ColumnValues &prev_key(get<0>(range_to_check));
+		const ColumnValues &last_key(get<1>(range_to_check));
+		size_t estimated_rows_in_range(get<2>(range_to_check));
+		size_t rows_to_hash(get<3>(range_to_check));
+		if (rows_to_hash == 0) throw logic_error("Can't hash 0 rows");
+
+		// tell the other end to hash this range
+		if (worker.verbose > 1) cout << timestamp() << " <- hash " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << ' ' << rows_to_hash << endl;
+		send_command(output, Commands::HASH, table.name, prev_key, last_key, rows_to_hash);
+
+		// while that end is working, do the same at our end
+		RowHasherAndLastKey hasher(hash_algorithm, table.primary_key_columns);
+		worker.client.retrieve_rows(hasher, table, prev_key, last_key, rows_to_hash);
+
+		// and store that away temporarily for us to check when the corresponding response comes back (which may not be the next response we read in due to our use of pipelining)
+		ranges_hashed.emplace_back(prev_key, last_key, estimated_rows_in_range, hasher.row_count, hasher.size, hasher.finish().to_string(), hasher.last_key);
 	}
 
 	inline void handle_response(TableJob &table_job, list<HashResult> &ranges_hashed, RowReplacer<DatabaseClient> &row_replacer) {
