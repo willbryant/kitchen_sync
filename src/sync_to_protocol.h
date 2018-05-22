@@ -19,11 +19,14 @@ typedef tuple<ColumnValues, ColumnValues, size_t, size_t> KeyRangeWithRowCount;
 const size_t UNKNOWN_ROW_COUNT = numeric_limits<size_t>::max();
 
 struct TableJob {
-	TableJob(const Table &table): table(table) {}
+	TableJob(const Table &table): table(table), hash_commands(0), rows_commands(0) {}
 
 	const Table &table;
 	list<KeyRange> ranges_to_retrieve;
 	list<KeyRangeWithRowCount> ranges_to_check;
+
+	size_t hash_commands;
+	size_t rows_commands;
 };
 
 template <class Worker, class DatabaseClient>
@@ -74,8 +77,6 @@ struct SyncToProtocol {
 		RowReplacer<DatabaseClient> row_replacer(client, table, worker.commit_level >= CommitLevel::often,
 			[&] { if (worker.progress) { cout << "." << flush; } });
 
-		size_t hash_commands = 0;
-		size_t rows_commands = 0;
 		time_t started = time(nullptr);
 
 		if (worker.verbose) {
@@ -107,16 +108,16 @@ struct SyncToProtocol {
 			if (outstanding_commands < max_outstanding_commands && !table_job.ranges_to_retrieve.empty()) {
 				KeyRange range_to_retrieve(move(table_job.ranges_to_retrieve.front()));
 				table_job.ranges_to_retrieve.pop_front();
+				table_job.rows_commands++;
 
-				rows_commands++;
 				outstanding_commands++;
 				send_rows_command(table, range_to_retrieve);
 
 			} else if (outstanding_commands < max_outstanding_commands && !table_job.ranges_to_check.empty()) {
 				KeyRangeWithRowCount range_to_check(move(table_job.ranges_to_check.front()));
 				table_job.ranges_to_check.pop_front();
+				table_job.hash_commands++;
 
-				hash_commands++;
 				outstanding_commands++;
 				send_hash_command(table, range_to_check, ranges_hashed);
 
@@ -140,7 +141,7 @@ struct SyncToProtocol {
 			time_t now = time(nullptr);
 			unique_lock<mutex> lock(sync_queue.mutex);
 			if (worker.verbose > 1) cout << timestamp() << ' ';
-			cout << "finished " << table.name << " in " << (now - started) << "s using " << hash_commands << " hash commands and " << rows_commands << " rows commands changing " << row_replacer.rows_changed << " rows" << endl << flush;
+			cout << "finished " << table.name << " in " << (now - started) << "s using " << table_job.hash_commands << " hash commands and " << table_job.rows_commands << " rows commands changing " << row_replacer.rows_changed << " rows" << endl << flush;
 		}
 
 		if (worker.commit_level >= CommitLevel::tables) {
