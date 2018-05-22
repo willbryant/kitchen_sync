@@ -22,6 +22,7 @@ struct TableJob {
 	TableJob(const Table &table): table(table), hash_commands(0), rows_commands(0) {}
 
 	const Table &table;
+	std::mutex mutex;
 	list<KeyRange> ranges_to_retrieve;
 	list<KeyRangeWithRowCount> ranges_to_check;
 
@@ -115,14 +116,13 @@ struct SyncToProtocol {
 		while (true) {
 			sync_queue.check_aborted(); // check each iteration, rather than wait until the end of the current table
 
-			if (worker.progress) {
-				cout << "." << flush; // simple progress meter
-			}
+			std::unique_lock<std::mutex> lock(table_job.mutex);
 
 			if (outstanding_commands < max_outstanding_commands && !table_job.ranges_to_retrieve.empty()) {
 				KeyRange range_to_retrieve(move(table_job.ranges_to_retrieve.front()));
 				table_job.ranges_to_retrieve.pop_front();
 				table_job.rows_commands++;
+				lock.unlock(); // don't hold the mutex while doing IO
 
 				outstanding_commands++;
 				send_rows_command(table, range_to_retrieve);
@@ -131,18 +131,25 @@ struct SyncToProtocol {
 				KeyRangeWithRowCount range_to_check(move(table_job.ranges_to_check.front()));
 				table_job.ranges_to_check.pop_front();
 				table_job.hash_commands++;
+				lock.unlock(); // don't hold the mutex while doing IO
 
 				outstanding_commands++;
 				send_hash_command(table, range_to_check, ranges_hashed);
 
 			} else if (outstanding_commands > 0) {
+				lock.unlock(); // don't hold the mutex while doing IO; note we still had to lock the mutex in order to check the emptiness of those lists
 				handle_response(table_job, ranges_hashed, row_replacer);
 				outstanding_commands--;
 
 			} else {
 				// nothing left to do on this table; make sure all pending updates have been applied
+				lock.unlock(); // don't hold the mutex while doing IO
 				row_replacer.apply();
 				return row_replacer.rows_changed;
+			}
+
+			if (worker.progress) {
+				cout << "." << flush; // simple progress meter
 			}
 		}
 	}
@@ -192,6 +199,8 @@ struct SyncToProtocol {
 	}
 
 	void handle_range_response(TableJob &table_job) {
+		std::unique_lock<std::mutex> lock(table_job.mutex);
+
 		string _table_name;
 		ColumnValues their_first_key, their_last_key;
 		read_all_arguments(input, _table_name, their_first_key, their_last_key);
@@ -243,7 +252,7 @@ struct SyncToProtocol {
 		string table_name;
 		ColumnValues prev_key, last_key;
 		read_all_arguments(input, table_name, prev_key, last_key, rows_to_hash, their_row_count, their_hash);
-		
+
 		if (ranges_hashed.empty()) throw command_error("Haven't issued a hash command for " + table_job.table.name + ", received " + values_list(client, table_job.table, prev_key) + " " + values_list(client, table_job.table, last_key));
 		HashResult hash_result(move(ranges_hashed.front()));
 		ranges_hashed.pop_front();
@@ -251,6 +260,8 @@ struct SyncToProtocol {
 
 		bool match = (hash_result.our_hash == their_hash && hash_result.our_row_count == their_row_count);
 		if (worker.verbose > 1) cout << timestamp() << " -> hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << their_row_count << (match ? " matches" : " doesn't match") << endl;
+
+		std::unique_lock<std::mutex> lock(table_job.mutex);
 
 		if (hash_result.our_row_count == rows_to_hash && hash_result.our_last_key != last_key) {
 			// whether or not we found an error in the range we just did, we don't know whether
