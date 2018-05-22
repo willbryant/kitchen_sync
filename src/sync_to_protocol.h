@@ -55,6 +55,9 @@ struct SyncToProtocol {
 			// write traffic to the database across connections, which makes it somewhat futile to try and farm the
 			// read work out since that needs to see changes made to satisfy unique indexes earlier in the table)
 			sync_table(*table_job);
+
+			// remove it from the list of tables being worked on
+			sync_queue.completed_table(table_job);
 		}
 	}
 
