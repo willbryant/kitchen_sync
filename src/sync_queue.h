@@ -16,12 +16,15 @@ typedef tuple<ColumnValues, ColumnValues, size_t, size_t> KeyRangeWithRowCount;
 const size_t UNKNOWN_ROW_COUNT = numeric_limits<size_t>::max();
 
 struct TableJob {
-	TableJob(const Table &table): table(table), hash_commands(0), rows_commands(0) {}
+	TableJob(const Table &table): table(table), borrowed_tasks(0), hash_commands(0), rows_commands(0) {}
 
 	const Table &table;
 	std::mutex mutex;
+	std::condition_variable borrowed_task_completed;
+
 	list<KeyRange> ranges_to_retrieve;
 	list<KeyRangeWithRowCount> ranges_to_check;
+	size_t borrowed_tasks;
 
 	size_t hash_commands;
 	size_t rows_commands;
