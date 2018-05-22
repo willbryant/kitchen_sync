@@ -4,11 +4,28 @@
 #include <queue>
 #include <list>
 #include <set>
+#include <memory>
 
 #include "abortable_barrier.h"
 #include "schema.h"
 
 using namespace std;
+
+typedef tuple<ColumnValues, ColumnValues> KeyRange;
+typedef tuple<ColumnValues, ColumnValues, size_t, size_t> KeyRangeWithRowCount;
+const size_t UNKNOWN_ROW_COUNT = numeric_limits<size_t>::max();
+
+struct TableJob {
+	TableJob(const Table &table): table(table), hash_commands(0), rows_commands(0) {}
+
+	const Table &table;
+	std::mutex mutex;
+	list<KeyRange> ranges_to_retrieve;
+	list<KeyRangeWithRowCount> ranges_to_check;
+
+	size_t hash_commands;
+	size_t rows_commands;
+};
 
 template <typename DatabaseClient>
 struct SyncQueue: public AbortableBarrier {
@@ -17,20 +34,20 @@ struct SyncQueue: public AbortableBarrier {
 	void enqueue_tables_to_process(const Tables &tables) {
 		unique_lock<std::mutex> lock(mutex);
 		for (const Table &from_table : tables) {
-			tables_to_process.push_back(&from_table);
+			tables_to_process.push_back(make_shared<TableJob>(from_table));
 		}
 	}
 
-	const Table* pop_table_to_process() {
+	shared_ptr<TableJob> pop_table_to_process() {
 		unique_lock<std::mutex> lock(mutex);
 		if (aborted) throw aborted_error();
 		if (tables_to_process.empty()) return nullptr;
-		const Table *table = tables_to_process.front();
+		shared_ptr<TableJob> table_job = tables_to_process.front();
 		tables_to_process.pop_front();
-		return table;
+		return table_job;
 	}
 	
-	list<const Table*> tables_to_process;
+	list<shared_ptr<TableJob>> tables_to_process;
 	string snapshot;
 };
 
