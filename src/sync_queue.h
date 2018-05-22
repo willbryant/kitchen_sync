@@ -44,10 +44,17 @@ struct SyncQueue: public AbortableBarrier {
 		if (tables_to_process.empty()) return nullptr;
 		shared_ptr<TableJob> table_job = tables_to_process.front();
 		tables_to_process.pop_front();
+		tables_being_processed.insert(table_job);
 		return table_job;
+	}
+
+	void completed_table(shared_ptr<TableJob> table_job) {
+		unique_lock<std::mutex> lock(mutex);
+		tables_being_processed.erase(table_job);
 	}
 	
 	list<shared_ptr<TableJob>> tables_to_process;
+	set<shared_ptr<TableJob>> tables_being_processed;
 	string snapshot;
 };
 
