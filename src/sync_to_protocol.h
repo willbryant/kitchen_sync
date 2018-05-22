@@ -14,22 +14,6 @@ struct HashResult {
 	ColumnValues our_last_key;
 };
 
-typedef tuple<ColumnValues, ColumnValues> KeyRange;
-typedef tuple<ColumnValues, ColumnValues, size_t, size_t> KeyRangeWithRowCount;
-const size_t UNKNOWN_ROW_COUNT = numeric_limits<size_t>::max();
-
-struct TableJob {
-	TableJob(const Table &table): table(table), hash_commands(0), rows_commands(0) {}
-
-	const Table &table;
-	std::mutex mutex;
-	list<KeyRange> ranges_to_retrieve;
-	list<KeyRangeWithRowCount> ranges_to_check;
-
-	size_t hash_commands;
-	size_t rows_commands;
-};
-
 template <class Worker, class DatabaseClient>
 struct SyncToProtocol {
 	SyncToProtocol(Worker &worker):
@@ -53,30 +37,28 @@ struct SyncToProtocol {
 
 		while (true) {
 			// grab the next table to work on from the queue (blocking if it's empty)
-			const Table *table = sync_queue.pop_table_to_process();
+			shared_ptr<TableJob> table_job = sync_queue.pop_table_to_process();
 
 			// quit if there's no more tables to process
-			if (!table) break;
+			if (!table_job) break;
 
 			// synchronize that table (unfortunately we can't share this job with other workers because next-key
 			// locking is used for unique key indexes to enforce the uniqueness constraint, so we can't share
 			// write traffic to the database across connections, which makes it somewhat futile to try and farm the
 			// read work out since that needs to see changes made to satisfy unique indexes earlier in the table)
-			sync_table(*table);
+			sync_table(*table_job);
 		}
 	}
 
-	void sync_table(const Table &table) {
+	void sync_table(TableJob &table_job) {
 		time_t started = time(nullptr);
 
 		if (worker.verbose) {
 			unique_lock<mutex> lock(sync_queue.mutex);
 			cout << fixed << setw(5);
 			if (worker.verbose > 1) cout << timestamp() << ' ';
-			cout << "starting " << table.name << endl << flush;
+			cout << "starting " << table_job.table.name << endl << flush;
 		}
-
-		TableJob table_job(table);
 
 		// start by scoping out the table
 		if (worker.verbose > 1) cout << timestamp() << " <- range " << table_job.table.name << endl;
@@ -88,13 +70,13 @@ struct SyncToProtocol {
 		size_t rows_changed = send_table_job_commands(table_job);
 
 		// reset sequences on those databases that don't automatically bump the high-water mark for inserts
-		ResetTableSequences<DatabaseClient>::execute(client, table);
+		ResetTableSequences<DatabaseClient>::execute(client, table_job.table);
 
 		if (worker.verbose) {
 			time_t now = time(nullptr);
 			unique_lock<mutex> lock(sync_queue.mutex);
 			if (worker.verbose > 1) cout << timestamp() << ' ';
-			cout << "finished " << table.name << " in " << (now - started) << "s using " << table_job.hash_commands << " hash commands and " << table_job.rows_commands << " rows commands changing " << rows_changed << " rows" << endl << flush;
+			cout << "finished " << table_job.table.name << " in " << (now - started) << "s using " << table_job.hash_commands << " hash commands and " << table_job.rows_commands << " rows commands changing " << rows_changed << " rows" << endl << flush;
 		}
 
 		if (worker.commit_level >= CommitLevel::tables) {
