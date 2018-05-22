@@ -81,8 +81,10 @@ struct SyncToProtocol {
 
 		if (worker.verbose > 1) cout << timestamp() << " <- range " << table_job.table.name << endl;
 		send_command(output, Commands::RANGE, table_job.table.name);
+		if (input.next<verb_t>() != Commands::RANGE) throw command_error("Didn't receive response to RANGE command");
+		handle_range_response(table_job);
 
-		size_t outstanding_commands = 1;
+		size_t outstanding_commands = 0;
 		size_t max_outstanding_commands = 2;
 
 		list<HashResult> ranges_hashed;
@@ -176,10 +178,6 @@ struct SyncToProtocol {
 
 			case Commands::ROWS:
 				handle_rows_response(table_job.table, row_replacer);
-				break;
-
-			case Commands::RANGE:
-				handle_range_response(table_job);
 				break;
 
 			default:
