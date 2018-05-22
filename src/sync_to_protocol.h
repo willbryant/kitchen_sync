@@ -66,9 +66,6 @@ struct SyncToProtocol {
 	}
 
 	void sync_table(const Table &table) {
-		RowReplacer<DatabaseClient> row_replacer(client, table, worker.commit_level >= CommitLevel::often,
-			[&] { if (worker.progress) { cout << "." << flush; } });
-
 		time_t started = time(nullptr);
 
 		if (worker.verbose) {
@@ -80,10 +77,35 @@ struct SyncToProtocol {
 
 		TableJob table_job(table);
 
+		// start by scoping out the table
 		if (worker.verbose > 1) cout << timestamp() << " <- range " << table_job.table.name << endl;
 		send_command(output, Commands::RANGE, table_job.table.name);
 		if (input.next<verb_t>() != Commands::RANGE) throw command_error("Didn't receive response to RANGE command");
 		handle_range_response(table_job);
+
+		// then iteratively send commands until there's no more work to do
+		size_t rows_changed = send_table_job_commands(table_job);
+
+		// reset sequences on those databases that don't automatically bump the high-water mark for inserts
+		ResetTableSequences<DatabaseClient>::execute(client, table);
+
+		if (worker.verbose) {
+			time_t now = time(nullptr);
+			unique_lock<mutex> lock(sync_queue.mutex);
+			if (worker.verbose > 1) cout << timestamp() << ' ';
+			cout << "finished " << table.name << " in " << (now - started) << "s using " << table_job.hash_commands << " hash commands and " << table_job.rows_commands << " rows commands changing " << rows_changed << " rows" << endl << flush;
+		}
+
+		if (worker.commit_level >= CommitLevel::tables) {
+			worker.commit();
+			client.start_write_transaction();
+		}
+	}
+
+	inline size_t send_table_job_commands(TableJob &table_job) {
+		const Table &table(table_job.table);
+		RowReplacer<DatabaseClient> row_replacer(client, table, worker.commit_level >= CommitLevel::often,
+			[&] { if (worker.progress) { cout << "." << flush; } });
 
 		size_t outstanding_commands = 0;
 		size_t max_outstanding_commands = 2;
@@ -118,27 +140,10 @@ struct SyncToProtocol {
 				outstanding_commands--;
 
 			} else {
-				// nothing left to do on this table
-				break;
+				// nothing left to do on this table; make sure all pending updates have been applied
+				row_replacer.apply();
+				return row_replacer.rows_changed;
 			}
-		}
-
-		// make sure all pending updates have been applied
-		row_replacer.apply();
-
-		// reset sequences on those databases that don't automatically bump the high-water mark for inserts
-		ResetTableSequences<DatabaseClient>::execute(client, table);
-
-		if (worker.verbose) {
-			time_t now = time(nullptr);
-			unique_lock<mutex> lock(sync_queue.mutex);
-			if (worker.verbose > 1) cout << timestamp() << ' ';
-			cout << "finished " << table.name << " in " << (now - started) << "s using " << table_job.hash_commands << " hash commands and " << table_job.rows_commands << " rows commands changing " << row_replacer.rows_changed << " rows" << endl << flush;
-		}
-
-		if (worker.commit_level >= CommitLevel::tables) {
-			worker.commit();
-			client.start_write_transaction();
 		}
 	}
 
