@@ -127,7 +127,7 @@ struct SyncToProtocol {
 				outstanding_commands--;
 
 			} else {
-				if (table_job->borrowed_tasks) {
+				if (table_job->hash_commands_completed < table_job->hash_commands) {
 					// wait for the other worker(s) to complete their task, then wake up to see if there is anything for us to do
 					// note that they have to send back any mutation tasks (ie. ranges_to_retrieve) since only one database
 					// connection may mutate a table, to avoid fighting for locks; we can also compete for ranges_to_check ourselves
@@ -284,6 +284,8 @@ struct SyncToProtocol {
 				table_job->ranges_to_retrieve.emplace_back(prev_key, hash_result.our_last_key);
 			}
 		}
+
+		table_job->hash_commands_completed++;
 	}
 
 	inline size_t rows_to_scan_forward_next(size_t rows_scanned, bool match, size_t our_row_count, size_t our_size) {
