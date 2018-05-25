@@ -51,7 +51,7 @@ struct SyncQueue: public AbortableBarrier {
 		return table_job;
 	}
 
-	void completed_table(shared_ptr<TableJob> table_job) {
+	void completed_table(const shared_ptr<TableJob> &table_job) {
 		unique_lock<std::mutex> lock(mutex);
 		tables_being_processed.erase(table_job);
 	}
