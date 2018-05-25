@@ -53,7 +53,7 @@ struct SyncToProtocol {
 		}
 	}
 
-	void sync_table(shared_ptr<TableJob> &table_job) {
+	void sync_table(const shared_ptr<TableJob> &table_job) {
 		time_t started = time(nullptr);
 
 		if (worker.verbose) {
@@ -88,7 +88,7 @@ struct SyncToProtocol {
 		}
 	}
 
-	inline size_t send_table_job_commands(shared_ptr<TableJob> &table_job) {
+	inline size_t send_table_job_commands(const shared_ptr<TableJob> &table_job) {
 		const Table &table(table_job->table);
 		RowReplacer<DatabaseClient> row_replacer(client, table, worker.commit_level >= CommitLevel::often,
 			[&] { if (worker.progress) { cout << "." << flush; } });
@@ -172,7 +172,7 @@ struct SyncToProtocol {
 		ranges_hashed.emplace_back(prev_key, last_key, estimated_rows_in_range, row_count, hasher.size, hasher.finish().to_string(), hasher.last_key);
 	}
 
-	inline void handle_response(shared_ptr<TableJob> &table_job, list<HashResult> &ranges_hashed, RowReplacer<DatabaseClient> &row_replacer) {
+	inline void handle_response(const shared_ptr<TableJob> &table_job, list<HashResult> &ranges_hashed, RowReplacer<DatabaseClient> &row_replacer) {
 		verb_t verb;
 		input >> verb;
 
@@ -238,7 +238,7 @@ struct SyncToProtocol {
 		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
 	}
 
-	void handle_hash_response(shared_ptr<TableJob> &table_job, list<HashResult> &ranges_hashed) {
+	void handle_hash_response(const shared_ptr<TableJob> &table_job, list<HashResult> &ranges_hashed) {
 		size_t rows_to_hash, their_row_count;
 		string their_hash;
 		string table_name;
