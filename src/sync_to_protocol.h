@@ -39,19 +39,27 @@ struct SyncToProtocol {
 			// grab the next table to work on from the queue (blocking if it's empty)
 			shared_ptr<TableJob> table_job = sync_queue.pop_table_to_process();
 
-			// quit if there's no more tables to process
+			// move on to helping other workers if there's no more tables to process
 			if (!table_job) break;
 
-			// synchronize that table (unfortunately we can't share this job with other workers because next-key
-			// locking is used for unique key indexes to enforce the uniqueness constraint, so we can't share
-			// write traffic to the database across connections, which makes it somewhat futile to try and farm the
-			// read work out since that needs to see changes made to satisfy unique indexes earlier in the table)
+			// synchronize that table
 			time_t started = start_sync_table(table_job);
-			size_t rows_changed = send_table_job_commands(table_job);
+			size_t rows_changed = send_table_job_commands(table_job, true);
 			finish_sync_table(table_job, started, rows_changed);
 
 			// remove it from the list of tables being worked on
 			sync_queue.completed_table(table_job);
+		}
+
+		while (true) {
+			// grab the next table we can help another worker with from the queue (blocking if it's empty)
+			shared_ptr<TableJob> table_job = sync_queue.borrow_work();
+
+			// quit if there's no more tables to process
+			if (!table_job) break;
+
+			// work on that table until there are no tasks currently free; it may come up again later
+			send_table_job_commands(table_job, false);
 		}
 	}
 
@@ -69,7 +77,7 @@ struct SyncToProtocol {
 		if (worker.verbose > 1) cout << timestamp() << " <- range " << table_job->table.name << endl;
 		send_command(output, Commands::RANGE, table_job->table.name);
 		if (input.next<verb_t>() != Commands::RANGE) throw command_error("Didn't receive response to RANGE command");
-		handle_range_response(*table_job);
+		handle_range_response(table_job);
 
 		return started;
 	}
@@ -91,7 +99,7 @@ struct SyncToProtocol {
 		}
 	}
 
-	inline size_t send_table_job_commands(const shared_ptr<TableJob> &table_job) {
+	inline size_t send_table_job_commands(const shared_ptr<TableJob> &table_job, bool writer) {
 		const Table &table(table_job->table);
 		RowReplacer<DatabaseClient> row_replacer(client, table, worker.commit_level >= CommitLevel::often,
 			[&] { if (worker.progress) { cout << "." << flush; } });
@@ -106,7 +114,7 @@ struct SyncToProtocol {
 
 			std::unique_lock<std::mutex> lock(table_job->mutex);
 
-			if (outstanding_commands < max_outstanding_commands && !table_job->ranges_to_retrieve.empty()) {
+			if (writer && outstanding_commands < max_outstanding_commands && !table_job->ranges_to_retrieve.empty()) {
 				KeyRange range_to_retrieve(move(table_job->ranges_to_retrieve.front()));
 				table_job->ranges_to_retrieve.pop_front();
 				table_job->rows_commands++;
@@ -129,7 +137,7 @@ struct SyncToProtocol {
 				handle_response(table_job, ranges_hashed, row_replacer);
 				outstanding_commands--;
 
-			} else if (table_job->hash_commands_completed < table_job->hash_commands) {
+			} else if (writer && table_job->hash_commands_completed < table_job->hash_commands) {
 				// wait for the other worker(s) to complete their task, then wake up to see if there is anything for us to do
 				// note that they have to send back any mutation tasks (ie. ranges_to_retrieve) since only one database
 				// connection may mutate a table, to avoid fighting for locks; we can also compete for ranges_to_check ourselves
@@ -138,7 +146,7 @@ struct SyncToProtocol {
 			} else {
 				// nothing left to do on this table; make sure all pending updates have been applied
 				lock.unlock(); // don't hold the mutex while doing IO
-				row_replacer.apply();
+				if (writer) row_replacer.apply();
 				return row_replacer.rows_changed;
 			}
 
@@ -192,39 +200,44 @@ struct SyncToProtocol {
 		}
 	}
 
-	void handle_range_response(TableJob &table_job) {
-		std::unique_lock<std::mutex> lock(table_job.mutex);
+	void handle_range_response(const shared_ptr<TableJob> &table_job) {
+		std::unique_lock<std::mutex> lock(table_job->mutex);
 
 		string _table_name;
 		ColumnValues their_first_key, their_last_key;
 		read_all_arguments(input, _table_name, their_first_key, their_last_key);
-		if (worker.verbose > 1) cout << timestamp() << " -> range " << table_job.table.name << ' ' << values_list(client, table_job.table, their_first_key) << ' ' << values_list(client, table_job.table, their_last_key) << endl;
+		if (worker.verbose > 1) cout << timestamp() << " -> range " << table_job->table.name << ' ' << values_list(client, table_job->table, their_first_key) << ' ' << values_list(client, table_job->table, their_last_key) << endl;
 
 		if (their_first_key.empty()) {
-			client.execute("DELETE FROM " + table_job.table.name);
+			client.execute("DELETE FROM " + table_job->table.name);
 			return;
 		}
 
 		// we immediately know that we need to clear everything < their_first_key or > their_last_key; do that now
-		string key_columns(columns_list(client, table_job.table.columns, table_job.table.primary_key_columns));
-		string delete_from("DELETE FROM " + table_job.table.name + " WHERE " + key_columns);
-		client.execute(delete_from + " < " + values_list(client, table_job.table, their_first_key));
-		client.execute(delete_from + " > " + values_list(client, table_job.table, their_last_key));
+		string key_columns(columns_list(client, table_job->table.columns, table_job->table.primary_key_columns));
+		string delete_from("DELETE FROM " + table_job->table.name + " WHERE " + key_columns);
+		client.execute(delete_from + " < " + values_list(client, table_job->table, their_first_key));
+		client.execute(delete_from + " > " + values_list(client, table_job->table, their_last_key));
 
 		// having done that, find our last key, which must now be no greater than their_last_key
-		ColumnValues our_last_key(worker.client.last_key(table_job.table));
+		ColumnValues our_last_key(worker.client.last_key(table_job->table));
 
 		// we immediately know that we need to retrieve any new rows > our_last_key, unless their last key is the same;
 		// queue this up
 		if (our_last_key != their_last_key) {
-			table_job.ranges_to_retrieve.emplace_back(our_last_key, their_last_key);
+			table_job->ranges_to_retrieve.emplace_back(our_last_key, their_last_key);
 		}
 
 		// queue up a sync of everything up to our_last_key; the way we have defined key ranges to work, we have no way
 		// to express start-inclusive ranges to the sync methods, so we queue a sync from the start (empty key value)
 		// up to the last key, but this results in no actual inefficiency because they'd see the same rows anyway.
 		if (!our_last_key.empty()) {
-			table_job.ranges_to_check.emplace_back(ColumnValues(), our_last_key, UNKNOWN_ROW_COUNT, 1 /* start with 1 row and build up */);
+			table_job->ranges_to_check.emplace_back(ColumnValues(), our_last_key, UNKNOWN_ROW_COUNT, 1 /* start with 1 row and build up */);
+		}
+
+		if (table_job->notify_when_work_could_be_shared) {
+			lock.unlock();
+			sync_queue.have_work_to_share(table_job);
 		}
 	}
 
@@ -288,6 +301,14 @@ struct SyncToProtocol {
 		}
 
 		table_job->hash_commands_completed++;
+
+		if (worker.verbose > 1) cout << timestamp() << "         " << table.name << " has " << table_job->ranges_to_check.size() << " range(s) to check and " << table_job->ranges_to_retrieve.size() << " to retrieve, " << string(table_job->notify_when_work_could_be_shared ? "sharing wanted" : "sharing not needed") << endl;
+
+		if (table_job->notify_when_work_could_be_shared) {
+			table_job->borrowed_task_completed.notify_one(); // not really borrowed if we are the writer worker, but since only the writer waits on this condition it's moot
+			lock.unlock();
+			sync_queue.have_work_to_share(table_job);
+		}
 	}
 
 	inline size_t rows_to_scan_forward_next(size_t rows_scanned, bool match, size_t our_row_count, size_t our_size) {
