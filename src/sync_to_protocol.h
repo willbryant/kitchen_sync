@@ -46,14 +46,16 @@ struct SyncToProtocol {
 			// locking is used for unique key indexes to enforce the uniqueness constraint, so we can't share
 			// write traffic to the database across connections, which makes it somewhat futile to try and farm the
 			// read work out since that needs to see changes made to satisfy unique indexes earlier in the table)
-			sync_table(table_job);
+			time_t started = start_sync_table(table_job);
+			size_t rows_changed = send_table_job_commands(table_job);
+			finish_sync_table(table_job, started, rows_changed);
 
 			// remove it from the list of tables being worked on
 			sync_queue.completed_table(table_job);
 		}
 	}
 
-	void sync_table(const shared_ptr<TableJob> &table_job) {
+	time_t start_sync_table(const shared_ptr<TableJob> &table_job) {
 		time_t started = time(nullptr);
 
 		if (worker.verbose) {
@@ -69,9 +71,10 @@ struct SyncToProtocol {
 		if (input.next<verb_t>() != Commands::RANGE) throw command_error("Didn't receive response to RANGE command");
 		handle_range_response(*table_job);
 
-		// then iteratively send commands until there's no more work to do
-		size_t rows_changed = send_table_job_commands(table_job);
+		return started;
+	}
 
+	void finish_sync_table(const shared_ptr<TableJob> &table_job, time_t started, size_t rows_changed) {
 		// reset sequences on those databases that don't automatically bump the high-water mark for inserts
 		ResetTableSequences<DatabaseClient>::execute(client, table_job->table);
 
