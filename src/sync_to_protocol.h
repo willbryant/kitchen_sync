@@ -54,40 +54,40 @@ struct SyncToProtocol {
 			// locking is used for unique key indexes to enforce the uniqueness constraint, so we can't share
 			// write traffic to the database across connections, which makes it somewhat futile to try and farm the
 			// read work out since that needs to see changes made to satisfy unique indexes earlier in the table)
-			sync_table(*table_job);
+			sync_table(table_job);
 
 			// remove it from the list of tables being worked on
 			sync_queue.completed_table(table_job);
 		}
 	}
 
-	void sync_table(TableJob &table_job) {
+	void sync_table(shared_ptr<TableJob> &table_job) {
 		time_t started = time(nullptr);
 
 		if (worker.verbose) {
 			unique_lock<mutex> lock(sync_queue.mutex);
 			cout << fixed << setw(5);
 			if (worker.verbose > 1) cout << timestamp() << ' ';
-			cout << "starting " << table_job.table.name << endl << flush;
+			cout << "starting " << table_job->table.name << endl << flush;
 		}
 
 		// start by scoping out the table
-		if (worker.verbose > 1) cout << timestamp() << " <- range " << table_job.table.name << endl;
-		send_command(output, Commands::RANGE, table_job.table.name);
+		if (worker.verbose > 1) cout << timestamp() << " <- range " << table_job->table.name << endl;
+		send_command(output, Commands::RANGE, table_job->table.name);
 		if (input.next<verb_t>() != Commands::RANGE) throw command_error("Didn't receive response to RANGE command");
-		handle_range_response(table_job);
+		handle_range_response(*table_job);
 
 		// then iteratively send commands until there's no more work to do
 		size_t rows_changed = send_table_job_commands(table_job);
 
 		// reset sequences on those databases that don't automatically bump the high-water mark for inserts
-		ResetTableSequences<DatabaseClient>::execute(client, table_job.table);
+		ResetTableSequences<DatabaseClient>::execute(client, table_job->table);
 
 		if (worker.verbose) {
 			time_t now = time(nullptr);
 			unique_lock<mutex> lock(sync_queue.mutex);
 			if (worker.verbose > 1) cout << timestamp() << ' ';
-			cout << "finished " << table_job.table.name << " in " << (now - started) << "s using " << table_job.hash_commands << " hash commands and " << table_job.rows_commands << " rows commands changing " << rows_changed << " rows" << endl << flush;
+			cout << "finished " << table_job->table.name << " in " << (now - started) << "s using " << table_job->hash_commands << " hash commands and " << table_job->rows_commands << " rows commands changing " << rows_changed << " rows" << endl << flush;
 		}
 
 		if (worker.commit_level >= CommitLevel::tables) {
@@ -96,8 +96,8 @@ struct SyncToProtocol {
 		}
 	}
 
-	inline size_t send_table_job_commands(TableJob &table_job) {
-		const Table &table(table_job.table);
+	inline size_t send_table_job_commands(shared_ptr<TableJob> &table_job) {
+		const Table &table(table_job->table);
 		RowReplacer<DatabaseClient> row_replacer(client, table, worker.commit_level >= CommitLevel::often,
 			[&] { if (worker.progress) { cout << "." << flush; } });
 
@@ -109,21 +109,21 @@ struct SyncToProtocol {
 		while (true) {
 			sync_queue.check_aborted(); // check each iteration, rather than wait until the end of the current table
 
-			std::unique_lock<std::mutex> lock(table_job.mutex);
+			std::unique_lock<std::mutex> lock(table_job->mutex);
 
-			if (outstanding_commands < max_outstanding_commands && !table_job.ranges_to_retrieve.empty()) {
-				KeyRange range_to_retrieve(move(table_job.ranges_to_retrieve.front()));
-				table_job.ranges_to_retrieve.pop_front();
-				table_job.rows_commands++;
+			if (outstanding_commands < max_outstanding_commands && !table_job->ranges_to_retrieve.empty()) {
+				KeyRange range_to_retrieve(move(table_job->ranges_to_retrieve.front()));
+				table_job->ranges_to_retrieve.pop_front();
+				table_job->rows_commands++;
 				lock.unlock(); // don't hold the mutex while doing IO
 
 				outstanding_commands++;
 				send_rows_command(table, range_to_retrieve);
 
-			} else if (outstanding_commands < max_outstanding_commands && !table_job.ranges_to_check.empty()) {
-				KeyRangeWithRowCount range_to_check(move(table_job.ranges_to_check.front()));
-				table_job.ranges_to_check.pop_front();
-				table_job.hash_commands++;
+			} else if (outstanding_commands < max_outstanding_commands && !table_job->ranges_to_check.empty()) {
+				KeyRangeWithRowCount range_to_check(move(table_job->ranges_to_check.front()));
+				table_job->ranges_to_check.pop_front();
+				table_job->hash_commands++;
 				lock.unlock(); // don't hold the mutex while doing IO
 
 				outstanding_commands++;
@@ -135,11 +135,11 @@ struct SyncToProtocol {
 				outstanding_commands--;
 
 			} else {
-				if (table_job.borrowed_tasks) {
+				if (table_job->borrowed_tasks) {
 					// wait for the other worker(s) to complete their task, then wake up to see if there is anything for us to do
 					// note that they have to send back any mutation tasks (ie. ranges_to_retrieve) since only one database
 					// connection may mutate a table, to avoid fighting for locks; we can also compete for ranges_to_check ourselves
-					table_job.borrowed_task_completed.wait(lock);
+					table_job->borrowed_task_completed.wait(lock);
 				} else {
 					// nothing left to do on this table; make sure all pending updates have been applied
 					lock.unlock(); // don't hold the mutex while doing IO
@@ -180,7 +180,7 @@ struct SyncToProtocol {
 		ranges_hashed.emplace_back(prev_key, last_key, estimated_rows_in_range, hasher.row_count, hasher.size, hasher.finish().to_string(), hasher.last_key);
 	}
 
-	inline void handle_response(TableJob &table_job, list<HashResult> &ranges_hashed, RowReplacer<DatabaseClient> &row_replacer) {
+	inline void handle_response(shared_ptr<TableJob> &table_job, list<HashResult> &ranges_hashed, RowReplacer<DatabaseClient> &row_replacer) {
 		verb_t verb;
 		input >> verb;
 
@@ -190,7 +190,7 @@ struct SyncToProtocol {
 				break;
 
 			case Commands::ROWS:
-				handle_rows_response(table_job.table, row_replacer);
+				handle_rows_response(table_job->table, row_replacer);
 				break;
 
 			default:
@@ -246,14 +246,14 @@ struct SyncToProtocol {
 		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
 	}
 
-	void handle_hash_response(TableJob &table_job, list<HashResult> &ranges_hashed) {
+	void handle_hash_response(shared_ptr<TableJob> &table_job, list<HashResult> &ranges_hashed) {
 		size_t rows_to_hash, their_row_count;
 		string their_hash;
 		string table_name;
 		ColumnValues prev_key, last_key;
 		read_all_arguments(input, table_name, prev_key, last_key, rows_to_hash, their_row_count, their_hash);
 
-		const Table &table(table_job.table);
+		const Table &table(table_job->table);
 		if (ranges_hashed.empty()) throw command_error("Haven't issued a hash command for " + table.name + ", received " + values_list(client, table, prev_key) + " " + values_list(client, table, last_key));
 		HashResult hash_result(move(ranges_hashed.front()));
 		ranges_hashed.pop_front();
@@ -262,7 +262,7 @@ struct SyncToProtocol {
 		bool match = (hash_result.our_hash == their_hash && hash_result.our_row_count == their_row_count);
 		if (worker.verbose > 1) cout << timestamp() << " -> hash " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << ' ' << their_row_count << (match ? " matches" : " doesn't match") << endl;
 
-		std::unique_lock<std::mutex> lock(table_job.mutex);
+		std::unique_lock<std::mutex> lock(table_job->mutex);
 
 		if (hash_result.our_row_count == rows_to_hash && hash_result.our_last_key != last_key) {
 			// whether or not we found an error in the range we just did, we don't know whether
@@ -271,14 +271,14 @@ struct SyncToProtocol {
 			if (hash_result.estimated_rows_in_range == UNKNOWN_ROW_COUNT) {
 				// we're scanning forward, do that last
 				size_t rows_to_hash = rows_to_scan_forward_next(rows_to_hash, match, hash_result.our_row_count, hash_result.our_size);
-				table_job.ranges_to_check.emplace_back(hash_result.our_last_key, last_key, UNKNOWN_ROW_COUNT, rows_to_hash);
+				table_job->ranges_to_check.emplace_back(hash_result.our_last_key, last_key, UNKNOWN_ROW_COUNT, rows_to_hash);
 			} else {
 				// we're hunting errors, do that first.  if the part just checked matched, then the
 				// error must be in the remaining part, so consider subdividing it; if it didn't match,
 				// then we don't know if the remaining part has error or not, so don't subdivide it yet.
 				size_t rows_remaining = hash_result.estimated_rows_in_range > hash_result.our_row_count ? hash_result.estimated_rows_in_range - hash_result.our_row_count : 1; // conditional to protect against underflow
 				size_t rows_to_hash = match && rows_remaining > 1 && hash_result.our_size > target_minimum_block_size ? rows_remaining/2 : rows_remaining;
-				table_job.ranges_to_check.emplace_front(hash_result.our_last_key, last_key, rows_remaining, rows_to_hash);
+				table_job->ranges_to_check.emplace_front(hash_result.our_last_key, last_key, rows_remaining, rows_to_hash);
 			}
 		}
 
@@ -286,10 +286,10 @@ struct SyncToProtocol {
 			// the part that we checked has an error; decide whether it's large enough to subdivide
 			if (hash_result.our_row_count > 1 && hash_result.our_size > target_minimum_block_size) {
 				// yup, queue it up for another iteration of hashing, subdividing the range
-				table_job.ranges_to_check.emplace_front(prev_key, hash_result.our_last_key, hash_result.our_row_count, hash_result.our_row_count/2);
+				table_job->ranges_to_check.emplace_front(prev_key, hash_result.our_last_key, hash_result.our_row_count, hash_result.our_row_count/2);
 			} else {
 				// not worth subdividing the range any further, queue it to be retrieved
-				table_job.ranges_to_retrieve.emplace_back(prev_key, hash_result.our_last_key);
+				table_job->ranges_to_retrieve.emplace_back(prev_key, hash_result.our_last_key);
 			}
 		}
 	}
