@@ -126,18 +126,17 @@ struct SyncToProtocol {
 				handle_response(table_job, ranges_hashed, row_replacer);
 				outstanding_commands--;
 
+			} else if (table_job->hash_commands_completed < table_job->hash_commands) {
+				// wait for the other worker(s) to complete their task, then wake up to see if there is anything for us to do
+				// note that they have to send back any mutation tasks (ie. ranges_to_retrieve) since only one database
+				// connection may mutate a table, to avoid fighting for locks; we can also compete for ranges_to_check ourselves
+				table_job->borrowed_task_completed.wait(lock);
+
 			} else {
-				if (table_job->hash_commands_completed < table_job->hash_commands) {
-					// wait for the other worker(s) to complete their task, then wake up to see if there is anything for us to do
-					// note that they have to send back any mutation tasks (ie. ranges_to_retrieve) since only one database
-					// connection may mutate a table, to avoid fighting for locks; we can also compete for ranges_to_check ourselves
-					table_job->borrowed_task_completed.wait(lock);
-				} else {
-					// nothing left to do on this table; make sure all pending updates have been applied
-					lock.unlock(); // don't hold the mutex while doing IO
-					row_replacer.apply();
-					return row_replacer.rows_changed;
-				}
+				// nothing left to do on this table; make sure all pending updates have been applied
+				lock.unlock(); // don't hold the mutex while doing IO
+				row_replacer.apply();
+				return row_replacer.rows_changed;
 			}
 
 			if (worker.progress) {
