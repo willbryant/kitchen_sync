@@ -253,13 +253,14 @@ struct SyncToProtocol {
 		ColumnValues prev_key, last_key;
 		read_all_arguments(input, table_name, prev_key, last_key, rows_to_hash, their_row_count, their_hash);
 
-		if (ranges_hashed.empty()) throw command_error("Haven't issued a hash command for " + table_job.table.name + ", received " + values_list(client, table_job.table, prev_key) + " " + values_list(client, table_job.table, last_key));
+		const Table &table(table_job.table);
+		if (ranges_hashed.empty()) throw command_error("Haven't issued a hash command for " + table.name + ", received " + values_list(client, table, prev_key) + " " + values_list(client, table, last_key));
 		HashResult hash_result(move(ranges_hashed.front()));
 		ranges_hashed.pop_front();
-		if (table_name != table_job.table.name || prev_key != hash_result.prev_key || last_key != hash_result.last_key) throw command_error("Didn't issue hash command for " + table_job.table.name + " " + values_list(client, table_job.table, prev_key) + " " + values_list(client, table_job.table, last_key));
+		if (table_name != table.name || prev_key != hash_result.prev_key || last_key != hash_result.last_key) throw command_error("Didn't issue hash command for " + table.name + " " + values_list(client, table, prev_key) + " " + values_list(client, table, last_key));
 
 		bool match = (hash_result.our_hash == their_hash && hash_result.our_row_count == their_row_count);
-		if (worker.verbose > 1) cout << timestamp() << " -> hash " << table_job.table.name << ' ' << values_list(client, table_job.table, prev_key) << ' ' << values_list(client, table_job.table, last_key) << ' ' << their_row_count << (match ? " matches" : " doesn't match") << endl;
+		if (worker.verbose > 1) cout << timestamp() << " -> hash " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << ' ' << their_row_count << (match ? " matches" : " doesn't match") << endl;
 
 		std::unique_lock<std::mutex> lock(table_job.mutex);
 
