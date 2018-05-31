@@ -77,12 +77,12 @@ struct SyncToProtocol {
 		if (worker.verbose) {
 			unique_lock<mutex> lock(sync_queue.mutex);
 			cout << fixed << setw(5);
-			if (worker.verbose > 1) cout << timestamp() << ' ';
+			if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << ' ';
 			cout << "starting " << table_job->table.name << endl << flush;
 		}
 
 		// start by scoping out the table
-		if (worker.verbose > 1) cout << timestamp() << " <- range " << table_job->table.name << endl;
+		if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << " <- range " << table_job->table.name << endl;
 		send_command(output, Commands::RANGE, table_job->table.name);
 		if (input.next<verb_t>() != Commands::RANGE) throw command_error("Didn't receive response to RANGE command");
 		handle_range_response(table_job);
@@ -97,7 +97,7 @@ struct SyncToProtocol {
 		if (worker.verbose) {
 			time_t now = time(nullptr);
 			unique_lock<mutex> lock(sync_queue.mutex);
-			if (worker.verbose > 1) cout << timestamp() << ' ';
+			if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << ' ';
 			cout << "finished " << table_job->table.name << " in " << (now - started) << "s using " << table_job->hash_commands << " hash commands and " << table_job->rows_commands << " rows commands changing " << rows_changed << " rows" << endl << flush;
 		}
 
@@ -167,7 +167,7 @@ struct SyncToProtocol {
 	inline void send_rows_command(const Table &table, const KeyRange &range_to_retrieve) {
 		const ColumnValues &prev_key(get<0>(range_to_retrieve));
 		const ColumnValues &last_key(get<1>(range_to_retrieve));
-		if (worker.verbose > 1) cout << timestamp() << " <- rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
+		if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << " <- rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
 		send_command(output, Commands::ROWS, table.name, prev_key, last_key);
 	}
 
@@ -179,7 +179,7 @@ struct SyncToProtocol {
 		if (rows_to_hash == 0) throw logic_error("Can't hash 0 rows");
 
 		// tell the other end to hash this range
-		if (worker.verbose > 1) cout << timestamp() << " <- hash " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << ' ' << rows_to_hash << endl;
+		if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << " <- hash " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << ' ' << rows_to_hash << endl;
 		send_command(output, Commands::HASH, table.name, prev_key, last_key, rows_to_hash);
 
 		// while that end is working, do the same at our end
@@ -256,7 +256,7 @@ struct SyncToProtocol {
 		string table_name;
 		ColumnValues prev_key, last_key;
 		read_array(input, table_name, prev_key, last_key); // the first array gives the range arguments, which is followed by one array for each row
-		if (worker.verbose > 1) cout << timestamp() << " -> rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
+		if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << " -> rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
 
 		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
 	}
@@ -275,7 +275,7 @@ struct SyncToProtocol {
 		if (table_name != table.name || prev_key != hash_result.prev_key || last_key != hash_result.last_key) throw command_error("Didn't issue hash command for " + table.name + " " + values_list(client, table, prev_key) + " " + values_list(client, table, last_key));
 
 		bool match = (hash_result.our_hash == their_hash && hash_result.our_row_count == their_row_count);
-		if (worker.verbose > 1) cout << timestamp() << " -> hash " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << ' ' << their_row_count << (match ? " matches" : " doesn't match") << endl;
+		if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << " -> hash " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << ' ' << their_row_count << (match ? " matches" : " doesn't match") << endl;
 
 		std::unique_lock<std::mutex> lock(table_job->mutex);
 
@@ -310,7 +310,7 @@ struct SyncToProtocol {
 
 		table_job->hash_commands_completed++;
 
-		if (worker.verbose > 1) cout << timestamp() << "         " << table.name << " has " << table_job->ranges_to_check.size() << " range(s) to check and " << table_job->ranges_to_retrieve.size() << " to retrieve, " << string(table_job->notify_when_work_could_be_shared ? "sharing wanted" : "sharing not needed") << endl;
+		if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << "         " << table.name << " has " << table_job->ranges_to_check.size() << " range(s) to check and " << table_job->ranges_to_retrieve.size() << " to retrieve, " << string(table_job->notify_when_work_could_be_shared ? "sharing wanted" : "sharing not needed") << endl;
 
 		if (table_job->notify_when_work_could_be_shared) {
 			table_job->borrowed_task_completed.notify_one(); // not really borrowed if we are the writer worker, but since only the writer waits on this condition it's moot
