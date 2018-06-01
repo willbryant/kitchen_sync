@@ -61,7 +61,7 @@ struct RowRangeApplier {
 		}
 		if (approx_buffered_bytes > MAX_BYTES_TO_BUFFER) {
 			check_rows_to_curr_key();
-			insert_remaining_rows(false);
+			insert_remaining_rows();
 		}
 	}
 
@@ -74,7 +74,7 @@ struct RowRangeApplier {
 		}
 
 		check_rows_to_curr_key();
-		insert_remaining_rows(last_key.empty());
+		insert_remaining_rows();
 	}
 
 	void delete_range(const ColumnValues &matched_up_to_key, const ColumnValues &last_not_matching_key) {
@@ -106,18 +106,18 @@ struct RowRangeApplier {
 			// we do have the row at both ends, but it's changed, so we need to replace it
 			replacer.replace_row(source_row->second);
 
-			// don't want to delete this row later
+			// done with this row, don't need to insert it in insert_remaining_rows
 			source_rows.erase(source_row);
 
 		} else {
-			// the row matches; don't want to delete this row later
+			// the row matches; done with this row, don't need to insert it in insert_remaining_rows
 			source_rows.erase(source_row);
 		}
 	}
 
-	void insert_remaining_rows(bool end_of_table) {
+	void insert_remaining_rows() {
 		for (RowsByPrimaryKey::iterator source_row = source_rows.begin(); source_row != source_rows.end(); ++source_row) {
-			end_of_table ? replacer.append_row(source_row->second) : replacer.insert_row(source_row->second);
+			replacer.insert_row(source_row->second);
 			apply_if_necessary();
 		}
 		source_rows.clear();

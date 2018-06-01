@@ -31,7 +31,7 @@ struct RowReplacer {
 		commit_often(commit_often),
 		progress_callback(progress_callback),
 		rows_changed(0) {
-		// set up the clearers we'll need to insert rows - these clear any conflicting values from later in the same table
+		// set up the clearers we'll need to insert rows - these clear any conflicting values from elsewhere in the same table
 		for (const Key &key : table.keys) {
 			if (key.unique) {
 				unique_keys_clearers.emplace_back(client, table, key.columns);
@@ -39,23 +39,17 @@ struct RowReplacer {
 		}
 	}
 
-	inline void append_row(const PackedRow &row) {
-		// if we're inserting rows at the end of the table, by definition there are no later rows,
-		// so unlike insert_row we don't need to clear later conflicting unique key values.
-		append_row_tuple(client, columns, insert_sql, row);
-
-		rows_changed++;
-	}
-
 	void insert_row(const PackedRow &row) {
-		// before we can insert our rows we will also have to first clear any later rows with the
+		// before we can insert our rows we will also have to first clear any other rows with the
 		// same unique key values.
 		for (UniqueKeyClearer<DatabaseClient> &unique_key_clearer : unique_keys_clearers) {
 			unique_key_clearer.row(row);
 		}
 
 		// we can then batch up a big INSERT statement
-		append_row(row);
+		append_row_tuple(client, columns, insert_sql, row);
+
+		rows_changed++;
 	}
 
 	inline void replace_row(const PackedRow &row) {
@@ -110,10 +104,6 @@ struct RowReplacer<DatabaseClient, true> {
 		primary_key_clearer(client, table, table.primary_key_columns),
 		commit_often(commit_often),
 		rows_changed(0) {
-	}
-
-	inline void append_row(const PackedRow &row) {
-		replace_row(row);
 	}
 
 	inline void insert_row(const PackedRow &row) {
