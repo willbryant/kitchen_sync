@@ -51,7 +51,7 @@ users:
     last_name: id
 ```
 
-Would replace the `email` column values with the values of the `id` column, not with the literal string `'id'`.
+Would replace the `last_name` column values with the values of the `id` column, not with the literal string `'id'`.
 
 So to express a literal value, you need to quote it, or the SQL server will try and parse it as a column reference or function call.  But the first point above about YAML quoting creates a problem - for example, if we try:
 
