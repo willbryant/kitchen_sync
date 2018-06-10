@@ -14,7 +14,11 @@ set<string> split_list(const string &str) {
 
 template<class DatabaseClient>
 int endpoint_main(int argc, char *argv[]) {
-	if (argc < 1 || (argv[1] != string("from") && argv[1] != string("to"))) {
+	if (argc > 1 && argv[1] == string("do-nothing")) {
+		return 0;
+	}
+
+	if (argc < 2 || (argv[1] != string("from") && argv[1] != string("to"))) {
 		cerr << "This program is a part of Kitchen Sync.  Instead of running this program directly, run 'ks'.\n";
 		return 1;
 	}
