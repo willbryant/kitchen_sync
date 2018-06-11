@@ -435,7 +435,8 @@ string MySQLClient::column_type(const Column &column) {
 		} else {
 			return "datetime";
 		}
-
+	} else if (column.column_type == ColumnTypes::POIN) {
+		return "point";
 	} else {
 		throw runtime_error("Don't know how to express column type of " + column.name + " (" + column.column_type + ")");
 	}
@@ -562,6 +563,8 @@ struct MySQLColumnLister {
 				flags = (ColumnFlags)(flags | mysql_on_update_timestamp);
 			}
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM, 0, 0, flags);
+		} else if (db_type == "point") {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::POIN);
 		} else {
 			// not supported, but leave it till sync_to's check_tables_usable to complain about it so that it can be ignored
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UNKN, 0, 0, ColumnFlags::nothing, db_type);

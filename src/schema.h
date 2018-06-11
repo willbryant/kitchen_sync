@@ -24,6 +24,7 @@ namespace ColumnTypes {
 	const string DATE = "DATE";
 	const string TIME = "TIME";
 	const string DTTM = "DATETIME";
+	const string POIN = "POINT";
 
 	const string UNKN = "UNKNOWN";
 }
