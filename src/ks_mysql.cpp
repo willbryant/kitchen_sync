@@ -640,7 +640,7 @@ private:
 
 void MySQLClient::populate_database_schema(Database &database) {
 	MySQLTableLister table_lister(*this, database);
-	query("SELECT table_name FROM information_schema.tables WHERE table_schema = schema() ORDER BY data_length DESC, table_name ASC", table_lister, true /* buffer so we can make further queries during iteration */);
+	query("SELECT table_name FROM information_schema.tables WHERE table_schema = schema() AND table_type = \"BASE TABLE\" ORDER BY data_length DESC, table_name ASC", table_lister, true /* buffer so we can make further queries during iteration */);
 }
 
 
