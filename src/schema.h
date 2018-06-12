@@ -24,7 +24,7 @@ namespace ColumnTypes {
 	const string DATE = "DATE";
 	const string TIME = "TIME";
 	const string DTTM = "DATETIME";
-	const string POIN = "POINT";
+	const string SPAT = "SPATIAL";
 
 	const string UNKN = "UNKNOWN";
 }
@@ -41,6 +41,15 @@ enum ColumnFlags {
 	mysql_timestamp = 1,
 	mysql_on_update_timestamp = 2,
 	time_zone = 4,
+};
+
+enum SpatialType {
+	geometry = 1,
+	point = 2,
+	linestring = 3,
+	polygon = 4,
+	collection = 8,
+	multi = 16,
 };
 
 struct Column {

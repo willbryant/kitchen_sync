@@ -435,8 +435,30 @@ string MySQLClient::column_type(const Column &column) {
 		} else {
 			return "datetime";
 		}
-	} else if (column.column_type == ColumnTypes::POIN) {
-		return "point";
+	} else if (column.column_type == ColumnTypes::SPAT) {
+		string result("");
+
+        if (column.scale == SpatialType::multi) {
+            result += "multi";
+        }
+
+        if (column.size == SpatialType::geometry) {
+            result += "geometry";
+        } else if (column.size == SpatialType::linestring) {
+            result += "linestring";
+        } else if (column.size == SpatialType::point) {
+            result += "point";
+        } else if (column.size == SpatialType::polygon) {
+            result += "polygon";
+        } else {
+            throw runtime_error("Don't know how to express spatial type of " + column.name);
+        }
+
+        if (column.scale == SpatialType::collection) {
+            result += "collection";
+        }
+
+        return result;
 	} else {
 		throw runtime_error("Don't know how to express column type of " + column.name + " (" + column.column_type + ")");
 	}
@@ -563,8 +585,22 @@ struct MySQLColumnLister {
 				flags = (ColumnFlags)(flags | mysql_on_update_timestamp);
 			}
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM, 0, 0, flags);
+		} else if (db_type == "geometry") {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, SpatialType::geometry);
 		} else if (db_type == "point") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::POIN);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, SpatialType::point);
+		} else if (db_type == "linestring") {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, SpatialType::linestring);
+		} else if (db_type == "polygon") {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, SpatialType::polygon);
+		} else if (db_type == "geometrycollection") {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, SpatialType::geometry, SpatialType::collection);
+		} else if (db_type == "multipoint") {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, SpatialType::point, SpatialType::multi);
+		} else if (db_type == "multilinestring") {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, SpatialType::linestring, SpatialType::multi);
+		} else if (db_type == "multipolygon") {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, SpatialType::polygon, SpatialType::multi);
 		} else {
 			// not supported, but leave it till sync_to's check_tables_usable to complain about it so that it can be ignored
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UNKN, 0, 0, ColumnFlags::nothing, db_type);
