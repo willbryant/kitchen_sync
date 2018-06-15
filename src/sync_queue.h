@@ -38,7 +38,7 @@ struct TableJob {
 
 template <typename DatabaseClient>
 struct SyncQueue: public AbortableBarrier {
-	SyncQueue(size_t workers): AbortableBarrier(workers) {}
+	SyncQueue(size_t workers): AbortableBarrier(workers), sharing_work(false) {}
 
 	void enqueue_tables_to_process(const Tables &tables) {
 		unique_lock<std::mutex> lock(mutex);
@@ -54,8 +54,7 @@ struct SyncQueue: public AbortableBarrier {
 		if (aborted) throw aborted_error();
 
 		if (tables_to_process.empty()) {
-			for (shared_ptr<TableJob> table_job : tables_to_process)      start_sharing_work_in(table_job);
-			for (shared_ptr<TableJob> table_job : tables_being_processed) start_sharing_work_in(table_job);
+			if (!sharing_work) start_sharing_work();
 			return nullptr;
 		}
 
@@ -127,6 +126,12 @@ private:
 		return (tables_to_process.empty() && tables_being_processed.empty());
 	}
 
+	void start_sharing_work() {
+		sharing_work = true;
+		for (shared_ptr<TableJob> table_job : tables_to_process)      start_sharing_work_in(table_job);
+		for (shared_ptr<TableJob> table_job : tables_being_processed) start_sharing_work_in(table_job);
+	}
+
 	void start_sharing_work_in(shared_ptr<TableJob> table_job) {
 		unique_lock<std::mutex> table_job_lock(table_job->mutex);
 
@@ -137,6 +142,7 @@ private:
 		}
 	}
 
+	bool sharing_work;
 	list<shared_ptr<TableJob>> tables_to_process;
 	set<shared_ptr<TableJob>> tables_being_processed;
 	set<shared_ptr<TableJob>> tables_with_work_to_share;
