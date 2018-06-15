@@ -16,7 +16,7 @@ typedef tuple<ColumnValues, ColumnValues, size_t, size_t> KeyRangeWithRowCount;
 const size_t UNKNOWN_ROW_COUNT = numeric_limits<size_t>::max();
 
 struct TableJob {
-	TableJob(const Table &table): table(table), notify_when_work_could_be_shared(false), hash_commands(0), hash_commands_completed(0), rows_commands(0) {}
+	TableJob(const Table &table): table(table), notify_when_work_could_be_shared(false), time_started(0), time_finished(0), hash_commands(0), hash_commands_completed(0), rows_commands(0) {}
 
 	inline bool have_work_to_share() { return (!ranges_to_check.empty()); }
 
@@ -27,6 +27,9 @@ struct TableJob {
 	list<KeyRange> ranges_to_retrieve;
 	list<KeyRangeWithRowCount> ranges_to_check;
 	bool notify_when_work_could_be_shared;
+
+	time_t time_started;
+	time_t time_finished;
 
 	size_t hash_commands;
 	size_t hash_commands_completed;
