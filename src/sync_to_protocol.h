@@ -44,12 +44,7 @@ struct SyncToProtocol {
 			if (!table_job) break;
 
 			// synchronize that table
-			start_sync_table(table_job);
-			size_t rows_changed = send_table_job_commands(table_job, true);
-			finish_sync_table(table_job, rows_changed);
-
-			// remove it from the list of tables being worked on
-			sync_queue.completed_table(table_job);
+			sync_table(table_job);
 		}
 
 		// if there are no tables not assigned to a worker, we try to borrow work; this is
@@ -64,7 +59,7 @@ struct SyncToProtocol {
 			if (!table_job) break;
 
 			// work on that table until there are no tasks currently free; it may come up again later
-			send_table_job_commands(table_job, false);
+			sync_table(table_job);
 		}
 	}
 
@@ -102,7 +97,11 @@ struct SyncToProtocol {
 		}
 	}
 
-	inline size_t send_table_job_commands(const shared_ptr<TableJob> &table_job, bool writer) {
+	inline void sync_table(const shared_ptr<TableJob> &table_job) {
+		// if the table hasn't been started, become the writer worker for it; otherwise just help out with range checks
+		bool writer = !table_job->time_started;
+		if (writer) start_sync_table(table_job);
+
 		const Table &table(table_job->table);
 		RowReplacer<DatabaseClient> row_replacer(client, table, worker.commit_level >= CommitLevel::often,
 			[&] { if (worker.progress) { cout << "." << flush; } });
@@ -146,11 +145,24 @@ struct SyncToProtocol {
 				// connection may mutate a table, to avoid fighting for locks; we can also compete for ranges_to_check ourselves
 				table_job->borrowed_task_completed.wait(lock);
 
-			} else {
-				// nothing left to do on this table; make sure all pending updates have been applied
+			} else if (writer) {
+				// nothing left to do on this table
 				lock.unlock(); // don't hold the mutex while doing IO
-				if (writer) row_replacer.apply();
-				return row_replacer.rows_changed;
+
+				// make sure all pending updates have been applied
+				row_replacer.apply();
+
+				// wrap up, log it, and potentially commit it
+				finish_sync_table(table_job, row_replacer.rows_changed);
+
+				// remove it from the list of tables being worked on
+				sync_queue.completed_table(table_job);
+				return;
+
+			} else {
+				// nothing left to help with on this table at the moment, look for other tables with work to share
+				lock.unlock(); // don't hold the mutex while doing IO
+				return;
 			}
 
 			if (worker.progress) {
