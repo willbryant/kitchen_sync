@@ -52,9 +52,9 @@ struct SyncToProtocol {
 			if (!table_job) break;
 
 			// synchronize that table
-			time_t started = start_sync_table(table_job);
+			start_sync_table(table_job);
 			size_t rows_changed = send_table_job_commands(table_job, true);
-			finish_sync_table(table_job, started, rows_changed);
+			finish_sync_table(table_job, rows_changed);
 
 			// remove it from the list of tables being worked on
 			sync_queue.completed_table(table_job);
@@ -76,8 +76,8 @@ struct SyncToProtocol {
 		}
 	}
 
-	time_t start_sync_table(const shared_ptr<TableJob> &table_job) {
-		time_t started = time(nullptr);
+	void start_sync_table(const shared_ptr<TableJob> &table_job) {
+		table_job->time_started = time(nullptr);
 
 		if (worker.verbose) {
 			unique_lock<mutex> lock(sync_queue.mutex);
@@ -91,19 +91,17 @@ struct SyncToProtocol {
 		send_command(output, Commands::RANGE, table_job->table.name);
 		if (input.next<verb_t>() != Commands::RANGE) throw command_error("Didn't receive response to RANGE command");
 		handle_range_response(table_job);
-
-		return started;
 	}
 
-	void finish_sync_table(const shared_ptr<TableJob> &table_job, time_t started, size_t rows_changed) {
+	void finish_sync_table(const shared_ptr<TableJob> &table_job, size_t rows_changed) {
 		// reset sequences on those databases that don't automatically bump the high-water mark for inserts
 		ResetTableSequences<DatabaseClient>::execute(client, table_job->table);
 
 		if (worker.verbose) {
-			time_t now = time(nullptr);
+			table_job->time_finished = time(nullptr);
 			unique_lock<mutex> lock(sync_queue.mutex);
 			if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << ' ';
-			cout << "finished " << table_job->table.name << " in " << (now - started) << "s using " << table_job->hash_commands << " hash commands and " << table_job->rows_commands << " rows commands changing " << rows_changed << " rows" << endl << flush;
+			cout << "finished " << table_job->table.name << " in " << (table_job->time_finished - table_job->time_started) << "s using " << table_job->hash_commands << " hash commands and " << table_job->rows_commands << " rows commands changing " << rows_changed << " rows" << endl << flush;
 		}
 
 		if (worker.commit_level >= CommitLevel::tables) {
