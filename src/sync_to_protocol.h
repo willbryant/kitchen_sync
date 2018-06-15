@@ -1,7 +1,7 @@
 #include "timestamp.h"
 
 struct HashResult {
-	HashResult(ColumnValues prev_key, ColumnValues last_key, size_t estimated_rows_in_range, size_t our_row_count, size_t our_size, string our_hash, ColumnValues our_last_key):
+	HashResult(const ColumnValues &prev_key, const ColumnValues &last_key, size_t estimated_rows_in_range, size_t our_row_count, size_t our_size, string our_hash, const ColumnValues &our_last_key):
 		prev_key(prev_key), last_key(last_key), estimated_rows_in_range(estimated_rows_in_range), our_row_count(our_row_count), our_size(our_size), our_hash(our_hash), our_last_key(our_last_key) {}
 
 	ColumnValues prev_key;
