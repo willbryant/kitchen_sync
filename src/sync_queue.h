@@ -48,14 +48,14 @@ struct SyncQueue: public AbortableBarrier {
 		}
 	}
 
-	shared_ptr<TableJob> pop_table_to_process() {
+	shared_ptr<TableJob> find_table_job() {
 		unique_lock<std::mutex> lock(mutex);
 
 		if (aborted) throw aborted_error();
 
 		if (tables_to_process.empty()) {
 			if (!sharing_work) start_sharing_work();
-			return nullptr;
+			return borrow_work(lock);
 		}
 
 		shared_ptr<TableJob> table_job = tables_to_process.front();
@@ -83,27 +83,6 @@ struct SyncQueue: public AbortableBarrier {
 		tables_with_work_to_share.insert(table_job);
 
 		cond.notify_all();
-	}
-
-	shared_ptr<TableJob> borrow_work() {
-		unique_lock<std::mutex> lock(mutex);
-
-		while (true) {
-			if (finished()) {
-				return nullptr;
-			}
-
-			for (auto it = tables_with_work_to_share.begin(); it != tables_with_work_to_share.end(); it = tables_with_work_to_share.erase(it)) {
-				const shared_ptr<TableJob> &table_job(*it);
-				unique_lock<std::mutex> table_job_lock(table_job->mutex);
-
-				if (table_job->have_work_to_share()) {
-					return table_job;
-				}
-			}
-
-			cond.wait(lock);
-		}
 	}
 
 	bool abort() {
@@ -139,6 +118,25 @@ private:
 
 		if (table_job->have_work_to_share()) {
 			tables_with_work_to_share.insert(table_job);
+		}
+	}
+
+	shared_ptr<TableJob> borrow_work(unique_lock<std::mutex> &lock) {
+		while (true) {
+			if (finished()) {
+				return nullptr;
+			}
+
+			for (auto it = tables_with_work_to_share.begin(); it != tables_with_work_to_share.end(); it = tables_with_work_to_share.erase(it)) {
+				const shared_ptr<TableJob> &table_job(*it);
+				unique_lock<std::mutex> table_job_lock(table_job->mutex);
+
+				if (table_job->have_work_to_share()) {
+					return table_job;
+				}
+			}
+
+			cond.wait(lock);
 		}
 	}
 
