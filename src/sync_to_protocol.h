@@ -43,6 +43,7 @@ struct SyncToProtocol {
 		negotiate_target_minimum_block_size();
 		negotiate_hash_algorithm();
 
+		// by preference, we take a new table and become the primary worker
 		while (true) {
 			// grab the next table to work on from the queue (blocking if it's empty)
 			shared_ptr<TableJob> table_job = sync_queue.pop_table_to_process();
@@ -59,6 +60,10 @@ struct SyncToProtocol {
 			sync_queue.completed_table(table_job);
 		}
 
+		// if there are no tables not assigned to a worker, we try to borrow work; this is
+		// different because it's not possible to have two workers writing to two different
+		// database connections for the same table without hitting lock wait and deadlock
+		// issues, so in this phase we only do 'checks', not actually changing data.
 		while (true) {
 			// grab the next table we can help another worker with from the queue (blocking if it's empty)
 			shared_ptr<TableJob> table_job = sync_queue.borrow_work();
