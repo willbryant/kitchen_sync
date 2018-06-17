@@ -138,8 +138,8 @@ Packer<Stream> &operator <<(Packer<Stream> &packer, const PackedValue &obj) {
 	return packer;
 }
 
-struct VectorReadStream {
-	inline VectorReadStream(const PackedValue &value): value(value), pos(0) {}
+struct PackedValueReadStream {
+	inline PackedValueReadStream(const PackedValue &value): value(value), pos(0) {}
 
 	inline void read(uint8_t *dest, size_t bytes) {
 		memcpy(dest, value.data() + pos, bytes);
