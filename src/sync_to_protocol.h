@@ -94,8 +94,11 @@ struct SyncToProtocol {
 		RowReplacer<DatabaseClient> row_replacer(client, table, worker.commit_level >= CommitLevel::often,
 			[&] { if (worker.progress) { cout << "." << flush; } });
 
+		// we support pipelining, but we don't start pipelining until we've got the first response,
+		// which is probably a big ROWS request for the end of the table - there may be time for
+		// another worker to pick up the first range to check while we're doing that
 		size_t outstanding_commands = 0;
-		size_t max_outstanding_commands = 2;
+		size_t max_outstanding_commands = 1;
 
 		list<HashResult> ranges_hashed;
 
@@ -126,6 +129,9 @@ struct SyncToProtocol {
 				lock.unlock(); // don't hold the mutex while doing IO; note we still had to lock the mutex in order to check the emptiness of those lists
 				handle_response(table_job, ranges_hashed, row_replacer);
 				outstanding_commands--;
+
+				// as above, start pipelining once we've received the first response
+				max_outstanding_commands = DEFAULT_MAX_COMMANDS_TO_PIPELINE;
 
 			} else if (writer && table_job->hash_commands_completed < table_job->hash_commands) {
 				// wait for the other worker(s) to complete their task, then wake up to see if there is anything for us to do
