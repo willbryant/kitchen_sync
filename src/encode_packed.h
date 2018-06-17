@@ -9,8 +9,8 @@ string encode(DatabaseClient &client, const Column &column, const PackedValue &v
 	if (value.is_false())	return "false";
 	if (value.is_true())	return "true";
 
-	VectorReadStream stream(value);
-	Unpacker<VectorReadStream> unpacker(stream);
+	PackedValueReadStream stream(value);
+	Unpacker<PackedValueReadStream> unpacker(stream);
 	uint8_t leader = value.leader();
 
 	if ((leader >= MSGPACK_POSITIVE_FIXNUM_MIN && leader <= MSGPACK_POSITIVE_FIXNUM_MAX) ||
