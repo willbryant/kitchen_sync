@@ -287,7 +287,20 @@ struct SyncToProtocol {
 			if (hash_result.estimated_rows_in_range == UNKNOWN_ROW_COUNT) {
 				// we're scanning forward, do that last
 				size_t rows_to_hash = rows_to_scan_forward_next(rows_to_hash, match, hash_result.our_row_count, hash_result.our_size);
-				table_job->ranges_to_check.emplace_back(hash_result.our_last_key, last_key, UNKNOWN_ROW_COUNT, rows_to_hash);
+
+				// when the table has a subdividable primary key, and there is not already too much work in the queue,
+				// break the remaining range into two, so that if there's another worker free it can start checking that
+				if (table_job->subdividable && table_job->ranges_to_check.size() + 1 < sync_queue.workers) {
+					ColumnValues midpoint(subdivide_primary_key_range(table, hash_result.our_last_key, last_key));
+					if (midpoint != hash_result.our_last_key) {
+						table_job->ranges_to_check.emplace_back(hash_result.our_last_key, midpoint, UNKNOWN_ROW_COUNT, rows_to_hash);
+					}
+					if (last_key != midpoint) {
+						table_job->ranges_to_check.emplace_back(midpoint, last_key, UNKNOWN_ROW_COUNT, rows_to_hash);
+					}
+				} else {
+					table_job->ranges_to_check.emplace_back(hash_result.our_last_key, last_key, UNKNOWN_ROW_COUNT, rows_to_hash);
+				}
 			} else {
 				// we're hunting errors, do that first.  if the part just checked matched, then the
 				// error must be in the remaining part, so consider subdividing it; if it didn't match,
