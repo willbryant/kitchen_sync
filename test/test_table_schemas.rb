@@ -342,4 +342,10 @@ SQL
       "primary_key_columns" => [0],
       "keys" => [] }
   end
+
+  def create_view
+    execute(<<-SQL)
+      CREATE VIEW ignoredview AS (SELECT col1, col3 FROM footbl)
+SQL
+  end
 end

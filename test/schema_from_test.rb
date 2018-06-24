@@ -73,4 +73,20 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
     expect_command Commands::ROWS,
                    [adapterspecifictbl_def["name"], [], []]
   end
+
+  test_each "ignores views" do
+    clear_schema
+    create_footbl
+    create_view
+
+    send_handshake_commands
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA,
+                   [{"tables" => [footbl_def]}]
+
+    send_command   Commands::ROWS, [footbl_def["name"], [], []]
+    expect_command Commands::ROWS,
+                   [footbl_def["name"], [], []]
+  end
 end

@@ -56,6 +56,10 @@ class PGconn
     query("SELECT tablename FROM pg_tables WHERE schemaname = ANY (current_schemas(false)) ORDER BY tablename").collect {|row| row["tablename"]}
   end
 
+  def views
+    query("SELECT viewname FROM pg_views WHERE schemaname = ANY (current_schemas(false)) ORDER BY viewname").collect {|row| row["viewname"]}
+  end
+
   def table_primary_key_name(table_name)
     "#{table_name}_pkey"
   end
@@ -172,7 +176,11 @@ class Mysql2::Client
   end
 
   def tables
-    query("SHOW TABLES").collect {|row| row.values.first}
+    query("SHOW FULL TABLES").select {|row| row["Table_type"] == "BASE TABLE"}.collect {|row| row.values.first}
+  end
+
+  def views
+    query("SHOW FULL TABLES").select {|row| row["Table_type"] == "VIEW"}.collect {|row| row.values.first}
   end
 
   def table_primary_key_name(table_name)
@@ -446,6 +454,7 @@ module KitchenSync
     end
 
     def clear_schema
+      connection.views.each {|view_name| execute "DROP VIEW #{view_name}"}
       connection.tables.each {|table_name| execute "DROP TABLE #{table_name}"}
     end
 
