@@ -1,6 +1,13 @@
 Changelog
 =========
 
+1.1
+---
+* Ignore views on MySQL, as for PostgreSQL.  Thanks @Safranil.
+* Fix crash when running the sub-commands manually.  Thanks @dylanmckay.
+* Usage example documentation fix.  Thanks @pawelgradziel.
+* Minor efficiency tweaks.  Compiler must now support C++14.
+
 1.0
 ---
 * Behavior change: when using `--via` and the `--filter` option, the filter file is read locally rather than at the `--via` end.
