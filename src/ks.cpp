@@ -25,11 +25,12 @@ void be_christmassy() {
 	     << "           | |" << endl;
 }
 
-void greet_remote_server(Options &options, const string &ssh_binary, const string &from_binary) {
+void greet_remote_server(Options &options, const string &ssh_binary, const string &cipher, const string &from_binary) {
 	string from_binary_cmd(from_binary.c_str() + string(" ") + string("do-nothing"));
 
 	const char *ssh_greeting_args[] = {
 		ssh_binary.c_str(),
+		"-C", "-c", cipher.c_str(),
 		options.via.c_str(),
 		from_binary_cmd.c_str(), nullptr };
 
@@ -85,7 +86,7 @@ int main(int argc, char *argv[]) {
 		}
 
 		if (!options.via.empty()) {
-			greet_remote_server(options, ssh_binary, from_binary);
+			greet_remote_server(options, ssh_binary, options.cipher, from_binary);
 		}
 
 		vector<pid_t> child_pids;
