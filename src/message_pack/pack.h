@@ -174,6 +174,8 @@ void pack_raw_length(Packer<Stream> &packer, size_t size) {
 	if (size <= MSGPACK_FIXRAW_MAX - MSGPACK_FIXRAW_MIN) {
 		packer.write_bytes((uint8_t) (MSGPACK_FIXRAW_MIN + size));
 
+	/* we could/should use MSGPACK_RAW8 here when size <= 0xff, but that's a breaking change for hash calculation */
+
 	} else if (size <= 0xffff) {
 		packer.write_bytes(MSGPACK_RAW16);
 		packer.write_bytes((uint16_t) htons(size));

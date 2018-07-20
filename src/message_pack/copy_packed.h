@@ -73,6 +73,7 @@ void copy_object(Unpacker<Stream> &unpacker, PackedValue &obj) {
 				break;
 
 			case MSGPACK_BIN8:
+			case MSGPACK_RAW8:
 				copy_bytes(unpacker, obj, *(uint8_t *)copy_bytes(unpacker, obj, sizeof(uint8_t)));
 				break;
 

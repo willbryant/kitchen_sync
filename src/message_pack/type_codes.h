@@ -27,6 +27,7 @@ const uint8_t MSGPACK_INT8                = 0xd0;
 const uint8_t MSGPACK_INT16               = 0xd1;
 const uint8_t MSGPACK_INT32               = 0xd2;
 const uint8_t MSGPACK_INT64               = 0xd3;
+const uint8_t MSGPACK_RAW8                = 0xd9;
 const uint8_t MSGPACK_RAW16               = 0xda;
 const uint8_t MSGPACK_RAW32               = 0xdb;
 const uint8_t MSGPACK_ARRAY16             = 0xdc;
