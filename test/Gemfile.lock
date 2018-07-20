@@ -7,7 +7,7 @@ GIT
 GEM
   remote: https://rubygems.org/
   specs:
-    msgpack (0.5.9)
+    msgpack (1.2.3)
     mysql2 (0.5.1)
     power_assert (0.2.6)
     ruby-xxHash (0.4.0.1)
@@ -25,4 +25,4 @@ DEPENDENCIES
   test-unit
 
 BUNDLED WITH
-   1.16.1
+   1.16.3
