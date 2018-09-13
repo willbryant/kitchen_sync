@@ -7,7 +7,7 @@ To compile Kitchen Sync, you will need:
 * boost headers
 * openssl library headers (except on OS X where Apple's Common Crypto library is used instead)
 * postgresql client library headers; and/or
-* mysql client library headers
+* mysql (or mariadb) client library headers
 
 Kitchen Sync needs at least one database client library to do something useful, but it will produce a separate binary for each different database, so you don't need to compile or deploy all the binaries on systems where you won't use them.
 
@@ -23,6 +23,12 @@ And one or both of:
 ```
 apt-get install libpq-dev
 apt-get install libmysqlclient-dev
+```
+
+You can use MariaDB's libraries instead of MySQL's if you prefer:
+
+```
+apt-get install libmariadbclient-dev-compat
 ```
 
 To build, change to the kitchen_sync directory where you checked out the files, then:
@@ -48,6 +54,12 @@ And one or both of:
 ```
 brew install postgresql
 brew install mysql
+```
+
+You can use MariaDB instead of MySQL if you prefer:
+
+```
+brew install mariadb
 ```
 
 To build, change to the kitchen_sync directory where you checked out the files, then:
