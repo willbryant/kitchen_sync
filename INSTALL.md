@@ -14,7 +14,7 @@ Kitchen Sync needs at least one database client library to do something useful, 
 Ubuntu
 ------
 
-You can install these on Ubuntu using:
+You can install the above build dependencies on Ubuntu using:
 ```
 apt-get install build-essential cmake libboost-dev libssl-dev
 ```
@@ -23,6 +23,12 @@ And one or both of:
 ```
 apt-get install libpq-dev
 apt-get install libmysqlclient-dev
+```
+
+To build, change to the kitchen_sync directory where you checked out the files, then:
+```
+  cd build
+  cmake .. && make && make install
 ```
 
 OS X
