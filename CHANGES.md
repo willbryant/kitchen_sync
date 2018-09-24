@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.2
+---
+* When using `--via` make an single initial SSH connection to give users a chance to accept host key prompts, and to give simpler error messages.  Thanks @dylanmckay.
+* Documentation improvements and forward compatibility improvements.
+
 1.1
 ---
 * Ignore views on MySQL, as for PostgreSQL.  Thanks @Safranil.
