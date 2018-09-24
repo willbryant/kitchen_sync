@@ -555,10 +555,11 @@ struct MySQLColumnLister {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TIME);
 		} else if (db_type == "datetime" || db_type == "timestamp") {
 			ColumnFlags flags = db_type == "timestamp" ? ColumnFlags::mysql_timestamp : ColumnFlags::nothing;
-			if (default_value == "CURRENT_TIMESTAMP") {
+			if (default_value == "CURRENT_TIMESTAMP" || default_value == "current_timestamp()") {
 				default_type = DefaultType::default_function;
+				default_value = "CURRENT_TIMESTAMP";
 			}
-			if (extra.find("on update CURRENT_TIMESTAMP") != string::npos) {
+			if (extra.find("on update CURRENT_TIMESTAMP") != string::npos || extra.find("on update current_timestamp()") != string::npos) {
 				flags = (ColumnFlags)(flags | mysql_on_update_timestamp);
 			}
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM, 0, 0, flags);
