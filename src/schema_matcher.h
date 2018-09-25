@@ -253,11 +253,12 @@ struct OverwriteColumnNullValueClauses {
 
 template <typename DatabaseClient, bool = is_base_of<DropKeysWhenColumnsDropped, DatabaseClient>::value>
 struct UpdateKeyForDroppedColumn {
-	static bool update_key_columns(ColumnIndices &key_columns, size_t column_index) {
+	static bool update_key_columns(ColumnIndices &key_columns, bool unique, size_t column_index) {
 		ColumnIndices::iterator column = key_columns.begin();
 		while (column != key_columns.end()) {
 			if (*column == column_index) {
 				column = key_columns.erase(column);
+				if (unique) return false; // after https://jira.mariadb.org/browse/MDEV-13613 we can't reliably remove columns from unique keys
 			} else {
 				if (*column > column_index) {
 					--*column;
@@ -271,7 +272,7 @@ struct UpdateKeyForDroppedColumn {
 
 template <typename DatabaseClient>
 struct UpdateKeyForDroppedColumn <DatabaseClient, true> {
-	static bool update_key_columns(ColumnIndices &key_columns, size_t column_index) {
+	static bool update_key_columns(ColumnIndices &key_columns, bool unique, size_t column_index) {
 		ColumnIndices::iterator column = key_columns.begin();
 		while (column != key_columns.end()) {
 			if (*column == column_index) {
@@ -298,16 +299,16 @@ struct DropColumnClauses {
 		alter_table_clauses += table.columns[column_index].name;
 		alter_table_clauses += client.quote_identifiers_with();
 
-		if (!UpdateKeyForDroppedColumn<DatabaseClient>::update_key_columns(table.primary_key_columns, column_index)) {
+		if (!UpdateKeyForDroppedColumn<DatabaseClient>::update_key_columns(table.primary_key_columns, true, column_index)) {
 			table.primary_key_columns.clear(); // so the table compares not-equal and gets recreated
 		} else {
 			Keys::iterator key = table.keys.begin();
 			while (key != table.keys.end()) {
-				if (UpdateKeyForDroppedColumn<DatabaseClient>::update_key_columns(key->columns, column_index)) {
+				if (UpdateKeyForDroppedColumn<DatabaseClient>::update_key_columns(key->columns, key->unique, column_index)) {
 					++key;
 				} else {
 					// proactively drop the key at the start to work around one case of https://bugs.mysql.com/bug.php?id=57497 -
-					// the single-column index case.
+					// the single-column index case.  we also use this to avoid the new behavior from https://jira.mariadb.org/browse/MDEV-13613.
 					DropKeyStatements<DatabaseClient>::add_to(alter_statements, client, table, *key);
 					key = table.keys.erase(key);
 				}
