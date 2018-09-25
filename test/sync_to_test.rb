@@ -10,13 +10,14 @@ class SyncToTest < KitchenSync::EndpointTestCase
   def setup_with_footbl
     clear_schema
     create_footbl
-    execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str'), (101, 0, NULL), (102, 0, NULL), (1000, 0, NULL), (1001, 0, 'last')"
+    execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str'), (101, 0, NULL), (102, 0, NULL), (555, 0, NULL), (1000, 0, NULL), (1001, 0, 'last')"
     @rows = [[2,     10,       "test"],
              [4,    nil,        "foo"],
              [5,    nil,          nil],
              [8,     -1, "longer str"],
              [101,    0,          nil],
              [102,    0,          nil],
+             [555,    0,          nil],
              [1000,   0,          nil],
              [1001,   0,       "last"]]
     @keys = @rows.collect {|row| [row[0]]}
@@ -95,7 +96,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_command Commands::HASH, ["footbl", @keys[2], @keys[-1], 4]
     send_command   Commands::HASH, ["footbl", @keys[2], @keys[-1], 4, 4, hash_of(@rows[3..6])]
     expect_command Commands::HASH, ["footbl", @keys[6], @keys[-1], 8]
-    send_command   Commands::HASH, ["footbl", @keys[6], @keys[-1], 8, 1, hash_of(@rows[7..7])]
+    send_command   Commands::HASH, ["footbl", @keys[6], @keys[-1], 8, 2, hash_of(@rows[7..8])]
     expect_quit_and_close
 
     assert_equal @rows,
@@ -131,7 +132,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_command Commands::HASH, ["footbl", @keys[2], @keys[-1], 2]
     send_command   Commands::HASH, ["footbl", @keys[2], @keys[-1], 2, 2, hash_of(@rows[3..4])]
     expect_command Commands::HASH, ["footbl", @keys[4], @keys[-1], 4]
-    send_command   Commands::HASH, ["footbl", @keys[4], @keys[-1], 4, 3, hash_of(@rows[5..7])]
+    send_command   Commands::HASH, ["footbl", @keys[4], @keys[-1], 4, 4, hash_of(@rows[5..8])]
     expect_quit_and_close
 
     assert_equal @rows,
@@ -159,7 +160,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
 
     # order from here on is just an implementation detail, but we expect to see the following commands in some order
     expect_command Commands::HASH, ["footbl", @keys[6], @keys[-1], 2]
-    send_command   Commands::HASH, ["footbl", @keys[6], @keys[-1], 2, 1, hash_of(@rows[7..7])]
+    send_command   Commands::HASH, ["footbl", @keys[6], @keys[-1], 2, 2, hash_of(@rows[7..8])]
     expect_command Commands::HASH, ["footbl", @keys[2], @keys[4], 1]
     send_command   Commands::HASH, ["footbl", @keys[2], @keys[4], 1, 1, hash_of(@rows[3..3])]
     expect_command Commands::HASH, ["footbl", @keys[4], @keys[6], 2]
@@ -378,17 +379,13 @@ class SyncToTest < KitchenSync::EndpointTestCase
     send_command   Commands::HASH, ["footbl", @keys[1], @keys[-1], 2, 2, hash_of(@rows[2..3])]
     expect_command Commands::HASH, ["footbl", @keys[3], @keys[-1], 4]
     send_command   Commands::HASH, ["footbl", @keys[3], @keys[-1], 4, 4, hash_of(@rows[4..7])]
-    expect_command Commands::HASH, ["footbl", @keys[3], @keys[-1], 2]
-    send_command   Commands::HASH, ["footbl", @keys[3], @keys[-1], 2, 2, hash_of(@rows[4..5])]
-    expect_command Commands::HASH, ["footbl", @keys[5], @keys[-1], 1]
-    send_command   Commands::HASH, ["footbl", @keys[5], @keys[-1], 1, 1, hash_of(@rows[6..6])]
-    expect_command Commands::HASH, ["footbl", @keys[6], @keys[-1], 1]
-    send_command   Commands::HASH, ["footbl", @keys[6], @keys[-1], 1, 1, hash_of(@rows[7..7])]
+    expect_command Commands::HASH, ["footbl", @keys[7], @keys[-1], 8]
+    send_command   Commands::HASH, ["footbl", @keys[7], @keys[-1], 8, 1, hash_of(@rows[8..8])]
     expect_command Commands::ROWS,
-                   ["footbl", @keys[6], @keys[7]]
+                   ["footbl", @keys[7], @keys[8]]
     send_results   Commands::ROWS,
-                   ["footbl", @keys[6], @keys[7]],
-                   @rows[7]
+                   ["footbl", @keys[7], @keys[8]],
+                   @rows[8]
     expect_quit_and_close
 
     assert_equal @rows,
