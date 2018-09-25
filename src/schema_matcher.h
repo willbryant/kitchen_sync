@@ -298,19 +298,20 @@ struct DropColumnClauses {
 		alter_table_clauses += table.columns[column_index].name;
 		alter_table_clauses += client.quote_identifiers_with();
 
-		Keys::iterator key = table.keys.begin();
-		while (key != table.keys.end()) {
-			if (UpdateKeyForDroppedColumn<DatabaseClient>::update_key_columns(key->columns, column_index)) {
-				++key;
-			} else {
-				// proactively drop the key at the start to work around one case of https://bugs.mysql.com/bug.php?id=57497 -
-				// the single-column index case.
-				DropKeyStatements<DatabaseClient>::add_to(alter_statements, client, table, *key);
-				key = table.keys.erase(key);
-			}
-		}
 		if (!UpdateKeyForDroppedColumn<DatabaseClient>::update_key_columns(table.primary_key_columns, column_index)) {
 			table.primary_key_columns.clear(); // so the table compares not-equal and gets recreated
+		} else {
+			Keys::iterator key = table.keys.begin();
+			while (key != table.keys.end()) {
+				if (UpdateKeyForDroppedColumn<DatabaseClient>::update_key_columns(key->columns, column_index)) {
+					++key;
+				} else {
+					// proactively drop the key at the start to work around one case of https://bugs.mysql.com/bug.php?id=57497 -
+					// the single-column index case.
+					DropKeyStatements<DatabaseClient>::add_to(alter_statements, client, table, *key);
+					key = table.keys.erase(key);
+				}
+			}
 		}
 	}
 };
