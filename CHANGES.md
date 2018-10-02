@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.3
+---
+* Fix support for timestamp field `CURRENT_TIMESTAMP` default functions on later versions of MariaDB.
+* Fix schema alteration support for removing a column that's in the primary key on later versions of MariaDB.
+
 1.2
 ---
 * When using `--via` make an single initial SSH connection to give users a chance to accept host key prompts, and to give simpler error messages.  Thanks @dylanmckay.
