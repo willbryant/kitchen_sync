@@ -10,13 +10,13 @@ class SyncToTest < KitchenSync::EndpointTestCase
   def setup_with_footbl
     clear_schema
     create_footbl
-    execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str'), (101, 0, NULL), (102, 0, NULL), (555, 0, NULL), (1000, 0, NULL), (1001, 0, 'last')"
+    execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str'), (301, 0, NULL), (302, 0, NULL), (555, 0, NULL), (1000, 0, NULL), (1001, 0, 'last')"
     @rows = [[2,     10,       "test"],
              [4,    nil,        "foo"],
              [5,    nil,          nil],
              [8,     -1, "longer str"],
-             [101,    0,          nil],
-             [102,    0,          nil],
+             [301,    0,          nil],
+             [302,    0,          nil],
              [555,    0,          nil],
              [1000,   0,          nil],
              [1001,   0,       "last"]]
@@ -141,7 +141,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
 
   test_each "reduces the search range and tries again if we send a different hash for multiple rows" do
     setup_with_footbl
-    execute "UPDATE footbl SET col3 = 'different' WHERE col1 = 101"
+    execute "UPDATE footbl SET col3 = 'different' WHERE col1 = 301"
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
