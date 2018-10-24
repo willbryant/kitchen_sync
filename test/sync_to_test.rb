@@ -88,15 +88,32 @@ class SyncToTest < KitchenSync::EndpointTestCase
     send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
     expect_sync_start_commands
     expect_command Commands::RANGE, ["footbl"]
-    send_command   Commands::RANGE, ["footbl", @keys[0], @keys[-1]]
-    expect_command Commands::HASH, ["footbl", [], @keys[-1], 1]
-    send_command   Commands::HASH, ["footbl", [], @keys[-1], 1, 1, hash_of(@rows[0..0])]
-    expect_command Commands::HASH, ["footbl", @keys[0], @keys[-1], 2]
-    send_command   Commands::HASH, ["footbl", @keys[0], @keys[-1], 2, 2, hash_of(@rows[1..2])]
-    expect_command Commands::HASH, ["footbl", @keys[2], @keys[-1], 4]
-    send_command   Commands::HASH, ["footbl", @keys[2], @keys[-1], 4, 4, hash_of(@rows[3..6])]
-    expect_command Commands::HASH, ["footbl", @keys[6], @keys[-1], 8]
-    send_command   Commands::HASH, ["footbl", @keys[6], @keys[-1], 8, 2, hash_of(@rows[7..8])]
+    send_command   Commands::RANGE, ["footbl", @keys[0], @keys[8]]
+
+    # the range will be initially subdivided into two around the middle of the key range
+    expect_command Commands::HASH, ["footbl", [], @keys[6], 1]
+    send_command   Commands::HASH, ["footbl", [], @keys[6], 1, 1, hash_of(@rows[0..0])]
+
+    # we'll subdivide the remaining part of that range again, and will process the subdivisions first
+    # note that the subdivisions don't fall exactly halfway in the ranges, because the keys are not evenly distributed
+    expect_command Commands::HASH, ["footbl", @keys[0], @keys[4], 2]
+    send_command   Commands::HASH, ["footbl", @keys[0], @keys[4], 2, 2, hash_of(@rows[1..2])]
+    expect_command Commands::HASH, ["footbl", @keys[4], @keys[6], 2]
+    send_command   Commands::HASH, ["footbl", @keys[4], @keys[6], 2, 2, hash_of(@rows[5..6])]
+
+    # this is the continuation of the second-to-last range; one more subdivision will have been attempted, but it
+    # wouldn't have been able to as the keys are so unevenly spread that there were no rows after the midpoint
+    expect_command Commands::HASH, ["footbl", @keys[2], @keys[4], 4]
+    send_command   Commands::HASH, ["footbl", @keys[2], @keys[4], 4, 2, hash_of(@rows[3..4])]
+
+    # now we're carrying on with the second half of the very first subdivision
+    expect_command Commands::HASH, ["footbl", @keys[6], @keys[8], 1]
+    send_command   Commands::HASH, ["footbl", @keys[6], @keys[8], 1, 1, hash_of(@rows[7..7])]
+
+    # and again the keys are such that we don't see a further subdivision, although it would have been attempted
+    expect_command Commands::HASH, ["footbl", @keys[7], @keys[8], 2]
+    send_command   Commands::HASH, ["footbl", @keys[7], @keys[8], 2, 1, hash_of(@rows[8..8])]
+
     expect_quit_and_close
 
     assert_equal @rows,
@@ -113,26 +130,32 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_sync_start_commands
     expect_command Commands::RANGE, ["footbl"]
     send_command   Commands::RANGE, ["footbl", @keys[0], @keys[-1]]
-    expect_command Commands::HASH, ["footbl", [], @keys[-1], 1]
-    send_command   Commands::HASH, ["footbl", [], @keys[-1], 1, 1, hash_of(@rows[0..0])]
+    expect_command Commands::HASH, ["footbl", [], @keys[6], 1]
+    send_command   Commands::HASH, ["footbl", [], @keys[6], 1, 1, hash_of(@rows[0..0])]
     expect_command Commands::ROWS,
                    ["footbl", [], @keys[0]]
     send_results   Commands::ROWS,
                    ["footbl", [], @keys[0]],
                    @rows[0]
-    expect_command Commands::HASH, ["footbl", @keys[0], @keys[-1], 1]
-    send_command   Commands::HASH, ["footbl", @keys[0], @keys[-1], 1, 1, hash_of(@rows[1..1])]
+    expect_command Commands::HASH, ["footbl", @keys[0], @keys[4], 1]
+    send_command   Commands::HASH, ["footbl", @keys[0], @keys[4], 1, 1, hash_of(@rows[1..1])]
+    expect_command Commands::HASH, ["footbl", @keys[4], @keys[6], 1]
+    send_command   Commands::HASH, ["footbl", @keys[4], @keys[6], 1, 1, hash_of(@rows[5..5])]
     expect_command Commands::ROWS,
                    ["footbl", @keys[0], @keys[1]]
     send_results   Commands::ROWS,
                    ["footbl", @keys[0], @keys[1]],
                    @rows[1]
-    expect_command Commands::HASH, ["footbl", @keys[1], @keys[-1], 1]
-    send_command   Commands::HASH, ["footbl", @keys[1], @keys[-1], 1, 1, hash_of(@rows[2..2])]
-    expect_command Commands::HASH, ["footbl", @keys[2], @keys[-1], 2]
-    send_command   Commands::HASH, ["footbl", @keys[2], @keys[-1], 2, 2, hash_of(@rows[3..4])]
-    expect_command Commands::HASH, ["footbl", @keys[4], @keys[-1], 4]
-    send_command   Commands::HASH, ["footbl", @keys[4], @keys[-1], 4, 4, hash_of(@rows[5..8])]
+    expect_command Commands::HASH, ["footbl", @keys[1], @keys[4], 1]
+    send_command   Commands::HASH, ["footbl", @keys[1], @keys[4], 1, 1, hash_of(@rows[2..2])]
+    expect_command Commands::HASH, ["footbl", @keys[5], @keys[6], 2]
+    send_command   Commands::HASH, ["footbl", @keys[5], @keys[6], 2, 1, hash_of(@rows[6..6])]
+    expect_command Commands::HASH, ["footbl", @keys[2], @keys[4], 2]
+    send_command   Commands::HASH, ["footbl", @keys[2], @keys[4], 2, 2, hash_of(@rows[3..4])]
+    expect_command Commands::HASH, ["footbl", @keys[6], @keys[8], 1]
+    send_command   Commands::HASH, ["footbl", @keys[6], @keys[8], 1, 1, hash_of(@rows[7..7])]
+    expect_command Commands::HASH, ["footbl", @keys[7], @keys[8], 2]
+    send_command   Commands::HASH, ["footbl", @keys[7], @keys[8], 2, 1, hash_of(@rows[8..8])]
     expect_quit_and_close
 
     assert_equal @rows,
@@ -148,23 +171,25 @@ class SyncToTest < KitchenSync::EndpointTestCase
     send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
     expect_sync_start_commands
     expect_command Commands::RANGE, ["footbl"]
-    send_command   Commands::RANGE, ["footbl", @keys[0], @keys[-1]]
-    expect_command Commands::HASH, ["footbl", [], @keys[-1], 1]
-    send_command   Commands::HASH, ["footbl", [], @keys[-1], 1, 1, hash_of(@rows[0..0])]
-    expect_command Commands::HASH, ["footbl", @keys[0], @keys[-1], 2]
-    send_command   Commands::HASH, ["footbl", @keys[0], @keys[-1], 2, 2, hash_of(@rows[1..2])]
-    expect_command Commands::HASH, ["footbl", @keys[2], @keys[-1], 4]
-    send_command   Commands::HASH, ["footbl", @keys[2], @keys[-1], 4, 4, hash_of(@rows[3..6])]
-    expect_command Commands::HASH, ["footbl", @keys[2], @keys[6], 2]
-    send_command   Commands::HASH, ["footbl", @keys[2], @keys[6], 2, 2, hash_of(@rows[3..4])]
+    send_command   Commands::RANGE, ["footbl", @keys[0], @keys[8]]
 
-    # order from here on is just an implementation detail, but we expect to see the following commands in some order
-    expect_command Commands::HASH, ["footbl", @keys[6], @keys[-1], 2]
-    send_command   Commands::HASH, ["footbl", @keys[6], @keys[-1], 2, 2, hash_of(@rows[7..8])]
-    expect_command Commands::HASH, ["footbl", @keys[2], @keys[4], 1]
-    send_command   Commands::HASH, ["footbl", @keys[2], @keys[4], 1, 1, hash_of(@rows[3..3])]
+    expect_command Commands::HASH, ["footbl", [], @keys[6], 1]
+    send_command   Commands::HASH, ["footbl", [], @keys[6], 1, 1, hash_of(@rows[0..0])]
+    expect_command Commands::HASH, ["footbl", @keys[0], @keys[4], 2]
+    send_command   Commands::HASH, ["footbl", @keys[0], @keys[4], 2, 2, hash_of(@rows[1..2])]
     expect_command Commands::HASH, ["footbl", @keys[4], @keys[6], 2]
     send_command   Commands::HASH, ["footbl", @keys[4], @keys[6], 2, 2, hash_of(@rows[5..6])]
+
+    expect_command Commands::HASH, ["footbl", @keys[2], @keys[4], 4]
+    send_command   Commands::HASH, ["footbl", @keys[2], @keys[4], 4, 2, hash_of(@rows[3..4])]
+    expect_command Commands::HASH, ["footbl", @keys[6], @keys[8], 1]
+    send_command   Commands::HASH, ["footbl", @keys[6], @keys[8], 1, 1, hash_of(@rows[7..7])]
+
+    # order from here on is just an implementation detail, but we expect to see the following commands in some order
+    expect_command Commands::HASH, ["footbl", @keys[2], @keys[4], 1]
+    send_command   Commands::HASH, ["footbl", @keys[2], @keys[4], 1, 1, hash_of(@rows[3..3])]
+    expect_command Commands::HASH, ["footbl", @keys[7], @keys[8], 2]
+    send_command   Commands::HASH, ["footbl", @keys[7], @keys[8], 2, 1, hash_of(@rows[8..8])]
     expect_command Commands::HASH, ["footbl", @keys[3], @keys[4], 1]
     send_command   Commands::HASH, ["footbl", @keys[3], @keys[4], 1, 1, hash_of(@rows[4..4])]
     expect_command Commands::ROWS,
@@ -245,10 +270,10 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_sync_start_commands
     expect_command Commands::RANGE, ["texttbl"]
     send_command   Commands::RANGE, ["texttbl", [0], [1]]
-    expect_command Commands::HASH, ["texttbl", [], @keys[-1], 1]
-    send_command   Commands::HASH, ["texttbl", [], @keys[-1], 1, 1, hash_of(@rows[0..0])]
-    expect_command Commands::HASH, ["texttbl", [0], @keys[-1], 2]
-    send_command   Commands::HASH, ["texttbl", [0], @keys[-1], 2, 1, hash_of(@rows[1..1])]
+    expect_command Commands::HASH, ["texttbl", [], @keys[0], 1]
+    send_command   Commands::HASH, ["texttbl", [], @keys[0], 1, 1, hash_of(@rows[0..0])]
+    expect_command Commands::HASH, ["texttbl", [0], @keys[-1], 1]
+    send_command   Commands::HASH, ["texttbl", [0], @keys[-1], 1, 1, hash_of(@rows[1..1])]
     expect_quit_and_close
 
     assert_equal @rows,
@@ -293,10 +318,10 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_sync_start_commands
     expect_command Commands::RANGE, ["texttbl"]
     send_command   Commands::RANGE, ["texttbl", [0], [1]]
-    expect_command Commands::HASH, ["texttbl", [], @keys[-1], 1]
-    send_command   Commands::HASH, ["texttbl", [], @keys[-1], 1, 1, hash_of(@rows[0..0])]
-    expect_command Commands::HASH, ["texttbl", [0], @keys[-1], 2]
-    send_command   Commands::HASH, ["texttbl", [0], @keys[-1], 2, 1, hash_of(@rows[1..1])]
+    expect_command Commands::HASH, ["texttbl", [], @keys[0], 1]
+    send_command   Commands::HASH, ["texttbl", [], @keys[0], 1, 1, hash_of(@rows[0..0])]
+    expect_command Commands::HASH, ["texttbl", [0], @keys[-1], 1]
+    send_command   Commands::HASH, ["texttbl", [0], @keys[-1], 1, 1, hash_of(@rows[1..1])]
     expect_quit_and_close
 
     assert_equal @rows,
@@ -366,21 +391,27 @@ class SyncToTest < KitchenSync::EndpointTestCase
     expect_sync_start_commands
     expect_command Commands::RANGE, ["footbl"]
     send_command   Commands::RANGE, ["footbl", @keys[0], @keys[-1]]
-    expect_command Commands::HASH, ["footbl", [], @keys[-1], 1]
-    send_command   Commands::HASH, ["footbl", [], @keys[-1], 1, 1, hash_of(@rows[0..0])]
+    expect_command Commands::HASH, ["footbl", [], @keys[6], 1]
+    send_command   Commands::HASH, ["footbl", [], @keys[6], 1, 1, hash_of(@rows[0..0])]
     expect_command Commands::ROWS,
                    ["footbl", [], @keys[0]]
     send_results   Commands::ROWS,
                    ["footbl", [], @keys[0]],
                    @rows[0]
-    expect_command Commands::HASH, ["footbl", @keys[0], @keys[-1], 1]
-    send_command   Commands::HASH, ["footbl", @keys[0], @keys[-1], 1, 1, hash_of(@rows[1..1])]
-    expect_command Commands::HASH, ["footbl", @keys[1], @keys[-1], 2]
-    send_command   Commands::HASH, ["footbl", @keys[1], @keys[-1], 2, 2, hash_of(@rows[2..3])]
-    expect_command Commands::HASH, ["footbl", @keys[3], @keys[-1], 4]
-    send_command   Commands::HASH, ["footbl", @keys[3], @keys[-1], 4, 4, hash_of(@rows[4..7])]
-    expect_command Commands::HASH, ["footbl", @keys[7], @keys[-1], 8]
-    send_command   Commands::HASH, ["footbl", @keys[7], @keys[-1], 8, 1, hash_of(@rows[8..8])]
+    expect_command Commands::HASH, ["footbl", @keys[0], @keys[4], 1]
+    send_command   Commands::HASH, ["footbl", @keys[0], @keys[4], 1, 1, hash_of(@rows[1..1])]
+    expect_command Commands::HASH, ["footbl", @keys[4], @keys[6], 1]
+    send_command   Commands::HASH, ["footbl", @keys[4], @keys[6], 1, 1, hash_of(@rows[5..5])]
+    expect_command Commands::HASH, ["footbl", @keys[1], @keys[4], 2]
+    send_command   Commands::HASH, ["footbl", @keys[1], @keys[4], 2, 2, hash_of(@rows[2..3])]
+    expect_command Commands::HASH, ["footbl", @keys[5], @keys[6], 2]
+    send_command   Commands::HASH, ["footbl", @keys[5], @keys[6], 2, 1, hash_of(@rows[6..6])]
+    expect_command Commands::HASH, ["footbl", @keys[3], @keys[4], 4]
+    send_command   Commands::HASH, ["footbl", @keys[3], @keys[4], 4, 1, hash_of(@rows[4..4])]
+    expect_command Commands::HASH, ["footbl", @keys[6], @keys[8], 1]
+    send_command   Commands::HASH, ["footbl", @keys[6], @keys[8], 1, 1, hash_of(@rows[7..7])]
+    expect_command Commands::HASH, ["footbl", @keys[7], @keys[8], 2]
+    send_command   Commands::HASH, ["footbl", @keys[7], @keys[8], 2, 1, hash_of(@rows[8..8])]
     expect_command Commands::ROWS,
                    ["footbl", @keys[7], @keys[8]]
     send_results   Commands::ROWS,

@@ -8,24 +8,42 @@
 
 #include "abortable_barrier.h"
 #include "schema.h"
+#include "subdivision.h"
 
 using namespace std;
 
 typedef tuple<ColumnValues, ColumnValues> KeyRange;
-typedef tuple<ColumnValues, ColumnValues, size_t, size_t> KeyRangeWithRowCount;
+struct KeyRangeToCheck {
+	KeyRangeToCheck(const ColumnValues &prev_key, const ColumnValues &last_key, size_t estimated_rows_in_range, size_t rows_to_hash, size_t priority):
+		key_range(prev_key, last_key), estimated_rows_in_range(estimated_rows_in_range), rows_to_hash(rows_to_hash), priority(priority) {
+	}
+
+	KeyRange key_range;
+	size_t estimated_rows_in_range;
+	size_t rows_to_hash;
+	size_t priority;
+};
 const size_t UNKNOWN_ROW_COUNT = numeric_limits<size_t>::max();
 
+struct lower_priority {
+	bool operator()(const KeyRangeToCheck &l, const KeyRangeToCheck &r) {
+		return l.priority < r.priority;
+	}
+};
+
 struct TableJob {
-	TableJob(const Table &table): table(table), notify_when_work_could_be_shared(false), time_started(0), time_finished(0), hash_commands(0), hash_commands_completed(0), rows_commands(0) {}
+	TableJob(const Table &table): table(table), subdividable(primary_key_subdividable(table)), notify_when_work_could_be_shared(false), time_started(0), time_finished(0), hash_commands(0), hash_commands_completed(0), rows_commands(0) {}
 
 	inline bool have_work_to_share() { return (!ranges_to_check.empty()); }
 
 	const Table &table;
+	const bool subdividable;
+
 	std::mutex mutex;
 	std::condition_variable borrowed_task_completed;
 
 	list<KeyRange> ranges_to_retrieve;
-	list<KeyRangeWithRowCount> ranges_to_check;
+	priority_queue<KeyRangeToCheck, deque<KeyRangeToCheck>, lower_priority> ranges_to_check;
 	bool notify_when_work_could_be_shared;
 
 	time_t time_started;

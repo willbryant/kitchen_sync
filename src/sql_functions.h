@@ -182,4 +182,16 @@ string select_last_key_sql(DatabaseClient &client, const Table &table) {
 	return result;
 }
 
+template <typename DatabaseClient>
+string select_not_earlier_key_sql(DatabaseClient &client, const Table &table, const ColumnValues &key, const ColumnValues &prev_key, const ColumnValues &last_key) {
+	string result("SELECT ");
+	result += columns_list(client, table.columns, table.primary_key_columns);
+	result += " FROM ";
+	result += table.name;
+	result += where_sql(client, table, " >= ", key, " > ", prev_key, " <= ", last_key, table.where_conditions);
+	result += column_orders_list(client, table.columns, table.primary_key_columns, ASCENDING);
+	result += " LIMIT 1";
+	return result;
+}
+
 #endif
