@@ -269,7 +269,7 @@ SQL
     when 'mysql'
       execute(<<-SQL)
         CREATE TABLE mysqltbl (
-          pri INT NOT NULL,
+          pri INT UNSIGNED NOT NULL,
           timestampboth TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           timestampcreateonly TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY(pri))
@@ -295,7 +295,7 @@ SQL
     when 'mysql'
       { "name"    => "mysqltbl",
         "columns" => [
-          {"name" => "pri",                 "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false},
+          {"name" => "pri",                 "column_type" => ColumnTypes::UINT, "size" =>  4, "nullable" => false},
           {"name" => "timestampboth",       "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true},
           {"name" => "timestampcreateonly", "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true}],
         "primary_key_columns" => [0],
@@ -305,10 +305,10 @@ SQL
       { "name"    => "postgresqltbl",
         "columns" => [
           {"name" => "pri",                "column_type" => ColumnTypes::UUID,                "nullable" => false},
-          {"name" => "currentdatefield",   "column_type" => ColumnTypes::DATE,                "default_function" => "CURRENT_DATE"},
-          {"name" => "currentuserdefault", "column_type" => ColumnTypes::VCHR, "size" => 255, "default_function" => "CURRENT_USER"},
-          {"name" => "sqlspecialdefault",  "column_type" => ColumnTypes::VCHR, "size" => 255, "default_function" => "CURRENT_SCHEMA"}, # special treatment noted on System Information Functions documentation page
-          {"name" => "pgfunctiondefault",  "column_type" => ColumnTypes::TEXT,                "default_function" => "version()"},
+          {"name" => "currentdatefield",   "column_type" => ColumnTypes::DATE,                                     "default_function" => "CURRENT_DATE"},
+          {"name" => "currentuserdefault", "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => "CURRENT_USER"},
+          {"name" => "sqlspecialdefault",  "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => "CURRENT_SCHEMA"}, # special treatment noted on System Information Functions documentation page
+          {"name" => "pgfunctiondefault",  "column_type" => ColumnTypes::TEXT,                                     "default_function" => "version()"},
           {"name" => "timewithzone",       "column_type" => ColumnTypes::TIME, "time_zone" => true},
           {"name" => "timestampwithzone",  "column_type" => ColumnTypes::DTTM, "time_zone" => true}],
         "primary_key_columns" => [0],
