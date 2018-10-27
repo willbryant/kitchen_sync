@@ -397,6 +397,9 @@ string PostgreSQLClient::column_type(const Column &column) {
 		result += ")";
 		return result;
 
+	} else if (column.column_type == ColumnTypes::UUID) {
+		return "uuid";
+
 	} else if (column.column_type == ColumnTypes::BOOL) {
 		return "boolean";
 
@@ -572,6 +575,8 @@ struct PostgreSQLColumnLister {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TEXT);
 		} else if (db_type == "bytea") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BLOB);
+		} else if (db_type == "uuid") {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UUID);
 		} else if (db_type == "date") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DATE);
 		} else if (db_type == "time without time zone") {

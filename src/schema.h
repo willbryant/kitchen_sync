@@ -16,6 +16,7 @@ namespace ColumnTypes {
 	const string TEXT = "TEXT";
 	const string VCHR = "VARCHAR";
 	const string FCHR = "CHAR";
+	const string UUID = "UUID";
 	const string BOOL = "BOOL";
 	const string SINT = "INT";
 	const string UINT = "INT UNSIGNED";

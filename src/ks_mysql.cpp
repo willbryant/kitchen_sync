@@ -327,7 +327,18 @@ string MySQLClient::escape_value(const string &value) {
 }
 
 void MySQLClient::convert_unsupported_database_schema(Database &database) {
-	// nothing yet
+	for (Table &table : database.tables) {
+		for (Column &column : table.columns) {
+			// mysql and mariadb still don't have a proper UUID type, so we convert them to the equivalent strings
+			// this is obviously not the only choice - packed binary columns would be more efficient - but we'd need
+			// to know about the application specifics to make any other choice (eg. for binary, have the bytes been
+			// swapped using the option for timestamp UUIDs?).
+			if (column.column_type == ColumnTypes::UUID) {
+				column.column_type = ColumnTypes::FCHR; // somewhat arbitrary - would could use varchar, since char is more old-fashioned, but since UUIDs are all the same length char seems more logical
+				column.size = 36;
+			}
+		}
+	}
 }
 
 string MySQLClient::column_type(const Column &column) {

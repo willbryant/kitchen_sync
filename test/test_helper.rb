@@ -257,6 +257,7 @@ module ColumnTypes
   TEXT = "TEXT"
   VCHR = "VARCHAR"
   FCHR = "CHAR"
+  UUID = "UUID"
   BOOL = "BOOL"
   SINT = "INT"
   UINT = "INT UNSIGNED"
