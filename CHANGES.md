@@ -1,6 +1,10 @@
 Changelog
 =========
 
+1.4
+---
+* Support for PostgreSQL's `uuid` type.
+
 1.3
 ---
 * Fix support for timestamp field `CURRENT_TIMESTAMP` default functions on later versions of MariaDB.
