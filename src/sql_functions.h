@@ -79,21 +79,29 @@ string values_list(DatabaseClient &client, const Table &table, const ColumnValue
 }
 
 template <typename DatabaseClient>
-string where_sql(DatabaseClient &client, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &extra_where_conditions = "", const char *prefix = " WHERE ") {
+string where_sql(DatabaseClient &client, const Table &table, const char *op1, const ColumnValues &key1, const char *op2, const ColumnValues &key2, const char *op3, const ColumnValues &key3, const string &extra_where_conditions = "") {
+	const char *prefix = " WHERE ";
 	string key_columns(columns_tuple(client, table.columns, table.primary_key_columns));
 	string result;
-	if (!prev_key.empty()) {
+	if (!key1.empty()) {
 		result += prefix;
 		result += key_columns;
-		result += " > ";
-		result += values_list(client, table, prev_key);
+		result += op1;
+		result += values_list(client, table, key1);
 		prefix = " AND ";
 	}
-	if (!last_key.empty()) {
+	if (!key2.empty()) {
 		result += prefix;
 		result += key_columns;
-		result += " <= ";
-		result += values_list(client, table, last_key);
+		result += op2;
+		result += values_list(client, table, key2);
+		prefix = " AND ";
+	}
+	if (!key3.empty()) {
+		result += prefix;
+		result += key_columns;
+		result += op3;
+		result += values_list(client, table, key3);
 		prefix = " AND ";
 	}
 	if (!extra_where_conditions.empty()) {
@@ -103,6 +111,11 @@ string where_sql(DatabaseClient &client, const Table &table, const ColumnValues 
 		result += ")";
 	}
 	return result;
+}
+
+template <typename DatabaseClient>
+inline string where_sql(DatabaseClient &client, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, const string &extra_where_conditions = "") {
+	return where_sql(client, table, " > ", prev_key, " <= ", last_key, "", ColumnValues(), extra_where_conditions);
 }
 
 template <typename DatabaseClient>
