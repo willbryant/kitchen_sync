@@ -1,8 +1,8 @@
 #include "timestamp.h"
 
 struct HashResult {
-	HashResult(const ColumnValues &prev_key, const ColumnValues &last_key, size_t estimated_rows_in_range, size_t priority, size_t our_row_count, size_t our_size, string our_hash, const ColumnValues &our_last_key):
-		prev_key(prev_key), last_key(last_key), estimated_rows_in_range(estimated_rows_in_range), priority(priority), our_row_count(our_row_count), our_size(our_size), our_hash(our_hash), our_last_key(our_last_key) {}
+	HashResult(const ColumnValues &prev_key, const ColumnValues &last_key, size_t estimated_rows_in_range, size_t priority, size_t our_row_count, size_t our_size, string our_hash, const ColumnValues &our_last_key, const ColumnValues &next_midpoint):
+		prev_key(prev_key), last_key(last_key), estimated_rows_in_range(estimated_rows_in_range), priority(priority), our_row_count(our_row_count), our_size(our_size), our_hash(our_hash), our_last_key(our_last_key), next_midpoint(next_midpoint) {}
 
 	ColumnValues prev_key;
 	ColumnValues last_key;
@@ -13,6 +13,7 @@ struct HashResult {
 	size_t our_size;
 	string our_hash;
 	ColumnValues our_last_key;
+	ColumnValues next_midpoint;
 };
 
 template <class Worker, class DatabaseClient>
@@ -116,7 +117,7 @@ struct SyncToProtocol {
 				lock.unlock(); // don't hold the mutex while doing IO
 
 				outstanding_commands++;
-				send_hash_command(table, range_to_check, ranges_hashed);
+				send_hash_command(table_job, range_to_check, ranges_hashed);
 
 			} else if (outstanding_commands > 0) {
 				lock.unlock(); // don't hold the mutex while doing IO; note we still had to lock the mutex in order to check the emptiness of those lists
@@ -165,7 +166,8 @@ struct SyncToProtocol {
 		send_command(output, Commands::ROWS, table.name, prev_key, last_key);
 	}
 
-	inline void send_hash_command(const Table &table, const KeyRangeToCheck &range_to_check, list<HashResult> &ranges_hashed) {
+	inline void send_hash_command(const shared_ptr<TableJob> &table_job, const KeyRangeToCheck &range_to_check, list<HashResult> &ranges_hashed) {
+		const Table &table(table_job->table);
 		const ColumnValues &prev_key(get<0>(range_to_check.key_range));
 		const ColumnValues &last_key(get<1>(range_to_check.key_range));
 		if (range_to_check.rows_to_hash == 0) throw logic_error("Can't hash 0 rows");
@@ -178,8 +180,35 @@ struct SyncToProtocol {
 		RowHasherAndLastKey hasher(hash_algorithm, table.primary_key_columns);
 		size_t row_count = worker.client.retrieve_rows(hasher, table, prev_key, last_key, range_to_check.rows_to_hash);
 
-		// and store that away temporarily for us to check when the corresponding response comes back (which may not be the next response we read in due to our use of pipelining)
-		ranges_hashed.emplace_back(prev_key, last_key, range_to_check.estimated_rows_in_range, range_to_check.priority, row_count, hasher.size, hasher.finish().to_string(), hasher.last_key);
+		// when the table has a subdividable primary key, we try to break the remaining range into two, so that if
+		// there's another worker free it can start checking the second half.  we don't actually queue either half
+		// to be checked yet (until we find out if the last range matched), but we might as well go ahead and find
+		// the midpoint as early as possible since it involves blocking database calls (as below).
+		ColumnValues next_midpoint;
+
+		if (table_job->subdividable && // subdividable is immutable, don't need to lock to access it
+			range_to_check.estimated_rows_in_range == UNKNOWN_ROW_COUNT && // only subdivide when scanning forward, not recursing for errors
+			row_count == range_to_check.rows_to_hash && // don't subdivide if we're at the end of the table
+			hasher.last_key != last_key) { // don't subdivide if we're at the end of the table
+			// find the key about halfway through the range.  we could find the key more exactly using count queries
+			// and limit/offset queries, but this would be incredibly expensive for a large table, so we estimate by
+			// interpolating the actual key range values, and then do a query to find the next actual key.  finding
+			// an actual key is not required for correctness, but makes testing easier.
+			next_midpoint = std::move(first_key_not_earlier_than(client, table, subdivide_primary_key_range(table, hasher.last_key, last_key), hasher.last_key, last_key));
+		}
+
+		// and store the hash away temporarily for us to check when the corresponding response comes back
+		// (which may not be the next response we read in due to our use of pipelining)
+		ranges_hashed.emplace_back(
+			prev_key,
+			last_key,
+			range_to_check.estimated_rows_in_range,
+			range_to_check.priority,
+			row_count,
+			hasher.size,
+			hasher.finish().to_string(),
+			hasher.last_key,
+			std::move(next_midpoint));
 	}
 
 	inline void handle_response(const shared_ptr<TableJob> &table_job, list<HashResult> &ranges_hashed, RowReplacer<DatabaseClient> &row_replacer) {
@@ -279,7 +308,7 @@ struct SyncToProtocol {
 		bool match = (hash_result.our_hash == their_hash && hash_result.our_row_count == their_row_count);
 		if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << " -> hash " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << ' ' << their_row_count << (match ? " matches" : " doesn't match") << endl;
 
-		std::unique_lock<std::mutex> lock(table_job->mutex, std::defer_lock);
+		std::unique_lock<std::mutex> lock(table_job->mutex);
 
 		if (hash_result.our_row_count == rows_to_hash && hash_result.our_last_key != last_key) {
 			// whether or not we found an error in the range we just did, we don't know whether
@@ -289,28 +318,20 @@ struct SyncToProtocol {
 				// we're scanning forward, do that last
 				size_t rows_to_hash = rows_to_scan_forward_next(rows_to_hash, match, hash_result.our_row_count, hash_result.our_size);
 
-				// when the table has a subdividable primary key, we try to break the remaining range into two, so that if
-				// there's another worker free it can start checking the second half.  doing this creates a risk that we
-				// could end up breaking up the entire table's key range into a huge number of small ranges.  to avoid this,
-				// we use a sorted priority queue to ensure that we always work on key ranges that are the result of more
-				// subdivisions before ranges that are the result of fewer.
-				if (table_job->subdividable) { // subdividable is immutable, don't need to lock to access it
-					// find the key about halfway through the range.  we could find the key more exactly using count queries
-					// and limit/offset queries, but this would be incredibly expensive for a large table, so we estimate by
-					// interpolating the actual key range values, and then do a query to find the next actual key.  finding
-					// an actual key is not required for correctness, but makes testing easier.  we keep the mutex unlocked
-					// while we do this, to minimize blocking of other workers who might be looking to share this table job.
-					ColumnValues midpoint(first_key_not_earlier_than(client, table, subdivide_primary_key_range(table, hash_result.our_last_key, last_key), hash_result.our_last_key, last_key));
-
-					lock.lock();
-					if (midpoint != hash_result.our_last_key) {
-						table_job->ranges_to_check.emplace(hash_result.our_last_key, midpoint, UNKNOWN_ROW_COUNT, rows_to_hash, hash_result.priority + 1);
+				// as discussed in send_hash_command, when the table has a subdividable primary key, we
+				// try to break the remaining range into two, so that if there's another worker free it
+				// can start checking the second half.  doing this creates a risk that we could end up
+				// breaking up the entire table's key range into a huge number of small ranges.  to avoid
+				// this, we use a sorted priority queue to ensure that we always work on key ranges that
+				// are the result of more subdivisions before ranges that are the result of fewer.
+				if (!hash_result.next_midpoint.empty()) {
+					if (hash_result.next_midpoint != hash_result.our_last_key) {
+						table_job->ranges_to_check.emplace(hash_result.our_last_key, hash_result.next_midpoint, UNKNOWN_ROW_COUNT, rows_to_hash, hash_result.priority + 1);
 					}
-					if (last_key != midpoint) {
-						table_job->ranges_to_check.emplace(midpoint, last_key, UNKNOWN_ROW_COUNT, rows_to_hash, hash_result.priority + 1);
+					if (last_key != hash_result.next_midpoint) {
+						table_job->ranges_to_check.emplace(hash_result.next_midpoint, last_key, UNKNOWN_ROW_COUNT, rows_to_hash, hash_result.priority + 1);
 					}
 				} else {
-					lock.lock();
 					table_job->ranges_to_check.emplace(hash_result.our_last_key, last_key, UNKNOWN_ROW_COUNT, rows_to_hash, hash_result.priority);
 				}
 			} else {
@@ -321,11 +342,8 @@ struct SyncToProtocol {
 				size_t rows_remaining = hash_result.estimated_rows_in_range > hash_result.our_row_count ? hash_result.estimated_rows_in_range - hash_result.our_row_count : 1; // conditional to protect against underflow
 				size_t rows_to_hash = match && rows_remaining > 1 && hash_result.our_size > target_minimum_block_size ? rows_remaining/2 : rows_remaining;
 
-				lock.lock();
 				table_job->ranges_to_check.emplace(hash_result.our_last_key, last_key, rows_remaining, rows_to_hash, hash_result.priority + 1);
 			}
-		} else {
-			lock.lock();
 		}
 
 		if (!match) {
