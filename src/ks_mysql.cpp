@@ -184,7 +184,8 @@ private:
 	MYSQL mysql;
 
 	// forbid copying
-	MySQLClient(const MySQLClient& copy_from) { throw logic_error("copying forbidden"); }
+	MySQLClient(const MySQLClient &_) = delete;
+	MySQLClient &operator=(const MySQLClient &_) = delete;
 };
 
 MySQLClient::MySQLClient(

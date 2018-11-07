@@ -189,7 +189,8 @@ private:
 	PGconn *conn;
 
 	// forbid copying
-	PostgreSQLClient(const PostgreSQLClient& copy_from) { throw logic_error("copying forbidden"); }
+	PostgreSQLClient(const PostgreSQLClient &_) = delete;
+	PostgreSQLClient &operator=(const PostgreSQLClient &_) = delete;
 };
 
 PostgreSQLClient::PostgreSQLClient(
