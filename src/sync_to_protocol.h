@@ -120,8 +120,8 @@ struct SyncToProtocol {
 
 				// while that end is working, do the same at our end
 				RowHasherAndLastKey hasher(hash_algorithm, table.primary_key_columns);
-				worker.client.retrieve_rows(hasher, table, prev_key, last_key, rows_to_hash);
-				table_job.ranges_hashed.emplace_back(prev_key, last_key, estimated_rows_in_range, hasher.row_count, hasher.size, hasher.finish().to_string(), hasher.last_key);
+				size_t row_count = worker.client.retrieve_rows(hasher, table, prev_key, last_key, rows_to_hash);
+				table_job.ranges_hashed.emplace_back(prev_key, last_key, estimated_rows_in_range, row_count, hasher.size, hasher.finish().to_string(), hasher.last_key);
 
 			} else if (outstanding_commands > 0) {
 				handle_response(table_job, row_replacer);

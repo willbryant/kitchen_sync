@@ -16,17 +16,6 @@
 
 #include "hash_algorithm.h"
 
-struct RowCounter {
-	RowCounter(): row_count(0) {}
-
-	template <typename DatabaseRow>
-	void operator()(const DatabaseRow &row) {
-		row_count++;
-	}
-
-	size_t row_count;
-};
-
 struct ValueCollector {
 	ValueCollector() {}
 
@@ -43,17 +32,12 @@ struct ValueCollector {
 };
 
 template <typename OutputStream>
-struct RowPacker: RowCounter {
+struct RowPacker {
 	RowPacker(Packer<OutputStream> &packer): packer(packer) {}
 
 	template <typename DatabaseRow>
 	void operator()(const DatabaseRow &row) {
-		RowCounter::operator()(row);
 		row.pack_row_into(packer);
-	}
-
-	void reset_row_count() {
-		row_count = 0;
 	}
 
 	Packer<OutputStream> &packer;
@@ -90,7 +74,7 @@ inline bool operator != (const string &str, const Hash &hash) {
 	return !(hash == str);
 }
 
-struct RowHasher: RowCounter {
+struct RowHasher {
 	RowHasher(HashAlgorithm hash_algorithm): hash_algorithm(hash_algorithm), size(0), finished(false), row_packer(*this) {
 		switch (hash_algorithm) {
 			case HashAlgorithm::md5:
@@ -117,7 +101,6 @@ struct RowHasher: RowCounter {
 
 	template <typename DatabaseRow>
 	inline void operator()(const DatabaseRow &row) {
-		RowCounter::operator()(row);
 		row.pack_row_into(row_packer);
 	}
 
