@@ -319,16 +319,16 @@ SQL
   def create_unsupportedtbl
     execute(<<-SQL)
       CREATE TABLE unsupportedtbl (
-        col1 INT NOT NULL,
+        pri INT NOT NULL,
         unsupported #{unsupported_column_type},
-        PRIMARY KEY(col1))
+        PRIMARY KEY(pri))
 SQL
   end
 
   def unsupported_column_type(database_server = @database_server)
     case database_server
     when 'mysql'
-      'BIT(8)'
+      'bit(8)'
     when 'postgresql'
       'tsvector'
     end

@@ -10,6 +10,7 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	if (column.size) fields++;
 	if (column.scale) fields++;
 	if (!column.nullable) fields++;
+	if (!column.db_type_def.empty()) fields++;
 	if (column.default_type) fields++;
 	if (column.flags & mysql_timestamp) fields++;
 	if (column.flags & mysql_on_update_timestamp) fields++;

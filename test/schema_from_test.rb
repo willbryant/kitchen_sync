@@ -89,4 +89,15 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
     expect_command Commands::ROWS,
                    [footbl_def["name"], [], []]
   end
+
+  test_each "reports unsupported column types" do
+    clear_schema
+    create_unsupportedtbl
+
+    send_handshake_commands
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA,
+                   [{"tables" => [unsupportedtbl_def]}]
+  end
 end
