@@ -130,7 +130,10 @@ struct SyncFromProtocol {
 		send_command(output, Commands::HASH_ALGORITHM, hash_algorithm); // we always accept the requested algorithm and send it back (but maybe one day we won't)
 	}
 
+	// sort of deprecated as actually not relevant under current protocol versions, but still supported for backwards compatibility, and because
+	// the test suite uses this to tweak the behavior of the 'to' endpoint; for that to be possible, the real program still needs to support this
 	void handle_target_block_size_command() {
+		size_t target_minimum_block_size;
 		read_all_arguments(input, target_minimum_block_size);
 		send_command(output, Commands::TARGET_BLOCK_SIZE, target_minimum_block_size); // we always accept the requested size and send it back (but the test suite doesn't)
 	}
@@ -139,6 +142,4 @@ struct SyncFromProtocol {
 	Unpacker<FDReadStream> &input;
 	Packer<FDWriteStream> &output;
 	HashAlgorithm hash_algorithm;
-	size_t target_minimum_block_size;
-	size_t target_maximum_block_size;
 };
