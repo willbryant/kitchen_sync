@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.5
+---
+* Fix error handling when there's an unknown column type, should be reported to the user gracefully.
+* Update CMakefile to find newer PostgreSQL client library versions to compile against.
+
 1.4
 ---
 * Support for PostgreSQL's `uuid` type.
