@@ -33,6 +33,13 @@ ks --from postgresql://myuser:secretpassword@server1.cluster1/sourcedb \
 
 Please see "Transporting Kitchen Sync over SSH" below for more options, especially if you want to synchronize over the Internet or a WAN.
 
+Sychronization between different database servers is directly supported:
+
+```
+ks --from mysql://someuser:mypassword@localhost/sourcedb \
+   --to postgresql://someuser:mypassword@localhost/targetdb
+```
+
 Parallelizing
 -------------
 

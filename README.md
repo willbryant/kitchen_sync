@@ -21,6 +21,15 @@ Please see [Installing Kitchen Sync](INSTALL.md).
 Usage
 -----
 
+Synopsis:
+
+```
+ks --from mysql://user1:mypassword1@server1/sourcedb \
+   --to postgresql://user2:mypassword2@server2/targetdb \
+   --filter strip_personal_info.yml \
+   --workers 4
+```
+
 Please see [Using Kitchen Sync](USAGE.md) to get started.
 
 Supported databases
@@ -39,6 +48,3 @@ Bugs
 ----
 
 Please use Github issues and check if your issue has already been reported first.
-
-
-![alt text](http://i.imgur.com/xtAPDKO.png "now KS")
