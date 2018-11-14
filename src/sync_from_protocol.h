@@ -18,10 +18,7 @@ struct SyncFromProtocol {
 		const Table *table;
 
 		while (true) {
-			verb_t verb;
-			input >> verb;
-
-			switch (verb) {
+			switch (verb_t verb = input.next<verb_t>()) {
 				case Commands::RANGE:
 					handle_range_command();
 					break;
