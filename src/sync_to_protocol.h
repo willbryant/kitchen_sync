@@ -35,16 +35,9 @@ struct SyncToProtocol {
 		sync_queue(worker.sync_queue),
 		input(worker.input),
 		output(worker.output),
-		hash_algorithm(worker.configured_hash_algorithm),
-		target_minimum_block_size(1),
-		target_maximum_block_size(DEFAULT_MAXIMUM_BLOCK_SIZE) {
-	}
-
-	void negotiate_target_minimum_block_size() {
-		send_command(output, Commands::TARGET_BLOCK_SIZE, DEFAULT_MINIMUM_BLOCK_SIZE);
-
-		// the real app always accepts the block size we request, but the test suite uses smaller block sizes to make it easier to set up different scenarios
-		read_expected_command(input, Commands::TARGET_BLOCK_SIZE, target_minimum_block_size);
+		hash_algorithm(worker.hash_algorithm),
+		target_minimum_block_size(worker.target_minimum_block_size),
+		target_maximum_block_size(worker.target_maximum_block_size) {
 	}
 
 	void negotiate_hash_algorithm() {
@@ -53,7 +46,6 @@ struct SyncToProtocol {
 	}
 
 	void sync_tables() {
-		negotiate_target_minimum_block_size();
 		negotiate_hash_algorithm();
 
 		while (true) {

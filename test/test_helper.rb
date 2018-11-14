@@ -345,7 +345,6 @@ module KitchenSync
     def send_handshake_commands(target_minimum_block_size = 1, hash_algorithm = HashAlgorithm::MD5)
       send_protocol_command
       send_without_snapshot_command
-      send_target_minimum_block_size_command(target_minimum_block_size)
       send_hash_algorithm_command(hash_algorithm)
     end
 
@@ -357,11 +356,6 @@ module KitchenSync
     def send_without_snapshot_command
       send_command   Commands::WITHOUT_SNAPSHOT
       expect_command Commands::WITHOUT_SNAPSHOT
-    end
-
-    def send_target_minimum_block_size_command(target_minimum_block_size)
-      send_command   Commands::TARGET_BLOCK_SIZE, [target_minimum_block_size]
-      expect_command Commands::TARGET_BLOCK_SIZE, [target_minimum_block_size]
     end
 
     def send_hash_algorithm_command(hash_algorithm)
@@ -380,11 +374,7 @@ module KitchenSync
       send_command   Commands::WITHOUT_SNAPSHOT
     end
 
-    def expect_sync_start_commands(target_minimum_block_size = 1, hash_algorithm = HashAlgorithm::MD5)
-      # we force the block size down to 1 by default so we can test out our algorithms row-by-row, but real runs would use a bigger size
-      assert_equal   Commands::TARGET_BLOCK_SIZE, read_command.first
-      send_command   Commands::TARGET_BLOCK_SIZE, [target_minimum_block_size]
-
+    def expect_sync_start_commands(hash_algorithm = HashAlgorithm::MD5)
       assert_equal   Commands::HASH_ALGORITHM, read_command.first
       send_command   Commands::HASH_ALGORITHM, [hash_algorithm]
     end
@@ -439,6 +429,9 @@ module KitchenSync
         "ENDPOINT_DATABASE_NAME" => database_name,
         "ENDPOINT_DATABASE_USERNAME" => database_username,
         "ENDPOINT_DATABASE_PASSWORD" => database_password,
+
+        # we force the block size down to 1 so we can test out our algorithms row-by-row, but real runs would use a bigger size
+        "ENDPOINT_TARGET_MINIMUM_BLOCK_SIZE" => "1",
       }
     end
 

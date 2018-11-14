@@ -76,9 +76,11 @@ int endpoint_main(int argc, char *argv[]) {
 			bool alter = getenv_default("ENDPOINT_ALTER", true);
 			CommitLevel commit_level = CommitLevel(getenv_default("ENDPOINT_COMMIT_LEVEL", CommitLevel::success));
 			HashAlgorithm hash_algorithm = HashAlgorithm(getenv_default("ENDPOINT_HASH_ALGORITHM", DEFAULT_HASH_ALGORITHM));
+			size_t target_minimum_block_size = getenv_default("ENDPOINT_TARGET_MINIMUM_BLOCK_SIZE", DEFAULT_MINIMUM_BLOCK_SIZE); // only set by tests
+			size_t target_maximum_block_size = getenv_default("ENDPOINT_TARGET_MAXIMUM_BLOCK_SIZE", DEFAULT_MAXIMUM_BLOCK_SIZE); // not currently used except manual testing
 			bool structure_only = getenv_default("ENDPOINT_STRUCTURE_ONLY", false);
 
-			sync_to<DatabaseClient>(workers, startfd, database_host, database_port, database_name, database_username, database_password, set_variables, filters_file, ignore, only, verbose, progress, snapshot, alter, commit_level, hash_algorithm, structure_only);
+			sync_to<DatabaseClient>(workers, startfd, database_host, database_port, database_name, database_username, database_password, set_variables, filters_file, ignore, only, verbose, progress, snapshot, alter, commit_level, hash_algorithm, target_minimum_block_size, target_maximum_block_size, structure_only);
 		}
 	} catch (const sync_error& e) {
 		// the worker thread has already output the error to cerr

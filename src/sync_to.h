@@ -20,7 +20,8 @@ struct SyncToWorker {
 		Database &database, SyncQueue<DatabaseClient> &sync_queue, bool leader, int read_from_descriptor, int write_to_descriptor,
 		const string &database_host, const string &database_port, const string &database_name, const string &database_username, const string &database_password,
 		const string &set_variables, const string &filter_file, const set<string> &ignore_tables, const set<string> &only_tables,
-		int verbose, bool progress, bool snapshot, bool alter, CommitLevel commit_level, HashAlgorithm hash_algorithm,
+		int verbose, bool progress, bool snapshot, bool alter, CommitLevel commit_level,
+		HashAlgorithm hash_algorithm, size_t target_minimum_block_size, size_t target_maximum_block_size,
 		bool structure_only) :
 			database(database),
 			sync_queue(sync_queue),
@@ -38,7 +39,9 @@ struct SyncToWorker {
 			snapshot(snapshot),
 			alter(alter),
 			commit_level(commit_level),
-			configured_hash_algorithm(hash_algorithm),
+			hash_algorithm(hash_algorithm),
+			target_minimum_block_size(target_minimum_block_size),
+			target_maximum_block_size(target_maximum_block_size),
 			structure_only(structure_only),
 			protocol_version(0),
 			worker_thread(std::ref(*this)) {
@@ -315,7 +318,9 @@ struct SyncToWorker {
 	bool structure_only;
 
 	int protocol_version;
-	HashAlgorithm configured_hash_algorithm;
+	HashAlgorithm hash_algorithm;
+	size_t target_minimum_block_size;
+	size_t target_maximum_block_size;
 	std::thread worker_thread;
 };
 
