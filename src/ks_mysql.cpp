@@ -16,7 +16,7 @@ public:
 	~MySQLRes();
 
 	inline MYSQL_RES *res() { return _res; }
-	inline int n_tuples() const { return mysql_num_rows(_res); }
+	inline int n_tuples() const { return mysql_num_rows(_res); } // if buffer was false, this will only work after reading all the rows
 	inline int n_columns() const { return _n_columns; }
 	inline enum_field_types type_of(int column_number) const { return types[column_number]; }
 	inline bool unsigned_at(int column_number) const { return types_unsigned[column_number]; }
@@ -123,7 +123,7 @@ public:
 
 	template <typename RowReceiver>
 	size_t retrieve_rows(RowReceiver &row_receiver, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, ssize_t row_count = NO_ROW_COUNT_LIMIT) {
-		return query(retrieve_rows_sql(*this, table, prev_key, last_key, row_count), row_receiver, false /* nb. n_tuples won't work, which is ok since we send rows individually */);
+		return query(retrieve_rows_sql(*this, table, prev_key, last_key, row_count), row_receiver, false);
 	}
 
 	size_t count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key);
