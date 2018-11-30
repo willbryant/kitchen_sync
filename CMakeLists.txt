@@ -1,7 +1,7 @@
 # Kitchen Sync is all C++, but Threads requires C to be enabled to figure out what options to use
 project(kitchen_sync CXX C)
 
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8)
 
 # suppress warnings about using c++11 features such as variadic templates
 include(CheckCXXCompilerFlag)
