@@ -18,6 +18,12 @@ string Process::binary_path_only(const string &argv0, const string &this_program
 	}
 }
 
+string describe_error(const string &binary, int err) {
+	string suffix;
+	if (err == ENOENT) suffix = ".  This usually means Kitchen Sync was not compiled with support for that database.";
+	return "Couldn't exec " + binary + ": " + string(strerror(err)) + suffix;
+}
+
 pid_t Process::fork_and_exec(const string &binary, const char *args[]) {
 	pid_t child = fork();
 
@@ -28,7 +34,7 @@ pid_t Process::fork_and_exec(const string &binary, const char *args[]) {
 	} else if (child == 0) {
 		// we are the child; run the binary
 		if (execvp(binary.c_str(), (char * const *)args) < 0) {
-			throw runtime_error("Couldn't exec " + binary + ": " + string(strerror(errno)));
+			throw runtime_error(describe_error(binary, errno));
 		}
 		throw logic_error("execv returned");
 
@@ -59,7 +65,7 @@ pid_t Process::fork_and_exec(const string &binary, const char *args[], Unidirect
 
 		// run the binary
 		if (execvp(binary.c_str(), (char * const *)args) < 0) {
-			throw runtime_error("Couldn't exec " + binary + ": " + string(strerror(errno)));
+			throw runtime_error(describe_error(binary, errno));
 		}
 		throw logic_error("execv returned");
 
