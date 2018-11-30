@@ -25,7 +25,7 @@ void be_christmassy() {
 	     << "           | |" << endl;
 }
 
-void greet_remote_server(Options &options, const string &ssh_binary, const string &cipher, const string &from_binary) {
+bool greet_remote_server(Options &options, const string &ssh_binary, const string &cipher, const string &from_binary) {
 	string from_binary_cmd(from_binary.c_str() + string(" ") + string("do-nothing"));
 
 	const char *ssh_greeting_args[] = {
@@ -41,12 +41,13 @@ void greet_remote_server(Options &options, const string &ssh_binary, const strin
 	}
 
 	pid_t pid = Process::fork_and_exec(ssh_binary, ssh_greeting_args);
-	bool success = Process::wait_for_and_check(pid);
 
-	if (!success) {
-		cerr << "failed to perform initial SSH greeting" << endl;
-		return;
+	if (!Process::wait_for_and_check(pid)) {
+		cerr << "Couldn't start Kitchen Sync over SSH to " << options.via << ".  Please check that you can SSH to that server yourself, and that Kitchen Sync is installed there too." << endl;
+		return false;
 	}
+
+	return true;
 }
 
 int main(int argc, char *argv[]) {
@@ -86,7 +87,9 @@ int main(int argc, char *argv[]) {
 		}
 
 		if (!options.via.empty()) {
-			greet_remote_server(options, ssh_binary, options.cipher, from_binary);
+			if (!greet_remote_server(options, ssh_binary, options.cipher, from_binary)) {
+				return 1;
+			}
 		}
 
 		vector<pid_t> child_pids;
