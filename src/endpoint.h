@@ -54,14 +54,12 @@ int endpoint_main(int argc, char *argv[]) {
 				if (set_variables     == string("-")) set_variables     = "";
 			}
 
-			string filters_file(getenv_default("ENDPOINT_FILTERS_FILE", argc > 8 ? argv[8] : ""));
-
 			char *status_area = argv[1];
 			char *last_arg = argv[argc - 1];
 			char *end_of_last_arg = last_arg + strlen(last_arg);
 			size_t status_size = end_of_last_arg - status_area;
 
-			sync_from<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, set_variables, filters_file, STDIN_FILENO, STDOUT_FILENO, status_area, status_size);
+			sync_from<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, set_variables, STDIN_FILENO, STDOUT_FILENO, status_area, status_size);
 		} else {
 			// the 'to' endpoint has already been converted to pass options using environment variables -
 			// since it's always on the same system as the ks command, it doesn't need legacy support.

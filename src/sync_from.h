@@ -9,10 +9,9 @@ template<class DatabaseClient>
 struct SyncFromWorker {
 	SyncFromWorker(
 		const string &database_host, const string &database_port, const string &database_name, const string &database_username, const string &database_password,
-		const string &set_variables, const string &filter_file,
+		const string &set_variables,
 		int read_from_descriptor, int write_to_descriptor, char *status_area, size_t status_size):
 			client(database_host, database_port, database_name, database_username, database_password, set_variables),
-			filter_file(filter_file),
 			in(read_from_descriptor),
 			input(in),
 			out(write_to_descriptor),
@@ -91,11 +90,6 @@ struct SyncFromWorker {
 		for (Table &table : database.tables) {
 			tables_by_name[table.name] = &table;
 		}
-
-		// older versions pass the file to be read to the 'from' endpoint as a startup option
-		if (!filter_file.empty()) {
-			apply_filters(load_filters(filter_file), database.tables);
-		}
 	}
 
 	void handle_filters_command() {
@@ -116,7 +110,6 @@ struct SyncFromWorker {
 	DatabaseClient client;
 	Database database;
 	map<string, Table*> tables_by_name;
-	string filter_file;
 	FDReadStream in;
 	Unpacker<FDReadStream> input;
 	FDWriteStream out;
