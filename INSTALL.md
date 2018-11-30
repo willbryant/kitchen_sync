@@ -3,11 +3,11 @@ Installing Kitchen Sync
 
 To compile Kitchen Sync, you will need:
 * a C++14 compiler
-* cmake
-* boost headers
-* openssl library headers (except on OS X where Apple's Common Crypto library is used instead)
-* postgresql client library headers; and/or
-* mysql (or mariadb) client library headers
+* CMake
+* Boost headers
+* OpenSSL library headers (except on macOS, where Apple's Common Crypto library is used instead)
+* PostgreSQL client library headers; and/or
+* MySQL (or MariaDB) client library headers
 
 Kitchen Sync needs at least one database client library to do something useful, but it will produce a separate binary for each different database, so you don't need to compile or deploy all the binaries on systems where you won't use them.
 
@@ -39,8 +39,8 @@ To build, change to the kitchen_sync directory where you checked out the files, 
   cmake .. && make && make install
 ```
 
-OS X
-----
+macOS
+-----
 
 Kitchen Sync is now available in Homebrew.  You can install it using:
 ```

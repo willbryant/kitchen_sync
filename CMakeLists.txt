@@ -53,7 +53,7 @@ add_executable(ks ${ks_SRCS})
 target_link_libraries(ks ${CMAKE_THREAD_LIBS_INIT})
 install(TARGETS ks RUNTIME DESTINATION bin)
 
-# the endpoints hash data using OpenSSL; on OS X we use Apple's Common Crypto fork instead
+# the endpoints hash data using OpenSSL; on macOS we use Apple's Common Crypto fork instead
 if(NOT APPLE)
 	find_package(OpenSSL REQUIRED)
 	include_directories(${OPENSSL_INCLUDE_DIRS})
