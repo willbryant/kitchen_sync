@@ -39,6 +39,29 @@ To build, change to the kitchen_sync directory where you checked out the files, 
   cmake .. && make && make install
 ```
 
+CentOS 7
+----------
+
+You can install the above build dependencies on CentOS 7 using:
+```
+yum install gcc gcc-c++ make cmake openssl boost-devel openssl-devel
+```
+
+And one or both of:
+```
+yum install postgresql-devel
+yum install mariadb-devel
+```
+
+MariaDB is now the default replacement for mysql on CentOS.
+
+To build, change to the kitchen_sync directory where you checked out the files, then:
+```
+  cd build
+  cmake .. && make && make install
+```
+
+
 macOS
 -----
 
