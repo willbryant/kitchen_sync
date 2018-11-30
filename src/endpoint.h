@@ -1,5 +1,6 @@
 #include <string>
 #include <iostream>
+#include <boost/algorithm/string.hpp>
 
 #include "env.h"
 #include "sync_from.h"

@@ -1,4 +1,3 @@
-#include <boost/algorithm/string.hpp>
 #include <thread>
 
 #include "command.h"
