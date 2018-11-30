@@ -32,20 +32,13 @@ set(Boost_USE_MULTITHREADED ON)
 find_package(Boost REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 
-# yaml-cpp for filter files
-include(FindPkgConfig)
-pkg_check_modules(YamlCPP yaml-cpp)
-if(YamlCPP_FOUND)
-    include_directories(${YamlCPP_INCLUDE_DIRS})
-    link_directories(${YamlCPP_LIBDIR})
-else()
-    set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "disable yaml tests")
-    set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "disable yaml tools")
-    set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "disable yaml contrib")
-    add_subdirectory(src/yaml-cpp EXCLUDE_FROM_ALL)
-    include_directories(src/yaml-cpp/include)
-    set(YamlCPP_LIBRARIES yaml-cpp)
-endif()
+# vendored-in version of yaml-cpp for filter files
+set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "disable yaml tests")
+set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "disable yaml tools")
+set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "disable yaml contrib")
+add_subdirectory(src/yaml-cpp EXCLUDE_FROM_ALL)
+include_directories(src/yaml-cpp/include)
+set(YamlCPP_LIBRARIES yaml-cpp)
 
 # the main program knows nothing but how to hook up the endpoints
 set(ks_SRCS src/ks.cpp src/db_url.cpp src/process.cpp src/unidirectional_pipe.cpp)
