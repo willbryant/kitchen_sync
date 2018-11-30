@@ -47,7 +47,7 @@ class NilClass
   end
 end
 
-class PGconn
+class PG::Connection
   def execute(sql)
     async_exec(sql)
   end
@@ -230,14 +230,14 @@ end
 
 ENDPOINT_DATABASES = {
   "postgresql" => {
-    :connect => lambda { |host, port, name, username, password| PGconn.connect(
+    :connect => lambda { |host, port, name, username, password| PG.connect(
       host,
       port,
       nil,
       nil,
       name,
       username,
-      password).tap {|conn| conn.type_mapping = PG::BasicTypeMapping.new(conn)}
+      password).tap {|conn| conn.type_map_for_results = PG::BasicTypeMapForResults.new(conn)}
     }
   },
   "mysql" => {
