@@ -43,7 +43,7 @@ bool greet_remote_server(Options &options, const string &ssh_binary, const strin
 	pid_t pid = Process::fork_and_exec(ssh_binary, ssh_greeting_args);
 
 	if (!Process::wait_for_and_check(pid)) {
-		cerr << "Couldn't start Kitchen Sync over SSH to " << options.via << ".  Please check that you can SSH to that server yourself, and that Kitchen Sync is installed there too." << endl;
+		cerr << "Couldn't start Kitchen Sync over SSH to " << options.via << ".  Please check that you can SSH to that server yourself, and that Kitchen Sync's binary can be found on that system at " << from_binary << "." << endl;
 		return false;
 	}
 
