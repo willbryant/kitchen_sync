@@ -24,7 +24,7 @@ endif()
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
 
 # we will need to be linked against pthreads on most platforms, but note that we don't use REQUIRED
-# here because Threads was broken (http://www.cmake.org/Bug/view.php?id=15058) so it may have any effect.
+# here because Threads was broken (http://www.cmake.org/Bug/view.php?id=15058).
 find_package(Threads)
 
 # boost for a couple of algorithm and utility includes
