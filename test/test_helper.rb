@@ -53,11 +53,11 @@ class PG::Connection
   end
 
   def tables
-    query("SELECT tablename FROM pg_tables WHERE schemaname = ANY (current_schemas(false)) ORDER BY tablename").collect {|row| row["tablename"]}
+    query("SELECT tablename::TEXT FROM pg_tables WHERE schemaname = ANY (current_schemas(false)) ORDER BY tablename").collect {|row| row["tablename"]}
   end
 
   def views
-    query("SELECT viewname FROM pg_views WHERE schemaname = ANY (current_schemas(false)) ORDER BY viewname").collect {|row| row["viewname"]}
+    query("SELECT viewname::TEXT FROM pg_views WHERE schemaname = ANY (current_schemas(false)) ORDER BY viewname").collect {|row| row["viewname"]}
   end
 
   def table_primary_key_name(table_name)
@@ -66,7 +66,7 @@ class PG::Connection
 
   def table_keys(table_name)
     query(<<-SQL).collect {|row| row["relname"]}
-      SELECT index_class.relname
+      SELECT index_class.relname::TEXT
         FROM pg_class table_class, pg_index, pg_class index_class
        WHERE table_class.relname = '#{table_name}' AND
              table_class.oid = pg_index.indrelid AND
@@ -78,7 +78,7 @@ class PG::Connection
 
   def table_keys_unique(table_name)
     query(<<-SQL).each_with_object({}) {|row, results| results[row["relname"]] = row["indisunique"]}
-      SELECT index_class.relname, indisunique
+      SELECT index_class.relname::TEXT, indisunique
         FROM pg_class table_class, pg_index, pg_class index_class
        WHERE table_class.relname = '#{table_name}' AND
              table_class.oid = pg_index.indrelid AND
@@ -96,7 +96,7 @@ class PG::Connection
 
   def table_key_columns(table_name)
     query(<<-SQL).each_with_object({}) {|row, results| results[row["relname"]] = key_definition_columns(row["definition"])}
-      SELECT index_class.relname, pg_get_indexdef(indexrelid) AS definition
+      SELECT index_class.relname::TEXT, pg_get_indexdef(indexrelid) AS definition
         FROM pg_class table_class, pg_class index_class, pg_index
        WHERE table_class.relname = '#{table_name}' AND
              table_class.relkind = 'r' AND
