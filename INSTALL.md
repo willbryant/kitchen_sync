@@ -2,7 +2,7 @@ Installing Kitchen Sync
 =======================
 
 To compile Kitchen Sync, you will need:
-* a C++11 compiler
+* a C++14 compiler
 * cmake
 * boost headers
 * openssl library headers (except on OS X where Apple's Common Crypto library is used instead)
