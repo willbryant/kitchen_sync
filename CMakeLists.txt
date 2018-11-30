@@ -76,9 +76,11 @@ set(ks_endpoint_LIBS ${OPENSSL_LIBRARIES} ${YamlCPP_LIBRARIES} ${Boost_LIBRARIES
 set(CMAKE_BUILD_TYPE Debug)
 
 # we have one endpoint program for mysql
-find_package(MySQL)
+if(NOT NO_DATABASES)
+	find_package(MySQL)
+endif()
 
-if (MYSQL_FOUND)
+if(MYSQL_FOUND)
 	include_directories(${MYSQL_INCLUDE_DIR})
 	set(ks_mysql_SRCS src/ks_mysql.cpp)
 	add_executable(ks_mysql ${ks_mysql_SRCS} ${ks_endpoint_SRCS})
@@ -90,11 +92,13 @@ if (MYSQL_FOUND)
 endif()
 
 # and one endpoint program for postgresql
-set(PostgreSQL_ADDITIONAL_SEARCH_PATHS /usr/include/postgresql)
-set(PostgreSQL_ADDITIONAL_VERSIONS "11" "10" "9.6" "9.5" "9.4" "9.3" "9.2")
-find_package(PostgreSQL)
+if(NOT NO_DATABASES)
+	set(PostgreSQL_ADDITIONAL_SEARCH_PATHS /usr/include/postgresql)
+	set(PostgreSQL_ADDITIONAL_VERSIONS "11" "10" "9.6" "9.5" "9.4" "9.3" "9.2")
+	find_package(PostgreSQL)
+endif()
 
-if (PostgreSQL_FOUND)
+if(PostgreSQL_FOUND)
 	include_directories(${PostgreSQL_INCLUDE_DIR})
 	set(ks_postgresql_SRCS src/ks_postgresql.cpp)
 	add_executable(ks_postgresql ${ks_postgresql_SRCS} ${ks_endpoint_SRCS})
@@ -103,6 +107,15 @@ if (PostgreSQL_FOUND)
 		target_link_libraries(ks_postgresql ${Backtrace_LIBRARIES})
 	endif()
 	install(TARGETS ks_postgresql RUNTIME DESTINATION bin)
+endif()
+
+# it's usually a mistake to try and compile Kitchen Sync without support for at least one database
+if((NOT MYSQL_FOUND) AND (NOT PostgreSQL_FOUND))
+	if(NO_DATABASES)
+		MESSAGE(STATUS "Compiling just the shared binary without support for any actual databases, as you requested.  Please build the other binaries separately.")
+	else()
+		MESSAGE(FATAL_ERROR "Couldn't find the PostgreSQL, MySQL, or MariaDB client libraries.  This would produce a build of Kitchen Sync which didn't support any databases, which is probably not what you want.  Please see INSTALL.md for help.  (If you really want to compile the shared part of Kitchen Sync without support far any databases, use cmake with the -DNO_DATABASES=1 option.)")
+	endif()
 endif()
 
 # tests require ruby and various extra gems.  to run the suite, run

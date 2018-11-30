@@ -11,6 +11,8 @@ To compile Kitchen Sync, you will need:
 
 Kitchen Sync needs at least one database client library to do something useful, but it will produce a separate binary for each different database, so you don't need to compile or deploy all the binaries on systems where you won't use them.
 
+To support this, Kitchen Sync will automatically look for those database client libraries and compile the appropriate binaries.  If it can't find any, by default the build will stop, because this is probably going to produce a useless build of Kitchen Sync that can't actually talk to any databases; please check that you have the database client C libraries (and their header files) installed.
+
 Ubuntu
 ------
 
