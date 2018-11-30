@@ -27,11 +27,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
 # here because Threads was broken (http://www.cmake.org/Bug/view.php?id=15058).
 find_package(Threads)
 
-# boost for a couple of algorithm and utility includes
-set(Boost_USE_MULTITHREADED ON)
-find_package(Boost REQUIRED)
-include_directories(${Boost_INCLUDE_DIRS})
-
 # vendored-in version of yaml-cpp for filter files
 set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "disable yaml tests")
 set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "disable yaml tools")
@@ -63,7 +58,7 @@ endif()
 
 # the endpoints do the actual work
 set(ks_endpoint_SRCS src/schema.cpp src/filters.cpp src/abortable_barrier.cpp src/xxHash/xxhash.cpp)
-set(ks_endpoint_LIBS ${OPENSSL_LIBRARIES} ${YamlCPP_LIBRARIES} ${Boost_LIBRARIES})
+set(ks_endpoint_LIBS ${OPENSSL_LIBRARIES} ${YamlCPP_LIBRARIES})
 
 # turn on debugging symbols
 set(CMAKE_BUILD_TYPE Debug)

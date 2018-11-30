@@ -5,7 +5,7 @@ FROM ubuntu:16.04
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 	DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
-	DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential cmake libboost-dev libssl-dev \
+	DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential cmake libssl-dev \
 		mysql-server libmysqlclient-dev postgresql-9.5 libpq-dev \
 		git ruby ruby-dev && \
 	rm -f /etc/apt/apt.conf.d/20auto-upgrades && \

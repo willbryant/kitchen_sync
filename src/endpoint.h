@@ -1,15 +1,18 @@
 #include <string>
 #include <iostream>
-#include <boost/algorithm/string.hpp>
 
 #include "env.h"
 #include "sync_from.h"
 #include "sync_to.h"
 
-set<string> split_list(const string &str) {
+set<string> split_list(const string &str, const string &delimiters = ", ") {
 	set<string> result;
-	boost::split(result, str, boost::is_any_of(", "));
-	if (result.size() == 1 && *result.begin() == "") result.erase("");
+	string::size_type beg_pos, end_pos = 0;
+	while ((beg_pos = str.find_first_not_of(delimiters, end_pos)) != string::npos) {
+		end_pos = str.find_first_of(delimiters, beg_pos);
+		if (end_pos == string::npos) end_pos = str.length();
+		result.insert(str.substr(beg_pos, end_pos - beg_pos));
+	}
 	return result;
 }
 

@@ -4,7 +4,6 @@ Installing Kitchen Sync
 To compile Kitchen Sync, you will need:
 * a C++14 compiler
 * CMake
-* Boost headers
 * OpenSSL library headers (except on macOS, where Apple's Common Crypto library is used instead)
 * PostgreSQL client library headers; and/or
 * MySQL (or MariaDB) client library headers
@@ -18,7 +17,7 @@ Ubuntu
 
 You can install the above build dependencies on Ubuntu using:
 ```
-apt-get install build-essential cmake libboost-dev libssl-dev
+apt-get install build-essential cmake libssl-dev
 ```
 
 And one or both of:
@@ -44,7 +43,7 @@ CentOS 7
 
 You can install the above build dependencies on CentOS 7 using:
 ```
-yum install gcc gcc-c++ make cmake openssl boost-devel openssl-devel
+yum install gcc gcc-c++ make cmake openssl-devel
 ```
 
 And one or both of:
@@ -72,7 +71,7 @@ brew install kitchen-sync
 
 To compile from source yourself, Homebrew users can install the above build dependencies using:
 ```
-brew install cmake boost
+brew install cmake
 ```
 
 And one or both of:
