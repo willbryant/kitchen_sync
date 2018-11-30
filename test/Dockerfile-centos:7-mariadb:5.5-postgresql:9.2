@@ -1,0 +1,48 @@
+# this dockerfile builds kitchen sync and runs the test suite.  it needs to be built with the project repo root as the buildroot.
+
+FROM centos:7
+
+RUN yum update -y && \
+	yum clean all && \
+	yum install -y gcc gcc-c++ make cmake openssl-devel \
+		postgresql-server postgresql-devel mariadb-server mariadb-devel \
+		git ruby-devel
+
+RUN gem install bundler --no-ri --no-rdoc
+
+WORKDIR /tmp
+COPY test/Gemfile Gemfile
+COPY test/Gemfile.lock Gemfile.lock
+RUN bundle config --global silence_root_warning 1 && bundle install --path ~/gems
+
+ADD CMakeLists.txt /tmp/CMakeLists.txt
+ADD cmake /tmp/cmake
+ADD src /tmp/src
+
+WORKDIR /tmp/build
+RUN cmake .. && make
+
+ADD test /tmp/test
+RUN echo 'creating postgresql database' && \
+		su postgres -c "/usr/bin/pg_ctl -D /var/lib/pgsql/data init" && \
+	echo 'starting postgresql' && \
+		su postgres -c "/usr/bin/pg_ctl -D /var/lib/pgsql/data -w start" && \
+	echo 'creating postgresql database' && \
+		su postgres -c 'createdb --encoding unicode --template template0 ks_test' && \
+	echo 'creating postgresql user' && \
+		su postgres -c 'createuser --superuser root' && \
+	echo 'starting mysql' && \
+		echo -e '[mysql]\nmax_allowed_packet=256M\n[mysqld]\nmax_allowed_packet=256M' >>/etc/my.cnf && \
+		(/usr/bin/mysqld_safe --skip-grant-tables &) && \
+	echo 'waiting for mysql to start' && \
+		mysqladmin --wait=30 ping && \
+	echo 'creating mysql database' && \
+		mysqladmin create ks_test && \
+	echo 'installing test gems' && \
+		BUNDLE_GEMFILE=../test/Gemfile bundle install --path ~/gems && \
+	echo 'preparing for tests' && \
+		ls -al /tmp/build && \
+		psql -V && \
+		mysql -V && \
+	echo 'running tests' && \
+		CTEST_OUTPUT_ON_FAILURE=1 POSTGRESQL_DATABASE_USERNAME=root make test
