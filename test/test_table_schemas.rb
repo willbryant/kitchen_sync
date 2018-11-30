@@ -1,3 +1,10 @@
+# wrapper class used to help tests deal with some versions of PostgreSQL returning CURRENT_USER and CURRENT_SCHEMA and some using current_user and current_schema
+class CaseInsensitiveString < String
+  def ==(other)
+    return super(other) || downcase == other
+  end
+end
+
 module TestTableSchemas
   def create_footbl
     execute(<<-SQL)
@@ -305,9 +312,9 @@ SQL
       { "name"    => "postgresqltbl",
         "columns" => [
           {"name" => "pri",                "column_type" => ColumnTypes::UUID,                "nullable" => false},
-          {"name" => "currentdatefield",   "column_type" => ColumnTypes::DATE,                                     "default_function" => "CURRENT_DATE"},
-          {"name" => "currentuserdefault", "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => "CURRENT_USER"},
-          {"name" => "sqlspecialdefault",  "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => "CURRENT_SCHEMA"}, # special treatment noted on System Information Functions documentation page
+          {"name" => "currentdatefield",   "column_type" => ColumnTypes::DATE,                                     "default_function" => CaseInsensitiveString.new("CURRENT_DATE")},
+          {"name" => "currentuserdefault", "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => CaseInsensitiveString.new("CURRENT_USER")},
+          {"name" => "sqlspecialdefault",  "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => CaseInsensitiveString.new("CURRENT_SCHEMA")}, # special treatment noted on System Information Functions documentation page
           {"name" => "pgfunctiondefault",  "column_type" => ColumnTypes::TEXT,                                     "default_function" => "version()"},
           {"name" => "timewithzone",       "column_type" => ColumnTypes::TIME, "time_zone" => true},
           {"name" => "timestampwithzone",  "column_type" => ColumnTypes::DTTM, "time_zone" => true}],
