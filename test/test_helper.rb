@@ -175,6 +175,10 @@ class Mysql2::Client
     query(sql)
   end
 
+  def server_version
+    @server_version ||= query("SHOW VARIABLES LIKE 'version'").first["Value"]
+  end
+
   def tables
     query("SHOW FULL TABLES").select {|row| row["Table_type"] == "BASE TABLE"}.collect {|row| row.values.first}
   end

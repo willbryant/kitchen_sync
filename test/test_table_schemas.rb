@@ -211,6 +211,10 @@ SQL
       "keys" => [] }
   end
 
+  def mysql_5_5?
+    @database_server == 'mysql' && connection.server_version =~ /^5\.5/
+  end
+
   def create_defaultstbl
     execute(<<-SQL)
       CREATE TABLE defaultstbl (
@@ -222,7 +226,7 @@ SQL
         datefield DATE DEFAULT '2019-04-01',
         timefield TIME DEFAULT '12:34:56',
         datetimefield #{@database_server == 'postgresql' ? 'timestamp' : 'DATETIME'} DEFAULT '2019-04-01 12:34:56',
-        currentdatetimefield #{@database_server == 'postgresql' ? 'timestamp' : 'DATETIME'} DEFAULT CURRENT_TIMESTAMP,
+        #{"currentdatetimefield #{@database_server == 'postgresql' ? 'timestamp' : 'DATETIME'} DEFAULT CURRENT_TIMESTAMP," unless mysql_5_5?}
         floatfield #{@database_server == 'postgresql' ? 'real' : 'FLOAT'} DEFAULT 42.625,
         doublefield DOUBLE PRECISION DEFAULT 0.0625,
         decimalfield DECIMAL(9, 3) DEFAULT '123456.789',
@@ -241,10 +245,11 @@ SQL
         {"name" => "datefield",            "column_type" => ColumnTypes::DATE,                             "default_value" => "2019-04-01"},
         {"name" => "timefield",            "column_type" => ColumnTypes::TIME,                             "default_value" => "12:34:56"},
         {"name" => "datetimefield",        "column_type" => ColumnTypes::DTTM,                             "default_value" => "2019-04-01 12:34:56"},
-        {"name" => "currentdatetimefield", "column_type" => ColumnTypes::DTTM,                             "default_function" => "CURRENT_TIMESTAMP"},
+        ({"name" => "currentdatetimefield", "column_type" => ColumnTypes::DTTM,                             "default_function" => "CURRENT_TIMESTAMP"} unless mysql_5_5?),
         {"name" => "floatfield",           "column_type" => ColumnTypes::REAL, "size" =>  4,               "default_value" => "42.625"},
         {"name" => "doublefield",          "column_type" => ColumnTypes::REAL, "size" =>  8,               "default_value" => "0.0625"},
-        {"name" => "decimalfield",         "column_type" => ColumnTypes::DECI, "size" =>  9, "scale" => 3, "default_value" => "123456.789"}],
+        {"name" => "decimalfield",         "column_type" => ColumnTypes::DECI, "size" =>  9, "scale" => 3, "default_value" => "123456.789"}
+      ].compact,
       "primary_key_columns" => [0],
       "keys" => [] }
   end
@@ -278,7 +283,7 @@ SQL
         CREATE TABLE mysqltbl (
           pri INT UNSIGNED NOT NULL,
           timestampboth TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          timestampcreateonly TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          #{"timestampcreateonly TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," unless mysql_5_5?}
           PRIMARY KEY(pri))
 SQL
 
@@ -304,7 +309,8 @@ SQL
         "columns" => [
           {"name" => "pri",                 "column_type" => ColumnTypes::UINT, "size" =>  4, "nullable" => false},
           {"name" => "timestampboth",       "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true},
-          {"name" => "timestampcreateonly", "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true}],
+          ({"name" => "timestampcreateonly", "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true} unless mysql_5_5?)
+        ].compact,
         "primary_key_columns" => [0],
         "keys" => [] }
 
