@@ -102,7 +102,7 @@ if((NOT MYSQL_FOUND) AND (NOT PostgreSQL_FOUND))
 	if(NO_DATABASES)
 		MESSAGE(STATUS "Compiling just the shared binary without support for any actual databases, as you requested.  Please build the other binaries separately.")
 	else()
-		MESSAGE(FATAL_ERROR "Couldn't find the PostgreSQL, MySQL, or MariaDB client libraries.  This would produce a build of Kitchen Sync which didn't support any databases, which is probably not what you want.  Please see INSTALL.md for help.  (If you really want to compile the shared part of Kitchen Sync without support far any databases, run cmake with the -DNO_DATABASES=1 option.)")
+		MESSAGE(WARNING "Couldn't find the PostgreSQL, MySQL, or MariaDB client libraries.  This will produce a build of Kitchen Sync which doesn't support any databases, which is probably not what you want.  Please see INSTALL.md for help.")
 	endif()
 endif()
 
