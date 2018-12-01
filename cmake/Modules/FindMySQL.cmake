@@ -1,14 +1,14 @@
-# - Find mysqlclient
+# - Find mysql client library
 # Find the native MySQL includes and library
 #
-#  MySQL_INCLUDE_DIR - where to find mysql.h, etc.
+# You may manually set (if not found automatically):
+#  MySQL_INCLUDE_DIR - Where to find mysql.h.
+#  MySQL_LIBRARY_DIR - Where to find the corresponding library.
+#
+# The following variables are set if the mysql client library is found:
+#  MySQL_INCLUDE_DIR - Where to find mysql.h.
 #  MySQL_LIBRARIES   - List of libraries when using MySQL.
 #  MySQL_FOUND       - True if MySQL found.
-
-IF (MySQL_INCLUDE_DIR)
-  # Already in cache, be silent
-  SET(MySQL_FIND_QUIETLY TRUE)
-ENDIF (MySQL_INCLUDE_DIR)
 
 FIND_PATH(MySQL_INCLUDE_DIR mysql.h
   /usr/local/include/mysql
@@ -18,11 +18,20 @@ FIND_PATH(MySQL_INCLUDE_DIR mysql.h
 )
 
 SET(MySQL_NAMES mysqlclient mysqlclient_r mariadbclient mariadbclient_r)
-FIND_LIBRARY(MySQL_LIBRARY
-  NAMES ${MySQL_NAMES}
-  PATHS /usr/lib /usr/local/lib
-  PATH_SUFFIXES mysql
-)
+IF(MySQL_LIBRARY_DIR)
+  FIND_LIBRARY(MySQL_LIBRARY
+    NAMES ${MySQL_NAMES}
+    PATHS ${MySQL_LIBRARY_DIR}
+    NO_DEFAULT_PATH
+  )
+ELSE()
+  FIND_LIBRARY(MySQL_LIBRARY
+    NAMES ${MySQL_NAMES}
+    PATHS /usr/lib /usr/local/lib
+    PATH_SUFFIXES mysql
+  )
+  get_filename_component(MySQL_LIBRARY_DIR ${MySQL_LIBRARY} PATH)
+ENDIF()
 
 IF (MySQL_INCLUDE_DIR AND MySQL_LIBRARY)
   SET(MySQL_FOUND TRUE)
@@ -33,9 +42,7 @@ ELSE (MySQL_INCLUDE_DIR AND MySQL_LIBRARY)
 ENDIF (MySQL_INCLUDE_DIR AND MySQL_LIBRARY)
 
 IF (MySQL_FOUND)
-  IF (NOT MySQL_FIND_QUIETLY)
-    MESSAGE(STATUS "Found MySQL: ${MySQL_LIBRARY} ${MySQL_INCLUDE_DIR}")
-  ENDIF (NOT MySQL_FIND_QUIETLY)
+  MESSAGE(STATUS "Found MySQL: ${MySQL_LIBRARY} ${MySQL_INCLUDE_DIR}")
 ELSE (MySQL_FOUND)
   IF (MySQL_FIND_REQUIRED)
     MESSAGE(STATUS "Looked for MySQL libraries named ${MySQL_NAMES}.")

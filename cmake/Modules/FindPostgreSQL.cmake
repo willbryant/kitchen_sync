@@ -119,14 +119,22 @@ if ( WIN32 )
   set ( PostgreSQL_LIBRARY_TO_FIND ${PostgreSQL_LIB_PREFIX}${PostgreSQL_LIBRARY_TO_FIND})
 endif()
 
-find_library( PostgreSQL_LIBRARY
- NAMES ${PostgreSQL_LIBRARY_TO_FIND}
- PATHS
-   ${PostgreSQL_ROOT_DIRECTORIES}
- PATH_SUFFIXES
-   lib
-)
-get_filename_component(PostgreSQL_LIBRARY_DIR ${PostgreSQL_LIBRARY} PATH)
+if(PostgreSQL_LIBRARY_DIR)
+  find_library(PostgreSQL_LIBRARY
+    NAMES ${PostgreSQL_LIBRARY_TO_FIND}
+    PATHS ${PostgreSQL_LIBRARY_DIR}
+    NO_DEFAULT_PATH
+  )
+else()
+  find_library(PostgreSQL_LIBRARY
+    NAMES ${PostgreSQL_LIBRARY_TO_FIND}
+    PATHS
+      ${PostgreSQL_ROOT_DIRECTORIES}
+    PATH_SUFFIXES
+      lib
+  )
+  get_filename_component(PostgreSQL_LIBRARY_DIR ${PostgreSQL_LIBRARY} PATH)
+endif()
 
 if (PostgreSQL_INCLUDE_DIR AND EXISTS "${PostgreSQL_INCLUDE_DIR}/pg_config.h")
   file(STRINGS "${PostgreSQL_INCLUDE_DIR}/pg_config.h" pgsql_version_str
