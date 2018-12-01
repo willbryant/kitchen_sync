@@ -18,6 +18,10 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-ubuntu:18.04-mysql:8.0
+  ubuntu_18.04-postgresql_11:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile-ubuntu:18.04-postgresql:11
   ubuntu_18.04-postgresql_10-mysql_5.7:
     build:
       context: ..
