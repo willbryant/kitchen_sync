@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.7
+---
+* Support setting MySQL_INCLUDE_DIR, MySQL_LIBRARY_DIR, PostgreSQL_INCLUDE_DIR, and PostgreSQL_LIBRARY_DIR as cmake -D options.
+* Abort the build (by default) if no database client libraries are found, rather than producing a probably-useless build.  See INSTALL.md for more.
+
 1.6
 ---
 * Warn during the build if no database client libraries are found, rather than producing a probably-useless build.  This will become a fatal build error in the next version.
