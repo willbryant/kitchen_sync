@@ -1,4 +1,5 @@
 # this dockerfile builds kitchen sync and runs the test suite.  it needs to be built with the project repo root as the buildroot.
+# note that the tests are run as part of the build, you don't need to run anything afterwards.
 
 FROM ubuntu:18.04
 
@@ -41,7 +42,7 @@ RUN echo 'starting postgresql' && \
 		mysqladmin create ks_test && \
 	echo 'installing test gems' && \
 		BUNDLE_GEMFILE=../test/Gemfile bundle install --path ~/gems && \
-	echo 'preparing for tests' && \
+	echo 'checking builds' && \
 		ls -al /tmp/build && \
 		psql -V && \
 		mysql -V && \
