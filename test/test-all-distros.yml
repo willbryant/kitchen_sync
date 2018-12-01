@@ -14,6 +14,10 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-ubuntu:18.04-mariadb:10.3
+  ubuntu_18.04-mysql_8.0:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile-ubuntu:18.04-mysql:8.0
   ubuntu_18.04-postgresql_10-mysql_5.7:
     build:
       context: ..
