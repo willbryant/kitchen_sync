@@ -13,15 +13,19 @@ services:
   ubuntu_18.04-mariadb_10.3:
     build:
       context: ..
-      dockerfile: test/Dockerfile-ubuntu:18.04-mariadb:10.3
+      dockerfile: test/Dockerfile-ubuntu:18.04-mariadb:10.3 # from MariaDB's repos
+  ubuntu_18.04-mariadb_10.1:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile-ubuntu:18.04-mariadb:10.1 # from Ubuntu's repos and uses the LGPL 'compat' client
   ubuntu_18.04-mysql_8.0:
     build:
       context: ..
-      dockerfile: test/Dockerfile-ubuntu:18.04-mysql:8.0
+      dockerfile: test/Dockerfile-ubuntu:18.04-mysql:8.0 # from MySQL AB's repos
   ubuntu_18.04-postgresql_11:
     build:
       context: ..
-      dockerfile: test/Dockerfile-ubuntu:18.04-postgresql:11
+      dockerfile: test/Dockerfile-ubuntu:18.04-postgresql:11 # from PGDG's repos
   ubuntu_18.04-postgresql_10-mysql_5.7:
     build:
       context: ..
