@@ -2,6 +2,11 @@ source 'https://rubygems.org'
 
 gem 'test-unit'
 gem 'msgpack'
-gem 'mysql2'
-gem 'pg'
 gem 'ruby-xxHash'
+
+group :mysql do
+  gem 'mysql2'
+end
+group :postgresql do
+  gem 'pg'
+end

@@ -5,10 +5,12 @@ require 'fileutils'
 require 'time'
 
 require 'msgpack'
-require 'pg'
-require 'mysql2'
 require 'openssl'
 require 'ruby-xxhash'
+
+ENDPOINT_DATABASES = {}
+require File.expand_path(File.join(File.dirname(__FILE__), 'test_helper_postgresql')) if ENV['ENDPOINT_DATABASES'].nil? || ENV['ENDPOINT_DATABASES'].include?('postgresql')
+require File.expand_path(File.join(File.dirname(__FILE__), 'test_helper_mysql'))      if ENV['ENDPOINT_DATABASES'].nil? || ENV['ENDPOINT_DATABASES'].include?('mysql')
 
 require File.expand_path(File.join(File.dirname(__FILE__), 'kitchen_sync_spawner'))
 require File.expand_path(File.join(File.dirname(__FILE__), 'test_table_schemas'))
@@ -46,215 +48,6 @@ class NilClass
     nil
   end
 end
-
-class PG::Connection
-  def execute(sql)
-    async_exec(sql)
-  end
-
-  def tables
-    query("SELECT tablename::TEXT FROM pg_tables WHERE schemaname = ANY (current_schemas(false)) ORDER BY tablename").collect {|row| row["tablename"]}
-  end
-
-  def views
-    query("SELECT viewname::TEXT FROM pg_views WHERE schemaname = ANY (current_schemas(false)) ORDER BY viewname").collect {|row| row["viewname"]}
-  end
-
-  def table_primary_key_name(table_name)
-    "#{table_name}_pkey"
-  end
-
-  def table_keys(table_name)
-    query(<<-SQL).collect {|row| row["relname"]}
-      SELECT index_class.relname::TEXT
-        FROM pg_class table_class, pg_index, pg_class index_class
-       WHERE table_class.relname = '#{table_name}' AND
-             table_class.oid = pg_index.indrelid AND
-             index_class.oid = pg_index.indexrelid AND
-             index_class.relkind = 'i' AND
-             NOT pg_index.indisprimary
-    SQL
-  end
-
-  def table_keys_unique(table_name)
-    query(<<-SQL).each_with_object({}) {|row, results| results[row["relname"]] = row["indisunique"]}
-      SELECT index_class.relname::TEXT, indisunique
-        FROM pg_class table_class, pg_index, pg_class index_class
-       WHERE table_class.relname = '#{table_name}' AND
-             table_class.oid = pg_index.indrelid AND
-             index_class.oid = pg_index.indexrelid AND
-             index_class.relkind = 'i' AND
-             NOT pg_index.indisprimary
-    SQL
-  end
-
-  def key_definition_columns(definition)
-    if definition =~ /\((.*)\)$/
-      $1.split(', ')
-    end
-  end
-
-  def table_key_columns(table_name)
-    query(<<-SQL).each_with_object({}) {|row, results| results[row["relname"]] = key_definition_columns(row["definition"])}
-      SELECT index_class.relname::TEXT, pg_get_indexdef(indexrelid) AS definition
-        FROM pg_class table_class, pg_class index_class, pg_index
-       WHERE table_class.relname = '#{table_name}' AND
-             table_class.relkind = 'r' AND
-             index_class.relkind = 'i' AND
-             pg_index.indrelid = table_class.oid AND
-             pg_index.indexrelid = index_class.oid
-       ORDER BY relname
-    SQL
-  end
-
-  def table_column_names(table_name)
-    query(<<-SQL).collect {|row| row["attname"]}
-      SELECT attname
-        FROM pg_attribute, pg_class
-       WHERE attrelid = pg_class.oid AND
-             attnum > 0 AND
-             NOT attisdropped AND
-             relname = '#{table_name}'
-       ORDER BY attnum
-    SQL
-  end
-
-  def table_column_types(table_name)
-    query(<<-SQL).collect.with_object({}) {|row, results| results[row["attname"]] = row["atttype"]}
-      SELECT attname, format_type(atttypid, atttypmod) AS atttype
-        FROM pg_attribute, pg_class, pg_type
-       WHERE attrelid = pg_class.oid AND
-             atttypid = pg_type.oid AND
-             attnum > 0 AND
-             NOT attisdropped AND
-             relname = '#{table_name}'
-       ORDER BY attnum
-    SQL
-  end
-
-  def table_column_nullability(table_name)
-    query(<<-SQL).collect.with_object({}) {|row, results| results[row["attname"]] = !row["attnotnull"]}
-      SELECT attname, attnotnull
-        FROM pg_attribute, pg_class
-       WHERE attrelid = pg_class.oid AND
-             attnum > 0 AND
-             NOT attisdropped AND
-             relname = '#{table_name}'
-       ORDER BY attnum
-    SQL
-  end
-
-  def table_column_defaults(table_name)
-    query(<<-SQL).collect.with_object({}) {|row, results| results[row["attname"]] = row["attdefault"].try!(:gsub, /^'(.*)'::.*$/, '\\1')}
-      SELECT attname, (CASE WHEN atthasdef THEN pg_get_expr(adbin, adrelid) ELSE NULL END) AS attdefault
-        FROM pg_attribute
-        JOIN pg_class ON attrelid = pg_class.oid
-        LEFT JOIN pg_attrdef ON adrelid = attrelid AND adnum = attnum
-       WHERE attnum > 0 AND
-             NOT attisdropped AND
-             relname = '#{table_name}'
-       ORDER BY attnum
-    SQL
-  end
-
-  def table_column_sequences(table_name)
-    table_column_defaults(table_name).collect.with_object({}) {|(column, default), results| results[column] = !!(default =~ /^nextval\('\w+_seq'::regclass\)/)}
-  end
-
-  def quote_ident(name)
-    self.class.quote_ident(name)
-  end
-
-  def zero_time_value
-    "00:00:00"
-  end
-end
-
-class Mysql2::Client
-  def execute(sql)
-    query(sql)
-  end
-
-  def server_version
-    @server_version ||= query("SHOW VARIABLES LIKE 'version'").first["Value"]
-  end
-
-  def tables
-    query("SHOW FULL TABLES").select {|row| row["Table_type"] == "BASE TABLE"}.collect {|row| row.values.first}
-  end
-
-  def views
-    query("SHOW FULL TABLES").select {|row| row["Table_type"] == "VIEW"}.collect {|row| row.values.first}
-  end
-
-  def table_primary_key_name(table_name)
-    "PRIMARY"
-  end
-
-  def table_keys(table_name)
-    query("SHOW KEYS FROM #{table_name}").collect {|row| row["Key_name"] unless row["Key_name"] == "PRIMARY"}.compact.uniq
-  end
-
-  def table_keys_unique(table_name)
-    query("SHOW KEYS FROM #{table_name}").each_with_object({}) {|row, results| results[row["Key_name"]] = row["Non_unique"].zero? unless row["Key_name"] == "PRIMARY"}
-  end
-
-  def table_key_columns(table_name)
-    query("SHOW KEYS FROM #{table_name}").each_with_object({}) {|row, results| (results[row["Key_name"]] ||= []) << row["Column_name"]}
-  end
-
-  def table_column_names(table_name)
-    query("SHOW COLUMNS FROM #{table_name}").collect {|row| row.values.first}.compact
-  end
-
-  def table_column_types(table_name)
-    query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = row["Type"]}
-  end
-
-  def table_column_nullability(table_name)
-    query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = (row["Null"] == "YES")}
-  end
-
-  def table_column_defaults(table_name)
-    query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = row["Default"]}
-  end
-
-  def table_column_sequences(table_name)
-    query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = !!(row["Extra"] =~ /auto_increment/)}
-  end
-
-  def quote_ident(name)
-    "`#{name}`"
-  end
-
-  def zero_time_value
-    Time.new(2000, 1, 1, 0, 0, 0)
-  end
-end
-
-ENDPOINT_DATABASES = {
-  "postgresql" => {
-    :connect => lambda { |host, port, name, username, password| PG.connect(
-      host,
-      port,
-      nil,
-      nil,
-      name,
-      username,
-      password).tap {|conn| conn.type_map_for_results = PG::BasicTypeMapForResults.new(conn)}
-    }
-  },
-  "mysql" => {
-    :connect => lambda { |host, port, name, username, password| Mysql2::Client.new(
-      :host     => host,
-      :port     => port.to_i,
-      :database => name,
-      :username => username,
-      :password => password,
-      :cast_booleans => true)
-    }
-  }
-}
 
 module ColumnTypes
   BLOB = "BLOB"
@@ -489,7 +282,7 @@ module KitchenSync
             @spawner = nil
             @connection.close rescue nil if @connection
           end
-        end if ENV['ENDPOINT_DATABASES'].nil? || ENV['ENDPOINT_DATABASES'].include?(database_server)
+        end
       end
     end
   end
