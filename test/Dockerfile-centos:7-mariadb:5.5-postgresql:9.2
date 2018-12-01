@@ -2,18 +2,20 @@
 
 FROM centos:7
 
+# we have to install Ruby from SCL because Centos 7 comes with an ancient version of Ruby 2.0 which segfaults in the mysql2 gem
 RUN yum update -y && \
 	yum clean all && \
+	yum install -y centos-release-scl scl-utils && \
 	yum install -y gcc gcc-c++ make cmake openssl-devel \
 		postgresql-server postgresql-devel mariadb-server mariadb-devel \
-		git ruby-devel
+		git rh-ruby25-ruby-devel
 
-RUN gem install bundler --no-ri --no-rdoc
+RUN scl enable rh-ruby25 -- gem install bundler --no-ri --no-rdoc
 
 WORKDIR /tmp
 COPY test/Gemfile Gemfile
 COPY test/Gemfile.lock Gemfile.lock
-RUN bundle config --global silence_root_warning 1 && bundle install --path ~/gems
+RUN scl enable rh-ruby25 -- bundle config --global silence_root_warning 1 && scl enable rh-ruby25 -- bundle install --path ~/gems
 
 ADD CMakeLists.txt /tmp/CMakeLists.txt
 ADD cmake /tmp/cmake
@@ -39,10 +41,10 @@ RUN echo 'creating postgresql database' && \
 	echo 'creating mysql database' && \
 		mysqladmin create ks_test && \
 	echo 'installing test gems' && \
-		BUNDLE_GEMFILE=../test/Gemfile bundle install --path ~/gems && \
+		BUNDLE_GEMFILE=../test/Gemfile scl enable rh-ruby25 -- bundle install --path ~/gems && \
 	echo 'preparing for tests' && \
 		ls -al /tmp/build && \
 		psql -V && \
 		mysql -V && \
 	echo 'running tests' && \
-		CTEST_OUTPUT_ON_FAILURE=1 POSTGRESQL_DATABASE_USERNAME=root make test
+		CTEST_OUTPUT_ON_FAILURE=1 POSTGRESQL_DATABASE_USERNAME=root scl enable rh-ruby25 -- make test
