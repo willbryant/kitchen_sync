@@ -1,14 +1,23 @@
-# this docker-compose file runs the tests on each distro we have made a Dockerfile for.
-# each of those actually stands alone, so we're not really making use of docker-compose's
-# composition capabilities - this just gives us a quick way to run all the tests.
+# this docker-compose file runs the tests on each distro/database server combo that
+# we have made a Dockerfile for.
+#
+# each of the Dockerfiles actually stands alone, so we're not really making use of
+# docker-compose's composition capabilities - this just gives us a quick way to run
+# tests on all these versions.
+#
 # to use it, run `docker-compose -f test/test-all-distros.yml build`.  note that the
 # tests are run as part of the build, you don't need to run anything afterwards.
+
 version: '3'
 services:
+  ubuntu_18.04-mariadb_10.3:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile-ubuntu:18.04-mariadb:10.3
   ubuntu_18.04-postgresql_10-mysql_5.7:
     build:
       context: ..
-      dockerfile: test/Dockerfile-ubuntu:18.04-postgresql:10-mysql:5.7 
+      dockerfile: test/Dockerfile-ubuntu:18.04-postgresql:10-mysql:5.7
   ubuntu_16.04-postgresql_9.5-mysql_5.7:
     build:
       context: ..
@@ -20,4 +29,4 @@ services:
   centos_7-mariadb_5.5-postgresql_9.2:
     build:
       context: ..
-      dockerfile: test/Dockerfile-centos:7-mariadb:5.5-postgresql:9.2  
+      dockerfile: test/Dockerfile-centos:7-mariadb:5.5-postgresql:9.2
