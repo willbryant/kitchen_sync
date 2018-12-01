@@ -1,6 +1,16 @@
 Changelog
 =========
 
+1.6
+---
+* Warn during the build if no database client libraries are found, rather than producing a probably-useless build.  This will become a fatal build error in the next version.
+* Write out Boost as a dependency.
+* Always use the vendored-in version of yaml-cpp instead of using PkgConfig to look for it on the system; previously these were optional "dependencies".
+* Add CentOS 7 install guide.  Thanks @XavRsl.
+* Better error messages if the appropriate binaries are not found or if an SSH attempt fails.
+* Work around settings initialization regression in MySQL 8.0.
+* Remove some code that provided compatibility with versions before 1.0.
+
 1.5
 ---
 * Fix error handling when there's an unknown column type, should be reported to the user gracefully.
