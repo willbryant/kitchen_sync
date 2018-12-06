@@ -20,6 +20,22 @@ if(COMPILER_SUPPORTS_STDLIB)
 	ADD_DEFINITIONS("-stdlib=libc++")
 endif()
 
+# optionally compile with sanitizer checks
+if(SANITIZE)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined")
+
+	CHECK_CXX_COMPILER_FLAG("-fsanitize=memory" COMPILER_SUPPORTS_SANITIZE_MEMORY)
+	if(COMPILER_SUPPORTS_SANITIZE_MEMORY)
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=memory")
+	endif()
+
+	CHECK_CXX_COMPILER_FLAG("-fsanitize=leak" COMPILER_SUPPORTS_SANITIZE_LEAK)
+	if(COMPILER_SUPPORTS_SANITIZE_LEAK)
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=leak")
+	endif()
+endif()
+
 # where to look first for cmake modules, before ${CMAKE_ROOT}/Modules/ is checked
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
 

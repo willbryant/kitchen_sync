@@ -42,3 +42,7 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-centos:7-mariadb:5.5-postgresql:9.2
+  ubuntu_18.04-checks:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile-ubuntu:18.04-checks
