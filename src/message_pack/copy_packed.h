@@ -13,6 +13,24 @@ uint8_t *copy_bytes(Unpacker<Stream> &unpacker, PackedValue &obj, size_t bytes) 
 }
 
 template <typename Stream>
+uint8_t copy_and_read_uint8_t(Unpacker<Stream> &unpacker, PackedValue &obj) {
+	uint8_t *p = copy_bytes(unpacker, obj, sizeof(uint8_t));
+	return *p;
+}
+
+template <typename Stream>
+uint16_t copy_and_read_uint16_t(Unpacker<Stream> &unpacker, PackedValue &obj) {
+	uint8_t *p = copy_bytes(unpacker, obj, sizeof(uint16_t));
+	return (*p << 8) + (*(p + 1)); // we can't cast to uint16_t* and use ntohs because the pointer may not be aligned, which would invoke undefined behavior
+}
+
+template <typename Stream>
+uint32_t copy_and_read_uint32_t(Unpacker<Stream> &unpacker, PackedValue &obj) {
+	uint8_t *p = copy_bytes(unpacker, obj, sizeof(uint32_t));
+	return (*p << 24) + (*(p + 1) << 16) + (*(p + 2) << 8) + (*(p + 3)); // we can't cast to uint32_t* and use ntohl because the pointer may not be aligned, which would invoke undefined behavior
+}
+
+template <typename Stream>
 void copy_object(Unpacker<Stream> &unpacker, PackedValue &obj) {
 	uint8_t leader = *copy_bytes(unpacker, obj, 1);
 
@@ -74,33 +92,33 @@ void copy_object(Unpacker<Stream> &unpacker, PackedValue &obj) {
 
 			case MSGPACK_BIN8:
 			case MSGPACK_RAW8:
-				copy_bytes(unpacker, obj, *(uint8_t *)copy_bytes(unpacker, obj, sizeof(uint8_t)));
+				copy_bytes(unpacker, obj, copy_and_read_uint8_t(unpacker, obj));
 				break;
 
 			case MSGPACK_RAW16:
 			case MSGPACK_BIN16:
-				copy_bytes(unpacker, obj, ntohs(*(uint16_t *)copy_bytes(unpacker, obj, sizeof(uint16_t))));
+				copy_bytes(unpacker, obj, copy_and_read_uint16_t(unpacker, obj));
 				break;
 
 			case MSGPACK_RAW32:
 			case MSGPACK_BIN32:
-				copy_bytes(unpacker, obj, ntohl(*(uint32_t *)copy_bytes(unpacker, obj, sizeof(uint32_t))));
+				copy_bytes(unpacker, obj, copy_and_read_uint32_t(unpacker, obj));
 				break;
 
 			case MSGPACK_ARRAY16:
-				copy_array(unpacker, obj, ntohs(*(uint16_t *)copy_bytes(unpacker, obj, sizeof(uint16_t))));
+				copy_array(unpacker, obj, copy_and_read_uint16_t(unpacker, obj));
 				break;
 
 			case MSGPACK_ARRAY32:
-				copy_array(unpacker, obj, ntohl(*(uint32_t *)copy_bytes(unpacker, obj, sizeof(uint32_t))));
+				copy_array(unpacker, obj, copy_and_read_uint32_t(unpacker, obj));
 				break;
 
 			case MSGPACK_MAP16:
-				copy_map(unpacker, obj, ntohs(*(uint16_t *)copy_bytes(unpacker, obj, sizeof(uint16_t))));
+				copy_map(unpacker, obj, copy_and_read_uint16_t(unpacker, obj));
 				break;
 
 			case MSGPACK_MAP32:
-				copy_map(unpacker, obj, ntohl(*(uint32_t *)copy_bytes(unpacker, obj, sizeof(uint32_t))));
+				copy_map(unpacker, obj, copy_and_read_uint32_t(unpacker, obj));
 				break;
 
 			default:
