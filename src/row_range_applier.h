@@ -10,7 +10,7 @@ struct RowRangeApplier {
 	static const size_t MAX_SENSIBLE_INSERT_STATEMENT_SIZE = 4*1024*1024;
 	static const size_t MAX_SENSIBLE_DELETE_STATEMENT_SIZE =     16*1024;
 
-	typedef map<PackedRow, PackedRow> RowsByPrimaryKey;
+	typedef map<ColumnValues, PackedRow> RowsByPrimaryKey;
 
 	RowRangeApplier(RowReplacer<DatabaseClient> &replacer, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key):
 		replacer(replacer),
@@ -37,8 +37,8 @@ struct RowRangeApplier {
 		received_all_source_rows();
 	}
 
-	PackedRow primary_key_of(const PackedRow &row) {
-		PackedRow primary_key;
+	ColumnValues primary_key_of(const PackedRow &row) {
+		ColumnValues primary_key;
 		primary_key.reserve(table.primary_key_columns.size());
 		for (size_t column_number : table.primary_key_columns) {
 			primary_key.push_back(row[column_number]);
