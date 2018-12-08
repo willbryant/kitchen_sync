@@ -43,10 +43,10 @@ void copy_object(Unpacker<Stream> &unpacker, PackedValue &obj) {
 		copy_bytes(unpacker, obj, leader & 31);
 
 	} else if (leader >= MSGPACK_FIXARRAY_MIN && leader <= MSGPACK_FIXARRAY_MAX) {
-		copy_array(unpacker, obj, leader & 15);
+		copy_array_members(unpacker, obj, leader & 15);
 
 	} else if (leader >= MSGPACK_FIXMAP_MIN && leader <= MSGPACK_FIXMAP_MAX) {
-		copy_map(unpacker, obj, leader & 15);
+		copy_map_members(unpacker, obj, leader & 15);
 
 	} else {
 		switch (leader) {
@@ -106,19 +106,19 @@ void copy_object(Unpacker<Stream> &unpacker, PackedValue &obj) {
 				break;
 
 			case MSGPACK_ARRAY16:
-				copy_array(unpacker, obj, copy_and_read_uint16_t(unpacker, obj));
+				copy_array_members(unpacker, obj, copy_and_read_uint16_t(unpacker, obj));
 				break;
 
 			case MSGPACK_ARRAY32:
-				copy_array(unpacker, obj, copy_and_read_uint32_t(unpacker, obj));
+				copy_array_members(unpacker, obj, copy_and_read_uint32_t(unpacker, obj));
 				break;
 
 			case MSGPACK_MAP16:
-				copy_map(unpacker, obj, copy_and_read_uint16_t(unpacker, obj));
+				copy_map_members(unpacker, obj, copy_and_read_uint16_t(unpacker, obj));
 				break;
 
 			case MSGPACK_MAP32:
-				copy_map(unpacker, obj, copy_and_read_uint32_t(unpacker, obj));
+				copy_map_members(unpacker, obj, copy_and_read_uint32_t(unpacker, obj));
 				break;
 
 			default:
@@ -129,14 +129,14 @@ void copy_object(Unpacker<Stream> &unpacker, PackedValue &obj) {
 }
 
 template <typename Stream>
-void copy_array(Unpacker<Stream> &unpacker, PackedValue &obj, size_t size) {
+void copy_array_members(Unpacker<Stream> &unpacker, PackedValue &obj, size_t size) {
 	while (size--) {
 		copy_object(unpacker, obj);
 	}
 }
 
 template <typename Stream>
-void copy_map(Unpacker<Stream> &unpacker, PackedValue &obj, size_t size) {
+void copy_map_members(Unpacker<Stream> &unpacker, PackedValue &obj, size_t size) {
 	while (size--) {
 		copy_object(unpacker, obj);
 		copy_object(unpacker, obj);
