@@ -1,8 +1,6 @@
 #include "subdivision.h"
 #include "message_pack/copy_packed.h"
-#include <boost/multiprecision/cpp_int.hpp>
-
-using namespace boost::multiprecision;
+#include "basic_uint128_t.h"
 
 bool primary_key_subdividable(const Table &table) {
 	if (table.primary_key_columns.size() != 1) return false;
@@ -33,31 +31,33 @@ inline ColumnValues subdivide_integer_range(const ColumnValues &prev_key, const 
 	return pack_single_value(midpoint);
 }
 
-inline bool parse_uuid(const string &str, uint128_t &out) {
+inline bool parse_uint64_t(const string &str, uint64_t &out) {
+	std::istringstream converter(str);
+	converter >> std::hex >> out;
+	return (!converter.fail());
+}
+
+inline bool parse_uuid(const string &str, basic_uint128_t &out) {
 	if (str.length() != 36 || str[8] != '-' || str[13] != '-' || str[18] != '-' || str[23] != '-') {
 		return false;
 	}
 
-	string stripped(str.substr(0, 8) + str.substr(9, 4) + str.substr(14, 4) + str.substr(19, 4) + str.substr(24, 12));
-
-	std::istringstream converter(stripped);
-	converter >> std::hex >> out;
-
-	return (!converter.fail());
+	return (parse_uint64_t(str.substr(0, 8) + str.substr(9, 4) + str.substr(14, 4), out.h) ||
+			parse_uint64_t(str.substr(19, 4) + str.substr(24, 12), out.l));
 }
 
-inline string format_uuid(uint128_t u) {
+inline string format_uuid(basic_uint128_t u) {
 	char result[37];
 
 	snprintf(
 		result,
 		sizeof(result),
 		"%08jx-%04jx-%04jx-%04jx-%012jx",
-		(uintmax_t)((u >> 96) & 0xffffffff),
-		(uintmax_t)((u >> 80) & 0xffff),
-		(uintmax_t)((u >> 64) & 0xffff),
-		(uintmax_t)((u >> 48) & 0xffff),
-		(uintmax_t)(u & 0xffffffffffff));
+		(uintmax_t)(u.h >> 32),
+		(uintmax_t)((u.h >> 16) & 0xffff),
+		(uintmax_t)(u.h & 0xffff),
+		(uintmax_t)(u.l >> 48),
+		(uintmax_t)(u.l & 0xffffffffffff));
 
 	return result;
 }
@@ -66,14 +66,13 @@ inline ColumnValues subdivide_uuid_range(const ColumnValues &prev_key, const Col
 	string prev = read_single_value<string>(prev_key);
 	string last = read_single_value<string>(last_key);
 
-	uint128_t uprev = 0;
-	uint128_t ulast = 0;
+	basic_uint128_t uprev, ulast;
 
 	if (!parse_uuid(prev, uprev) || !parse_uuid(last, ulast)) {
 		// shouldn't be possible with proper UUID types, but fail gracefully
 		return prev_key;
 	} else {
-		uint128_t umid(uprev + (ulast - uprev)/2); // (uprev + ulast)/2 would overflow
+		basic_uint128_t umid(uprev + ((ulast - uprev) >> 1)); // (uprev + ulast) >> 1 would overflow
 		return pack_single_value(format_uuid(umid));
 	}
 }
