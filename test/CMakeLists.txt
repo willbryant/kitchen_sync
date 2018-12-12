@@ -1,0 +1,14 @@
+# tests require ruby and various extra gems.  to run the suite, run
+#   cmake .. && CTEST_OUTPUT_ON_FAILURE=1 make test
+add_test(protocol_version_test   env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/protocol_version_test.rb)
+add_test(snapshot_from_test      env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/snapshot_from_test.rb)
+add_test(schema_from_test        env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/schema_from_test.rb)
+add_test(schema_to_test          env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/schema_to_test.rb)
+add_test(range_from_test         env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/range_from_test.rb)
+add_test(hash_from_test          env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/hash_from_test.rb)
+add_test(rows_from_test          env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/rows_from_test.rb)
+add_test(filter_from_test        env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/filter_from_test.rb)
+add_test(filter_to_test          env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/filter_to_test.rb)
+add_test(column_types_to_test    env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/column_types_to_test.rb)
+add_test(column_types_from_test  env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/column_types_from_test.rb)
+add_test(sync_to_test            env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/sync_to_test.rb)
