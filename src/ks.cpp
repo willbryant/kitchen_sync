@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
 		if (success) {
 			cout << "Finished Kitchen Syncing." << endl;
 			time_t t = time(NULL);
-			if (options.verbose && localtime(&t)->tm_mon == 11) be_christmassy();
+			if (options.verbose && isatty(STDOUT_FILENO) && localtime(&t)->tm_mon == 11) be_christmassy();
 			return 0;
 		} else {
 			cout << "Kitchen Syncing failed." << endl;

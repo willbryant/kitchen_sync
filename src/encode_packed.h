@@ -9,14 +9,15 @@ string encode(DatabaseClient &client, const Column &column, const PackedValue &v
 	if (value.is_false())	return "false";
 	if (value.is_true())	return "true";
 
-	PackedValueReadStream stream(value);
-	Unpacker<PackedValueReadStream> unpacker(stream);
 	uint8_t leader = value.leader();
 
 	if ((leader >= MSGPACK_POSITIVE_FIXNUM_MIN && leader <= MSGPACK_POSITIVE_FIXNUM_MAX) ||
 		(leader >= MSGPACK_NEGATIVE_FIXNUM_MIN && leader <= MSGPACK_NEGATIVE_FIXNUM_MAX)) {
-		return to_string((int)unpacker.template next<int8_t>()); // up-cast to avoid int8_t being interpreted as char
+		return to_string((int)(int8_t)leader); // up-cast to avoid int8_t being interpreted as char
 	}
+
+	PackedValueReadStream stream(value);
+	Unpacker<PackedValueReadStream> unpacker(stream);
 
 	switch (leader) {
 		case MSGPACK_FLOAT:
