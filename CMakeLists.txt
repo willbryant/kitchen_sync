@@ -122,7 +122,7 @@ if((NOT MySQL_FOUND) AND (NOT PostgreSQL_FOUND))
 	endif()
 endif()
 
-# tests require ruby and various extra gems.  to run the suite, run
+# the main tests require ruby (and various extra gems).  to run the suite, run
 #   cmake .. && CTEST_OUTPUT_ON_FAILURE=1 make test
 enable_testing()
 add_subdirectory(test)
