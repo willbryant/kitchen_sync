@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.8
+---
+* Don't be Christmassy when stdout is not a TTY.  Thanks @aclemons.
+* Correctness fixes.
+
 1.7
 ---
 * Support setting MySQL_INCLUDE_DIR, MySQL_LIBRARY_DIR, PostgreSQL_INCLUDE_DIR, and PostgreSQL_LIBRARY_DIR as cmake -D options.
