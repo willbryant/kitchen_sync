@@ -19,8 +19,9 @@ COPY test/Gemfile.lock Gemfile.lock
 RUN bundle config --global silence_root_warning 1 && bundle install --without postgresql --path ~/gems
 
 ADD CMakeLists.txt /tmp/CMakeLists.txt
-ADD cmake /tmp/cmake
-ADD src /tmp/src
+ADD cmake /tmp/cmake/
+ADD src /tmp/src/
+ADD test/CMakeLists.txt test/*.cpp /tmp/test/
 
 WORKDIR /tmp/build
 RUN cmake .. && make
