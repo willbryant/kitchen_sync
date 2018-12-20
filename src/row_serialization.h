@@ -49,10 +49,7 @@ struct Hash {
 	inline std::string to_string() const { return string(md_value, md_value + md_len); }
 
 	unsigned int md_len;
-	union {
-		unsigned char md_value[MAX_DIGEST_LENGTH];
-		uint64_t md_value_64;
-	};
+	unsigned char md_value[MAX_DIGEST_LENGTH];
 };
 
 template <typename OutputStream>
@@ -121,7 +118,7 @@ struct RowHasher {
 
 			case HashAlgorithm::xxh64:
 				hash.md_len = sizeof(uint64_t);
-				hash.md_value_64 = htonll(XXH64_digest(&xxh64_state));
+				*((uint64_t*)&hash.md_value) = htonll(XXH64_digest(&xxh64_state));
 				return hash;
 
 			default:
