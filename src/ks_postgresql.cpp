@@ -487,6 +487,9 @@ string PostgreSQLClient::column_default(const Table &table, const Column &column
 
 		case DefaultType::default_function:
 			result += column.default_value;
+
+		default:
+			throw runtime_error("Don't know how to express default of " + column.name + " (" + to_string(column.default_type) + ")");
 	}
 
 	return result;

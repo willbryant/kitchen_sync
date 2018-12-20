@@ -136,6 +136,10 @@ struct RowHasher {
 				hash.md_len = sizeof(uint64_t);
 				hash.md_value_64 = htonll(XXH64_digest(xxh64_state));
 				return hash;
+
+			default:
+				// never hit, but silence compiler warning
+				return hash;
 		}
 	}
 
