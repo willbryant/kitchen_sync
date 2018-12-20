@@ -1,6 +1,10 @@
 Changelog
 =========
 
+1.9
+---
+* Fix FTBFS due to missing test file.
+
 1.8
 ---
 * Don't be Christmassy when stdout is not a TTY.  Thanks @aclemons.
