@@ -61,8 +61,8 @@ public:
 	inline         int length_of(int column_number) const { return _lengths[column_number]; }
 	inline      string string_at(int column_number) const { return string((char *)result_at(column_number), length_of(column_number)); }
 	inline        bool   bool_at(int column_number) const { return (strcmp((const char *)result_at(column_number), "1") == 0); }
-	inline     int64_t    int_at(int column_number) const { return strtoll((const char *)result_at(column_number), NULL, 10); }
-	inline    uint64_t   uint_at(int column_number) const { return strtoull((const char *)result_at(column_number), NULL, 10); }
+	inline     int64_t    int_at(int column_number) const { return strtoll((const char *)result_at(column_number), nullptr, 10); }
+	inline    uint64_t   uint_at(int column_number) const { return strtoull((const char *)result_at(column_number), nullptr, 10); }
 
 	template <typename Packer>
 	inline void pack_column_into(Packer &packer, int column_number) const {

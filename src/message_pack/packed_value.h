@@ -7,24 +7,24 @@
 #include "type_codes.h"
 
 struct PackedValue {
-	PackedValue(): encoded_bytes(NULL), used(0) {}
+	PackedValue(): encoded_bytes(nullptr), used(0) {}
 
 	~PackedValue() {
 		free(encoded_bytes);
 	}
 
-	PackedValue(const PackedValue &from): encoded_bytes(NULL) {
+	PackedValue(const PackedValue &from): encoded_bytes(nullptr) {
 		*this = from;
 	}
 
-	PackedValue(PackedValue &&from): encoded_bytes(NULL) {
+	PackedValue(PackedValue &&from): encoded_bytes(nullptr) {
 		*this = std::move(from);
 	}
 
 	PackedValue &operator=(const PackedValue &from) {
 		if (&from != this) {
 			free(encoded_bytes);
-			encoded_bytes = NULL;
+			encoded_bytes = nullptr;
 			used = from.used;
 			if (used) {
 				encoded_bytes = (uint8_t *)malloc(used);
@@ -40,7 +40,7 @@ struct PackedValue {
 			free(encoded_bytes);
 			used = from.used;
 			encoded_bytes = from.encoded_bytes;
-			from.encoded_bytes = NULL;
+			from.encoded_bytes = nullptr;
 			from.used = 0;
 		}
 		return *this;
@@ -57,7 +57,7 @@ struct PackedValue {
 
 	inline void clear() {
 		free(encoded_bytes);
-		encoded_bytes = NULL;
+		encoded_bytes = nullptr;
 		used = 0;
 	}
 

@@ -64,7 +64,7 @@ public:
 	inline         int length_of(int column_number) const { return PQgetlength(_res.res(), _row_number, column_number); }
 	inline      string string_at(int column_number) const { return string((const char *)result_at(column_number), length_of(column_number)); }
 	inline        bool   bool_at(int column_number) const { return (strcmp((const char *)result_at(column_number), "t") == 0); }
-	inline     int64_t    int_at(int column_number) const { return strtoll((const char *)result_at(column_number), NULL, 10); }
+	inline     int64_t    int_at(int column_number) const { return strtoll((const char *)result_at(column_number), nullptr, 10); }
 
 	string decoded_byte_string_at(int column_number) const;
 
