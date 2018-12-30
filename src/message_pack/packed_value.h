@@ -65,8 +65,7 @@ struct PackedValue {
 		memcpy(extend(bytes), src, bytes);
 	}
 
-	inline bool empty() const { return !used; }
-	inline size_t size() const { return used; }
+	inline size_t encoded_size() const { return used; }
 	inline uint8_t leader() const { return (used ? *encoded_bytes : 0); }
 	inline const uint8_t *data() const { return encoded_bytes; }
 
@@ -74,13 +73,17 @@ struct PackedValue {
 	inline bool is_false() const { return (leader() == MSGPACK_FALSE); }
 	inline bool is_true()  const { return (leader() == MSGPACK_TRUE); }
 
-	inline bool operator == (const PackedValue &other) const {
-		return (used == other.used && memcmp(encoded_bytes, other.encoded_bytes, used) == 0);
+	inline bool operator ==(const PackedValue &other) const {
+		return (encoded_size() == other.encoded_size() && memcmp(data(), other.data(), encoded_size()) == 0);
 	}
 
-	inline bool operator < (const PackedValue &other) const {
-		if (used != other.used) return (used < other.used);
-		return (memcmp(encoded_bytes, other.encoded_bytes, used) < 0);
+	inline bool operator !=(const PackedValue &other) const {
+		return (encoded_size() != other.encoded_size() || memcmp(data(), other.data(), encoded_size()) != 0);
+	}
+
+	inline bool operator <(const PackedValue &other) const {
+		if (encoded_size() != other.encoded_size()) return (encoded_size() < other.encoded_size());
+		return (memcmp(data(), other.data(), encoded_size()) < 0);
 	}
 
 protected:

@@ -57,7 +57,7 @@ struct RowRangeApplier {
 		// source dataset had deleted a large range that was still present on the local end; this
 		// way around requires fewer special cases.
 		for (const PackedValue &value : row) {
-			approx_buffered_bytes += value.size();
+			approx_buffered_bytes += value.encoded_size();
 		}
 		if (approx_buffered_bytes > MAX_BYTES_TO_BUFFER) {
 			check_rows_to_curr_key();

@@ -152,7 +152,7 @@ Unpacker<Stream> &operator >>(Unpacker<Stream> &unpacker, PackedValue &obj) {
 
 template <typename Stream>
 Packer<Stream> &operator <<(Packer<Stream> &packer, const PackedValue &obj) {
-	packer.write_bytes(obj.data(), obj.size());
+	packer.write_bytes(obj.data(), obj.encoded_size());
 	return packer;
 }
 
