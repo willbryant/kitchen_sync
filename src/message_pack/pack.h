@@ -164,7 +164,7 @@ inline Packer<Stream> &operator <<(Packer<Stream> &packer, const float &obj) {
 
 template <typename Stream>
 inline Packer<Stream> &operator <<(Packer<Stream> &packer, const double &obj) {
-	packer.write_bytes(MSGPACK_FLOAT);
+	packer.write_bytes(MSGPACK_DOUBLE);
 	packer.write_bytes(obj);
 	return packer;
 }
