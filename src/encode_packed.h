@@ -20,12 +20,6 @@ string encode(DatabaseClient &client, const Column &column, const PackedValue &v
 	Unpacker<PackedValueReadStream> unpacker(stream);
 
 	switch (leader) {
-		case MSGPACK_FLOAT:
-			return to_string(unpacker.template next<float>());
-
-		case MSGPACK_DOUBLE:
-			return to_string(unpacker.template next<double>());
-
 		case MSGPACK_UINT8:
 			return to_string((unsigned int)unpacker.template next<uint8_t>()); // up-cast as above
 
@@ -49,6 +43,22 @@ string encode(DatabaseClient &client, const Column &column, const PackedValue &v
 
 		case MSGPACK_INT64:
 			return to_string(unpacker.template next<int64_t>());
+
+		case MSGPACK_FLOAT: {
+			if (sizeof(float) != sizeof(uint32_t)) throw unpacker_error("Can't convert float to/from network byte order on this platform");
+			uint32_t copy = ntohl(unpacker.template read_bytes<uint32_t>());
+			float result;
+			memcpy(&result, &copy, sizeof(result));
+			return to_string(result);
+		}
+
+		case MSGPACK_DOUBLE: {
+			if (sizeof(double) != sizeof(uint64_t)) throw unpacker_error("Can't convert double to/from network byte order on this platform");
+			uint64_t copy = ntohll(unpacker.template read_bytes<uint64_t>());
+			double result;
+			memcpy(&result, &copy, sizeof(result));
+			return to_string(result);
+		}
 
 		default:
 			return "'" + client.escape_column_value(column, unpacker.template next<string>()) + "'";

@@ -157,15 +157,21 @@ inline Packer<Stream> &operator <<(Packer<Stream> &packer, const bool &obj) {
 
 template <typename Stream>
 inline Packer<Stream> &operator <<(Packer<Stream> &packer, const float &obj) {
+	if (sizeof(float) != sizeof(uint32_t)) throw runtime_error("Can't convert float to/from network byte order on this platform");
+	uint32_t copy;
+	memcpy(&copy, &obj, sizeof(copy));
 	packer.write_bytes(MSGPACK_FLOAT);
-	packer.write_bytes(obj);
+	packer.write_bytes((uint32_t) htonl(copy));
 	return packer;
 }
 
 template <typename Stream>
 inline Packer<Stream> &operator <<(Packer<Stream> &packer, const double &obj) {
+	if (sizeof(double) != sizeof(uint64_t)) throw runtime_error("Can't convert double to/from network byte order on this platform");
+	uint64_t copy;
+	memcpy(&copy, &obj, sizeof(copy));
 	packer.write_bytes(MSGPACK_DOUBLE);
-	packer.write_bytes(obj);
+	packer.write_bytes((uint64_t) htonll(copy));
 	return packer;
 }
 

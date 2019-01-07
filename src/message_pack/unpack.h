@@ -207,14 +207,6 @@ Unpacker<Stream> &operator >>(Unpacker<Stream> &unpacker, T &obj) {
 				obj = (T) true;
 				break;
 
-			case MSGPACK_FLOAT:
-				obj = (T) unpacker.template read_bytes<float>();
-				break;
-
-			case MSGPACK_DOUBLE:
-				obj = (T) unpacker.template read_bytes<double>();
-				break;
-
 			case MSGPACK_UINT8:
 				obj = (T) unpacker.template read_bytes<uint8_t>();
 				break;
@@ -246,6 +238,24 @@ Unpacker<Stream> &operator >>(Unpacker<Stream> &unpacker, T &obj) {
 			case MSGPACK_INT64:
 				obj = (T) ntohll(unpacker.template read_bytes<int64_t>());
 				break;
+
+			case MSGPACK_FLOAT: {
+				if (sizeof(float) != sizeof(uint32_t)) throw unpacker_error("Can't convert float to/from network byte order on this platform");
+				uint32_t copy = ntohl(unpacker.template read_bytes<uint32_t>());
+				float result;
+				memcpy(&result, &copy, sizeof(result));
+				obj = (T) result;
+				break;
+			}
+
+			case MSGPACK_DOUBLE: {
+				if (sizeof(double) != sizeof(uint64_t)) throw unpacker_error("Can't convert double to/from network byte order on this platform");
+				uint64_t copy = ntohll(unpacker.template read_bytes<uint64_t>());
+				double result;
+				memcpy(&result, &copy, sizeof(result));
+				obj = (T) result;
+				break;
+			}
 
 			default:
 				backtrace();
