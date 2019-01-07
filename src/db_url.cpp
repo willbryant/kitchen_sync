@@ -71,13 +71,25 @@ pair<string, string> split_pair(const string &str, const string &separator, int 
 	}
 }
 
+pair<string, string> separate_bracketed_host_and_port(const string &str) {
+	size_t pos = str.find(']');
+	if (pos == str.length() - 1) {
+		return pair<string, string>(str.substr(1, pos - 1), "");
+	} else if (pos != string::npos && str[pos + 1] == ':') {
+		return pair<string, string>(str.substr(1, pos - 1), str.substr(pos + 2));
+	} else {
+		throw invalid_argument("Invalid URL part: expected host address to end with ']' in '" + str + "'");
+	}
+}
+
 DbUrl::DbUrl(const string &url) {
 	// vendor://[user[:pass]@]hostname[:port]/database
 	pair<string, string> protocol_and_rest = split_pair(url, "://", 0);
 	pair<string, string> username_password_host_port_and_database = split_pair(protocol_and_rest.second, "/", 0);
 	pair<string, string> username_password_and_host_port = split_pair(username_password_host_port_and_database.first, "@", 1);
 	pair<string, string> username_password = split_pair(username_password_and_host_port.first, ":", -1);
-	pair<string, string> host_port = split_pair(username_password_and_host_port.second, ":", -1);
+	pair<string, string> host_port = !username_password_and_host_port.second.empty() && username_password_and_host_port.second[0] == '[' ?
+		separate_bracketed_host_and_port(username_password_and_host_port.second) : split_pair(username_password_and_host_port.second, ":", -1);
 
 	protocol = DbUrl::urldecode(protocol_and_rest.first);
 	username = DbUrl::urldecode(username_password.first);
