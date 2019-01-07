@@ -161,4 +161,19 @@ class RowsFromTest < KitchenSync::EndpointTestCase
     expect_command Commands::ROWS,
                    ["reservedtbl", [], []]
   end
+
+  test_each "uses a consistent format for misc column types such as dates and times" do
+    clear_schema
+    create_misctbl
+    execute "INSERT INTO misctbl (pri, boolfield, datefield, timefield, datetimefield, floatfield, doublefield, decimalfield, vchrfield, fchrfield, textfield, blobfield) VALUES " \
+            "                    (1, true, '2018-12-31', '23:59', '2018-12-31 23:59', 1.0, 0.5, 012345.6789, 'vchrvalue', 'fchrvalue', 'textvalue', 'blobvalue')"
+    send_handshake_commands
+
+    # note that we currently use string format for float and double fields, though we could convert them to proper msgpack types instead
+    # this works OK as long as all the adapters do the same thing
+    send_command   Commands::ROWS, ["misctbl", [], []]
+    expect_command Commands::ROWS,
+                   ["misctbl", [], []],
+                   [1, true, '2018-12-31', '23:59:00', '2018-12-31 23:59:00', '1', '0.5', '12345.6789', 'vchrvalue', 'fchrvalue', 'textvalue', 'blobvalue']
+  end
 end
