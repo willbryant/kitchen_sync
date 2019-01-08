@@ -16,7 +16,7 @@ using namespace std;
 template <typename DatabaseClient>
 struct SyncToWorker {
 	SyncToWorker(
-		Database &database, SyncQueue<DatabaseClient> &sync_queue, bool leader, int read_from_descriptor, int write_to_descriptor,
+		Database &database, SyncQueue<DatabaseClient> &sync_queue, bool leader, int worker_number, int read_from_descriptor, int write_to_descriptor,
 		const string &database_host, const string &database_port, const string &database_name, const string &database_username, const string &database_password,
 		const string &set_variables, const string &filter_file, const set<string> &ignore_tables, const set<string> &only_tables,
 		int verbose, bool progress, bool snapshot, bool alter, CommitLevel commit_level,
@@ -25,6 +25,7 @@ struct SyncToWorker {
 			database(database),
 			sync_queue(sync_queue),
 			leader(leader),
+			worker_number(worker_number),
 			input_stream(read_from_descriptor),
 			output_stream(write_to_descriptor),
 			input(input_stream),
@@ -300,6 +301,7 @@ struct SyncToWorker {
 	Database &database;
 	SyncQueue<DatabaseClient> &sync_queue;
 	bool leader;
+	int worker_number;
 	FDWriteStream output_stream;
 	FDReadStream input_stream;
 	Unpacker<FDReadStream> input;
@@ -335,7 +337,7 @@ void sync_to(int num_workers, int startfd, const Options &...options) {
 		bool leader = (worker == 0);
 		int read_from_descriptor = startfd + worker;
 		int write_to_descriptor = startfd + worker + num_workers;
-		workers[worker] = new SyncToWorker<DatabaseClient>(database, sync_queue, leader, read_from_descriptor, write_to_descriptor, options...);
+		workers[worker] = new SyncToWorker<DatabaseClient>(database, sync_queue, leader, worker, read_from_descriptor, write_to_descriptor, options...);
 	}
 
 	for (SyncToWorker<DatabaseClient>* worker : workers) delete worker;
