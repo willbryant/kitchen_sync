@@ -1,6 +1,6 @@
 # we mostly prefer protocol-level integration tests but have some unit tests
 set(CMAKE_CXX_FLAGS "") # disable the sanitizers, which are currently incompatible with catch2
-add_executable(ks_unit_tests ks_unit_tests.cpp db_url_test.cpp ../src/db_url.cpp)
+add_executable(ks_unit_tests ks_unit_tests.cpp db_url_test.cpp ../src/db_url.cpp basic_uint128_t_test.cpp)
 add_test(unit_tests          ks_unit_tests)
 
 # the main tests require ruby (and various extra gems).  to run the suite, run

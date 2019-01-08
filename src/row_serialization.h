@@ -15,6 +15,7 @@
 #include "xxHash/xxhash.h"
 
 #include "hash_algorithm.h"
+#include "message_pack/pack.h"
 
 struct ValueCollector {
 	ValueCollector() {}

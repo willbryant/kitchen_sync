@@ -128,7 +128,8 @@ public:
 
 	size_t count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key);
 	ColumnValues first_key(const Table &table);
-	ColumnValues  last_key(const Table &table);
+	ColumnValues last_key(const Table &table);
+	ColumnValues not_earlier_key(const Table &table, const ColumnValues &key, const ColumnValues &prev_key, const ColumnValues &last_key);
 
 	void execute(const string &sql);
 	void disable_referential_integrity();
@@ -239,6 +240,12 @@ ColumnValues MySQLClient::first_key(const Table &table) {
 ColumnValues MySQLClient::last_key(const Table &table) {
 	ValueCollector receiver;
 	query(select_last_key_sql(*this, table), receiver, false);
+	return receiver.values;
+}
+
+ColumnValues MySQLClient::not_earlier_key(const Table &table, const ColumnValues &key, const ColumnValues &prev_key, const ColumnValues &last_key) {
+	ValueCollector receiver;
+	query(select_not_earlier_key_sql(*this, table, key, prev_key, last_key), receiver, false);
 	return receiver.values;
 }
 
