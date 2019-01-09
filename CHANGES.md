@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.10
+----
+* Share the hash-checking work on individual tables when there's no more unprocessed tables left to work on, resulting in a substantial improvement in multi-core concurrency when some tables take much longer to process than others.
+* Support bracketed IPv6 addresses when parsing URLs.
+
 1.9
 ---
 * Fix FTBFS due to missing test file.
