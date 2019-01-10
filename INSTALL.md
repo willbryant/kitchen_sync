@@ -74,14 +74,14 @@ brew install cmake
 
 And one or both of:
 ```
-brew install postgresql
-brew install mysql
+brew install libpq
+brew install mysql-client
 ```
 
 You can use MariaDB instead of MySQL if you prefer:
 
 ```
-brew install mariadb
+brew install mariadb-connector-c
 ```
 
 To build, change to the kitchen_sync directory where you checked out the files, then:

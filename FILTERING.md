@@ -37,7 +37,7 @@ Means that the posts table at the target end will receive only the rows from the
 
 Note that any other rows at the target end will be cleared, not left; Kitchen Sync only implements uni-directional synchronization and fully synchronizes each table, even if it's told to filter out some of the source rows.
 
-### The `replace` option
+### `replace`
 
 This option is used to give a table of expressions (written in the SQL dialect of your source database server) to substitute for the actual column values.  Two points need to be kept in mind when using the `replace` option.
 
