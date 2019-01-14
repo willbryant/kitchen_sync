@@ -74,7 +74,7 @@ class PG::Connection
 
   def table_column_names(table_name)
     query(<<-SQL).collect {|row| row["attname"]}
-      SELECT attname
+      SELECT attname::TEXT
         FROM pg_attribute, pg_class
        WHERE attrelid = pg_class.oid AND
              attnum > 0 AND
@@ -86,7 +86,7 @@ class PG::Connection
 
   def table_column_types(table_name)
     query(<<-SQL).collect.with_object({}) {|row, results| results[row["attname"]] = row["atttype"]}
-      SELECT attname, format_type(atttypid, atttypmod) AS atttype
+      SELECT attname::TEXT, format_type(atttypid, atttypmod) AS atttype
         FROM pg_attribute, pg_class, pg_type
        WHERE attrelid = pg_class.oid AND
              atttypid = pg_type.oid AND
@@ -99,7 +99,7 @@ class PG::Connection
 
   def table_column_nullability(table_name)
     query(<<-SQL).collect.with_object({}) {|row, results| results[row["attname"]] = !row["attnotnull"]}
-      SELECT attname, attnotnull
+      SELECT attname::TEXT, attnotnull
         FROM pg_attribute, pg_class
        WHERE attrelid = pg_class.oid AND
              attnum > 0 AND
@@ -111,7 +111,7 @@ class PG::Connection
 
   def table_column_defaults(table_name)
     query(<<-SQL).collect.with_object({}) {|row, results| results[row["attname"]] = row["attdefault"].try!(:gsub, /^'(.*)'::.*$/, '\\1')}
-      SELECT attname, (CASE WHEN atthasdef THEN pg_get_expr(adbin, adrelid) ELSE NULL END) AS attdefault
+      SELECT attname::TEXT, (CASE WHEN atthasdef THEN pg_get_expr(adbin, adrelid) ELSE NULL END) AS attdefault
         FROM pg_attribute
         JOIN pg_class ON attrelid = pg_class.oid
         LEFT JOIN pg_attrdef ON adrelid = attrelid AND adnum = attnum
