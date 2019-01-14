@@ -1,14 +1,16 @@
 require 'pg'
 
 ENDPOINT_DATABASES["postgresql"] = {
-  :connect => lambda { |host, port, name, username, password| PG.connect(
-    host,
-    port,
-    nil,
-    nil,
-    name,
-    username,
-    password).tap {|conn| conn.type_map_for_results = PG::BasicTypeMapForResults.new(conn)}
+  :connect => lambda { |host, port, name, username, password|
+    PG::BasicTypeRegistry.alias_type(0, 'time', 'text')
+    PG.connect(
+      host,
+      port,
+      nil,
+      nil,
+      name,
+      username,
+      password).tap {|conn| conn.type_map_for_results = PG::BasicTypeMapForResults.new(conn)}
   }
 }
 
