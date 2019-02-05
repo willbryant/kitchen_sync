@@ -52,33 +52,55 @@ struct SyncToWorker {
 	}
 
 	void operator()() {
+		if (prepare() && !structure_only) {
+			// schema matches, sync the data
+			sync();
+		} else {
+			// send a quit command so the other end terminates gracefully rather than outputting an error itself
+			send_quit_command();
+		}
+
+		// eagerly close the streams so that the SSH session terminates promptly on aborts
+		output_stream.close();
+	}
+
+	bool prepare() {
 		try {
 			negotiate_protocol_version();
-
 			share_snapshot();
 			retrieve_database_schema();
 			compare_schema();
 			send_filters();
+			sync_queue.wait_at_barrier();
 
-			if (structure_only) {
-				wait_for_finish();
+			return true;
+		} catch (const exception &e) {
+			// make sure all other workers terminate promptly, and if we are the first to fail, output the error
+			if (sync_queue.abort()) {
+				cerr << e.what() << endl;
+			}
+
+			return false;
+		}
+	}
+
+	void sync() {
+		try {
+			enqueue_tables();
+
+			client.start_write_transaction();
+			client.disable_referential_integrity();
+
+			SyncToProtocol<SyncToWorker<DatabaseClient>, DatabaseClient> sync_to_protocol(*this);
+			sync_to_protocol.sync_tables();
+
+			wait_for_finish();
+
+			client.enable_referential_integrity();
+			if (commit_level >= CommitLevel::success) {
+				commit();
 			} else {
-				enqueue_tables();
-
-				client.start_write_transaction();
-				client.disable_referential_integrity();
-
-				SyncToProtocol<SyncToWorker<DatabaseClient>, DatabaseClient> sync_to_protocol(*this);
-				sync_to_protocol.sync_tables();
-
-				wait_for_finish();
-
-				client.enable_referential_integrity();
-				if (commit_level >= CommitLevel::success) {
-					commit();
-				} else {
-					rollback();
-				}
+				rollback();
 			}
 		} catch (const exception &e) {
 			// make sure all other workers terminate promptly, and if we are the first to fail, output the error
@@ -91,9 +113,6 @@ struct SyncToWorker {
 				try { client.commit_transaction(); } catch (...) {}
 			}
 		}
-
-		// eagerly close the streams so that the SSH session terminates promptly on aborts
-		output_stream.close();
 	}
 
 	void negotiate_protocol_version() {
@@ -187,7 +206,7 @@ struct SyncToWorker {
 					cerr << statement << endl;
 				}
 				cerr << endl;
-				throw runtime_error("Database schema needs migration");
+				throw runtime_error("Database schema needs migration.");
 			}
 		}
 	}
