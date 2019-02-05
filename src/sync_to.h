@@ -203,7 +203,7 @@ struct SyncToWorker {
 			} else {
 				cerr << "The database schema doesn't match.  Use the --alter option if you would like to automatically apply the following schema changes:" << endl << endl;
 				for (const string &statement : matcher.statements) {
-					cerr << statement << endl;
+					cerr << statement << ';' << endl;
 				}
 				cerr << endl;
 				throw runtime_error("Database schema needs migration.");
