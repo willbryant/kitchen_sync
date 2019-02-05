@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.11
+----
+* Avoid producing confusing `Connection closed` errors from the 'from' end when aborting the sync due to schema mismatches etc.
+* Make the schema mismatch statement dumps more copy-and-pasteable by adding a semicolon to each statement.
+
 1.10
 ----
 * Share the hash-checking work on individual tables when there's no more unprocessed tables left to work on, resulting in a substantial improvement in multi-core concurrency when some tables take much longer to process than others.
