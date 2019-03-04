@@ -122,8 +122,14 @@ struct SyncFromProtocol {
 	}
 
 	void handle_hash_algorithm_command() {
-		read_all_arguments(input, hash_algorithm);
-		send_command(output, Commands::HASH_ALGORITHM, hash_algorithm); // we always accept the requested algorithm and send it back (but maybe one day we won't)
+		HashAlgorithm requested_hash_algorithm;
+		read_all_arguments(input, requested_hash_algorithm);
+
+		if (hash_algorithm == HashAlgorithm::md5 || hash_algorithm == HashAlgorithm::xxh64) {
+			hash_algorithm = requested_hash_algorithm;
+		}
+
+		send_command(output, Commands::HASH_ALGORITHM, hash_algorithm);
 	}
 
 	// deprecated as actually not relevant under current protocol versions, but still supported for backwards compatibility
