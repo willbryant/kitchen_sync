@@ -16,6 +16,7 @@
 
 #include "hash_algorithm.h"
 #include "message_pack/pack.h"
+#include "message_pack/packed_value.h"
 
 struct ValueCollector {
 	ValueCollector() {}
