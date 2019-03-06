@@ -292,7 +292,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
 
-    expect_stderr("Error in the 'to' worker: Couldn't find a primary or non-nullable unique key on table noprimarytbl") do
+    expect_stderr("Couldn't find a primary or non-nullable unique key on table noprimarytbl") do
       send_command Commands::SCHEMA, ["tables" => [noprimarytbl_def(false), secondtbl_def]]
       read_command rescue nil
     end
@@ -350,7 +350,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_secondtbl
 
     expect_handshake_commands
-    expect_stderr("Error in the 'to' worker: Don't know how to interpret type of unsupportedtbl.unsupported (#{unsupported_column_type})") do
+    expect_stderr("Don't know how to interpret type of unsupportedtbl.unsupported (#{unsupported_column_type})") do
       expect_command Commands::SCHEMA
       send_command   Commands::SCHEMA, ["tables" => [unsupportedtbl_def, secondtbl_def]]
       read_command rescue nil
@@ -362,7 +362,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_secondtbl
 
     expect_handshake_commands
-    expect_stderr("Error in the 'to' worker: Don't know how to interpret type of unsupportedtbl.unsupported (#{unsupported_column_type})") do
+    expect_stderr("Don't know how to interpret type of unsupportedtbl.unsupported (#{unsupported_column_type})") do
       expect_command Commands::SCHEMA
       send_command   Commands::SCHEMA, ["tables" => [unsupportedtbl_def, secondtbl_def]]
       read_command rescue nil
