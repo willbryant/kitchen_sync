@@ -129,7 +129,7 @@ struct SyncFromProtocol {
 			hash_algorithm = requested_hash_algorithm;
 		}
 
-		send_command(output, Commands::HASH_ALGORITHM, hash_algorithm);
+		send_command(output, Commands::HASH_ALGORITHM, static_cast<int>(hash_algorithm));
 	}
 
 	// deprecated as actually not relevant under current protocol versions, but still supported for backwards compatibility

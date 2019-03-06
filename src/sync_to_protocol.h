@@ -30,7 +30,7 @@ struct SyncToProtocol {
 	}
 
 	void negotiate_hash_algorithm() {
-		send_command(output, Commands::HASH_ALGORITHM, hash_algorithm);
+		send_command(output, Commands::HASH_ALGORITHM, static_cast<int>(hash_algorithm));
 		read_expected_command(input, Commands::HASH_ALGORITHM, hash_algorithm);
 	}
 
