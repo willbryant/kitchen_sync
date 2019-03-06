@@ -1,0 +1,19 @@
+# this dockerfile builds the kitchen sync microbenchmark.  it needs to be built with the project repo root as the buildroot.
+
+FROM ubuntu:18.04
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+	DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
+	DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential cmake libssl-dev && \
+	apt-get clean -y && \
+	rm -rf /var/cache/apt/archives/*
+
+ADD CMakeLists.txt /tmp/CMakeLists.txt
+ADD cmake /tmp/cmake/
+ADD src /tmp/src/
+ADD test/CMakeLists.txt test/*.cpp /tmp/test/
+
+WORKDIR /tmp/build
+RUN cmake -DNO_DATABASES=1 -DCMAKE_BUILD_TYPE=Release .. && make ks_bench
+
+CMD test/ks_bench
