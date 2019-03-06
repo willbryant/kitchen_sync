@@ -2,12 +2,8 @@
 #define ROW_SERIALIZATION_H
 
 #ifdef __APPLE__
+	#define COMMON_DIGEST_FOR_OPENSSL
 	#include <CommonCrypto/CommonDigest.h>
-	#define MD5_CTX CC_MD5_CTX
-	#define MD5_Init CC_MD5_Init
-	#define MD5_Update CC_MD5_Update
-	#define MD5_Final CC_MD5_Final
-	#define MD5_DIGEST_LENGTH CC_MD5_DIGEST_LENGTH
 #else
 	#include <openssl/md5.h>
 #endif
