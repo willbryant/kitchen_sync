@@ -8,6 +8,7 @@
 	#include <openssl/md5.h>
 #endif
 
+#define XXH_STATIC_LINKING_ONLY
 #include "xxHash/xxhash.h"
 
 #include "hash_algorithm.h"
@@ -83,19 +84,7 @@ struct RowHasher {
 				break;
 
 			case HashAlgorithm::xxh64:
-				xxh64_state = XXH64_createState();
-				XXH64_reset(xxh64_state, 0);
-				break;
-		}
-	}
-
-	inline ~RowHasher() {
-		switch (hash_algorithm) {
-			case HashAlgorithm::md5:
-				break;
-
-			case HashAlgorithm::xxh64:
-				XXH64_freeState(xxh64_state);
+				XXH64_reset(&xxh64_state, 0);
 				break;
 		}
 	}
@@ -114,7 +103,7 @@ struct RowHasher {
 				break;
 
 			case HashAlgorithm::xxh64:
-				XXH64_update(xxh64_state, buf, bytes);
+				XXH64_update(&xxh64_state, buf, bytes);
 				break;
 		}
 	}
@@ -132,7 +121,7 @@ struct RowHasher {
 
 			case HashAlgorithm::xxh64:
 				hash.md_len = sizeof(uint64_t);
-				hash.md_value_64 = htonll(XXH64_digest(xxh64_state));
+				hash.md_value_64 = htonll(XXH64_digest(&xxh64_state));
 				return hash;
 
 			default:
@@ -144,7 +133,7 @@ struct RowHasher {
 	HashAlgorithm hash_algorithm;
 	union {
 		MD5_CTX mdctx;
-		XXH64_state_t* xxh64_state;
+		XXH64_state_t xxh64_state;
 	};
 	size_t size;
 	Packer<RowHasher> row_packer;
