@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.12
+----
+* Support postgresql column type `character varying` without a length specification.
+* Small performance improvement for XXHASH64 (`--hash XXH64`).
+
 1.11
 ----
 * Avoid producing confusing `Connection closed` errors from the 'from' end when aborting the sync due to schema mismatches etc.
