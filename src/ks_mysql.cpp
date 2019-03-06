@@ -387,9 +387,13 @@ string MySQLClient::column_type(const Column &column) {
 		}
 
 	} else if (column.column_type == ColumnTypes::VCHR) {
-		string result("varchar(");
-		result += to_string(column.size);
-		result += ")";
+		string result("varchar");
+		if (column.size > 0) {
+			// mysql never uses VCHR without a length specification, but you can see it from postgresql; we don't know what length to make the column because the maximum mysql permits depends on the character set and what other columns there are on the row, so we just let mysql take the default
+			result += '(';
+			result += to_string(column.size);
+			result += ')';
+		}
 		return result;
 
 	} else if (column.column_type == ColumnTypes::FCHR) {

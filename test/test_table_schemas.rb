@@ -291,6 +291,7 @@ SQL
       execute(<<-SQL)
         CREATE TABLE postgresqltbl (
           pri UUID NOT NULL,
+          nolengthvaryingfield CHARACTER VARYING,
           currentdatefield DATE DEFAULT CURRENT_DATE,
           currentuserdefault VARCHAR(255) DEFAULT current_user,
           sqlspecialdefault VARCHAR(255) DEFAULT current_schema,
@@ -318,6 +319,7 @@ SQL
       { "name"    => "postgresqltbl",
         "columns" => [
           {"name" => "pri",                "column_type" => ColumnTypes::UUID,                "nullable" => false},
+          {"name" => "nolengthvaryingfield", "column_type" => ColumnTypes::VCHR},
           {"name" => "currentdatefield",   "column_type" => ColumnTypes::DATE,                                     "default_function" => CaseInsensitiveString.new("CURRENT_DATE")},
           {"name" => "currentuserdefault", "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => CaseInsensitiveString.new("CURRENT_USER")},
           {"name" => "sqlspecialdefault",  "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => CaseInsensitiveString.new("CURRENT_SCHEMA")}, # special treatment noted on System Information Functions documentation page

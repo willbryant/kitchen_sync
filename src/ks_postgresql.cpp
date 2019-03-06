@@ -394,15 +394,18 @@ string PostgreSQLClient::column_type(const Column &column) {
 		return "text";
 
 	} else if (column.column_type == ColumnTypes::VCHR) {
-		string result("character varying(");
-		result += to_string(column.size);
-		result += ")";
+		string result("character varying");
+		if (column.size > 0) {
+			result += '(';
+			result += to_string(column.size);
+			result += ')';
+		}
 		return result;
 
 	} else if (column.column_type == ColumnTypes::FCHR) {
 		string result("character(");
 		result += to_string(column.size);
-		result += ")";
+		result += ')';
 		return result;
 
 	} else if (column.column_type == ColumnTypes::UUID) {
@@ -580,6 +583,8 @@ struct PostgreSQLColumnLister {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DECI, extract_column_length(db_type), extract_column_scale(db_type));
 		} else if (db_type.substr(0, 18) == "character varying(") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::VCHR, extract_column_length(db_type));
+		} else if (db_type.substr(0, 18) == "character varying") {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::VCHR /* no length limit */);
 		} else if (db_type.substr(0, 10) == "character(") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::FCHR, extract_column_length(db_type));
 		} else if (db_type == "text") {
