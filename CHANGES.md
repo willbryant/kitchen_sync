@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.13
+----
+* Fix handling of MySQL `tinyint(n)` columns for n > 1 (as previously, we assume n = 1 is used for boolean values).
+* Small performance improvement for hashing PostgreSQL `bytea` columns.
+
 1.12
 ----
 * Support postgresql column type `character varying` without a length specification.
