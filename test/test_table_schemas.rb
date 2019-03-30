@@ -282,6 +282,7 @@ SQL
       execute(<<-SQL)
         CREATE TABLE mysqltbl (
           pri INT UNSIGNED NOT NULL,
+          tiny2 TINYINT(2) UNSIGNED DEFAULT 99,
           timestampboth TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           #{"timestampcreateonly TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," unless mysql_5_5?}
           PRIMARY KEY(pri))
@@ -308,8 +309,9 @@ SQL
     when 'mysql'
       { "name"    => "mysqltbl",
         "columns" => [
-          {"name" => "pri",                 "column_type" => ColumnTypes::UINT, "size" =>  4, "nullable" => false},
-          {"name" => "timestampboth",       "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true},
+          {"name" => "pri",                  "column_type" => ColumnTypes::UINT, "size" =>  4, "nullable" => false},
+          {"name" => "tiny2",                "column_type" => ColumnTypes::UINT, "size" =>  1, "default_value" => "99"}, # note we've lost the (nonportable) display width (2) - size tells us the size of the integers, not the display width
+          {"name" => "timestampboth",        "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true},
           ({"name" => "timestampcreateonly", "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true} unless mysql_5_5?)
         ].compact,
         "primary_key_columns" => [0],
@@ -328,6 +330,18 @@ SQL
           {"name" => "timestampwithzone",  "column_type" => ColumnTypes::DTTM, "time_zone" => true}],
         "primary_key_columns" => [0],
         "keys" => [] }
+    end
+  end
+
+  def adapterspecifictbl_row(database_server = @database_server)
+    case database_server
+    when 'mysql'
+      { "pri" => 12345678,
+        "tiny2" => 12 }
+
+    when 'postgresql'
+      { "pri" => "3d190b75-dbb1-4d34-a41e-d590c1c8a895",
+        "nolengthvaryingfield" => "test data" }
     end
   end
 

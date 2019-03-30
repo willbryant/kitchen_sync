@@ -10,6 +10,13 @@
 
 #define MYSQL_5_6_5 50605
 
+enum MySQLColumnConversion {
+	encode_raw = 0,
+	encode_bool = 1,
+	encode_uint = 2,
+	encode_sint = 3,
+};
+
 class MySQLRes {
 public:
 	MySQLRes(MYSQL &mysql, bool buffer);
@@ -18,27 +25,23 @@ public:
 	inline MYSQL_RES *res() { return _res; }
 	inline int n_tuples() const { return mysql_num_rows(_res); } // if buffer was false, this will only work after reading all the rows
 	inline int n_columns() const { return _n_columns; }
-	inline enum_field_types type_of(int column_number) const { return types[column_number]; }
-	inline bool unsigned_at(int column_number) const { return types_unsigned[column_number]; }
+	inline MySQLColumnConversion conversion_for(int column_number) { if (conversions.empty()) populate_conversions(); return conversions[column_number]; }
+	string qualified_name_of_column(int column_number);
 
 private:
+	void populate_fields();
+	void populate_conversions();
+	MySQLColumnConversion conversion_for_field(MYSQL_FIELD *field);
+
 	MYSQL_RES *_res;
 	int _n_columns;
-	vector<enum_field_types> types;
-	vector<bool> types_unsigned;
+	vector<MYSQL_FIELD*> fields;
+	vector<MySQLColumnConversion> conversions;
 };
 
 MySQLRes::MySQLRes(MYSQL &mysql, bool buffer) {
 	_res = buffer ? mysql_store_result(&mysql) : mysql_use_result(&mysql);
 	_n_columns = mysql_num_fields(_res);
-
-	types.resize(_n_columns);
-	types_unsigned.resize(_n_columns);
-	for (size_t i = 0; i < _n_columns; i++) {
-		MYSQL_FIELD *field = mysql_fetch_field(_res);
-		types[i] = field->type;
-		types_unsigned[i] = field->flags & UNSIGNED_FLAG;
-	}
 }
 
 MySQLRes::~MySQLRes() {
@@ -46,6 +49,53 @@ MySQLRes::~MySQLRes() {
 		while (mysql_fetch_row(_res)) ; // must throw away any remaining results or else they'll be returned in the next requested resultset!
 		mysql_free_result(_res);
 	}
+}
+
+void MySQLRes::populate_fields() {
+	fields.resize(_n_columns);
+
+	for (size_t i = 0; i < _n_columns; i++) {
+		fields[i] = mysql_fetch_field(_res);
+	}
+}
+
+void MySQLRes::populate_conversions() {
+	if (fields.empty()) populate_fields();
+
+	conversions.resize(_n_columns);
+
+	for (size_t i = 0; i < _n_columns; i++) {
+		conversions[i] = conversion_for_field(fields[i]);
+	}
+}
+
+MySQLColumnConversion MySQLRes::conversion_for_field(MYSQL_FIELD *field) {
+	switch (field->type) {
+		case MYSQL_TYPE_TINY:
+			if (field->length == 1) {
+				return encode_bool;
+			} // else [[fallthrough]];
+
+		case MYSQL_TYPE_SHORT:
+		case MYSQL_TYPE_INT24:
+		case MYSQL_TYPE_LONG:
+		case MYSQL_TYPE_LONGLONG:
+			if (field->flags & UNSIGNED_FLAG) {
+				return encode_uint;
+			} else {
+				return encode_sint;
+			}
+			break;
+
+		default:
+			return encode_raw;
+	}
+}
+
+string MySQLRes::qualified_name_of_column(int column_number) {
+	if (fields.empty()) populate_fields();
+
+	return string(fields[column_number]->table) + "." + string(fields[column_number]->name);
 }
 
 
@@ -59,7 +109,6 @@ public:
 	inline        bool   null_at(int column_number) const { return     _row[column_number] == nullptr; }
 	inline const char *result_at(int column_number) const { return     _row[column_number]; }
 	inline         int length_of(int column_number) const { return _lengths[column_number]; }
-	inline        bool   bool_at(int column_number) const { return (strcmp(result_at(column_number), "1") == 0); }
 	inline      string string_at(int column_number) const { return string(result_at(column_number), length_of(column_number)); }
 	inline     int64_t    int_at(int column_number) const { return strtoll(result_at(column_number), nullptr, 10); }
 	inline    uint64_t   uint_at(int column_number) const { return strtoull(result_at(column_number), nullptr, 10); }
@@ -69,25 +118,34 @@ public:
 		if (null_at(column_number)) {
 			packer << nullptr;
 		} else {
-			switch (_res.type_of(column_number)) {
-				case MYSQL_TYPE_TINY:
-					packer << bool_at(column_number);
-					break;
-
-				case MYSQL_TYPE_SHORT:
-				case MYSQL_TYPE_INT24:
-				case MYSQL_TYPE_LONG:
-				case MYSQL_TYPE_LONGLONG:
-					if (_res.unsigned_at(column_number)) {
-						packer << uint_at(column_number);
-					} else {
-						packer << int_at(column_number);
+			switch (_res.conversion_for(column_number)) {
+				case encode_bool:
+					// although we have made the assumption in this codebase that tinyint(1) is used only for booleans,
+					// in fact even if a field is tinyint(1) any tinyint value can be stored, even those with multiple digits,
+					// so we check our assumption here and raise an error rather than risk silently syncing incorrectly
+					if (length_of(column_number) == 1) {
+						if (*result_at(column_number) == '0') {
+							packer << false;
+							break;
+						} else if (*result_at(column_number) == '1') {
+							packer << true;
+							break;
+						}
 					}
+					throw runtime_error("Invalid value for boolean column " + _res.qualified_name_of_column(column_number) + ": " + string_at(column_number) + " (we assume tinyint(1) is used for booleans)");
+
+				case encode_uint:
+					packer << uint_at(column_number);
 					break;
 
-				default:
+				case encode_sint:
+					packer << int_at(column_number);
+					break;
+
+				case encode_raw:
 					// we use our non-copied memory class, equivalent to but faster than using string_at
 					packer << memory(result_at(column_number), length_of(column_number));
+					break;
 			}
 		}
 	}
@@ -535,8 +593,16 @@ struct MySQLColumnLister {
 		string extra(row.string_at(5));
 		if (extra.find("auto_increment") != string::npos) default_type = DefaultType::sequence;
 
-		if (db_type == "tinyint(1)" && (!default_type || default_value == "0" || default_value == "1")) {
-			if (default_type) default_value = (default_value == "1" ? "true" : "false");
+		if (db_type == "tinyint(1)") {
+			if (default_type) {
+				if (default_value == "0") {
+					default_value = "false";
+				} else if (default_value == "1") {
+					default_value = "true";
+				} else {
+					throw runtime_error("Invalid default value for boolean column " + table.name + "." + name + ": " + default_value + " (we assume tinyint(1) is used for booleans)");
+				}
+			}
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BOOL);
 		} else if (db_type.substr(0, 8) == "tinyint(") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 1);
