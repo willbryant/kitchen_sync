@@ -66,8 +66,6 @@ public:
 	inline        bool   bool_at(int column_number) const { return (strcmp((const char *)result_at(column_number), "t") == 0); }
 	inline     int64_t    int_at(int column_number) const { return strtoll((const char *)result_at(column_number), nullptr, 10); }
 
-	string decoded_byte_string_at(int column_number) const;
-
 	template <typename Packer>
 	inline void pack_column_into(Packer &packer, int column_number) const {
 		if (null_at(column_number)) {
@@ -78,15 +76,20 @@ public:
 					packer << bool_at(column_number);
 					break;
 
-				case BYTEAOID:
-					packer << decoded_byte_string_at(column_number);
-					break;
-
 				case INT2OID:
 				case INT4OID:
 				case INT8OID:
 					packer << int_at(column_number);
 					break;
+
+				case BYTEAOID: {
+					size_t decoded_length;
+					void *decoded = PQunescapeBytea((const unsigned char *)result_at(column_number), &decoded_length);
+					// we use our non-copied memory class rather than having to copy the decode results out to a temporary string
+					packer << memory(decoded, decoded_length);
+					PQfreemem(decoded);
+					break;
+				}
 
 				default:
 					// we use our non-copied memory class, equivalent to but faster than using string_at
@@ -108,15 +111,6 @@ private:
 	PostgreSQLRes &_res;
 	int _row_number;
 };
-
-string PostgreSQLRow::decoded_byte_string_at(int column_number) const {
-	const unsigned char *value = (const unsigned char *)result_at(column_number);
-	size_t decoded_length;
-	const unsigned char *decoded = PQunescapeBytea(value, &decoded_length);
-	string result(decoded, decoded + decoded_length);
-	PQfreemem((void *)decoded);
-	return result;
-}
 
 
 class PostgreSQLClient: public GlobalKeys, public SequenceColumns, public DropKeysWhenColumnsDropped, public SetNullability {
