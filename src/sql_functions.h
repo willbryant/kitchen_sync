@@ -194,4 +194,17 @@ string select_not_earlier_key_sql(DatabaseClient &client, const Table &table, co
 	return result;
 }
 
+inline void choose_primary_key_for(Table &table, const set<string> &unique_but_nullable_keys) {
+	// generally we expect most tables to have a real primary key
+	if (!table.primary_key_columns.empty()) return;
+
+	// if not, we need to find a unique key with no nullable columns to act as a surrogate primary key
+	for (Keys::const_iterator key = table.keys.begin(); key != table.keys.end(); ++key) {
+		if (key->unique && !unique_but_nullable_keys.count(key->name)) {
+			table.primary_key_columns = key->columns;
+			return;
+		}
+	}
+}
+
 #endif
