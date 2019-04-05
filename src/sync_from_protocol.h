@@ -81,7 +81,7 @@ struct SyncFromProtocol {
 		worker.show_status("syncing " + table_name);
 
 		const Table &table(*worker.tables_by_name.at(table_name));
-		send_command(output, Commands::RANGE, table_name, worker.client.first_key(table), worker.client.last_key(table));
+		send_command(output, Commands::RANGE, table_name, first_key(worker.client, table), last_key(worker.client, table));
 	}
 
 	void handle_hash_command() {
@@ -92,7 +92,7 @@ struct SyncFromProtocol {
 		worker.show_status("syncing " + table_name);
 
 		RowHasher hasher(hash_algorithm);
-		size_t row_count = worker.client.retrieve_rows(hasher, *worker.tables_by_name.at(table_name), prev_key, last_key, rows_to_hash);
+		size_t row_count = retrieve_rows(worker.client, hasher, *worker.tables_by_name.at(table_name), prev_key, last_key, rows_to_hash);
 
 		send_command(output, Commands::HASH, table_name, prev_key, last_key, rows_to_hash, row_count, hasher.finish());
 	}
@@ -115,7 +115,7 @@ struct SyncFromProtocol {
 		RowPackerAndLastKey<FDWriteStream> row_packer(output, table.primary_key_columns);
 
 		while (true) {
-			size_t row_count = worker.client.retrieve_rows(row_packer, table, prev_key, last_key, BATCH_SIZE);
+			size_t row_count = retrieve_rows(worker.client, row_packer, table, prev_key, last_key, BATCH_SIZE);
 			if (row_count < BATCH_SIZE) break;
 			prev_key = row_packer.last_key;
 		}

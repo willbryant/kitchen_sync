@@ -126,17 +126,6 @@ public:
 		const string &variables);
 	~PostgreSQLClient();
 
-	template <typename RowReceiver>
-	size_t retrieve_rows(RowReceiver &row_receiver, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, ssize_t row_count = NO_ROW_COUNT_LIMIT) {
-		return query(retrieve_rows_sql(*this, table, prev_key, last_key, row_count), row_receiver);
-	}
-
-	size_t count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key);
-	ColumnValues first_key(const Table &table);
-	ColumnValues last_key(const Table &table);
-	ColumnValues not_earlier_key(const Table &table, const ColumnValues &key, const ColumnValues &prev_key, const ColumnValues &last_key);
-
-	void execute(const string &sql);
 	void disable_referential_integrity();
 	void enable_referential_integrity();
 	string export_snapshot();
@@ -158,8 +147,8 @@ public:
 	inline char quote_identifiers_with() const { return '"'; }
 	inline ColumnFlags supported_flags() const { return ColumnFlags::time_zone; }
 
-protected:
-	friend class PostgreSQLTableLister;
+	void execute(const string &sql);
+	string select_one(const string &sql);
 
 	template <typename RowFunction>
 	size_t query(const string &sql, RowFunction &row_handler) {
@@ -177,7 +166,7 @@ protected:
 		return res.n_tuples();
 	}
 
-	string select_one(const string &sql);
+protected:
 	string sql_error(const string &sql);
 
 private:
@@ -219,28 +208,6 @@ PostgreSQLClient::~PostgreSQLClient() {
 	if (conn) {
 		PQfinish(conn);
 	}
-}
-
-size_t PostgreSQLClient::count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
-	return atoi(select_one(count_rows_sql(*this, table, prev_key, last_key)).c_str());
-}
-
-ColumnValues PostgreSQLClient::first_key(const Table &table) {
-	ValueCollector receiver;
-	query(select_first_key_sql(*this, table), receiver);
-	return receiver.values;
-}
-
-ColumnValues PostgreSQLClient::last_key(const Table &table) {
-	ValueCollector receiver;
-	query(select_last_key_sql(*this, table), receiver);
-	return receiver.values;
-}
-
-ColumnValues PostgreSQLClient::not_earlier_key(const Table &table, const ColumnValues &key, const ColumnValues &prev_key, const ColumnValues &last_key) {
-	ValueCollector receiver;
-	query(select_not_earlier_key_sql(*this, table, key, prev_key, last_key), receiver);
-	return receiver.values;
 }
 
 void PostgreSQLClient::execute(const string &sql) {

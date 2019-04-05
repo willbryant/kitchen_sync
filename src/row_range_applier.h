@@ -84,7 +84,7 @@ struct RowRangeApplier {
 	void check_rows_to_curr_key() {
 		// we select in batches to avoid large buffering in clients that can't turn buffering off; and in those
 		// that can, we also need to execute DML periodically (but can't do that while SELECT is returning results)
-		while (client.retrieve_rows(*this, table, prev_key, curr_key, MAX_ROWS_TO_SELECT) == MAX_ROWS_TO_SELECT) {
+		while (retrieve_rows(client, *this, table, prev_key, curr_key, MAX_ROWS_TO_SELECT) == MAX_ROWS_TO_SELECT) {
 			apply_if_necessary();
 		}
 		apply_if_necessary();
