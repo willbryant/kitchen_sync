@@ -181,7 +181,7 @@ public:
 
 	template <typename RowReceiver>
 	size_t retrieve_rows(RowReceiver &row_receiver, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, ssize_t row_count = NO_ROW_COUNT_LIMIT) {
-		return query(retrieve_rows_sql(*this, table, prev_key, last_key, row_count), row_receiver, false);
+		return query(retrieve_rows_sql(*this, table, prev_key, last_key, row_count), row_receiver);
 	}
 
 	size_t count_rows(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key);
@@ -214,7 +214,7 @@ protected:
 	friend class MySQLTableLister;
 
 	template <typename RowFunction>
-	size_t query(const string &sql, RowFunction &row_handler, bool buffer) {
+	size_t query(const string &sql, RowFunction &row_handler, bool buffer = false) {
 		if (mysql_real_query(&mysql, sql.c_str(), sql.length())) {
 			throw runtime_error(sql_error(sql));
 		}
@@ -291,19 +291,19 @@ size_t MySQLClient::count_rows(const Table &table, const ColumnValues &prev_key,
 
 ColumnValues MySQLClient::first_key(const Table &table) {
 	ValueCollector receiver;
-	query(select_first_key_sql(*this, table), receiver, false);
+	query(select_first_key_sql(*this, table), receiver);
 	return receiver.values;
 }
 
 ColumnValues MySQLClient::last_key(const Table &table) {
 	ValueCollector receiver;
-	query(select_last_key_sql(*this, table), receiver, false);
+	query(select_last_key_sql(*this, table), receiver);
 	return receiver.values;
 }
 
 ColumnValues MySQLClient::not_earlier_key(const Table &table, const ColumnValues &key, const ColumnValues &prev_key, const ColumnValues &last_key) {
 	ValueCollector receiver;
-	query(select_not_earlier_key_sql(*this, table, key, prev_key, last_key), receiver, false);
+	query(select_not_earlier_key_sql(*this, table, key, prev_key, last_key), receiver);
 	return receiver.values;
 }
 
@@ -708,10 +708,10 @@ struct MySQLTableLister {
 		Table table(row.string_at(0));
 
 		MySQLColumnLister column_lister(table);
-		client.query("SHOW COLUMNS FROM " + table.name, column_lister, false);
+		client.query("SHOW COLUMNS FROM " + table.name, column_lister);
 
 		MySQLKeyLister key_lister(table);
-		client.query("SHOW KEYS FROM " + table.name, key_lister, false);
+		client.query("SHOW KEYS FROM " + table.name, key_lister);
 		sort(table.keys.begin(), table.keys.end()); // order is arbitrary for keys, but both ends must be consistent, so we sort the keys by name
 
 		choose_primary_key_for(table, key_lister.unique_but_nullable_keys);
@@ -726,7 +726,10 @@ private:
 
 void MySQLClient::populate_database_schema(Database &database) {
 	MySQLTableLister table_lister(*this, database);
-	query("SELECT table_name FROM information_schema.tables WHERE table_schema = schema() AND table_type = \"BASE TABLE\" ORDER BY data_length DESC, table_name ASC", table_lister, true /* buffer so we can make further queries during iteration */);
+	query(
+		"SELECT table_name FROM information_schema.tables WHERE table_schema = schema() AND table_type = \"BASE TABLE\" ORDER BY data_length DESC, table_name ASC",
+		table_lister,
+		true /* buffer so we can make further queries during iteration */);
 }
 
 
