@@ -177,7 +177,6 @@ SQL
         {"name" => "version",      "column_type" => ColumnTypes::VCHR, "size" => 255, "nullable" => false},
         {"name" => "name",         "column_type" => ColumnTypes::VCHR, "size" => 255},
         {"name" => "non_nullable", "column_type" => ColumnTypes::SINT, "size" =>   4, "nullable" => false}],
-      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => (create_suitable_keys ? [1] : []),
       "primary_key_type" => PrimaryKeyType::SUITABLE_UNIQUE_KEY,
       "keys" => [ # sorted in uniqueness then alphabetic name order, but otherwise a transcription of the above create index statements
