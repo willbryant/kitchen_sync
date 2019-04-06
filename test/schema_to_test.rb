@@ -32,10 +32,17 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
   def assert_same_keys(table_def)
     table_name = table_def["name"]
-    assert_equal table_def["primary_key_columns"].collect {|index| table_def["columns"][index]["name"]},
-      connection.table_key_columns(table_name)[connection.table_primary_key_name(table_name)]
+    primary_key_columns = connection.table_key_columns(table_name)[connection.table_primary_key_name(table_name)]
+    case table_def["primary_key_type"]
+    when PrimaryKeyType::EXPLICIT_PRIMARY_KEY
+      assert_equal table_def["primary_key_columns"].collect {|index| table_def["columns"][index]["name"]}, primary_key_columns
+    when PrimaryKeyType::SUITABLE_UNIQUE_KEY
+      assert_nil primary_key_columns
+    else
+      raise "invalid primary_key_type #{table_def["primary_key_type"].inspect}"
+    end
 
-    assert_equal table_def["keys"].collect {|key| key["name"]}, connection.table_keys(table_name)
+    assert_equal table_def["keys"].collect {|key| key["name"]}.sort, connection.table_keys(table_name).sort
     table_def["keys"].each {|key| assert_equal key["unique"], connection.table_keys_unique(table_name)[key["name"]], "#{key["name"]} index should#{' not' unless key["unique"]} be unique"}
     table_def["keys"].each {|key| assert_equal key["columns"].collect {|index| table_def["columns"][index]["name"]}, connection.table_key_columns(table_name)[key["name"]]}
   end
@@ -980,6 +987,24 @@ SQL
     read_command
     assert_equal [secondtbl_def["columns"][3]["name"], secondtbl_def["columns"][1]["name"]], connection.table_key_columns("secondtbl")[key["name"]]
     assert_secondtbl_rows_present
+  end
+
+  test_each "creates tables with explicit primary keys" do
+    clear_schema
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
+    read_command
+    assert_same_keys(footbl_def)
+  end
+
+  test_each "creates tables without explicit primary keys" do
+    clear_schema
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command   Commands::SCHEMA, ["tables" => [noprimarytbl_def(true)]]
+    read_command
+    assert_same_keys(noprimarytbl_def(true))
   end
 
   test_each "skips schema definitions it doesn't recognise" do

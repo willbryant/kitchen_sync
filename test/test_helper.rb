@@ -89,6 +89,11 @@ module HashAlgorithm
   XXH64 = 1
 end
 
+module PrimaryKeyType
+  EXPLICIT_PRIMARY_KEY = 0
+  SUITABLE_UNIQUE_KEY = 1
+end
+
 Verbs = Commands.constants.each_with_object({}) {|k, results| results[Commands.const_get(k)] = k.to_s.downcase}.freeze
 
 module KitchenSync

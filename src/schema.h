@@ -84,10 +84,16 @@ struct Key {
 
 typedef vector<Key> Keys;
 
+enum PrimaryKeyType {
+	explicit_primary_key = 0,
+	suitable_unique_key = 1,
+};
+
 struct Table {
 	string name;
 	Columns columns;
 	ColumnIndices primary_key_columns;
+	PrimaryKeyType primary_key_type = PrimaryKeyType::explicit_primary_key;
 	Keys keys;
 
 	// the following member isn't serialized currently (could be, but not required):
@@ -97,7 +103,7 @@ struct Table {
 	inline Table() {}
 
 	inline bool operator <(const Table &other) const { return (name < other.name); }
-	inline bool operator ==(const Table &other) const { return (name == other.name && columns == other.columns && primary_key_columns == other.primary_key_columns && keys == other.keys); }
+	inline bool operator ==(const Table &other) const { return (name == other.name && columns == other.columns && primary_key_columns == other.primary_key_columns && primary_key_type == other.primary_key_type && keys == other.keys); }
 	inline bool operator !=(const Table &other) const { return (!(*this == other)); }
 	size_t index_of_column(const string &name) const;
 };

@@ -22,6 +22,7 @@ SQL
         {"name" => "col1",        "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false},
         {"name" => "another_col", "column_type" => ColumnTypes::SINT, "size" =>  2},
         {"name" => "col3",        "column_type" => ColumnTypes::VCHR, "size" => 10}],
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
       "keys" => [] }
   end
@@ -47,6 +48,7 @@ SQL
         {"name" => "pri1", "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
         {"name" => "pri2", "column_type" => ColumnTypes::FCHR, "size" => 2, "nullable" => false},
         {"name" => "sec",  "column_type" => ColumnTypes::SINT, "size" => 4}],
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [2, 1], # note order is that listed in the key, not the index of the column in the table
       "keys" => [
         {"name" => "secidx", "unique" => false, "columns" => [3]}] }
@@ -71,6 +73,7 @@ SQL
         {"name" => "pri", "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
         {"name" => "sec", "column_type" => ColumnTypes::SINT, "size" => 4},
         {"name" => "col3", "column_type" => ColumnTypes::VCHR, "size" => 1000}],
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0], # note order is that listed in the key, not the index of the column in the table
       "keys" => [
         {"name" => "secidx", "unique" => true, "columns" => [1]}] }
@@ -88,6 +91,7 @@ SQL
     { "name"    => "middletbl",
       "columns" => [
         {"name" => "pri", "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false}],
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
       "keys" => [] }
   end
@@ -106,6 +110,7 @@ SQL
       "columns" => [
         {"name" => "pri",       "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
         {"name" => "textfield", "column_type" => ColumnTypes::TEXT}],
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
       "keys" => [] }
   end
@@ -144,6 +149,7 @@ SQL
         {"name" => "fchrfield",     "column_type" => ColumnTypes::FCHR, "size" => 9},
         {"name" => "textfield",     "column_type" => ColumnTypes::TEXT},
         {"name" => "blobfield",     "column_type" => ColumnTypes::BLOB}],
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
       "keys" => [] }
   end
@@ -171,7 +177,9 @@ SQL
         {"name" => "version",      "column_type" => ColumnTypes::VCHR, "size" => 255, "nullable" => false},
         {"name" => "name",         "column_type" => ColumnTypes::VCHR, "size" => 255},
         {"name" => "non_nullable", "column_type" => ColumnTypes::SINT, "size" =>   4, "nullable" => false}],
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => (create_suitable_keys ? [1] : []),
+      "primary_key_type" => PrimaryKeyType::SUITABLE_UNIQUE_KEY,
       "keys" => [ # sorted in uniqueness then alphabetic name order, but otherwise a transcription of the above create index statements
         ({"name" => "correct_key",          "unique" => true,  "columns" => [1]} if create_suitable_keys),
         {"name" => "ignored_key",          "unique" => true,  "columns" => [0, 1]},
@@ -207,6 +215,7 @@ SQL
         {"name" => "col1"},
         {"name" => "int"},
         {"name" => "varchar"}],
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
       "keys" => [] }
   end
@@ -250,6 +259,7 @@ SQL
         {"name" => "doublefield",          "column_type" => ColumnTypes::REAL, "size" =>  8,               "default_value" => "0.0625"},
         {"name" => "decimalfield",         "column_type" => ColumnTypes::DECI, "size" =>  9, "scale" => 3, "default_value" => "123456.789"}
       ].compact,
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
       "keys" => [] }
   end
@@ -272,6 +282,7 @@ SQL
       "columns" => [
         {"name" => "inc",     "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false, "sequence" => ""},
         {"name" => "payload", "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false}],
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
       "keys" => [] }
   end
@@ -314,6 +325,7 @@ SQL
           {"name" => "timestampboth",        "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true},
           ({"name" => "timestampcreateonly", "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true} unless mysql_5_5?)
         ].compact,
+        "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
         "primary_key_columns" => [0],
         "keys" => [] }
 
@@ -328,6 +340,7 @@ SQL
           {"name" => "pgfunctiondefault",  "column_type" => ColumnTypes::TEXT,                                     "default_function" => "version()"},
           {"name" => "timewithzone",       "column_type" => ColumnTypes::TIME, "time_zone" => true},
           {"name" => "timestampwithzone",  "column_type" => ColumnTypes::DTTM, "time_zone" => true}],
+        "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
         "primary_key_columns" => [0],
         "keys" => [] }
     end
@@ -368,6 +381,7 @@ SQL
       "columns" => [
         {"name" => "pri",         "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
         {"name" => "unsupported", "column_type" => ColumnTypes::UNKN, "db_type_def" => unsupported_column_type(database_server)}],
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
       "keys" => [] }
   end

@@ -233,6 +233,7 @@ inline void choose_primary_key_for(Table &table, const set<string> &unique_but_n
 	for (Keys::const_iterator key = table.keys.begin(); key != table.keys.end(); ++key) {
 		if (key->unique && !unique_but_nullable_keys.count(key->name)) {
 			table.primary_key_columns = key->columns;
+			table.primary_key_type = suitable_unique_key;
 			return;
 		}
 	}

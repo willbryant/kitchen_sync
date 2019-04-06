@@ -82,13 +82,15 @@ void operator << (Packer<OutputStream> &packer, const Key &key) {
 
 template <typename OutputStream>
 void operator << (Packer<OutputStream> &packer, const Table &table) {
-	pack_map_length(packer, 4);
+	pack_map_length(packer, 5);
 	packer << string("name");
 	packer << table.name;
 	packer << string("columns");
 	packer << table.columns;
 	packer << string("primary_key_columns");
 	packer << table.primary_key_columns;
+	packer << string("primary_key_type");
+	packer << table.primary_key_type;
 	packer << string("keys");
 	packer << table.keys;
 }
@@ -180,6 +182,8 @@ void operator >> (Unpacker<InputStream> &unpacker, Table &table) {
 			unpacker >> table.columns;
 		} else if (attr_key == "primary_key_columns") {
 			unpacker >> table.primary_key_columns;
+		} else if (attr_key == "primary_key_type") {
+			unpacker >> table.primary_key_type;
 		} else if (attr_key == "keys") {
 			unpacker >> table.keys;
 		} else {
