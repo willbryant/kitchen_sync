@@ -162,7 +162,7 @@ SQL
         name VARCHAR(255),
         non_nullable INT NOT NULL)
 SQL
-    execute "CREATE INDEX everything_key ON noprimarytbl (name, nullable, version)"
+    execute "CREATE INDEX everything_key ON noprimarytbl (name, nullable, version, non_nullable)"
     execute "CREATE UNIQUE INDEX ignored_key ON noprimarytbl (nullable, version)"
     execute "CREATE UNIQUE INDEX correct_key ON noprimarytbl (version)" if create_suitable_keys
     execute "CREATE UNIQUE INDEX version_and_name_key ON noprimarytbl (version, name)"
@@ -184,7 +184,7 @@ SQL
         {"name" => "ignored_key",          "unique" => true,  "columns" => [0, 1]},
         ({"name" => "non_nullable_key",     "unique" => true,  "columns" => [3]} if create_suitable_keys),
         {"name" => "version_and_name_key", "unique" => true,  "columns" => [1, 2]},
-        {"name" => "everything_key",       "unique" => false, "columns" => [2, 0, 1]},
+        {"name" => "everything_key",       "unique" => false, "columns" => [2, 0, 1, 3]},
         {"name" => "not_unique_key",       "unique" => false, "columns" => [3]} ].compact }
   end
 
