@@ -26,7 +26,8 @@ struct BaseSQL {
 	template <typename DatabaseClient>
 	inline void apply(DatabaseClient &client) {
 		if (have_content()) {
-			client.execute(curr + suffix);
+			curr += suffix;
+			client.execute(curr);
 			reset();
 		}
 	}
