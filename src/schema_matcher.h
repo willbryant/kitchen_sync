@@ -451,7 +451,7 @@ struct SchemaMatcher {
 	}
 
 	void match_keys(Statements &alter_statements, const Table &from_table, Table &to_table) {
-		// if the columns list doesn't match up yet, then comparing the keys make attempt to access invalid indices in the columns list
+		// if the columns list doesn't match up yet, then comparing the keys may attempt to access invalid indices in the columns list
 		if (from_table.columns != to_table.columns) return;
 
 		Keys::const_iterator from_key = from_table.keys.begin();
