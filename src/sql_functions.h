@@ -225,14 +225,21 @@ size_t retrieve_rows(DatabaseClient &client, RowReceiver &row_receiver, const Ta
 	return client.query(retrieve_rows_sql(client, table, prev_key, last_key, row_count), row_receiver);
 }
 
-inline void choose_primary_key_for(Table &table, const set<string> &unique_but_nullable_keys) {
+inline bool any_column_nullable(const Table &table, const ColumnIndices &columns) {
+	for (size_t column : columns) {
+		if (table.columns[column].nullable) return true;
+	}
+	return false;
+}
+
+inline void choose_primary_key_for(Table &table) {
 	// generally we expect most tables to have a real primary key
 	if (!table.primary_key_columns.empty()) return;
 
 	// if not, we need to find a unique key with no nullable columns to act as a surrogate primary key
-	for (Keys::const_iterator key = table.keys.begin(); key != table.keys.end(); ++key) {
-		if (key->unique && !unique_but_nullable_keys.count(key->name)) {
-			table.primary_key_columns = key->columns;
+	for (const Key &key : table.keys) {
+		if (key.unique && !any_column_nullable(table, key.columns)) {
+			table.primary_key_columns = key.columns;
 			table.primary_key_type = suitable_unique_key;
 			return;
 		}

@@ -615,20 +615,9 @@ struct PostgreSQLKeyLister {
 			table.keys.push_back(Key(key_name, unique));
 		}
 		table.keys.back().columns.push_back(column_index);
-
-		if (table.primary_key_columns.empty()) {
-			// if we have no primary key, we might need to use another unique key as a surrogate - see PostgreSQLTableLister below -
-			// but this key must have no NULLable columns, as they effectively make the index not unique
-			bool nullable = (row.string_at(3) == "f");
-			if (unique && nullable) {
-				// mark this as unusable
-				unique_but_nullable_keys.insert(key_name);
-			}
-		}
 	}
 
 	Table &table;
-	set<string> unique_but_nullable_keys;
 };
 
 struct PostgreSQLTableLister {
@@ -663,7 +652,7 @@ struct PostgreSQLTableLister {
 
 		PostgreSQLKeyLister key_lister(table);
 		client.query(
-			"SELECT indexname, indisunique, attname, attnotnull "
+			"SELECT indexname, indisunique, attname "
 			  "FROM (SELECT table_class.oid AS table_oid, index_class.relname AS indexname, pg_index.indisunique, generate_series(1, array_length(indkey, 1)) AS position, unnest(indkey) AS attnum "
 			          "FROM pg_class table_class, pg_class index_class, pg_index "
 			         "WHERE table_class.relname = '" + table.name + "' AND "
@@ -680,7 +669,7 @@ struct PostgreSQLTableLister {
 
 		sort(table.keys.begin(), table.keys.end()); // order is arbitrary for keys, but both ends must be consistent, so we sort the keys by name
 
-		choose_primary_key_for(table, key_lister.unique_but_nullable_keys);
+		choose_primary_key_for(table);
 
 		database.tables.push_back(table);
 	}

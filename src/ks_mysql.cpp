@@ -651,21 +651,10 @@ struct MySQLKeyLister {
 				table.keys.push_back(Key(key_name, unique));
 			}
 			table.keys.back().columns.push_back(column_index);
-
-			if (table.primary_key_columns.empty()) {
-				// if we have no primary key, we might need to use another unique key as a surrogate - see MySQLTableLister below -
-				// but this key must have no NULLable columns, as they effectively make the index not unique
-				string nullable = row.string_at(9);
-				if (unique && nullable == "YES") {
-					// mark this as unusable
-					unique_but_nullable_keys.insert(key_name);
-				}
-			}
 		}
 	}
 
 	Table &table;
-	set<string> unique_but_nullable_keys;
 };
 
 struct MySQLTableLister {
@@ -681,7 +670,7 @@ struct MySQLTableLister {
 		client.query("SHOW KEYS FROM " + table.name, key_lister);
 		sort(table.keys.begin(), table.keys.end()); // order is arbitrary for keys, but both ends must be consistent, so we sort the keys by name
 
-		choose_primary_key_for(table, key_lister.unique_but_nullable_keys);
+		choose_primary_key_for(table);
 
 		database.tables.push_back(table);
 	}
