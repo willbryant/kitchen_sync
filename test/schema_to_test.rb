@@ -30,6 +30,16 @@ class SchemaToTest < KitchenSync::EndpointTestCase
                  query("SELECT * FROM footbl ORDER BY col1")
   end
 
+  def insert_noprimarytbl_rows
+    execute "INSERT INTO noprimarytbl (nullable, version, name, non_nullable) VALUES (2, 'a2349174', 'xy', 1), (NULL, 'b968116383', 'aa', 9)"
+  end
+
+  def assert_noprimarytbl_rows_present
+    assert_equal [[2,     "a2349174", 'xy', 1],
+                  [nil, "b968116383", 'aa', 9]],
+                 query("SELECT * FROM noprimarytbl ORDER BY version") # sort order to match correct_key, which is the substitute primary key that get chosen
+  end
+
   def assert_same_keys(table_def)
     table_name = table_def["name"]
     primary_key_columns = connection.table_key_columns(table_name)[connection.table_primary_key_name(table_name)]
@@ -987,6 +997,21 @@ SQL
     read_command
     assert_equal [secondtbl_def["columns"][3]["name"], secondtbl_def["columns"][1]["name"]], connection.table_key_columns("secondtbl")[key["name"]]
     assert_secondtbl_rows_present
+  end
+
+  test_each "changes keys whose column list doesn't match on tables with no explicit primary key, without recreating the table" do
+    clear_schema
+    create_noprimarytbl
+    insert_noprimarytbl_rows
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    key = noprimarytbl_def["keys"].last
+    assert_not_equal [noprimarytbl_def["columns"][3]["name"], noprimarytbl_def["columns"][1]["name"]], connection.table_key_columns("noprimarytbl")[key["name"]]
+    send_command Commands::SCHEMA, ["tables" => [noprimarytbl_def.merge("keys" => noprimarytbl_def["keys"][0..-2] + [key.merge("columns" => [3, 1])])]]
+    read_command
+    assert_equal [noprimarytbl_def["columns"][3]["name"], noprimarytbl_def["columns"][1]["name"]], connection.table_key_columns("noprimarytbl")[key["name"]]
+    assert_noprimarytbl_rows_present
   end
 
   test_each "creates tables with explicit primary keys" do

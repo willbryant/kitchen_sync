@@ -669,8 +669,6 @@ struct PostgreSQLTableLister {
 
 		sort(table.keys.begin(), table.keys.end()); // order is arbitrary for keys, but both ends must be consistent, so we sort the keys by name
 
-		choose_primary_key_for(table);
-
 		database.tables.push_back(table);
 	}
 

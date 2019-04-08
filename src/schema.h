@@ -103,9 +103,13 @@ struct Table {
 	inline Table() {}
 
 	inline bool operator <(const Table &other) const { return (name < other.name); }
-	inline bool operator ==(const Table &other) const { return (name == other.name && columns == other.columns && primary_key_columns == other.primary_key_columns && primary_key_type == other.primary_key_type && keys == other.keys); }
+	inline bool operator ==(const Table &other) const { return (name == other.name && columns == other.columns && equal(explicit_primary_key_begin(), explicit_primary_key_end(), other.explicit_primary_key_begin(), other.explicit_primary_key_end()) && keys == other.keys); }
 	inline bool operator !=(const Table &other) const { return (!(*this == other)); }
 	size_t index_of_column(const string &name) const;
+
+protected:
+	ColumnIndices::const_iterator explicit_primary_key_begin() const { return (primary_key_type == explicit_primary_key ? primary_key_columns.cbegin() : primary_key_columns.cend()); }
+	ColumnIndices::const_iterator explicit_primary_key_end() const { return primary_key_columns.cend(); }
 };
 
 typedef vector<Table> Tables;

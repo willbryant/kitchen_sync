@@ -4,6 +4,7 @@
 #include "filters.h"
 #include "fdstream.h"
 #include "sync_from_protocol.h"
+#include "substitute_primary_key.h"
 
 template<class DatabaseClient>
 struct SyncFromWorker {
@@ -89,6 +90,9 @@ struct SyncFromWorker {
 
 		for (Table &table : database.tables) {
 			tables_by_name[table.name] = &table;
+
+			// if the table doesn't have an actual primary key, choose one
+			choose_primary_key_for(table);
 		}
 	}
 
