@@ -445,4 +445,29 @@ class SyncToTest < KitchenSync::EndpointTestCase
     assert_equal @rows,
                  query("SELECT * FROM texttbl ORDER BY pri")
   end
+
+  test_each "supports composite keys" do
+    create_secondtbl
+
+    @rows = [[100,       100, "aa", 100], # first because aa is the first term in the key, then 100 the next
+             [  9, 968116383, "aa",   9],
+             [340, 363401169, "ab",  20],
+             [  2,   2349174, "xy",   1]]
+    @keys = @rows.collect {|row| [row[2], row[1]]}
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command   Commands::SCHEMA, ["tables" => [secondtbl_def]]
+    expect_sync_start_commands
+    expect_command Commands::RANGE, ["secondtbl"]
+    send_command   Commands::RANGE, ["secondtbl", @keys[0], @keys[-1]]
+    expect_command Commands::ROWS, ["secondtbl", [], @keys[-1]]
+    send_results   Commands::ROWS,
+                   ["secondtbl", [], @keys[-1]],
+                   *@rows
+    expect_quit_and_close
+
+    assert_equal @rows,
+                 query("SELECT * FROM secondtbl ORDER BY pri2, pri1")
+  end
 end
