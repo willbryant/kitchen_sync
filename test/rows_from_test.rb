@@ -176,4 +176,22 @@ class RowsFromTest < KitchenSync::EndpointTestCase
                    ["misctbl", [], []],
                    [1, true, '2018-12-31', '23:59:00', '2018-12-31 23:59:00', '1', '0.5', '12345.6789', 'vchrvalue', 'fchrvalue', 'textvalue', 'blobvalue']
   end
+
+  test_each "uses the chosen substitute key if the table has no real primary key but has a suitable unique key" do
+    clear_schema
+    create_noprimarytbl(create_suitable_keys: true)
+    execute "INSERT INTO noprimarytbl (nullable, version, name, non_nullable) VALUES (2, 'a2349174', 'xy', 1), (NULL, 'b968116383', 'aa', 9)"
+    send_handshake_commands
+
+    send_command   Commands::ROWS, ["noprimarytbl", [], []]
+    expect_command Commands::ROWS,
+                   ["noprimarytbl", [], []],
+                   [2,     "a2349174", 'xy', 1],
+                   [nil, "b968116383", 'aa', 9]
+
+    send_command   Commands::ROWS, ["noprimarytbl", ["a2349174"], ["b968116383"]]
+    expect_command Commands::ROWS,
+                   ["noprimarytbl", ["a2349174"], ["b968116383"]],
+                   [nil, "b968116383", 'aa', 9]
+  end
 end
