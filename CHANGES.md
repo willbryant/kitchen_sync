@@ -1,6 +1,12 @@
 Changelog
 =========
 
+1.14
+----
+* When using --alter to create tables, don't add a primary key if the original table doesn't have one.
+* Point users to SCHEMA.md when they hit an unsupported column type error.
+* Fix syncing tables with composite primary keys.
+
 1.13
 ----
 * Fix handling of MySQL `tinyint(n)` columns for n > 1 (as previously, we assume n = 1 is used for boolean values).
