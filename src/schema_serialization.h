@@ -173,6 +173,8 @@ template <typename InputStream>
 void operator >> (Unpacker<InputStream> &unpacker, Table &table) {
 	size_t map_length = unpacker.next_map_length(); // checks type
 
+	bool primary_key_type_set = false;
+
 	while (map_length--) {
 		string attr_key = unpacker.template next<string>();
 
@@ -184,12 +186,18 @@ void operator >> (Unpacker<InputStream> &unpacker, Table &table) {
 			unpacker >> table.primary_key_columns;
 		} else if (attr_key == "primary_key_type") {
 			unpacker >> table.primary_key_type;
+			primary_key_type_set = true;
 		} else if (attr_key == "keys") {
 			unpacker >> table.keys;
 		} else {
 			// ignore anything else, for forward compatibility
 			unpacker.skip();
 		}
+	}
+
+	// backwards compatibility with v1.13 and earlier, which didn't have primary_key_type
+	if (!primary_key_type_set) {
+		table.primary_key_type = table.primary_key_columns.empty() ? no_available_key : explicit_primary_key;
 	}
 }
 

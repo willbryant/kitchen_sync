@@ -10,7 +10,7 @@ inline bool any_column_nullable(const Table &table, const ColumnIndices &columns
 
 inline void choose_primary_key_for(Table &table) {
 	// generally we expect most tables to have a real primary key
-	if (!table.primary_key_columns.empty()) return;
+	if (table.primary_key_type == explicit_primary_key) return;
 
 	// if not, we need to find a unique key with no nullable columns to act as a surrogate primary key
 	for (const Key &key : table.keys) {

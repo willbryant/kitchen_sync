@@ -594,6 +594,7 @@ struct PostgreSQLPrimaryKeyLister {
 		string column_name = row.string_at(0);
 		size_t column_index = table.index_of_column(column_name);
 		table.primary_key_columns.push_back(column_index);
+		table.primary_key_type = explicit_primary_key;
 	}
 
 	Table &table;

@@ -178,7 +178,7 @@ SQL
         {"name" => "name",         "column_type" => ColumnTypes::VCHR, "size" => 255},
         {"name" => "non_nullable", "column_type" => ColumnTypes::SINT, "size" =>   4, "nullable" => false}],
       "primary_key_columns" => (create_suitable_keys ? [1] : []),
-      "primary_key_type" => PrimaryKeyType::SUITABLE_UNIQUE_KEY,
+      "primary_key_type" => (create_suitable_keys ? PrimaryKeyType::SUITABLE_UNIQUE_KEY : PrimaryKeyType::NO_AVAILABLE_KEY),
       "keys" => [ # sorted in uniqueness then alphabetic name order, but otherwise a transcription of the above create index statements
         ({"name" => "correct_key",          "unique" => true,  "columns" => [1]} if create_suitable_keys),
         {"name" => "ignored_key",          "unique" => true,  "columns" => [0, 1]},

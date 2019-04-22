@@ -90,8 +90,9 @@ module HashAlgorithm
 end
 
 module PrimaryKeyType
-  EXPLICIT_PRIMARY_KEY = 0
-  SUITABLE_UNIQUE_KEY = 1
+  NO_AVAILABLE_KEY = 0
+  EXPLICIT_PRIMARY_KEY = 1
+  SUITABLE_UNIQUE_KEY = 2
 end
 
 Verbs = Commands.constants.each_with_object({}) {|k, results| results[Commands.const_get(k)] = k.to_s.downcase}.freeze

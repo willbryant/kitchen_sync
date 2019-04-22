@@ -644,6 +644,7 @@ struct MySQLKeyLister {
 		if (key_name == "PRIMARY") {
 			// there is of course only one primary key; we get a row for each column it includes
 			table.primary_key_columns.push_back(column_index);
+			table.primary_key_type = explicit_primary_key;
 
 		} else {
 			// a column in a generic key, which may or may not be unique

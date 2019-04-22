@@ -86,15 +86,16 @@ struct Key {
 typedef vector<Key> Keys;
 
 enum PrimaryKeyType {
-	explicit_primary_key = 0,
-	suitable_unique_key = 1,
+	no_available_key = 0,
+	explicit_primary_key = 1,
+	suitable_unique_key = 2,
 };
 
 struct Table {
 	string name;
 	Columns columns;
 	ColumnIndices primary_key_columns;
-	PrimaryKeyType primary_key_type = PrimaryKeyType::explicit_primary_key;
+	PrimaryKeyType primary_key_type = PrimaryKeyType::no_available_key;
 	Keys keys;
 
 	// the following member isn't serialized currently (could be, but not required):
