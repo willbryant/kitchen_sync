@@ -154,7 +154,7 @@ SQL
       "keys" => [] }
   end
 
-  def create_noprimarytbl(create_suitable_keys = true)
+  def create_noprimarytbl(create_suitable_keys: true)
     execute(<<-SQL)
       CREATE TABLE noprimarytbl (
         nullable INT,
@@ -170,7 +170,7 @@ SQL
     execute "CREATE INDEX not_unique_key ON noprimarytbl (non_nullable)"
   end
 
-  def noprimarytbl_def(create_suitable_keys = true)
+  def noprimarytbl_def(create_suitable_keys: true)
     { "name" => "noprimarytbl",
       "columns" => [
         {"name" => "nullable",     "column_type" => ColumnTypes::SINT, "size" =>   4},

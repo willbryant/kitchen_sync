@@ -80,4 +80,15 @@ class RangeFromTest < KitchenSync::EndpointTestCase
     expect_command Commands::RANGE,
                    ["reservedtbl", [], []]
   end
+
+  test_each "supports tables with no real primary key but has a suitable unique key" do
+    clear_schema
+    create_noprimarytbl
+    execute "INSERT INTO noprimarytbl (nullable, version, name, non_nullable) VALUES (2, 'a2349174', 'xy', 1), (NULL, 'b968116383', 'aa', 9)"
+    send_handshake_commands
+
+    send_command   Commands::RANGE, ["noprimarytbl"]
+    expect_command Commands::RANGE,
+                   ["noprimarytbl", ["a2349174"], ["b968116383"]]
+  end
 end

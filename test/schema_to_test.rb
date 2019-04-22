@@ -303,26 +303,26 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
   test_each "complains if there's a table that has no unique key with only non-nullable columns" do
     clear_schema
-    create_noprimarytbl(false)
+    create_noprimarytbl(create_suitable_keys: false)
     create_secondtbl
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
 
     expect_stderr("Couldn't find a primary or non-nullable unique key on table noprimarytbl") do
-      send_command Commands::SCHEMA, ["tables" => [noprimarytbl_def(false), secondtbl_def]]
+      send_command Commands::SCHEMA, ["tables" => [noprimarytbl_def(create_suitable_keys: false), secondtbl_def]]
       read_command rescue nil
     end
   end
 
   test_each "doesn't complain if there's a table that has no primary key but that has unique key with only non-nullable columns" do
     clear_schema
-    create_noprimarytbl(true)
+    create_noprimarytbl(create_suitable_keys: true)
     create_secondtbl
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [noprimarytbl_def(true), secondtbl_def]]
+    send_command   Commands::SCHEMA, ["tables" => [noprimarytbl_def(create_suitable_keys: true), secondtbl_def]]
     expect_sync_start_commands
     expect_command Commands::RANGE, ["noprimarytbl"]
     send_command   Commands::RANGE, ["noprimarytbl", [], []]
@@ -334,12 +334,12 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   test_each "doesn't complain if there's an ignored table that has no unique key with only non-nullable columns" do
     program_env['ENDPOINT_IGNORE_TABLES'] = 'noprimarytbl'
     clear_schema
-    create_noprimarytbl(false)
+    create_noprimarytbl(create_suitable_keys: false)
     create_secondtbl
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [noprimarytbl_def(true), secondtbl_def]]
+    send_command   Commands::SCHEMA, ["tables" => [noprimarytbl_def(create_suitable_keys: false), secondtbl_def]]
     expect_sync_start_commands
     expect_command Commands::RANGE, ["secondtbl"]
     send_command   Commands::RANGE, ["secondtbl", [], []]
@@ -367,7 +367,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_secondtbl
 
     expect_handshake_commands
-    expect_stderr("Don't know how to interpret type of unsupportedtbl.unsupported (#{unsupported_column_type})") do
+    expect_stderr("Don't know how to interpret type of unsupportedtbl.unsupported (#{unsupported_column_type}).  Please check https://github.com/willbryant/kitchen_sync/blob/master/SCHEMA.md.") do
       expect_command Commands::SCHEMA
       send_command   Commands::SCHEMA, ["tables" => [unsupportedtbl_def, secondtbl_def]]
       read_command rescue nil
@@ -379,7 +379,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_secondtbl
 
     expect_handshake_commands
-    expect_stderr("Don't know how to interpret type of unsupportedtbl.unsupported (#{unsupported_column_type})") do
+    expect_stderr("Don't know how to interpret type of unsupportedtbl.unsupported (#{unsupported_column_type}).  Please check https://github.com/willbryant/kitchen_sync/blob/master/SCHEMA.md.") do
       expect_command Commands::SCHEMA
       send_command   Commands::SCHEMA, ["tables" => [unsupportedtbl_def, secondtbl_def]]
       read_command rescue nil
@@ -1027,9 +1027,9 @@ SQL
     clear_schema
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [noprimarytbl_def(true)]]
+    send_command   Commands::SCHEMA, ["tables" => [noprimarytbl_def(create_suitable_keys: true)]]
     read_command
-    assert_same_keys(noprimarytbl_def(true))
+    assert_same_keys(noprimarytbl_def(create_suitable_keys: true))
   end
 
   test_each "skips schema definitions it doesn't recognise" do

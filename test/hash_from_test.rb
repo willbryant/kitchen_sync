@@ -90,6 +90,22 @@ class HashFromTest < KitchenSync::EndpointTestCase
     expect_command Commands::HASH, ["secondtbl", @keys[1], [], 1000, 2, hash_of(@rows[2..3])]
   end
 
+  test_each "uses the chosen substitute key if the table has no real primary key but has a suitable unique key" do
+    clear_schema
+    create_noprimarytbl(create_suitable_keys: true)
+    execute "INSERT INTO noprimarytbl (nullable, version, name, non_nullable) VALUES (2, 'a2349174', 'xy', 1), (NULL, 'b968116383', 'aa', 9)"
+    @rows = [[2,     "a2349174", 'xy', 1],
+             [nil, "b968116383", 'aa', 9]]
+    @keys = @rows.collect {|row| [row[1]]}
+    send_handshake_commands
+
+    send_command   Commands::HASH, ["noprimarytbl",       [], @keys[0], 1000]
+    expect_command Commands::HASH, ["noprimarytbl",       [], @keys[0], 1000, 1, hash_of(@rows[0..0])]
+
+    send_command   Commands::HASH, ["noprimarytbl", @keys[0], @keys[1], 1000]
+    expect_command Commands::HASH, ["noprimarytbl", @keys[0], @keys[1], 1000, 1, hash_of(@rows[1..1])]
+  end
+
   test_each "optionally supports xxHash64 hashes" do
     setup_with_footbl(1, HashAlgorithm::XXH64)
 

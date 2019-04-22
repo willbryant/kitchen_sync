@@ -244,7 +244,7 @@ struct SyncToProtocol {
 
 		// we immediately know that we need to clear everything < their_first_key or > their_last_key; do that now
 		string key_columns(columns_list(client, table_job->table.columns, table_job->table.primary_key_columns));
-		string delete_from("DELETE FROM " + table_job->table.name + " WHERE " + key_columns);
+		string delete_from("DELETE FROM " + table_job->table.name + " WHERE (" + key_columns + ")");
 		client.execute(delete_from + " < " + values_list(client, table_job->table, their_first_key));
 		client.execute(delete_from + " > " + values_list(client, table_job->table, their_last_key));
 
