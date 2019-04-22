@@ -1,6 +1,7 @@
 #ifndef SCHEMA_H
 #define SCHEMA_H
 
+#include <iostream>
 #include <string>
 #include <vector>
 #include <map>
@@ -103,13 +104,16 @@ struct Table {
 	inline Table() {}
 
 	inline bool operator <(const Table &other) const { return (name < other.name); }
-	inline bool operator ==(const Table &other) const { return (name == other.name && columns == other.columns && equal(explicit_primary_key_begin(), explicit_primary_key_end(), other.explicit_primary_key_begin(), other.explicit_primary_key_end()) && keys == other.keys); }
+	inline bool operator ==(const Table &other) const { return (name == other.name && columns == other.columns && same_primary_key_as(other) && keys == other.keys); }
 	inline bool operator !=(const Table &other) const { return (!(*this == other)); }
 	size_t index_of_column(const string &name) const;
 
 protected:
-	ColumnIndices::const_iterator explicit_primary_key_begin() const { return (primary_key_type == explicit_primary_key ? primary_key_columns.cbegin() : primary_key_columns.cend()); }
-	ColumnIndices::const_iterator explicit_primary_key_end() const { return primary_key_columns.cend(); }
+	inline bool same_primary_key_as(const Table &other) const {
+		size_t this_explicit_columns = primary_key_type == explicit_primary_key ? primary_key_columns.size() : 0;
+		size_t that_explicit_columns = other.primary_key_type == explicit_primary_key ? other.primary_key_columns.size() : 0;
+		return (this_explicit_columns == that_explicit_columns && equal(primary_key_columns.begin(), primary_key_columns.begin() + this_explicit_columns, other.primary_key_columns.begin()));
+	}
 };
 
 typedef vector<Table> Tables;
