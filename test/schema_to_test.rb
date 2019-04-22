@@ -43,13 +43,10 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   def assert_same_keys(table_def)
     table_name = table_def["name"]
     primary_key_columns = connection.table_key_columns(table_name)[connection.table_primary_key_name(table_name)]
-    case table_def["primary_key_type"]
-    when PrimaryKeyType::EXPLICIT_PRIMARY_KEY
+    if table_def["primary_key_type"] == PrimaryKeyType::EXPLICIT_PRIMARY_KEY
       assert_equal table_def["primary_key_columns"].collect {|index| table_def["columns"][index]["name"]}, primary_key_columns
-    when PrimaryKeyType::SUITABLE_UNIQUE_KEY
-      assert_nil primary_key_columns
     else
-      raise "invalid primary_key_type #{table_def["primary_key_type"].inspect}"
+      assert_nil primary_key_columns
     end
 
     assert_equal table_def["keys"].collect {|key| key["name"]}.sort, connection.table_keys(table_name).sort
