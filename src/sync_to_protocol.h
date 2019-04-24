@@ -45,7 +45,7 @@ struct SyncToProtocol {
 		}
 	}
 
-	void start_sync_table(const shared_ptr<TableJob> &table_job) {
+	void start_sync_table(const shared_ptr<TableJob> &table_job, RowReplacer<DatabaseClient> &row_replacer) {
 		table_job->time_started = time(nullptr);
 
 		if (worker.verbose) {
@@ -59,7 +59,7 @@ struct SyncToProtocol {
 		if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << " <- range " << table_job->table.name << endl;
 		send_command(output, Commands::RANGE, table_job->table.name);
 		if (input.next<verb_t>() != Commands::RANGE) throw command_error("Didn't receive response to RANGE command");
-		handle_range_response(table_job);
+		handle_range_response(table_job, row_replacer);
 	}
 
 	void finish_sync_table(const shared_ptr<TableJob> &table_job, size_t rows_changed) {
@@ -80,17 +80,14 @@ struct SyncToProtocol {
 	}
 
 	inline void sync_table(const shared_ptr<TableJob> &table_job) {
-		// if the table hasn't been started, become the writer worker for it; otherwise just help out with range checks
-		bool writer = !table_job->time_started;
-		if (writer) start_sync_table(table_job);
-
 		const Table &table(table_job->table);
 		RowReplacer<DatabaseClient> row_replacer(client, table, worker.commit_level >= CommitLevel::often,
 			[&] { if (worker.progress) { cout << "." << flush; } });
 
-		// we support pipelining, but we don't start pipelining until we've got the first response,
-		// which is probably a big ROWS request for the end of the table - there may be time for
-		// another worker to pick up the first range to check while we're doing that
+		// if the table hasn't been started, become the writer worker for it; otherwise just help out with range checks
+		bool writer = !table_job->time_started;
+		if (writer) start_sync_table(table_job, row_replacer);
+
 		size_t outstanding_commands = 0;
 		size_t max_outstanding_commands = 1;
 
@@ -229,7 +226,7 @@ struct SyncToProtocol {
 		}
 	}
 
-	void handle_range_response(const shared_ptr<TableJob> &table_job) {
+	void handle_range_response(const shared_ptr<TableJob> &table_job, RowReplacer<DatabaseClient> &row_replacer) {
 		std::unique_lock<std::mutex> lock(table_job->mutex);
 
 		string _table_name;
@@ -251,12 +248,6 @@ struct SyncToProtocol {
 		// having done that, find our last key, which must now be no greater than their_last_key
 		ColumnValues our_last_key(last_key(worker.client, table_job->table));
 
-		// we immediately know that we need to retrieve any new rows > our_last_key, unless their last key is the same;
-		// queue this up
-		if (our_last_key != their_last_key) {
-			table_job->ranges_to_retrieve.emplace_back(our_last_key, their_last_key);
-		}
-
 		// queue up a sync of everything up to our_last_key; the way we have defined key ranges to work, we have no way
 		// to express start-inclusive ranges to the sync methods, so we queue a sync from the start (empty key value)
 		// up to the last key, but this results in no actual inefficiency because they'd see the same rows anyway.
@@ -277,6 +268,18 @@ struct SyncToProtocol {
 		if (table_job->notify_when_work_could_be_shared) {
 			lock.unlock();
 			sync_queue.have_work_to_share(table_job);
+		}
+
+		// we immediately know that we need to retrieve any new rows > our_last_key, unless their last key is the same;
+		// request and insert them now.  we do this before we start the main loop because we don't want to pipeline any
+		// other requests while processing this one (potentially very large) set of rows, as we won't see the response
+		// to the later commands in the pipeline until we're finished with this one, whereas there is a chance that
+		// another worker could become free and process those other tasks in the meantime.
+		if (our_last_key != their_last_key) {
+			table_job->rows_commands++;
+			send_rows_command(table_job->table, KeyRange(our_last_key, their_last_key));
+			if (input.next<verb_t>() != Commands::ROWS) throw command_error("Didn't receive response to ROWS command");
+			handle_rows_response(table_job->table, row_replacer);
 		}
 	}
 
