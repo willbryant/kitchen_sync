@@ -89,7 +89,7 @@ struct SyncToProtocol {
 		if (writer) start_sync_table(table_job, row_replacer);
 
 		size_t outstanding_commands = 0;
-		size_t max_outstanding_commands = 1;
+		size_t max_outstanding_commands = DEFAULT_MAX_COMMANDS_TO_PIPELINE;
 
 		list<HashResult> ranges_hashed;
 
@@ -120,9 +120,6 @@ struct SyncToProtocol {
 				lock.unlock(); // don't hold the mutex while doing IO; note we still had to lock the mutex in order to check the emptiness of those lists
 				handle_response(table_job, ranges_hashed, row_replacer);
 				outstanding_commands--;
-
-				// as above, start pipelining once we've received the first response
-				max_outstanding_commands = DEFAULT_MAX_COMMANDS_TO_PIPELINE;
 
 			} else if (writer && table_job->hash_commands_completed < table_job->hash_commands) {
 				// wait for the other worker(s) to complete their task, then wake up to see if there is anything for us to do
