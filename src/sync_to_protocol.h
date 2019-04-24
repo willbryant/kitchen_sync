@@ -273,14 +273,18 @@ struct SyncToProtocol {
 		// to the later commands in the pipeline until we're finished with this one, whereas there is a chance that
 		// another worker could become free and process those other tasks in the meantime.
 		if (our_last_key != their_last_key) {
-			table_job->rows_commands++;
-			send_rows_command(table_job->table, KeyRange(our_last_key, their_last_key));
-			if (input.next<verb_t>() != Commands::ROWS) throw command_error("Didn't receive response to ROWS command");
-			handle_rows_response(table_job->table, row_replacer);
+			request_rows_without_pipelining(table_job, row_replacer, KeyRange(our_last_key, their_last_key));
 		}
 	}
 
-	void handle_rows_response(const Table &table, RowReplacer<DatabaseClient> &row_replacer) {
+	void request_rows_without_pipelining(const shared_ptr<TableJob> &table_job, RowReplacer<DatabaseClient> &row_replacer, const KeyRange &range_to_retrieve) {
+		table_job->rows_commands++;
+		send_rows_command(table_job->table, range_to_retrieve);
+		if (input.next<verb_t>() != Commands::ROWS) throw command_error("Didn't receive response to ROWS command");
+		handle_rows_response(table_job->table, row_replacer, true);
+	}
+
+	void handle_rows_response(const Table &table, RowReplacer<DatabaseClient> &row_replacer, bool final_rows = false) {
 		// we're being sent a range of rows; apply them to our end.  we do this in-context to
 		// provide flow control - if we buffered and used a separate apply thread, we would
 		// bloat up if this end couldn't write to disk as quickly as the other end sent data.
@@ -289,7 +293,11 @@ struct SyncToProtocol {
 		read_array(input, table_name, prev_key, last_key); // the first array gives the range arguments, which is followed by one array for each row
 		if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << " -> rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
 
-		RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
+		if (final_rows) {
+			RowInserter<DatabaseClient>(row_replacer, table).stream_from_input(input);
+		} else {
+			RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
+		}
 	}
 
 	void handle_hash_response(const shared_ptr<TableJob> &table_job, list<HashResult> &ranges_hashed) {

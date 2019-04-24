@@ -146,4 +146,35 @@ struct RowRangeApplier {
 	size_t approx_buffered_bytes;
 };
 
+// special-case version of RowRangeApplier that simply inserts all the received rows without comparing
+// them to the current database (because the caller knows that there are no comparable rows in the database)
+template <typename DatabaseClient>
+struct RowInserter {
+	static const size_t MAX_SENSIBLE_INSERT_STATEMENT_SIZE = 4*1024*1024;
+
+	RowInserter(RowReplacer<DatabaseClient> &replacer, const Table &table):
+		replacer(replacer),
+		table(table) {
+	}
+
+	template <typename InputStream>
+	void stream_from_input(Unpacker<InputStream> &input) {
+		while (true) {
+			// in the KS protocol command responses are a series of arrays, terminated by an empty array.
+			// this avoids having to determine the number of results in advance; an empty array is not a
+			// valid database row, so it's unambiguous.
+			PackedRow row;
+			input >> row;
+			if (row.size() == 0) break;
+			replacer.insert_row(row);
+			if (replacer.insert_sql.curr.size() > MAX_SENSIBLE_INSERT_STATEMENT_SIZE) {
+				replacer.apply();
+			}
+		}
+	}
+
+	RowReplacer<DatabaseClient> &replacer;
+	const Table &table;
+};
+
 #endif
