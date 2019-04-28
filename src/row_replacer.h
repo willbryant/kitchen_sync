@@ -27,14 +27,14 @@ struct RowReplacer {
 		client(client),
 		columns(table.columns),
 		insert_sql("INSERT INTO " + table.name + " VALUES\n(", ")"),
-		primary_key_clearer(client, table, table.primary_key_columns),
 		commit_often(commit_often),
 		progress_callback(progress_callback),
 		rows_changed(0) {
 		// set up the clearers we'll need to insert rows - these clear any conflicting values from elsewhere in the same table
+		unique_key_clearers.emplace_back(client, table, table.primary_key_columns);
 		for (const Key &key : table.keys) {
 			if (key.unique) {
-				unique_keys_clearers.emplace_back(client, table, key.columns);
+				unique_key_clearers.emplace_back(client, table, key.columns);
 			}
 		}
 	}
@@ -42,8 +42,8 @@ struct RowReplacer {
 	void insert_row(const PackedRow &row) {
 		// before we can insert our rows we will also have to first clear any other rows with the
 		// same unique key values.
-		for (UniqueKeyClearer<DatabaseClient> &unique_key_clearer : unique_keys_clearers) {
-			unique_key_clearer.row(row);
+		for (auto unique_key_clearer = unique_key_clearers.begin() + 1; unique_key_clearer != unique_key_clearers.end(); ++unique_key_clearer) {
+			unique_key_clearer->row(row);
 		}
 
 		// we can then batch up a big INSERT statement
@@ -55,20 +55,23 @@ struct RowReplacer {
 	inline void replace_row(const PackedRow &row) {
 		// when we apply(), first we will delete existing rows - we do that rather than use UPDATE
 		// statements because you can't really batch UPDATE, whereas you can batch DELETE & INSERT.
-		primary_key_clearer.row(row);
-		insert_row(row);
+		for (auto unique_key_clearer = unique_key_clearers.begin(); unique_key_clearer != unique_key_clearers.end(); ++unique_key_clearer) {
+			unique_key_clearer->row(row);
+		}
+
+		append_row_tuple(client, columns, insert_sql, row);
+
+		rows_changed++;
 	}
 
 	inline void remove_row(const PackedRow &row) {
-		primary_key_clearer.row(row);
+		unique_key_clearers.front().row(row);
 
 		rows_changed++;
 	}
 
 	inline void apply() {
-		primary_key_clearer.apply();
-
-		for (UniqueKeyClearer<DatabaseClient> &unique_key_clearer : unique_keys_clearers) {
+		for (UniqueKeyClearer<DatabaseClient> &unique_key_clearer : unique_key_clearers) {
 			unique_key_clearer.apply();
 		}
 
@@ -87,8 +90,7 @@ struct RowReplacer {
 	DatabaseClient &client;
 	const Columns &columns;
 	BaseSQL insert_sql;
-	UniqueKeyClearer<DatabaseClient> primary_key_clearer;
-	vector< UniqueKeyClearer<DatabaseClient> > unique_keys_clearers;
+	vector< UniqueKeyClearer<DatabaseClient> > unique_key_clearers;
 	bool commit_often;
 	ProgressCallback progress_callback;
 	size_t rows_changed;
@@ -101,9 +103,9 @@ struct RowReplacer<DatabaseClient, true> {
 		client(client),
 		columns(table.columns),
 		insert_sql("REPLACE INTO " + table.name + " VALUES\n(", ")"),
-		primary_key_clearer(client, table, table.primary_key_columns),
 		commit_often(commit_often),
 		rows_changed(0) {
+		unique_key_clearers.emplace_back(client, table, table.primary_key_columns);
 	}
 
 	inline void insert_row(const PackedRow &row) {
@@ -117,13 +119,13 @@ struct RowReplacer<DatabaseClient, true> {
 	}
 
 	inline void remove_row(const PackedRow &row) {
-		primary_key_clearer.row(row);
+		unique_key_clearers.front().row(row);
 
 		rows_changed++;
 	}
 
 	inline void apply() {
-		primary_key_clearer.apply();
+		unique_key_clearers.front().apply();
 
 		insert_sql.apply(client);
 
@@ -140,7 +142,7 @@ struct RowReplacer<DatabaseClient, true> {
 	DatabaseClient &client;
 	const Columns &columns;
 	BaseSQL insert_sql;
-	UniqueKeyClearer<DatabaseClient> primary_key_clearer;
+	vector< UniqueKeyClearer<DatabaseClient> > unique_key_clearers;
 	bool commit_often;
 	ProgressCallback progress_callback;
 	size_t rows_changed;
