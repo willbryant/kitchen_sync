@@ -24,13 +24,15 @@ struct RowRangeApplier {
 
 	template <typename InputStream>
 	void stream_from_input(Unpacker<InputStream> &input) {
+		PackedRow row;
+
 		while (true) {
 			// in the KS protocol command responses are a series of arrays, terminated by an empty array.
 			// this avoids having to determine the number of results in advance; an empty array is not a
 			// valid database row, so it's unambiguous.
-			PackedRow row;
 			input >> row;
 			if (row.size() == 0) break;
+
 			received_source_row(row);
 		}
 
@@ -159,13 +161,15 @@ struct RowInserter {
 
 	template <typename InputStream>
 	void stream_from_input(Unpacker<InputStream> &input) {
+		PackedRow row;
+
 		while (true) {
 			// in the KS protocol command responses are a series of arrays, terminated by an empty array.
 			// this avoids having to determine the number of results in advance; an empty array is not a
 			// valid database row, so it's unambiguous.
-			PackedRow row;
 			input >> row;
 			if (row.size() == 0) break;
+
 			replacer.insert_row(row);
 			if (replacer.insert_sql.curr.size() > MAX_SENSIBLE_INSERT_STATEMENT_SIZE) {
 				replacer.apply();
