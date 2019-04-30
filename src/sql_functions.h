@@ -146,9 +146,11 @@ inline string where_sql(DatabaseClient &client, const Table &table, const Column
 	return where_sql(client, table, " > ", prev_key, " <= ", last_key, "", ColumnValues(), extra_where_conditions);
 }
 
+const ssize_t NO_ROW_COUNT_LIMIT = -1;
+
 template <typename DatabaseClient>
-string select_columns_sql(DatabaseClient &client, const Table &table, bool include_generated_columns = false) {
-	string result;
+string retrieve_rows_sql(DatabaseClient &client, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, ssize_t row_count = NO_ROW_COUNT_LIMIT, bool include_generated_columns = false) {
+	string result("SELECT ");
 	for (Columns::const_iterator column = table.columns.begin(); column != table.columns.end(); ++column) {
 		if (column->generated_always() && !include_generated_columns) continue; // normally no need to look at generated columns, which by definition are just calculated from the other columns
 		if (column != table.columns.begin()) result += ", ";
@@ -158,15 +160,7 @@ string select_columns_sql(DatabaseClient &client, const Table &table, bool inclu
 		}
 		result += client.quote_identifier(column->name);
 	}
-	return result;
-}
 
-const ssize_t NO_ROW_COUNT_LIMIT = -1;
-
-template <typename DatabaseClient>
-string retrieve_rows_sql(DatabaseClient &client, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, ssize_t row_count = NO_ROW_COUNT_LIMIT) {
-	string result("SELECT ");
-	result += select_columns_sql(client, table);
 	result += " FROM ";
 	result += client.quote_identifier(table.name);
 	result += where_sql(client, table, prev_key, last_key, table.where_conditions);
