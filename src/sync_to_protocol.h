@@ -224,8 +224,6 @@ struct SyncToProtocol {
 	}
 
 	void handle_range_response(const shared_ptr<TableJob> &table_job, RowReplacer<DatabaseClient> &row_replacer) {
-		std::unique_lock<std::mutex> lock(table_job->mutex);
-
 		string _table_name;
 		ColumnValues their_first_key, their_last_key;
 		read_all_arguments(input, _table_name, their_first_key, their_last_key);
@@ -245,26 +243,13 @@ struct SyncToProtocol {
 		// having done that, find our last key, which must now be no greater than their_last_key
 		ColumnValues our_last_key(last_key(worker.client, table_job->table));
 
-		// queue up a sync of everything up to our_last_key; the way we have defined key ranges to work, we have no way
-		// to express start-inclusive ranges to the sync methods, so we queue a sync from the start (empty key value)
-		// up to the last key, but this results in no actual inefficiency because they'd see the same rows anyway.
 		if (!our_last_key.empty()) {
-			// do one subdivision straight away, to facilitate parallelism
-			ColumnValues midpoint;
-			if (table_job->subdividable) {
-				midpoint = move(first_key_not_earlier_than(client, table_job->table, subdivide_primary_key_range(table_job->table, their_first_key /* ideally for consistency we'd use this value minus one, but it doesn't actually matter */, their_last_key /* our_last_key would be better but might be < their_first_key and that is unsupported */), ColumnValues(), our_last_key));
-			}
-			if (!midpoint.empty()) {
-				table_job->ranges_to_check.emplace(ColumnValues(), midpoint, UNKNOWN_ROW_COUNT, 1 /* start with 1 row and build up */, 0);
-			}
-			if (midpoint != our_last_key) {
-				table_job->ranges_to_check.emplace(midpoint, our_last_key, UNKNOWN_ROW_COUNT, 1 /* start with 1 row and build up */, 0);
-			}
-		}
+			// queue up a sync of everything up to our_last_key
+			queue_initial_ranges(table_job, our_last_key, their_first_key, their_last_key);
 
-		if (table_job->notify_when_work_could_be_shared) {
-			lock.unlock();
-			sync_queue.have_work_to_share(table_job);
+			if (table_job->notify_when_work_could_be_shared) {
+				sync_queue.have_work_to_share(table_job);
+			}
 		}
 
 		// we immediately know that we need to retrieve any new rows > our_last_key, unless their last key is the same;
@@ -277,11 +262,32 @@ struct SyncToProtocol {
 		}
 	}
 
+	void queue_initial_ranges(const shared_ptr<TableJob> &table_job, const ColumnValues &our_last_key, const ColumnValues &their_first_key, const ColumnValues &their_last_key) {
+		std::unique_lock<std::mutex> lock(table_job->mutex);
+
+		// the way we have defined key ranges to work, we have no way to express start-inclusive ranges to the sync
+		// methods, so we queue a sync from the start (empty key value) up to the last key - but this results in no
+		// actual inefficiency because they'd see the same rows anyway.  we attempt to  do one subdivision straight
+		// away, to facilitate parallelism; if we can't subdivide, \midpoint stays empty so we only queue one range.
+		ColumnValues midpoint;
+		if (table_job->subdividable) {
+			midpoint = move(first_key_not_earlier_than(client, table_job->table, subdivide_primary_key_range(table_job->table, their_first_key /* ideally for consistency we'd use this value minus one, but it doesn't actually matter */, their_last_key /* our_last_key would be better but might be < their_first_key and that is unsupported */), ColumnValues(), our_last_key));
+		}
+		if (!midpoint.empty()) {
+			table_job->ranges_to_check.emplace(ColumnValues(), midpoint, UNKNOWN_ROW_COUNT, 1 /* start with 1 row and build up */, 0);
+		}
+		if (midpoint != our_last_key) {
+			table_job->ranges_to_check.emplace(midpoint, our_last_key, UNKNOWN_ROW_COUNT, 1 /* start with 1 row and build up */, 0);
+		}
+	}
+
 	void request_rows_without_pipelining(const shared_ptr<TableJob> &table_job, RowReplacer<DatabaseClient> &row_replacer, const KeyRange &range_to_retrieve) {
-		table_job->rows_commands++;
 		send_rows_command(table_job->table, range_to_retrieve);
 		if (input.next<verb_t>() != Commands::ROWS) throw command_error("Didn't receive response to ROWS command");
 		handle_rows_response(table_job->table, row_replacer, true);
+
+		std::unique_lock<std::mutex> lock(table_job->mutex);
+		table_job->rows_commands++;
 	}
 
 	void handle_rows_response(const Table &table, RowReplacer<DatabaseClient> &row_replacer, bool final_rows = false) {
