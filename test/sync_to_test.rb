@@ -474,4 +474,57 @@ class SyncToTest < KitchenSync::EndpointTestCase
     assert_equal @rows,
                  query("SELECT * FROM secondtbl ORDER BY pri2, pri1")
   end
+
+  test_each "uses the chosen partial key if the table has no suitable unique key, extending the row count if the requested row count falls in the middle of a range of rows with the same partial key" do
+    clear_schema
+    create_noprimaryjointbl(create_keys: true)
+    execute "INSERT INTO noprimaryjointbl (table1_id, table2_id) VALUES (4, 100), (1, 101), (2, 101), (3, 9), (3, 10), (3, 11), (3, 10), (3, 8)"
+    @rows = [[3, 8], # sorted earlier than the rows with lower table1_id as the (table2_id, table1_d) index will get used
+             [3, 9],
+             [3, 10],
+             [3, 10], # duplicate row put back into order
+             [3, 11],
+             [1, 100], # discrepancy here - currently has value (4, 100)
+             [1, 101],
+             [2, 101]]
+    @keys = @rows.collect {|row| [row[1], row[0]]}
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command   Commands::SCHEMA, ["tables" => [noprimaryjointbl_def]]
+    expect_sync_start_commands
+    expect_command Commands::RANGE, ["noprimaryjointbl"]
+    send_command   Commands::RANGE, ["noprimaryjointbl", @keys[0], @keys[-1]]
+
+    expect_command Commands::HASH, ["noprimaryjointbl", [], @keys[-1], 1]
+    send_command   Commands::HASH, ["noprimaryjointbl", [], @keys[-1], 1, 1, hash_of(@rows[0..0])]
+
+    expect_command Commands::HASH, ["noprimaryjointbl", @keys[0], @keys[-1], 2]
+    send_command   Commands::HASH, ["noprimaryjointbl", @keys[0], @keys[-1], 2, 3, hash_of(@rows[1..3])] # note row count gets extended past what we asked for to "finish" the rows with the same partial key
+
+    expect_command Commands::HASH, ["noprimaryjointbl", @keys[3], @keys[-1], 4]
+    send_command   Commands::HASH, ["noprimaryjointbl", @keys[3], @keys[-1], 4, 4, hash_of(@rows[4..7])] # doesn't match, @rows[5] is different
+
+    expect_command Commands::HASH, ["noprimaryjointbl", @keys[3], @keys[-1], 2]
+    send_command   Commands::HASH, ["noprimaryjointbl", @keys[3], @keys[-1], 2, 2, hash_of(@rows[4..5])] # doesn't match, @rows[5] is different
+
+    expect_command Commands::HASH, ["noprimaryjointbl", [100, 4], @keys[-1], 2] # you'd expect @keys[5], but the other end has a different table2_id
+    send_command   Commands::HASH, ["noprimaryjointbl", [100, 4], @keys[-1], 2, 2, hash_of(@rows[6..7])] # but this still sees the same rows, so the hash matches
+
+    expect_command Commands::HASH, ["noprimaryjointbl", @keys[3], [100, 4], 1]
+    send_command   Commands::HASH, ["noprimaryjointbl", @keys[3], [100, 4], 1, 1, hash_of(@rows[4..4])] # matches
+
+    expect_command Commands::HASH, ["noprimaryjointbl", @keys[4], [100, 4], 1]
+    send_command   Commands::HASH, ["noprimaryjointbl", @keys[4], [100, 4], 1, 1, hash_of(@rows[5..5])] # doesn't match, @rows[5] is differert
+
+    expect_command Commands::ROWS, ["noprimaryjointbl", @keys[4], [100, 4]] # will retrieve @rows[5]
+    send_results   Commands::ROWS,
+                   ["noprimaryjointbl", @keys[4], [100, 4]],
+                   *@rows[5..5]
+
+    expect_quit_and_close
+
+    assert_equal @rows,
+                 query("SELECT * FROM noprimaryjointbl ORDER BY table2_id, table1_id")
+  end
 end

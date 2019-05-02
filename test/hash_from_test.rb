@@ -106,6 +106,51 @@ class HashFromTest < KitchenSync::EndpointTestCase
     expect_command Commands::HASH, ["noprimarytbl", @keys[0], @keys[1], 1000, 1, hash_of(@rows[1..1])]
   end
 
+  test_each "uses the chosen partial key if the table has no suitable unique key, extending the row count if the requested row count falls in the middle of a range of rows with the same partial key" do
+    clear_schema
+    create_noprimaryjointbl(create_keys: true)
+    execute "INSERT INTO noprimaryjointbl (table1_id, table2_id) VALUES (1, 100), (1, 101), (2, 101), (3, 9), (3, 10), (3, 11), (3, 10)"
+    @rows = [[3, 9], # sorted earlier than the rows with lower table1_id as the (table2_id, table1_d) index will get used
+             [3, 10],
+             [3, 10], # duplicate row put back into order
+             [3, 11],
+             [1, 100],
+             [1, 101],
+             [2, 101]]
+    @keys = @rows.collect {|row| [row[1], row[0]]}
+    send_handshake_commands
+
+    send_command   Commands::HASH, ["noprimaryjointbl",       [], @keys[0], 1000]
+    expect_command Commands::HASH, ["noprimaryjointbl",       [], @keys[0], 1000, 1, hash_of(@rows[0..0])]
+
+    send_command   Commands::HASH, ["noprimaryjointbl",       [], @keys[1], 1000]
+    expect_command Commands::HASH, ["noprimaryjointbl",       [], @keys[1], 1000, 3, hash_of(@rows[0..2])]
+
+    send_command   Commands::HASH, ["noprimaryjointbl",       [], @keys[-1], 2]
+    expect_command Commands::HASH, ["noprimaryjointbl",       [], @keys[-1], 2, 3, hash_of(@rows[0..2])] # note row count gets extended past what we asked for to "finish" the rows with the same partial key
+
+    send_command   Commands::HASH, ["noprimaryjointbl",       [], @keys[-1], 3]
+    expect_command Commands::HASH, ["noprimaryjointbl",       [], @keys[-1], 3, 3, hash_of(@rows[0..2])]
+
+    send_command   Commands::HASH, ["noprimaryjointbl",       [], @keys[-1], 4]
+    expect_command Commands::HASH, ["noprimaryjointbl",       [], @keys[-1], 4, 4, hash_of(@rows[0..3])]
+
+    send_command   Commands::HASH, ["noprimaryjointbl", @keys[0], @keys[1], 1]
+    expect_command Commands::HASH, ["noprimaryjointbl", @keys[0], @keys[1], 1, 2, hash_of(@rows[1..2])] # extended again
+
+    send_command   Commands::HASH, ["noprimaryjointbl", @keys[0], @keys[1], 2]
+    expect_command Commands::HASH, ["noprimaryjointbl", @keys[0], @keys[1], 2, 2, hash_of(@rows[1..2])]
+
+    send_command   Commands::HASH, ["noprimaryjointbl", @keys[0], @keys[1], 3]
+    expect_command Commands::HASH, ["noprimaryjointbl", @keys[0], @keys[1], 3, 2, hash_of(@rows[1..2])]
+
+    send_command   Commands::HASH, ["noprimaryjointbl", @keys[5], @keys[6], 1]
+    expect_command Commands::HASH, ["noprimaryjointbl", @keys[5], @keys[6], 1, 1, hash_of(@rows[6..6])]
+
+    send_command   Commands::HASH, ["noprimaryjointbl", @keys[5], @keys[6], 2]
+    expect_command Commands::HASH, ["noprimaryjointbl", @keys[5], @keys[6], 2, 1, hash_of(@rows[6..6])]
+  end
+
   test_each "optionally supports xxHash64 hashes" do
     setup_with_footbl(1, HashAlgorithm::XXH64)
 

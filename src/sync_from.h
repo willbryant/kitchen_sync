@@ -92,7 +92,7 @@ struct SyncFromWorker {
 			tables_by_name[table.name] = &table;
 
 			// if the table doesn't have an actual primary key, choose one
-			choose_primary_key_for(table);
+			choose_primary_key_for(client, table);
 		}
 	}
 

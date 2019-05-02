@@ -55,11 +55,17 @@ struct SyncToProtocol {
 			cout << "starting " << table_job->table.name << endl << flush;
 		}
 
-		// start by scoping out the table
-		if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << " <- range " << table_job->table.name << endl;
-		send_command(output, Commands::RANGE, table_job->table.name);
-		if (input.next<verb_t>() != Commands::RANGE) throw command_error("Didn't receive response to RANGE command");
-		handle_range_response(table_job, row_replacer);
+		if (table_job->table.primary_key_type != no_available_key) {
+			// start by scoping out the table
+			if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << " <- range " << table_job->table.name << endl;
+			send_command(output, Commands::RANGE, table_job->table.name);
+			if (input.next<verb_t>() != Commands::RANGE) throw command_error("Didn't receive response to RANGE command");
+			handle_range_response(table_job, row_replacer);
+		} else {
+			// if the table has no usable keys, all we can do is retrieve and apply the rows
+			if (worker.verbose) cout << "not possible to detect differences in " << table_job->table.name << " because it has no primary key and no other suitable keys." << endl;
+			table_job->ranges_to_retrieve.emplace_back(ColumnValues(), ColumnValues());
+		}
 	}
 
 	void finish_sync_table(const shared_ptr<TableJob> &table_job, size_t rows_changed) {
@@ -173,6 +179,10 @@ struct SyncToProtocol {
 		// while that end is working, do the same at our end
 		RowHasherAndLastKey hasher(hash_algorithm, table.primary_key_columns);
 		size_t row_count = retrieve_rows(worker.client, hasher, table, prev_key, last_key, range_to_check.rows_to_hash);
+
+		if (table.primary_key_type == partial_key && row_count == range_to_check.rows_to_hash) {
+			row_count += retrieve_extra_rows_with_same_key(worker.client, hasher, table, prev_key, last_key, hasher.last_key, range_to_check.rows_to_hash);
+		}
 
 		// when the table has a subdividable primary key, we try to break the remaining range into two, so that if
 		// there's another worker free it can start checking the second half.  we don't actually queue either half
@@ -301,8 +311,10 @@ struct SyncToProtocol {
 
 		if (final_rows) {
 			RowInserter<DatabaseClient>(row_replacer, table).stream_from_input(input);
-		} else {
+		} else if (table.enforceable_primary_key()) {
 			RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
+		} else {
+			PartialKeyRowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);
 		}
 	}
 
@@ -324,7 +336,7 @@ struct SyncToProtocol {
 
 		std::unique_lock<std::mutex> lock(table_job->mutex);
 
-		if (hash_result.our_row_count == rows_to_hash && hash_result.our_last_key != last_key) {
+		if (hash_result.our_row_count >= rows_to_hash && hash_result.our_last_key != last_key) {
 			// whether or not we found an error in the range we just did, we don't know whether
 			// there is an error in the remaining part of the original range (which could be simply
 			// the rest of the table); queue it to be scanned
@@ -362,9 +374,15 @@ struct SyncToProtocol {
 
 		if (!match) {
 			// the part that we checked has an error; decide whether it's large enough to bother locating it more precisely
-			if (hash_result.our_row_count > 1 && hash_result.our_size > target_minimum_block_size) {
+			if (hash_result.our_row_count > 1 && rows_to_hash > 1 && hash_result.our_size > target_minimum_block_size) {
 				// yup, queue it up for another iteration of hashing, checking half the rows at a time
-				table_job->ranges_to_check.emplace(prev_key, hash_result.our_last_key, hash_result.our_row_count, hash_result.our_row_count/2, hash_result.priority + 1);
+				// note that we look at rows_to_hash not just our_row_count.  this is important in the
+				// partial_key case as the retrieve_extra_rows_with_same_key thing means that even if
+				// we halve the rows that we want to hash, we may end up having to hash more up to the
+				// end of the range, in which case we'd get stuck in an infinite loop; checking how many
+				// rows we wanted to hash as well as how many we actually found in the range avoids this.
+				// for the normal PK key cases, hash_result.our_row_count is always <= rows_to_hash.
+				table_job->ranges_to_check.emplace(prev_key, hash_result.our_last_key, hash_result.our_row_count, min<size_t>(hash_result.our_row_count, rows_to_hash)/2, hash_result.priority + 1);
 			} else {
 				// not worth reducing the affected row range any further, queue it to be retrieved
 				table_job->ranges_to_retrieve.emplace_back(prev_key, hash_result.our_last_key);
@@ -382,20 +400,25 @@ struct SyncToProtocol {
 		}
 	}
 
-	inline size_t rows_to_scan_forward_next(size_t rows_scanned, bool match, size_t our_row_count, size_t our_size) {
+	inline size_t rows_to_scan_forward_next(size_t rows_requested, bool match, size_t our_row_count, size_t our_size) {
 		if (match) {
 			// on the next iteration, scan more rows per iteration, to reduce the impact of latency between the ends -
 			// up to a point, after which the cost of re-work when we finally run into a mismatch outweights the
-			// benefit of the latency savings
+			// benefit of the latency savings.  rows_requested and our_row_count will be the same except for the partial_key
+			// case, in which case we want to only double the size based on how many rows we wanted not how many we
+			// found, for symmetry with the case below.
 			if (our_size <= target_maximum_block_size/2) {
-				return max<size_t>(our_row_count*2, 1);
+				return max<size_t>(rows_requested*2, 1);
 			} else {
 				return max<size_t>(our_row_count*target_maximum_block_size/our_size, 1);
 			}
 		} else {
-			// on the next iteration, scan fewer rows per iteration, to reduce the cost of re-work (down to a point)
+			// on the next iteration, scan fewer rows per iteration, to reduce the cost of re-work (down to a point).
+			// again, rows_requested and our_row_count will be the same except for the partial_key case, in which case
+			// we want to scale down based on how many we wanted not how many we found, because otherwise in a table
+			// with poor cardinality on the partial key, we may have trouble scaling down at all.
 			if (our_size >= target_minimum_block_size*2) {
-				return max<size_t>(our_row_count/2, 1);
+				return max<size_t>(rows_requested/2, 1);
 			} else {
 				return max<size_t>(our_row_count*target_minimum_block_size/our_size, 1);
 			}

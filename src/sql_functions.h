@@ -22,15 +22,24 @@ string quote_identifier(const string &name, char quote) {
 
 template <typename DatabaseClient>
 string column_orders_list(DatabaseClient &client, const Table &table, const string &order = ASCENDING) {
-	if (table.primary_key_columns.empty()) return "";
+	if (table.primary_key_columns.empty() && table.secondary_sort_columns.empty()) return "";
 
 	string result(" ORDER BY ");
 
-	for (ColumnIndices::const_iterator column_index = table.primary_key_columns.begin(); column_index != table.primary_key_columns.end(); ++column_index) {
-		if (column_index != table.primary_key_columns.begin()) result += ", ";
-		result += client.quote_identifier(table.columns[*column_index].name);
+	// stitch together table.primary_key_columns & table.secondary.sort_columns and join the corresponding column names, separating by commas
+	ColumnIndices::const_iterator begin = table.primary_key_columns.empty() ? table.secondary_sort_columns.begin() : table.primary_key_columns.begin();
+	ColumnIndices::const_iterator pend = table.primary_key_columns.end();
+	ColumnIndices::const_iterator send = table.secondary_sort_columns.end();
+	ColumnIndices::const_iterator curr = begin;
+
+	while (curr != send) {
+		if (curr != begin) result += ", ";
+
+		result += client.quote_identifier(table.columns[*curr].name);
 		result += ' ';
 		result += order;
+
+		if (++curr == pend) curr = table.secondary_sort_columns.begin();
 	}
 
 	return result;
@@ -133,7 +142,7 @@ string select_columns_sql(DatabaseClient &client, const Table &table) {
 const ssize_t NO_ROW_COUNT_LIMIT = -1;
 
 template <typename DatabaseClient>
-string retrieve_rows_sql(DatabaseClient &client, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, ssize_t row_count = NO_ROW_COUNT_LIMIT) {
+string retrieve_rows_sql(DatabaseClient &client, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key, ssize_t row_count = NO_ROW_COUNT_LIMIT, size_t offset = 0) {
 	string result("SELECT ");
 	result += select_columns_sql(client, table);
 	result += " FROM ";
@@ -143,6 +152,9 @@ string retrieve_rows_sql(DatabaseClient &client, const Table &table, const Colum
 	if (row_count != NO_ROW_COUNT_LIMIT) {
 		result += " LIMIT " + to_string(row_count);
 	}
+	if (offset != 0) {
+		result += " OFFSET " + to_string(offset);
+	}
 	return result;
 }
 
@@ -151,6 +163,16 @@ string count_rows_sql(DatabaseClient &client, const Table &table, const ColumnVa
 	string result("SELECT COUNT(*) FROM ");
 	result += client.quote_identifier(table.name);
 	result += where_sql(client, table, prev_key, last_key, table.where_conditions);
+	return result;
+}
+
+template <typename DatabaseClient>
+string count_distinct_values_sql(DatabaseClient &client, const Table &table, const ColumnIndices &column_indices) {
+	string result("SELECT COUNT(*) FROM (SELECT DISTINCT ");
+	result += columns_list(client, table.columns, column_indices);
+	result += "FROM ";
+	result += client.quote_identifier(table.name);
+	result += ") distinct_values";
 	return result;
 }
 

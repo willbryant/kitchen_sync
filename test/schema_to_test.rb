@@ -314,7 +314,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     read_command
   end
 
-  test_each "complains if there's a table that has no unique key with only non-nullable columns" do
+  test_each "uses indexed non-nullable columns as a partial key and the remaining columns to control the sort order if there's a table that has nullable columns and no unique key but some keys with non-nullable columns at the start" do
     clear_schema
     create_noprimarytbl(create_suitable_keys: false)
     create_secondtbl
@@ -322,10 +322,13 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands
     expect_command Commands::SCHEMA
 
-    expect_stderr("Couldn't find a primary or non-nullable unique key on table noprimarytbl") do
-      send_command Commands::SCHEMA, ["tables" => [noprimarytbl_def(create_suitable_keys: false), secondtbl_def]]
-      read_command rescue nil
-    end
+    send_command Commands::SCHEMA, ["tables" => [noprimarytbl_def(create_suitable_keys: false), secondtbl_def]]
+    expect_sync_start_commands
+    expect_command Commands::RANGE, ["noprimarytbl"]
+    send_command   Commands::RANGE, ["noprimarytbl", [], []]
+    expect_command Commands::RANGE, ["secondtbl"]
+    send_command   Commands::RANGE, ["secondtbl", [], []]
+    read_command
   end
 
   test_each "doesn't complain if there's an ignored table that has no unique key with only non-nullable columns" do
@@ -340,6 +343,32 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_sync_start_commands
     expect_command Commands::RANGE, ["secondtbl"]
     send_command   Commands::RANGE, ["secondtbl", [], []]
+    read_command
+  end
+
+  test_each "doesn't complain if there's a table that has no primary key or unique keys but that has only non-nullable columns" do
+    clear_schema
+    create_noprimaryjointbl(create_keys: true)
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command   Commands::SCHEMA, ["tables" => [noprimaryjointbl_def(create_keys: true)]]
+    expect_sync_start_commands
+    expect_command Commands::RANGE, ["noprimaryjointbl"]
+    send_command   Commands::RANGE, ["noprimaryjointbl", [], []]
+    read_command
+  end
+
+  test_each "doesn't complain if there's a table that has no primary key or unique keys but that has only non-nullable columns and no keys" do
+    clear_schema
+    create_noprimaryjointbl(create_keys: false)
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command   Commands::SCHEMA, ["tables" => [noprimaryjointbl_def(create_keys: false)]]
+    expect_sync_start_commands
+    expect_command Commands::ROWS, ["noprimaryjointbl", [], []] # note not the normal RANGE command, since there are no PK columns to select values from
+    send_command   Commands::ROWS, ["noprimaryjointbl", [], []]
     read_command
   end
 

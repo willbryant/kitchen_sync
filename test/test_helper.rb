@@ -93,6 +93,7 @@ module PrimaryKeyType
   NO_AVAILABLE_KEY = 0
   EXPLICIT_PRIMARY_KEY = 1
   SUITABLE_UNIQUE_KEY = 2
+  PARTIAL_KEY = 3
 end
 
 Verbs = Commands.constants.each_with_object({}) {|k, results| results[Commands.const_get(k)] = k.to_s.downcase}.freeze

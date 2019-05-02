@@ -194,4 +194,58 @@ class RowsFromTest < KitchenSync::EndpointTestCase
                    ["noprimarytbl", ["a2349174"], ["b968116383"]],
                    [nil, "b968116383", 'aa', 9]
   end
+
+  test_each "retrieves all matching rows if only a partial key can be used" do
+    clear_schema
+    create_noprimaryjointbl(create_keys: true)
+    execute "INSERT INTO noprimaryjointbl (table1_id, table2_id) VALUES (1, 100), (1, 101), (2, 101), (3, 9), (3, 10), (3, 11), (3, 10)"
+    @rows = [[3, 9], # sorted earlier than the rows with lower table1_id as the (table2_id, table1_d) index will get used
+             [3, 10],
+             [3, 10], # duplicate row put back into order
+             [3, 11],
+             [1, 100],
+             [1, 101],
+             [2, 101]]
+    @keys = @rows.collect {|row| [row[1], row[0]]}
+    send_handshake_commands
+
+    send_command   Commands::ROWS, ["noprimaryjointbl",       [], @keys[0]]
+    expect_command Commands::ROWS, ["noprimaryjointbl",       [], @keys[0]],
+                                   *@rows[0..0]
+
+    send_command   Commands::ROWS, ["noprimaryjointbl",       [], @keys[1]]
+    expect_command Commands::ROWS, ["noprimaryjointbl",       [], @keys[1]],
+                                   *@rows[0..2] # includes dup
+
+    send_command   Commands::ROWS, ["noprimaryjointbl",       [], @keys[-1]]
+    expect_command Commands::ROWS, ["noprimaryjointbl",       [], @keys[-1]],
+                                   *@rows[0..-1]
+
+    send_command   Commands::ROWS, ["noprimaryjointbl", @keys[0], @keys[1]]
+    expect_command Commands::ROWS, ["noprimaryjointbl", @keys[0], @keys[1]],
+                                   *@rows[1..2] # includes dup
+
+    send_command   Commands::ROWS, ["noprimaryjointbl", @keys[5], @keys[6]]
+    expect_command Commands::ROWS, ["noprimaryjointbl", @keys[5], @keys[6]],
+                                   *@rows[6..6]
+  end
+
+  test_each "retrieves all rows in no particular order if the table has no available key" do
+    clear_schema
+    create_noprimaryjointbl(create_keys: false)
+    execute "INSERT INTO noprimaryjointbl (table1_id, table2_id) VALUES (1, 100), (1, 101), (2, 101), (3, 9), (3, 10), (3, 11), (3, 10)"
+    @rows = [[1, 100],
+             [1, 101],
+             [2, 101],
+             [3, 9],
+             [3, 10],
+             [3, 11],
+             [3, 10]]
+    @keys = @rows.collect {|row| [row[1], row[0]]}
+    send_handshake_commands
+
+    send_command   Commands::ROWS, ["noprimaryjointbl", [], []]
+    expect_command Commands::ROWS, ["noprimaryjointbl", [], []],
+                                   *@rows[0..-1]
+  end
 end

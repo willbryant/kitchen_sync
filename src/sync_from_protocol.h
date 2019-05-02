@@ -3,6 +3,7 @@
 #include "query_functions.h"
 #include "command.h"
 #include "hash_algorithm.h"
+#include "sql_functions.h"
 #include "sync_error.h"
 #include "defaults.h"
 
@@ -90,10 +91,16 @@ struct SyncFromProtocol {
 		ColumnValues prev_key, last_key;
 		size_t rows_to_hash;
 		read_all_arguments(input, table_name, prev_key, last_key, rows_to_hash);
+
+		const Table &table(*worker.tables_by_name.at(table_name));
 		worker.show_status("syncing " + table_name);
 
-		RowHasher hasher(hash_algorithm);
-		size_t row_count = retrieve_rows(worker.client, hasher, *worker.tables_by_name.at(table_name), prev_key, last_key, rows_to_hash);
+		RowHasherAndLastKey hasher(hash_algorithm, table.primary_key_columns);
+		size_t row_count = retrieve_rows(worker.client, hasher, table, prev_key, last_key, rows_to_hash);
+
+		if (table.primary_key_type == partial_key && row_count == rows_to_hash) {
+			row_count += retrieve_extra_rows_with_same_key(worker.client, hasher, table, prev_key, last_key, hasher.last_key, rows_to_hash);
+		}
 
 		send_command(output, Commands::HASH, table_name, prev_key, last_key, rows_to_hash, row_count, hasher.finish());
 	}
@@ -102,22 +109,26 @@ struct SyncFromProtocol {
 		string table_name;
 		ColumnValues prev_key, last_key;
 		read_all_arguments(input, table_name, prev_key, last_key);
+
+		const Table &table(*worker.tables_by_name.at(table_name));
 		worker.show_status("syncing " + table_name);
 
 		send_command_begin(output, Commands::ROWS, table_name, prev_key, last_key);
-		send_rows(*worker.tables_by_name.at(table_name), prev_key, last_key);
+		send_rows(table, prev_key, last_key);
 		send_command_end(output);
 	}
 
 	void send_rows(const Table &table, ColumnValues prev_key, const ColumnValues &last_key) {
 		// we limit individual queries to an arbitrary limit of 10000 rows, to reduce annoying slow
-		// queries that would otherwise be logged on the server and reduce buffering.
-		const int BATCH_SIZE = 10000;
+		// queries that would otherwise be logged on the server and reduce buffering.  this only
+		// works if we have a usable (explicit or substitute) primary key as otherwise there's no
+		// way to consistently find where we left off.
+		ssize_t batch_size = table.primary_key_type == partial_key ? NO_ROW_COUNT_LIMIT : 10000;
 		RowPackerAndLastKey<FDWriteStream> row_packer(output, table.primary_key_columns);
 
 		while (true) {
-			size_t row_count = retrieve_rows(worker.client, row_packer, table, prev_key, last_key, BATCH_SIZE);
-			if (row_count < BATCH_SIZE) break;
+			size_t row_count = retrieve_rows(worker.client, row_packer, table, prev_key, last_key, batch_size);
+			if (row_count != batch_size) break;
 			prev_key = row_packer.last_key;
 		}
 	}

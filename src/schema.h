@@ -89,12 +89,14 @@ enum PrimaryKeyType {
 	no_available_key = 0,
 	explicit_primary_key = 1,
 	suitable_unique_key = 2,
+	partial_key = 3,
 };
 
 struct Table {
 	string name;
 	Columns columns;
 	ColumnIndices primary_key_columns;
+	ColumnIndices secondary_sort_columns;
 	PrimaryKeyType primary_key_type = PrimaryKeyType::no_available_key;
 	Keys keys;
 
@@ -108,6 +110,8 @@ struct Table {
 	inline bool operator ==(const Table &other) const { return (name == other.name && columns == other.columns && same_primary_key_as(other) && keys == other.keys); }
 	inline bool operator !=(const Table &other) const { return (!(*this == other)); }
 	size_t index_of_column(const string &name) const;
+
+	bool enforceable_primary_key() const { return (primary_key_type == explicit_primary_key || primary_key_type == suitable_unique_key); }
 
 protected:
 	inline bool same_primary_key_as(const Table &other) const {

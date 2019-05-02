@@ -185,4 +185,18 @@ struct RowInserter {
 	const Table &table;
 };
 
+// special-case version of RowRangeApplier for use with "partial key" tables - those without usable primary
+// keys.  currently this is implemented by simply clearing the range and inserting all the received rows
+// without comparing them to the current database, because detecting differences without a meaningful row
+// identity is difficult; with partial keys there can/will be more than one row with the same partial key.
+// this crude implementation at least makes it possible to sync databases containing some tables with no
+// usable (explicit or substitute) PK and do the rest of the tables using the normal efficient algorithm.
+template <typename DatabaseClient>
+struct PartialKeyRowRangeApplier: RowInserter<DatabaseClient> {
+	PartialKeyRowRangeApplier(RowReplacer<DatabaseClient> &replacer, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key):
+		RowInserter<DatabaseClient>(replacer, table) {
+		replacer.clear_range(prev_key, last_key);
+	}
+};
+
 #endif

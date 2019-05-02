@@ -177,15 +177,41 @@ SQL
         {"name" => "version",      "column_type" => ColumnTypes::VCHR, "size" => 255, "nullable" => false},
         {"name" => "name",         "column_type" => ColumnTypes::VCHR, "size" => 255},
         {"name" => "non_nullable", "column_type" => ColumnTypes::SINT, "size" =>   4, "nullable" => false}],
-      "primary_key_columns" => (create_suitable_keys ? [1] : []),
-      "primary_key_type" => (create_suitable_keys ? PrimaryKeyType::SUITABLE_UNIQUE_KEY : PrimaryKeyType::NO_AVAILABLE_KEY),
+      "primary_key_columns" => create_suitable_keys ? [1] : [3],
+      "primary_key_type" => create_suitable_keys ? PrimaryKeyType::SUITABLE_UNIQUE_KEY : PrimaryKeyType::PARTIAL_KEY,
+      "secondary_sort_columns" => create_suitable_keys ? nil : [0, 1, 2],
       "keys" => [ # sorted in uniqueness then alphabetic name order, but otherwise a transcription of the above create index statements
         ({"name" => "correct_key",          "unique" => true,  "columns" => [1]} if create_suitable_keys),
         {"name" => "ignored_key",          "unique" => true,  "columns" => [0, 1]},
         ({"name" => "non_nullable_key",     "unique" => true,  "columns" => [3]} if create_suitable_keys),
         {"name" => "version_and_name_key", "unique" => true,  "columns" => [1, 2]},
         {"name" => "everything_key",       "unique" => false, "columns" => [2, 0, 1, 3]},
-        {"name" => "not_unique_key",       "unique" => false, "columns" => [3]} ].compact }
+        {"name" => "not_unique_key",       "unique" => false, "columns" => [3]} ].compact }.
+      reject {|k, v| v.nil?}
+  end
+
+  def create_noprimaryjointbl(create_keys: true)
+    execute(<<-SQL)
+      CREATE TABLE noprimaryjointbl (
+        table1_id INT NOT NULL,
+        table2_id INT NOT NULL)
+SQL
+    execute "CREATE INDEX index_by_table1_id ON noprimaryjointbl (table1_id)" if create_keys
+    execute "CREATE INDEX index_by_table2_id_and_table1_id ON noprimaryjointbl (table2_id, table1_id)" if create_keys
+  end
+
+  def noprimaryjointbl_def(create_keys: true)
+    { "name" => "noprimaryjointbl",
+      "columns" => [
+        {"name" => "table1_id", "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
+        {"name" => "table2_id", "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false}],
+      "primary_key_columns" => create_keys ? [1, 0] : [], # if index_by_table2_id exists, it will be chosen because it covers all the columns
+      "primary_key_type" => create_keys ? PrimaryKeyType::PARTIAL_KEY : PrimaryKeyType::NO_AVAILABLE_KEY,
+      "keys" => create_keys ? [
+        {"name" => "index_by_table1_id",               "unique" => false, "columns" => [0]},
+        {"name" => "index_by_table2_id_and_table1_id", "unique" => false, "columns" => [1, 0]}
+      ] : [] }.
+      reject {|k, v| v.nil?}
   end
 
   def create_some_tables

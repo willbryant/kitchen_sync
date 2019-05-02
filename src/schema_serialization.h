@@ -82,7 +82,9 @@ void operator << (Packer<OutputStream> &packer, const Key &key) {
 
 template <typename OutputStream>
 void operator << (Packer<OutputStream> &packer, const Table &table) {
-	pack_map_length(packer, 5);
+	size_t fields = 5;
+	if (!table.secondary_sort_columns.empty()) fields++;
+	pack_map_length(packer, fields);
 	packer << string("name");
 	packer << table.name;
 	packer << string("columns");
@@ -91,6 +93,10 @@ void operator << (Packer<OutputStream> &packer, const Table &table) {
 	packer << table.primary_key_columns;
 	packer << string("primary_key_type");
 	packer << table.primary_key_type;
+	if (!table.secondary_sort_columns.empty()) {
+		packer << string("secondary_sort_columns");
+		packer << table.secondary_sort_columns;
+	}
 	packer << string("keys");
 	packer << table.keys;
 }
@@ -173,7 +179,8 @@ template <typename InputStream>
 void operator >> (Unpacker<InputStream> &unpacker, Table &table) {
 	size_t map_length = unpacker.next_map_length(); // checks type
 
-	bool primary_key_type_set = false;
+	// backwards compatibility with v1.13 and earlier, which didn't have primary_key_type
+	table.primary_key_type = explicit_primary_key;
 
 	while (map_length--) {
 		string attr_key = unpacker.template next<string>();
@@ -186,18 +193,14 @@ void operator >> (Unpacker<InputStream> &unpacker, Table &table) {
 			unpacker >> table.primary_key_columns;
 		} else if (attr_key == "primary_key_type") {
 			unpacker >> table.primary_key_type;
-			primary_key_type_set = true;
+		} else if (attr_key == "secondary_sort_columns") {
+			unpacker >> table.secondary_sort_columns;
 		} else if (attr_key == "keys") {
 			unpacker >> table.keys;
 		} else {
 			// ignore anything else, for forward compatibility
 			unpacker.skip();
 		}
-	}
-
-	// backwards compatibility with v1.13 and earlier, which didn't have primary_key_type
-	if (!primary_key_type_set) {
-		table.primary_key_type = table.primary_key_columns.empty() ? no_available_key : explicit_primary_key;
 	}
 }
 
