@@ -298,21 +298,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   end
 
 
-  test_each "complains if there's a table that has no unique key with only non-nullable columns" do
-    clear_schema
-    create_noprimarytbl(create_suitable_keys: false)
-    create_secondtbl
-
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-
-    expect_stderr("Couldn't find a primary or non-nullable unique key on table noprimarytbl") do
-      send_command Commands::SCHEMA, ["tables" => [noprimarytbl_def(create_suitable_keys: false), secondtbl_def]]
-      read_command rescue nil
-    end
-  end
-
-  test_each "doesn't complain if there's a table that has no primary key but that has unique key with only non-nullable columns" do
+  test_each "selects a substitute primary key if there's a table that has no primary key but that has unique key with only non-nullable columns" do
     clear_schema
     create_noprimarytbl(create_suitable_keys: true)
     create_secondtbl
@@ -326,6 +312,20 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::RANGE, ["secondtbl"]
     send_command   Commands::RANGE, ["secondtbl", [], []]
     read_command
+  end
+
+  test_each "complains if there's a table that has no unique key with only non-nullable columns" do
+    clear_schema
+    create_noprimarytbl(create_suitable_keys: false)
+    create_secondtbl
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+
+    expect_stderr("Couldn't find a primary or non-nullable unique key on table noprimarytbl") do
+      send_command Commands::SCHEMA, ["tables" => [noprimarytbl_def(create_suitable_keys: false), secondtbl_def]]
+      read_command rescue nil
+    end
   end
 
   test_each "doesn't complain if there's an ignored table that has no unique key with only non-nullable columns" do
