@@ -200,7 +200,7 @@ public:
 	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '`'); };
 	inline ColumnFlags supported_flags() const { return (ColumnFlags)(mysql_timestamp | mysql_on_update_timestamp); }
 
-	void execute(const string &sql);
+	size_t execute(const string &sql);
 	string select_one(const string &sql);
 
 	template <typename RowFunction>
@@ -275,10 +275,12 @@ MySQLClient::~MySQLClient() {
 	mysql_close(&mysql);
 }
 
-void MySQLClient::execute(const string &sql) {
+size_t MySQLClient::execute(const string &sql) {
 	if (mysql_real_query(&mysql, sql.c_str(), sql.size())) {
 		throw runtime_error(sql_error(sql));
 	}
+
+	return mysql_affected_rows(&mysql);
 }
 
 string MySQLClient::select_one(const string &sql) {

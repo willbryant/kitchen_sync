@@ -16,6 +16,7 @@ public:
 
 	inline PGresult *res() { return _res; }
 	inline ExecStatusType status() { return PQresultStatus(_res); }
+	inline size_t rows_affected() const { return atoi(PQcmdTuples(_res)); }
 	inline int n_tuples() const  { return _n_tuples; }
 	inline int n_columns() const { return _n_columns; }
 	inline Oid type_of(int column_number) const { return types[column_number]; }
@@ -148,7 +149,7 @@ public:
 	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '"'); };
 	inline ColumnFlags supported_flags() const { return ColumnFlags::time_zone; }
 
-	void execute(const string &sql);
+	size_t execute(const string &sql);
 	string select_one(const string &sql);
 
 	template <typename RowFunction>
@@ -211,12 +212,14 @@ PostgreSQLClient::~PostgreSQLClient() {
 	}
 }
 
-void PostgreSQLClient::execute(const string &sql) {
+size_t PostgreSQLClient::execute(const string &sql) {
     PostgreSQLRes res(PQexec(conn, sql.c_str()));
 
     if (res.status() != PGRES_COMMAND_OK && res.status() != PGRES_TUPLES_OK) {
 		throw runtime_error(sql_error(sql));
     }
+
+    return res.rows_affected();
 }
 
 string PostgreSQLClient::select_one(const string &sql) {
