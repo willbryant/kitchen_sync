@@ -1,6 +1,10 @@
 Changelog
 =========
 
+1.15
+----
+* 15-30% performance improvement for syncing into empty databases or inserting any new rows at the end of the table.
+
 1.14
 ----
 * When using --alter to create tables, don't add a primary key if the original table doesn't have one.
