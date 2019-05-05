@@ -14,6 +14,8 @@ const string DESCENDING("DESC");
 
 template <typename DatabaseClient>
 string column_orders_list(DatabaseClient &client, const Columns &columns, const ColumnIndices &column_indices, const string &order = ASCENDING) {
+	if (column_indices.empty()) return "";
+
 	string result(" ORDER BY ");
 
 	result += client.quote_identifiers_with();
