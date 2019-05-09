@@ -1,6 +1,10 @@
 Changelog
 =========
 
+1.16
+----
+* Support quote characters in column and table names.
+
 1.15
 ----
 * 15-30% performance improvement for syncing into empty databases or inserting any new rows at the end of the table.
