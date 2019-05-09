@@ -60,7 +60,7 @@ struct RowReplacer {
 	RowReplacer(DatabaseClient &client, const Table &table, bool commit_often, ProgressCallback progress_callback):
 		client(client),
 		table(table),
-		insert_sql(RowReplacerBuilder<DatabaseClient>::insert_sql_base() + table.name + " VALUES\n(", ")"),
+		insert_sql(RowReplacerBuilder<DatabaseClient>::insert_sql_base() + client.quote_identifier(table.name) + " VALUES\n(", ")"),
 		commit_often(commit_often),
 		progress_callback(progress_callback),
 		rows_changed(0) {

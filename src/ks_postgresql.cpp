@@ -278,7 +278,7 @@ void PostgreSQLClient::disable_referential_integrity() {
 
 	/* TODO: investigate the pros and cons of disabling triggers - this blocks if there's a read transaction open
 	for (const Table &table : database.tables) {
-		execute("ALTER TABLE " + table.name + " DISABLE TRIGGER ALL");
+		execute("ALTER TABLE " + client.quote_identifier(table.name) + " DISABLE TRIGGER ALL");
 	}
 	*/
 }
@@ -286,7 +286,7 @@ void PostgreSQLClient::disable_referential_integrity() {
 void PostgreSQLClient::enable_referential_integrity() {
 	/* TODO: investigate the pros and cons of disabling triggers - this blocks if there's a read transaction open
 	for (const Table &table : database.tables) {
-		execute("ALTER TABLE " + table.name + " ENABLE TRIGGER ALL");
+		execute("ALTER TABLE " + client.quote_identifier(table.name) + " ENABLE TRIGGER ALL");
 	}
 	*/
 }
@@ -635,7 +635,7 @@ struct PostgreSQLTableLister {
 			  "LEFT JOIN pg_attrdef ON adrelid = attrelid AND adnum = attnum "
 			 "WHERE attnum > 0 AND "
 			       "NOT attisdropped AND "
-			       "relname = '" + table.name + "' "
+			       "relname = '" + client.escape_value(table.name) + "' "
 			 "ORDER BY attnum",
 			column_lister);
 
@@ -644,7 +644,7 @@ struct PostgreSQLTableLister {
 			"SELECT column_name "
 			  "FROM information_schema.table_constraints, "
 			       "information_schema.key_column_usage "
-			 "WHERE information_schema.table_constraints.table_name = '" + table.name + "' AND "
+			 "WHERE information_schema.table_constraints.table_name = '" + client.escape_value(table.name) + "' AND "
 			       "information_schema.key_column_usage.table_name = information_schema.table_constraints.table_name AND "
 			       "constraint_type = 'PRIMARY KEY' "
 			 "ORDER BY ordinal_position",
@@ -655,7 +655,7 @@ struct PostgreSQLTableLister {
 			"SELECT indexname, indisunique, attname "
 			  "FROM (SELECT table_class.oid AS table_oid, index_class.relname AS indexname, pg_index.indisunique, generate_series(1, array_length(indkey, 1)) AS position, unnest(indkey) AS attnum "
 			          "FROM pg_class table_class, pg_class index_class, pg_index "
-			         "WHERE table_class.relname = '" + table.name + "' AND "
+			         "WHERE table_class.relname = '" + client.escape_value(table.name) + "' AND "
 			               "table_class.relkind = 'r' AND "
 			               "index_class.relkind = 'i' AND "
 			               "pg_index.indrelid = table_class.oid AND "
@@ -678,10 +678,12 @@ struct PostgreSQLTableLister {
 
 void PostgreSQLClient::populate_database_schema(Database &database) {
 	PostgreSQLTableLister table_lister(*this, database);
-	query("SELECT tablename "
-		    "FROM pg_tables "
-		   "WHERE schemaname = ANY (current_schemas(false)) "
-		   "ORDER BY pg_relation_size(tablename::text) DESC, tablename ASC",
+	query("SELECT relname "
+		     "FROM pg_class, pg_namespace "
+		    "WHERE pg_class.relnamespace = pg_namespace.oid AND "
+		          "pg_namespace.nspname = ANY (current_schemas(false)) AND "
+		          "relkind = 'r' "
+		 "ORDER BY pg_relation_size(pg_class.oid) DESC, relname ASC",
 		  table_lister);
 }
 

@@ -14,7 +14,7 @@ template <typename DatabaseClient, bool = is_base_of<GlobalKeys, DatabaseClient>
 struct DropKeyStatements {
 	static void add_to(Statements &statements, DatabaseClient &client, const Table &table, const Key &key) {
 		string result("ALTER TABLE ");
-		result += table.name;
+		result += client.quote_identifier(table.name);
 		result += " DROP INDEX ";
 		result += client.quote_identifier(key.name);
 		statements.push_front(result);
@@ -36,7 +36,7 @@ struct CreateKeyStatements {
 		string result(key.unique ? "CREATE UNIQUE INDEX " : "CREATE INDEX ");
 		result += client.quote_identifier(key.name);
 		result += " ON ";
-		result += table.name;
+		result += client.quote_identifier(table.name);
 		result += ' ';
 		result += columns_tuple(client, table.columns, key.columns);
 		statements.push_back(result);
@@ -97,7 +97,7 @@ struct OwnTableSequencesStatements <DatabaseClient, true> {
 template <typename DatabaseClient>
 struct DropTableStatements {
 	static void add_to(Statements &statements, DatabaseClient &client, const Table &table) {
-		statements.emplace_back("DROP TABLE " + table.name);
+		statements.emplace_back("DROP TABLE " + client.quote_identifier(table.name));
 	}
 };
 
@@ -107,7 +107,7 @@ struct CreateTableStatements {
 		CreateTableSequencesStatements<DatabaseClient>::add_to(statements, client, table);
 
 		string result("CREATE TABLE ");
-		result += table.name;
+		result += client.quote_identifier(table.name);
 		for (Columns::const_iterator column = table.columns.begin(); column != table.columns.end(); ++column) {
 			result += (column == table.columns.begin() ? " (\n  " : ",\n  ");
 			result += client.column_definition(table, *column);
@@ -131,7 +131,7 @@ template <typename DatabaseClient>
 struct AlterTableStatements {
 	static void add_to(Statements &statements, DatabaseClient &client, const Table &table, const string &alter_table_clauses) {
 		string result("ALTER TABLE ");
-		result += table.name;
+		result += client.quote_identifier(table.name);
 		result += alter_table_clauses;
 		statements.push_back(result);
 	}
@@ -192,7 +192,7 @@ template <typename DatabaseClient>
 struct UpdateTableStatements {
 	static void add_to(Statements &statements, DatabaseClient &client, const Table &table, const string &update_table_clauses) {
 		string result("UPDATE ");
-		result += table.name;
+		result += client.quote_identifier(table.name);
 		result += " SET ";
 		result += update_table_clauses;
 		statements.push_back(result);

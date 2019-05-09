@@ -230,13 +230,13 @@ struct SyncToProtocol {
 		if (worker.verbose > 1) cout << timestamp() << " -> range " << table_job->table.name << ' ' << values_list(client, table_job->table, their_first_key) << ' ' << values_list(client, table_job->table, their_last_key) << endl;
 
 		if (their_first_key.empty()) {
-			client.execute("DELETE FROM " + table_job->table.name);
+			client.execute("DELETE FROM " + client.quote_identifier(table_job->table.name));
 			return;
 		}
 
 		// we immediately know that we need to clear everything < their_first_key or > their_last_key; do that now
 		string key_columns(columns_list(client, table_job->table.columns, table_job->table.primary_key_columns));
-		string delete_from("DELETE FROM " + table_job->table.name + " WHERE (" + key_columns + ")");
+		string delete_from("DELETE FROM " + client.quote_identifier(table_job->table.name) + " WHERE (" + key_columns + ")");
 		client.execute(delete_from + " < " + values_list(client, table_job->table, their_first_key));
 		client.execute(delete_from + " > " + values_list(client, table_job->table, their_last_key));
 

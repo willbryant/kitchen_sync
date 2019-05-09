@@ -20,7 +20,7 @@ struct ResetTableSequences <DatabaseClient, true> {
 				statement += "'), COALESCE(MAX(";
 				statement += client.quote_identifier(column.name);
 				statement += "), 0) + 1, false) FROM ";
-				statement += table.name;
+				statement += client.quote_identifier(table.name);
 				client.execute(statement);
 			}
 		}

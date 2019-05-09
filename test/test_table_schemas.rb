@@ -290,7 +290,7 @@ SQL
     case database_server
     when 'mysql'
       execute(<<-SQL)
-        CREATE TABLE mysqltbl (
+        CREATE TABLE ```mysql``tbl` (
           pri INT UNSIGNED NOT NULL,
           tiny2 TINYINT(2) UNSIGNED DEFAULT 99,
           timestampboth TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -302,7 +302,7 @@ SQL
 
     when 'postgresql'
       execute(<<-SQL)
-        CREATE TABLE postgresqltbl (
+        CREATE TABLE """postgresql""tbl" (
           pri UUID NOT NULL,
           nolengthvaryingfield CHARACTER VARYING,
           currentdatefield DATE DEFAULT CURRENT_DATE,
@@ -321,7 +321,7 @@ SQL
   def adapterspecifictbl_def(database_server = @database_server)
     case database_server
     when 'mysql'
-      { "name"    => "mysqltbl",
+      { "name"    => "`mysql`tbl",
         "columns" => [
           {"name" => "pri",                  "column_type" => ColumnTypes::UINT, "size" =>  4, "nullable" => false},
           {"name" => "tiny2",                "column_type" => ColumnTypes::UINT, "size" =>  1, "default_value" => "99"}, # note we've lost the (nonportable) display width (2) - size tells us the size of the integers, not the display width
@@ -335,7 +335,7 @@ SQL
         "keys" => [] }
 
     when 'postgresql'
-      { "name"    => "postgresqltbl",
+      { "name"    => "\"postgresql\"tbl",
         "columns" => [
           {"name" => "pri",                "column_type" => ColumnTypes::UUID,                "nullable" => false},
           {"name" => "nolengthvaryingfield", "column_type" => ColumnTypes::VCHR},

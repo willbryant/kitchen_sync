@@ -664,10 +664,10 @@ struct MySQLTableLister {
 		Table table(row.string_at(0));
 
 		MySQLColumnLister column_lister(table);
-		client.query("SHOW COLUMNS FROM " + table.name, column_lister);
+		client.query("SHOW COLUMNS FROM " + client.quote_identifier(table.name), column_lister);
 
 		MySQLKeyLister key_lister(table);
-		client.query("SHOW KEYS FROM " + table.name, key_lister);
+		client.query("SHOW KEYS FROM " + client.quote_identifier(table.name), key_lister);
 		sort(table.keys.begin(), table.keys.end()); // order is arbitrary for keys, but both ends must be consistent, so we sort the keys by name
 
 		database.tables.push_back(table);
