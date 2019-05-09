@@ -16,9 +16,7 @@ struct DropKeyStatements {
 		string result("ALTER TABLE ");
 		result += table.name;
 		result += " DROP INDEX ";
-		result += client.quote_identifiers_with();
-		result += key.name;
-		result += client.quote_identifiers_with();
+		result += client.quote_identifier(key.name);
 		statements.push_front(result);
 	}
 };
@@ -27,9 +25,7 @@ template <typename DatabaseClient>
 struct DropKeyStatements <DatabaseClient, true> {
 	static void add_to(Statements &statements, DatabaseClient &client, const Table &table, const Key &key) {
 		string result("DROP INDEX ");
-		result += client.quote_identifiers_with();
-		result += key.name;
-		result += client.quote_identifiers_with();
+		result += client.quote_identifier(key.name);
 		statements.push_front(result);
 	}
 };
@@ -38,9 +34,7 @@ template <typename DatabaseClient>
 struct CreateKeyStatements {
 	static void add_to(Statements &statements, DatabaseClient &client, const Table &table, const Key &key) {
 		string result(key.unique ? "CREATE UNIQUE INDEX " : "CREATE INDEX ");
-		result += client.quote_identifiers_with();
-		result += key.name;
-		result += client.quote_identifiers_with();
+		result += client.quote_identifier(key.name);
 		result += " ON ";
 		result += table.name;
 		result += ' ';
@@ -64,15 +58,11 @@ struct CreateTableSequencesStatements <DatabaseClient, true> {
 		for (const Column &column : table.columns) {
 			if (column.default_type == DefaultType::sequence) {
 				string result("DROP SEQUENCE IF EXISTS ");
-				result += client.quote_identifiers_with();
-				result += client.column_sequence_name(table, column);
-				result += client.quote_identifiers_with();
+				result += client.quote_identifier(client.column_sequence_name(table, column));
 				statements.push_back(result);
 
 				result = "CREATE SEQUENCE ";
-				result += client.quote_identifiers_with();
-				result += client.column_sequence_name(table, column);
-				result += client.quote_identifiers_with();
+				result += client.quote_identifier(client.column_sequence_name(table, column));
 				statements.push_back(result);
 			}
 		}
@@ -92,17 +82,11 @@ struct OwnTableSequencesStatements <DatabaseClient, true> {
 		for (const Column &column : table.columns) {
 			if (column.default_type == DefaultType::sequence) {
 				string result("ALTER SEQUENCE ");
-				result += client.quote_identifiers_with();
-				result += client.column_sequence_name(table, column);
-				result += client.quote_identifiers_with();
+				result += client.quote_identifier(client.column_sequence_name(table, column));
 				result += " OWNED BY ";
-				result += client.quote_identifiers_with();
-				result += table.name;
-				result += client.quote_identifiers_with();
+				result += client.quote_identifier(table.name);
 				result += '.';
-				result += client.quote_identifiers_with();
-				result += column.name;
-				result += client.quote_identifiers_with();
+				result += client.quote_identifier(column.name);
 				statements.push_back(result);
 			}
 		}
@@ -160,9 +144,7 @@ struct AlterColumnDefaultClauses {
 			alter_table_clauses += ",";
 		}
 		alter_table_clauses += " ALTER ";
-		alter_table_clauses += client.quote_identifiers_with();
-		alter_table_clauses += to_column.name;
-		alter_table_clauses += client.quote_identifiers_with();
+		alter_table_clauses += client.quote_identifier(to_column.name);
 		if (from_column.default_type) {
 			alter_table_clauses += " SET ";
 			alter_table_clauses += client.column_default(table, from_column);
@@ -196,9 +178,7 @@ struct AlterColumnNullabilityClauses<DatabaseClient, true> {
 			alter_table_clauses += ",";
 		}
 		alter_table_clauses += " ALTER ";
-		alter_table_clauses += client.quote_identifiers_with();
-		alter_table_clauses += to_column.name;
-		alter_table_clauses += client.quote_identifiers_with();
+		alter_table_clauses += client.quote_identifier(to_column.name);
 		if (from_column.nullable) {
 			alter_table_clauses += " DROP NOT NULL";
 		} else {
@@ -225,13 +205,9 @@ struct OverwriteColumnNullValueClauses {
 		if (!update_table_clauses.empty()) {
 			update_table_clauses += ",";
 		}
-		update_table_clauses += client.quote_identifiers_with();
-		update_table_clauses += column.name;
-		update_table_clauses += client.quote_identifiers_with();
+		update_table_clauses += client.quote_identifier(column.name);
 		update_table_clauses += " = COALESCE(";
-		update_table_clauses += client.quote_identifiers_with();
-		update_table_clauses += column.name;
-		update_table_clauses += client.quote_identifiers_with();
+		update_table_clauses += client.quote_identifier(column.name);
 		update_table_clauses += ", '";
 		update_table_clauses += client.escape_column_value(column, usable_column_value(column));
 		update_table_clauses += "')";
@@ -297,9 +273,7 @@ struct DropColumnClauses {
 			alter_table_clauses += ",";
 		}
 		alter_table_clauses += " DROP ";
-		alter_table_clauses += client.quote_identifiers_with();
-		alter_table_clauses += table.columns[column_index].name;
-		alter_table_clauses += client.quote_identifiers_with();
+		alter_table_clauses += client.quote_identifier(table.columns[column_index].name);
 
 		if (!UpdateKeyForDroppedColumn<DatabaseClient>::update_key_columns(table.primary_key_columns, true, column_index)) {
 			table.primary_key_columns.clear(); // so the table compares not-equal and gets recreated

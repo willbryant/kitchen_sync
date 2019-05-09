@@ -18,9 +18,7 @@ struct ResetTableSequences <DatabaseClient, true> {
 				statement += "', '";
 				statement += client.escape_value(column.name);
 				statement += "'), COALESCE(MAX(";
-				statement += client.quote_identifiers_with();
-				statement += column.name;
-				statement += client.quote_identifiers_with();
+				statement += client.quote_identifier(column.name);
 				statement += "), 0) + 1, false) FROM ";
 				statement += table.name;
 				client.execute(statement);

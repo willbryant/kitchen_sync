@@ -65,7 +65,7 @@ class Mysql2::Client
   end
 
   def quote_ident(name)
-    "`#{name}`"
+    "`#{name.gsub('`', '``')}`"
   end
 
   def zero_time_value

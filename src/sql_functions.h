@@ -12,23 +12,27 @@ using namespace std;
 const string ASCENDING("ASC");
 const string DESCENDING("DESC");
 
+string quote_identifier(const string &name, char quote) {
+	string result = quote + name + quote;
+	for (size_t pos = 1; (pos = result.find(quote, pos)) != result.length() - 1; pos += 2) {
+		result.insert(pos, 1, quote);
+	}
+	return result;
+}
+
 template <typename DatabaseClient>
 string column_orders_list(DatabaseClient &client, const Columns &columns, const ColumnIndices &column_indices, const string &order = ASCENDING) {
 	if (column_indices.empty()) return "";
 
 	string result(" ORDER BY ");
 
-	result += client.quote_identifiers_with();
-	result += columns[*column_indices.begin()].name;
-	result += client.quote_identifiers_with();
+	result += client.quote_identifier(columns[*column_indices.begin()].name);
 	result += ' ';
 	result += order;
 
 	for (ColumnIndices::const_iterator column_index = column_indices.begin() + 1; column_index != column_indices.end(); ++column_index) {
 		result += ", ";
-		result += client.quote_identifiers_with();
-		result += columns[*column_index].name;
-		result += client.quote_identifiers_with();
+		result += client.quote_identifier(columns[*column_index].name);
 		result += ' ';
 		result += order;
 	}
@@ -40,15 +44,11 @@ template <typename DatabaseClient>
 string columns_list(DatabaseClient &client, const Columns &columns, const ColumnIndices &column_indices) {
 	string result;
 
-	result += client.quote_identifiers_with();
-	result += columns[*column_indices.begin()].name;
-	result += client.quote_identifiers_with();
+	result += client.quote_identifier(columns[*column_indices.begin()].name);
 
 	for (ColumnIndices::const_iterator column_index = column_indices.begin() + 1; column_index != column_indices.end(); ++column_index) {
 		result += ", ";
-		result += client.quote_identifiers_with();
-		result += columns[*column_index].name;
-		result += client.quote_identifiers_with();
+		result += client.quote_identifier(columns[*column_index].name);
 	}
 
 	return result;
@@ -129,9 +129,7 @@ string select_columns_sql(DatabaseClient &client, const Table &table) {
 			result += column->filter_expression;
 			result += " AS ";
 		}
-		result += client.quote_identifiers_with();
-		result += column->name;
-		result += client.quote_identifiers_with();
+		result += client.quote_identifier(column->name);
 	}
 	return result;
 }

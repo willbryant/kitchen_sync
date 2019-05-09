@@ -73,7 +73,7 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
     clear_schema
     create_adapterspecifictbl
     expected_row_data = adapterspecifictbl_row
-    execute "INSERT INTO #{adapterspecifictbl_def["name"]} (#{expected_row_data.keys.join(", ")}) VALUES (#{expected_row_data.values.collect {|v| "'#{connection.escape v.to_s}'"}.join(", ")})"
+    execute "INSERT INTO #{adapterspecifictbl_def["name"]} (#{expected_row_data.keys.collect {|k| connection.quote_ident k}.join(", ")}) VALUES (#{expected_row_data.values.collect {|v| "'#{connection.escape v.to_s}'"}.join(", ")})"
 
     send_handshake_commands
 

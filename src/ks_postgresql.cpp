@@ -6,6 +6,7 @@
 
 #include "schema.h"
 #include "database_client_traits.h"
+#include "sql_functions.h"
 #include "row_printer.h"
 
 class PostgreSQLRes {
@@ -144,7 +145,7 @@ public:
 	string column_default(const Table &table, const Column &column);
 	string column_definition(const Table &table, const Column &column);
 
-	inline char quote_identifiers_with() const { return '"'; }
+	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '"'); };
 	inline ColumnFlags supported_flags() const { return ColumnFlags::time_zone; }
 
 	void execute(const string &sql);
@@ -468,9 +469,7 @@ string PostgreSQLClient::column_default(const Table &table, const Column &column
 
 string PostgreSQLClient::column_definition(const Table &table, const Column &column) {
 	string result;
-	result += quote_identifiers_with();
-	result += column.name;
-	result += quote_identifiers_with();
+	result += quote_identifier(column.name);
 	result += ' ';
 
 	result += column_type(column);

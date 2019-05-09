@@ -295,6 +295,8 @@ SQL
           tiny2 TINYINT(2) UNSIGNED DEFAULT 99,
           timestampboth TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           #{"timestampcreateonly TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," unless mysql_5_5?}
+          `select` INT,
+          ```quoted``` INT,
           PRIMARY KEY(pri))
 SQL
 
@@ -309,6 +311,8 @@ SQL
           pgfunctiondefault TEXT DEFAULT version(),
           timewithzone time with time zone,
           timestampwithzone timestamp with time zone,
+          "select" INT,
+          "\"\"quoted\"\"" INT,
           PRIMARY KEY(pri))
 SQL
     end
@@ -322,7 +326,9 @@ SQL
           {"name" => "pri",                  "column_type" => ColumnTypes::UINT, "size" =>  4, "nullable" => false},
           {"name" => "tiny2",                "column_type" => ColumnTypes::UINT, "size" =>  1, "default_value" => "99"}, # note we've lost the (nonportable) display width (2) - size tells us the size of the integers, not the display width
           {"name" => "timestampboth",        "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true},
-          ({"name" => "timestampcreateonly", "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true} unless mysql_5_5?)
+          ({"name" => "timestampcreateonly", "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true} unless mysql_5_5?),
+          {"name" => "select",               "column_type" => ColumnTypes::SINT, "size" =>  4},
+          {"name" => "`quoted`",             "column_type" => ColumnTypes::SINT, "size" =>  4},
         ].compact,
         "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
         "primary_key_columns" => [0],
@@ -338,7 +344,10 @@ SQL
           {"name" => "sqlspecialdefault",  "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => CaseInsensitiveString.new("CURRENT_SCHEMA")}, # special treatment noted on System Information Functions documentation page
           {"name" => "pgfunctiondefault",  "column_type" => ColumnTypes::TEXT,                                     "default_function" => "version()"},
           {"name" => "timewithzone",       "column_type" => ColumnTypes::TIME, "time_zone" => true},
-          {"name" => "timestampwithzone",  "column_type" => ColumnTypes::DTTM, "time_zone" => true}],
+          {"name" => "timestampwithzone",  "column_type" => ColumnTypes::DTTM, "time_zone" => true},
+          {"name" => "select",             "column_type" => ColumnTypes::SINT, "size" => 4},
+          {"name" => "\"quoted\"",         "column_type" => ColumnTypes::SINT, "size" =>  4},
+        ],
         "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
         "primary_key_columns" => [0],
         "keys" => [] }
