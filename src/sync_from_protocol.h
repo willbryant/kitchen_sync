@@ -1,5 +1,6 @@
 #include "schema.h"
 #include "row_serialization.h"
+#include "query_functions.h"
 #include "command.h"
 #include "hash_algorithm.h"
 #include "sync_error.h"
