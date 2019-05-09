@@ -21,18 +21,14 @@ string quote_identifier(const string &name, char quote) {
 }
 
 template <typename DatabaseClient>
-string column_orders_list(DatabaseClient &client, const Columns &columns, const ColumnIndices &column_indices, const string &order = ASCENDING) {
-	if (column_indices.empty()) return "";
+string column_orders_list(DatabaseClient &client, const Table &table, const string &order = ASCENDING) {
+	if (table.primary_key_columns.empty()) return "";
 
 	string result(" ORDER BY ");
 
-	result += client.quote_identifier(columns[*column_indices.begin()].name);
-	result += ' ';
-	result += order;
-
-	for (ColumnIndices::const_iterator column_index = column_indices.begin() + 1; column_index != column_indices.end(); ++column_index) {
-		result += ", ";
-		result += client.quote_identifier(columns[*column_index].name);
+	for (ColumnIndices::const_iterator column_index = table.primary_key_columns.begin(); column_index != table.primary_key_columns.end(); ++column_index) {
+		if (column_index != table.primary_key_columns.begin()) result += ", ";
+		result += client.quote_identifier(table.columns[*column_index].name);
 		result += ' ';
 		result += order;
 	}
@@ -143,7 +139,7 @@ string retrieve_rows_sql(DatabaseClient &client, const Table &table, const Colum
 	result += " FROM ";
 	result += client.quote_identifier(table.name);
 	result += where_sql(client, table, prev_key, last_key, table.where_conditions);
-	result += column_orders_list(client, table.columns, table.primary_key_columns);
+	result += column_orders_list(client, table);
 	if (row_count != NO_ROW_COUNT_LIMIT) {
 		result += " LIMIT " + to_string(row_count);
 	}
@@ -165,7 +161,7 @@ string select_first_key_sql(DatabaseClient &client, const Table &table) {
 	result += " FROM ";
 	result += client.quote_identifier(table.name);
 	result += where_sql(client, table, ColumnValues(), ColumnValues(), table.where_conditions);
-	result += column_orders_list(client, table.columns, table.primary_key_columns, ASCENDING);
+	result += column_orders_list(client, table, ASCENDING);
 	result += " LIMIT 1";
 	return result;
 }
@@ -177,7 +173,7 @@ string select_last_key_sql(DatabaseClient &client, const Table &table) {
 	result += " FROM ";
 	result += client.quote_identifier(table.name);
 	result += where_sql(client, table, ColumnValues(), ColumnValues(), table.where_conditions);
-	result += column_orders_list(client, table.columns, table.primary_key_columns, DESCENDING);
+	result += column_orders_list(client, table, DESCENDING);
 	result += " LIMIT 1";
 	return result;
 }
@@ -189,7 +185,7 @@ string select_not_earlier_key_sql(DatabaseClient &client, const Table &table, co
 	result += " FROM ";
 	result += client.quote_identifier(table.name);
 	result += where_sql(client, table, " >= ", key, " > ", prev_key, " <= ", last_key, table.where_conditions);
-	result += column_orders_list(client, table.columns, table.primary_key_columns, ASCENDING);
+	result += column_orders_list(client, table, ASCENDING);
 	result += " LIMIT 1";
 	return result;
 }
