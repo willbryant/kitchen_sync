@@ -1,6 +1,10 @@
 Changelog
 =========
 
+1.16.1
+------
+* Add missing test file to fix build.
+
 1.16
 ----
 * Support quote characters in column and table names.
