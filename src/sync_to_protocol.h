@@ -330,7 +330,7 @@ struct SyncToProtocol {
 			// the rest of the table); queue it to be scanned
 			if (hash_result.estimated_rows_in_range == UNKNOWN_ROW_COUNT) {
 				// we're scanning forward, do that last
-				size_t rows_to_hash = rows_to_scan_forward_next(rows_to_hash, match, hash_result.our_row_count, hash_result.our_size);
+				size_t rows_to_hash_next = rows_to_scan_forward_next(rows_to_hash, match, hash_result.our_row_count, hash_result.our_size);
 
 				// as discussed in send_hash_command, when the table has a subdividable primary key, we
 				// try to break the remaining range into two, so that if there's another worker free it
@@ -340,13 +340,13 @@ struct SyncToProtocol {
 				// are the result of more subdivisions before ranges that are the result of fewer.
 				if (!hash_result.next_midpoint.empty()) {
 					if (hash_result.next_midpoint != hash_result.our_last_key) {
-						table_job->ranges_to_check.emplace(hash_result.our_last_key, hash_result.next_midpoint, UNKNOWN_ROW_COUNT, rows_to_hash, hash_result.priority + 1);
+						table_job->ranges_to_check.emplace(hash_result.our_last_key, hash_result.next_midpoint, UNKNOWN_ROW_COUNT, rows_to_hash_next, hash_result.priority + 1);
 					}
 					if (last_key != hash_result.next_midpoint) {
-						table_job->ranges_to_check.emplace(hash_result.next_midpoint, last_key, UNKNOWN_ROW_COUNT, rows_to_hash, hash_result.priority + 1);
+						table_job->ranges_to_check.emplace(hash_result.next_midpoint, last_key, UNKNOWN_ROW_COUNT, rows_to_hash_next, hash_result.priority + 1);
 					}
 				} else {
-					table_job->ranges_to_check.emplace(hash_result.our_last_key, last_key, UNKNOWN_ROW_COUNT, rows_to_hash, hash_result.priority);
+					table_job->ranges_to_check.emplace(hash_result.our_last_key, last_key, UNKNOWN_ROW_COUNT, rows_to_hash_next, hash_result.priority);
 				}
 			} else {
 				// we're hunting errors, do that first.  if the part just checked matched, then the
@@ -354,9 +354,9 @@ struct SyncToProtocol {
 				// if it didn't match, then we don't know if the remaining part has error or not, but
 				// we hope not, so hash the remaining rows in one go.
 				size_t rows_remaining = hash_result.estimated_rows_in_range > hash_result.our_row_count ? hash_result.estimated_rows_in_range - hash_result.our_row_count : 1; // conditional to protect against underflow
-				size_t rows_to_hash = match && rows_remaining > 1 && hash_result.our_size > target_minimum_block_size ? rows_remaining/2 : rows_remaining;
+				size_t rows_to_hash_next = match && rows_remaining > 1 && hash_result.our_size > target_minimum_block_size ? rows_remaining/2 : rows_remaining;
 
-				table_job->ranges_to_check.emplace(hash_result.our_last_key, last_key, rows_remaining, rows_to_hash, hash_result.priority + 1);
+				table_job->ranges_to_check.emplace(hash_result.our_last_key, last_key, rows_remaining, rows_to_hash_next, hash_result.priority + 1);
 			}
 		}
 
