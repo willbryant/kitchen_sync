@@ -2,6 +2,7 @@
 #define SUBSTITUTE_PRIMARY_KEY_H
 
 #include <algorithm>
+#include <numeric>
 #include <set>
 
 struct ColumnNullable {
@@ -14,20 +15,21 @@ struct ColumnNullable {
 };
 
 template <typename DatabaseClient>
-size_t cardinality(DatabaseClient &client, const Table &table, const ColumnIndices &column_indices) {
-	return atoi(client.select_one(count_distinct_values_sql(client, table, column_indices)).c_str());
-}
-
-template <typename DatabaseClient>
-const Key *highest_cardinality_key(DatabaseClient &client, const Table &table, const vector<const Key*> &candidate_keys) {
+const Key *highest_selectivity_key(DatabaseClient &client, const Table &table, const vector<const Key*> &candidate_keys) {
 	ColumnNullable nullable(table);
 	const Key *best_candidate = nullptr;
-	size_t best_candidate_cardinality = 0;
+	float best_candidate_cardinality = 0;
 
 	for (const Key *key : candidate_keys) {
 		ColumnIndices::const_iterator first_nullable = find_if(key->columns.cbegin(), key->columns.cend(), nullable);
+		size_t number_of_columns = first_nullable - key->columns.cbegin();
 
-		size_t this_candidate_cardinality = cardinality(client, table, ColumnIndices(key->columns.cbegin(), first_nullable));
+		// our current approximation is to add together the estimated cardinality of the columns of interest;
+		// there's no particular science behind this and of course in reality it's unlikely the column values
+		// are unrelated, but it means keys containing high-cardinality columns tend to win and those containing
+		// extra columns as well tend to win even more, giving us a better chance of finding a nearly-unique key.
+		const vector<float> &estimates(key->column_cardinality_estimates);
+		float this_candidate_cardinality = accumulate(estimates.cbegin(), estimates.cbegin() + min(estimates.size(), number_of_columns), 0);
 
 		if (!best_candidate || this_candidate_cardinality > best_candidate_cardinality) {
 			best_candidate = key;
@@ -105,7 +107,7 @@ void choose_primary_key_for(DatabaseClient &client, Table &table) {
 	// cardinality to get as close as possible to one row per key (like any real or substitute primary
 	// key would have). this is obviously expensive to determine - it's much better to have real PKs!
 	if (candidate_keys.size() > 1) {
-		configure_partial_key(table, *highest_cardinality_key(client, table, candidate_keys));
+		configure_partial_key(table, *highest_selectivity_key(client, table, candidate_keys));
 	} else if (!candidate_keys.empty()) {
 		configure_partial_key(table, *candidate_keys.front());
 	}

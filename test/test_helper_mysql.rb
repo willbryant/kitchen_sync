@@ -64,6 +64,10 @@ class Mysql2::Client
     query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = !!(row["Extra"] =~ /auto_increment/)}
   end
 
+  def analyze_table(name)
+    execute "ANALYZE TABLE #{quote_ident name}"
+  end
+
   def quote_ident(name)
     "`#{name.gsub('`', '``')}`"
   end

@@ -648,6 +648,7 @@ struct MySQLKeyLister {
 		string key_name = row.string_at(2);
 		string column_name = row.string_at(4);
 		size_t column_index = table.index_of_column(column_name);
+		size_t cardinality = row.uint_at(6);
 		// FUTURE: consider representing collation, sub_part, packed, index_type, and perhaps comment/index_comment
 
 		if (key_name == "PRIMARY") {
@@ -660,7 +661,9 @@ struct MySQLKeyLister {
 			if (table.keys.empty() || table.keys.back().name != key_name) {
 				table.keys.push_back(Key(key_name, unique));
 			}
-			table.keys.back().columns.push_back(column_index);
+			Key &key(table.keys.back());
+			key.columns.push_back(column_index);
+			key.column_cardinality_estimates.push_back(cardinality);
 		}
 	}
 

@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 #include <set>
+#include <cmath>
 #include <libpq-fe.h>
 
 #include "schema.h"
@@ -619,11 +620,16 @@ struct PostgreSQLKeyLister {
 		string column_name = row.string_at(2);
 		size_t column_index = table.index_of_column(column_name);
 		// FUTURE: consider representing collation, index type, partial keys etc.
+		float reltuples = row.null_at(3) ? 0 : atof(row.string_at(3).c_str());
+		float n_distinct = row.null_at(4) ? 0 : atof(row.string_at(4).c_str());
+		ssize_t cardinality = n_distinct >= 0 ? lroundf(n_distinct) : lroundf(-n_distinct*reltuples);
 
 		if (table.keys.empty() || table.keys.back().name != key_name) {
 			table.keys.push_back(Key(key_name, unique));
 		}
-		table.keys.back().columns.push_back(column_index);
+		Key &key(table.keys.back());
+		key.columns.push_back(column_index);
+		key.column_cardinality_estimates.push_back(cardinality);
 	}
 
 	Table &table;
@@ -661,18 +667,21 @@ struct PostgreSQLTableLister {
 
 		PostgreSQLKeyLister key_lister(table);
 		client.query(
-			"SELECT indexname, indisunique, attname "
-			  "FROM (SELECT table_class.oid AS table_oid, index_class.relname AS indexname, pg_index.indisunique, generate_series(1, array_length(indkey, 1)) AS position, unnest(indkey) AS attnum "
+			"SELECT indexname, indisunique, pg_attribute.attname, reltuples, n_distinct "
+			  "FROM (SELECT table_class.oid AS table_oid, index_class.reltuples, index_class.relname AS indexname, pg_index.indisunique, generate_series(1, array_length(indkey, 1)) AS position, unnest(indkey) AS attnum "
 			          "FROM pg_class table_class, pg_class index_class, pg_index "
 			         "WHERE table_class.relname = '" + client.escape_value(table.name) + "' AND "
 			               "table_class.relkind = 'r' AND "
 			               "index_class.relkind = 'i' AND "
 			               "pg_index.indrelid = table_class.oid AND "
 			               "pg_index.indexrelid = index_class.oid AND "
-			               "NOT pg_index.indisprimary) index_attrs,"
-			       "pg_attribute "
-			 "WHERE pg_attribute.attrelid = table_oid AND "
+			               "NOT pg_index.indisprimary) index_attrs "
+			  "JOIN pg_attribute "
+				"ON pg_attribute.attrelid = table_oid AND "
 			       "pg_attribute.attnum = index_attrs.attnum "
+		 "LEFT JOIN pg_stats "
+				"ON pg_stats.tablename = '" + client.escape_value(table.name) + "' AND "
+			       "pg_stats.attname = pg_attribute.attname "
 			 "ORDER BY indexname, index_attrs.position",
 			key_lister);
 

@@ -82,6 +82,7 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
     execute "CREATE INDEX index_by_table2_id ON noprimaryjointbl (table2_id)" # you'd never create this one and the next one in a real table since it would be redundant
     execute "CREATE INDEX index_by_table2_id_and_table1_id ON noprimaryjointbl (table2_id, table1_id)"
     execute "INSERT INTO noprimaryjointbl (table1_id, table2_id) VALUES (1, 10), (2, 10), (2, 11), (2, 12), (2, 13)" # so (table2, table1) has cardinality 5 whereas (table1) only has cardinality 2 and (table2) cardinality 4
+    connection.analyze_table "noprimaryjointbl"
     send_handshake_commands
 
     table = noprimaryjointbl_def(create_keys: false)

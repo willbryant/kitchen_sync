@@ -128,6 +128,10 @@ class PG::Connection
     table_column_defaults(table_name).collect.with_object({}) {|(column, default), results| results[column] = !!(default =~ /^nextval\('\w+_seq'::regclass\)/)}
   end
 
+  def analyze_table(name)
+    execute "ANALYZE #{quote_ident name}"
+  end
+
   def quote_ident(name)
     self.class.quote_ident(name)
   end

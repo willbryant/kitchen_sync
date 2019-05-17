@@ -75,6 +75,9 @@ struct Key {
 	bool unique;
 	ColumnIndices columns;
 
+	// the following member isn't serialized currently (could be, but not required), and isn't really part of the schema so much as a useful bit of data for optimization
+	vector<float> column_cardinality_estimates;
+
 	inline Key(const string &name, bool unique): name(name), unique(unique) {}
 	inline Key() {}
 
