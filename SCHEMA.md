@@ -35,7 +35,7 @@ Currently the following fully-compatible standard types are supported:
 | UINT (size 8) | UNSIGNED BIGINT | bigint | PostgreSQL conversion will fail for unsigned values over 2^63 |
 | REAL (size 4) | FLOAT | real | |
 | REAL (size 8) | DOUBLE | double precision | |
-| DECI (size n, scale m) | DECIMAL(n, m) | numeric(n, m) | |
+| DECI (size n, scale m) | DECIMAL(n, m) | numeric(n, m) | PostgreSQL also allows numeric with no precision or scale specification; MySQL converts this to numeric(10, 0) |
 | DATE | DATE | date | | 
 | TIME | TIME | time without time zone | |
 | DTTM | DATETIME | timestamp without time zone | |
