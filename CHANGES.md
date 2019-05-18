@@ -1,6 +1,10 @@
 Changelog
 =========
 
+1.17
+----
+* Support PostgreSQL's `numeric` types with no scale or precision specification.
+
 1.16.1
 ------
 * Add missing test file to fix build.
