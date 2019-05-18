@@ -1,6 +1,8 @@
 #ifndef SUBSTITUTE_PRIMARY_KEY_H
 #define SUBSTITUTE_PRIMARY_KEY_H
 
+#include <algorithm>;
+
 struct ColumnNullable {
 	ColumnNullable(const Table &table): table(table) {}
 
