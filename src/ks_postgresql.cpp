@@ -398,12 +398,16 @@ string PostgreSQLClient::column_type(const Column &column) {
 		return (column.size == 4 ? "real" : "double precision");
 
 	} else if (column.column_type == ColumnTypes::DECI) {
-		string result("numeric(");
-		result += to_string(column.size);
-		result += ',';
-		result += to_string(column.scale);
-		result += ')';
-		return result;
+		if (column.size) {
+			string result("numeric(");
+			result += to_string(column.size);
+			result += ',';
+			result += to_string(column.scale);
+			result += ')';
+			return result;
+		} else {
+			return "numeric";
+		}
 
 	} else if (column.column_type == ColumnTypes::DATE) {
 		return "date";
@@ -544,6 +548,8 @@ struct PostgreSQLColumnLister {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::REAL, 8);
 		} else if (db_type.substr(0, 8) == "numeric(") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DECI, extract_column_length(db_type), extract_column_scale(db_type));
+		} else if (db_type.substr(0, 7) == "numeric") {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DECI);
 		} else if (db_type.substr(0, 18) == "character varying(") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::VCHR, extract_column_length(db_type));
 		} else if (db_type.substr(0, 18) == "character varying") {

@@ -373,6 +373,14 @@ void MySQLClient::convert_unsupported_database_schema(Database &database) {
 				column.column_type = ColumnTypes::FCHR; // somewhat arbitrary - would could use varchar, since char is more old-fashioned, but since UUIDs are all the same length char seems more logical
 				column.size = 36;
 			}
+
+			// postgresql allows numeric with no precision or scale specification and preserves the given input data
+			// up to an implementation-defined precision and scale limit; mysql doesn't, and silently converts
+			// `numeric` to `numeric(10, 0)`.  lacking any better knowledge, we follow their lead and do the same
+			// conversion here, just so that the schema matcher sees that the column definition is already the same.
+			if (column.column_type == ColumnTypes::DECI && !column.size && !column.scale) {
+				column.size = 10;
+			}
 		}
 	}
 }

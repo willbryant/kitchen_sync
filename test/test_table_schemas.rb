@@ -305,6 +305,7 @@ SQL
         CREATE TABLE """postgresql""tbl" (
           pri UUID NOT NULL,
           nolengthvaryingfield CHARACTER VARYING,
+          noprecisionnumericfield NUMERIC,
           currentdatefield DATE DEFAULT CURRENT_DATE,
           currentuserdefault VARCHAR(255) DEFAULT current_user,
           sqlspecialdefault VARCHAR(255) DEFAULT current_schema,
@@ -339,6 +340,7 @@ SQL
         "columns" => [
           {"name" => "pri",                "column_type" => ColumnTypes::UUID,                "nullable" => false},
           {"name" => "nolengthvaryingfield", "column_type" => ColumnTypes::VCHR},
+          {"name" => "noprecisionnumericfield", "column_type" => ColumnTypes::DECI},
           {"name" => "currentdatefield",   "column_type" => ColumnTypes::DATE,                                     "default_function" => CaseInsensitiveString.new("CURRENT_DATE")},
           {"name" => "currentuserdefault", "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => CaseInsensitiveString.new("CURRENT_USER")},
           {"name" => "sqlspecialdefault",  "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => CaseInsensitiveString.new("CURRENT_SCHEMA")}, # special treatment noted on System Information Functions documentation page
@@ -362,7 +364,8 @@ SQL
 
     when 'postgresql'
       { "pri" => "3d190b75-dbb1-4d34-a41e-d590c1c8a895",
-        "nolengthvaryingfield" => "test data" }
+        "nolengthvaryingfield" => "test data",
+        "noprecisionnumericfield" => "1234567890.0987654321" }
     end
   end
 
