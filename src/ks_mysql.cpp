@@ -370,7 +370,7 @@ void MySQLClient::convert_unsupported_database_schema(Database &database) {
 			// to know about the application specifics to make any other choice (eg. for binary, have the bytes been
 			// swapped using the option for timestamp UUIDs?).
 			if (column.column_type == ColumnTypes::UUID) {
-				column.column_type = ColumnTypes::FCHR; // somewhat arbitrary - would could use varchar, since char is more old-fashioned, but since UUIDs are all the same length char seems more logical
+				column.column_type = ColumnTypes::FCHR; // somewhat arbitrary - we could use varchar, since char is more old-fashioned, but since UUIDs are all the same length char seems more logical
 				column.size = 36;
 			}
 
