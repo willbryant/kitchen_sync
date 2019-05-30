@@ -87,15 +87,13 @@ public:
 				case BYTEAOID: {
 					size_t decoded_length;
 					void *decoded = PQunescapeBytea((const unsigned char *)result_at(column_number), &decoded_length);
-					// we use our non-copied memory class rather than having to copy the decode results out to a temporary string
-					packer << memory(decoded, decoded_length);
+					packer << uncopied_byte_string(decoded, decoded_length);
 					PQfreemem(decoded);
 					break;
 				}
 
 				default:
-					// we use our non-copied memory class, equivalent to but faster than using string_at
-					packer << memory(result_at(column_number), length_of(column_number));
+					packer << uncopied_byte_string(result_at(column_number), length_of(column_number));
 			}
 		}
 	}
