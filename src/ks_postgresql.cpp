@@ -307,11 +307,10 @@ string PostgreSQLClient::escape_column_value(const Column &column, const string 
 
 	size_t encoded_length;
 	const unsigned char *encoded = PQescapeByteaConn(conn, (const unsigned char *)value.c_str(), value.size(), &encoded_length);
-	string result(encoded, encoded + encoded_length);
+	string result(encoded, encoded + encoded_length - 1); // encoded_length includes the null terminator
 	PQfreemem((void *)encoded);
 
-	// bizarrely, the bytea parser is an extra level on top of the normal escaping, so you still need the latter after PQescapeByteaConn, even though PQunescapeBytea doesn't do the reverse
-	return escape_value(result);
+	return result;
 }
 
 void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
