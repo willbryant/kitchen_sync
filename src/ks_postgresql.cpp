@@ -138,7 +138,7 @@ public:
 	void populate_database_schema(Database &database);
 	void convert_unsupported_database_schema(Database &database);
 	string escape_value(const string &value);
-	string escape_column_value(const Column &column, const string &value);
+	string &append_escaped_column_value_to(string &result, const Column &column, const string &value);
 	string column_type(const Column &column);
 	string column_sequence_name(const Table &table, const Column &column);
 	string column_default(const Table &table, const Column &column);
@@ -300,14 +300,18 @@ string PostgreSQLClient::escape_value(const string &value) {
 	return result;
 }
 
-string PostgreSQLClient::escape_column_value(const Column &column, const string &value) {
+string &PostgreSQLClient::append_escaped_column_value_to(string &result, const Column &column, const string &value) {
 	if (column.column_type != ColumnTypes::BLOB) {
-		return escape_value(value);
+		string buffer;
+		buffer.resize(value.size()*2 + 1);
+		size_t result_length = PQescapeStringConn(conn, (char*)buffer.data(), value.c_str(), value.size(), nullptr);
+		result.append(buffer, 0, result_length);
+		return result;
 	}
 
 	size_t encoded_length;
 	const unsigned char *encoded = PQescapeByteaConn(conn, (const unsigned char *)value.c_str(), value.size(), &encoded_length);
-	string result(encoded, encoded + encoded_length - 1); // encoded_length includes the null terminator
+	result.append(encoded, encoded + encoded_length - 1); // encoded_length includes the null terminator
 	PQfreemem((void *)encoded);
 
 	return result;
@@ -455,9 +459,9 @@ string PostgreSQLClient::column_default(const Table &table, const Column &column
 				column.column_type == ColumnTypes::DECI) {
 				result += column.default_value;
 			} else {
-				result += "'";
-				result += escape_column_value(column, column.default_value);
-				result += "'";
+				result += '\'';
+				append_escaped_column_value_to(result, column, column.default_value);
+				result += '\'';
 			}
 			break;
 

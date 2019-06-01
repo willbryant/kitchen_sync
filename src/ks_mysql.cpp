@@ -191,7 +191,7 @@ public:
 	void populate_database_schema(Database &database);
 	void convert_unsupported_database_schema(Database &database);
 	string escape_value(const string &value);
-	inline string escape_column_value(const Column &column, const string &value) { return escape_value(value); }
+	string &append_escaped_column_value_to(string &result, const Column &column, const string &value);
 	string column_type(const Column &column);
 	string column_default(const Table &table, const Column &column);
 	string column_definition(const Table &table, const Column &column);
@@ -361,6 +361,14 @@ string MySQLClient::escape_value(const string &value) {
 	return result;
 }
 
+string &MySQLClient::append_escaped_column_value_to(string &result, const Column &column, const string &value) {
+	string buffer;
+	buffer.resize(value.size()*2 + 1);
+	size_t result_length = mysql_real_escape_string(&mysql, (char*)buffer.data(), value.c_str(), value.size());
+	result.append(buffer, 0, result_length);
+	return result;
+}
+
 void MySQLClient::convert_unsupported_database_schema(Database &database) {
 	for (Table &table : database.tables) {
 		for (Column &column : table.columns) {
@@ -517,7 +525,7 @@ string MySQLClient::column_default(const Table &table, const Column &column) {
 				result += column.default_value;
 			} else {
 				result += "'";
-				result += escape_column_value(column, column.default_value);
+				append_escaped_column_value_to(result, column, column.default_value);
 				result += "'";
 			}
 			return result;
