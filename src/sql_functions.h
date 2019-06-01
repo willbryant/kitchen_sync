@@ -70,7 +70,7 @@ string values_list(DatabaseClient &client, const Table &table, const ColumnValue
 		if (n > 0) {
 			result += ',';
 		}
-		result += encode(client, table.columns[table.primary_key_columns[n]], values[n]);
+		sql_encode_and_append_packed_value_to(result, client, table.columns[table.primary_key_columns[n]], values[n]);
 	}
 	result += ")";
 	return result;

@@ -14,7 +14,7 @@ void append_row_tuple(DatabaseClient &client, const Columns &columns, BaseSQL &s
 		if (n > 0) {
 			sql += ',';
 		}
-		sql += encode(client, columns[n], row[n]);
+		sql_encode_and_append_packed_value_to(sql.curr, client, columns[n], row[n]);
 	}
 }
 

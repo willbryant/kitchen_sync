@@ -33,7 +33,7 @@ struct UniqueKeyClearer {
 			size_t column = (*key_columns)[n];
 			delete_sql += table->columns[column].name;
 			delete_sql += '=';
-			delete_sql += encode(*client, table->columns[column], row[column]);
+			sql_encode_and_append_packed_value_to(delete_sql.curr, *client, table->columns[column], row[column]);
 		}
 	}
 
