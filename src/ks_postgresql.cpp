@@ -522,7 +522,7 @@ struct PostgreSQLColumnLister {
 			} else if (default_value.length() > 2 && default_value[0] == '\'') {
 				default_value = unescape_value(default_value.substr(1, default_value.rfind('\'') - 1));
 
-			} else if (default_value.length() > 0 && (default_value[0] < '0' || default_value[0] > '9') && default_value != "false" && default_value != "true") {
+			} else if (default_value.length() > 0 && default_value != "false" && default_value != "true" && default_value.find_first_not_of("0123456789.") != string::npos) {
 				default_type = DefaultType::default_function;
 
 				// postgresql converts CURRENT_TIMESTAMP to now(); convert it back for portability
@@ -590,7 +590,8 @@ struct PostgreSQLColumnLister {
 		result.reserve(escaped.length());
 		for (string::size_type n = 0; n < escaped.length(); n++) {
 			// this is by no means a complete unescaping function, it only handles the cases seen in
-			// the output of pg_get_expr so far
+			// the output of pg_get_expr so far.  note that pg does not interpret regular character
+			// escapes such as \t and \n when outputting these default definitions.
 			if (escaped[n] == '\\' || escaped[n] == '\'') {
 				n += 1;
 			}
