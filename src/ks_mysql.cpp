@@ -522,27 +522,27 @@ string MySQLClient::column_type(const Column &column) {
 	} else if (column.column_type == ColumnTypes::SPAT) {
 		string result("");
 
-        if (column.scale == SpatialType::multi) {
-            result += "multi";
-        }
+		if (column.scale == SpatialType::multi) {
+			result += "multi";
+		}
 
-        if (column.size == SpatialType::geometry) {
-            result += "geometry";
-        } else if (column.size == SpatialType::linestring) {
-            result += "linestring";
-        } else if (column.size == SpatialType::point) {
-            result += "point";
-        } else if (column.size == SpatialType::polygon) {
-            result += "polygon";
-        } else {
-            throw runtime_error("Don't know how to express spatial type of " + column.name);
-        }
+		if (column.size == SpatialType::geometry) {
+			result += "geometry";
+		} else if (column.size == SpatialType::linestring) {
+			result += "linestring";
+		} else if (column.size == SpatialType::point) {
+			result += "point";
+		} else if (column.size == SpatialType::polygon) {
+			result += "polygon";
+		} else {
+			throw runtime_error("Don't know how to express spatial type of " + column.name);
+		}
 
-        if (column.scale == SpatialType::collection) {
-            result += "collection";
-        }
+		if (column.scale == SpatialType::collection) {
+			result += "collection";
+		}
 
-        return result;
+		return result;
 	} else {
 		throw runtime_error("Don't know how to express column type of " + column.name + " (" + column.column_type + ")");
 	}
