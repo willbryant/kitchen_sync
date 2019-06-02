@@ -513,6 +513,12 @@ struct PostgreSQLColumnLister {
 				default_type = DefaultType::sequence;
 				default_value = "";
 
+			} else if (default_value.substr(0, 6) == "NULL::" && db_type.substr(0, default_value.length() - 6) == default_value.substr(6)) {
+				// postgresql treats a NULL default as distinct to no default, so we try to respect that by keeping the value as a function,
+				// but chop off the type conversion for the sake of portability
+				default_type = DefaultType::default_function;
+				default_value = "NULL";
+
 			} else if (default_value.length() > 2 && default_value[0] == '\'') {
 				default_value = unescape_value(default_value.substr(1, default_value.rfind('\'') - 1));
 

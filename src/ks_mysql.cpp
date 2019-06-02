@@ -376,6 +376,14 @@ void MySQLClient::convert_unsupported_database_schema(Database &database) {
 			if (column.column_type == ColumnTypes::DECI && !column.size && !column.scale) {
 				column.size = 10;
 			}
+
+			// postgresql treats no default and DEFAULT NULL as separate things, even though they behave much the same.
+			// although mysql would happily accept the DEFAULT NULL strings we would produce below, we want to go ahead
+			// and convert it here so that the schema matcher also sees them as the same thing.
+			if (column.default_type == DefaultType::default_function && column.default_value == "NULL") {
+				column.default_type = DefaultType::no_default;
+				column.default_value = "";
+			}
 		}
 	}
 }

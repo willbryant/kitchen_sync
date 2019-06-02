@@ -301,6 +301,7 @@ SQL
         CREATE TABLE ```mysql``tbl` (
           pri INT UNSIGNED NOT NULL,
           tiny2 TINYINT(2) UNSIGNED DEFAULT 99,
+          nulldefaultstr VARCHAR(255) DEFAULT NULL,
           timestampboth TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           #{"timestampcreateonly TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," unless mysql_5_5?}
           `select` INT,
@@ -314,6 +315,7 @@ SQL
           pri UUID NOT NULL,
           nolengthvaryingfield CHARACTER VARYING,
           noprecisionnumericfield NUMERIC,
+          nulldefaultstr VARCHAR(255) DEFAULT NULL,
           currentdatefield DATE DEFAULT CURRENT_DATE,
           currentuserdefault VARCHAR(255) DEFAULT current_user,
           sqlspecialdefault VARCHAR(255) DEFAULT current_schema,
@@ -334,6 +336,7 @@ SQL
         "columns" => [
           {"name" => "pri",                  "column_type" => ColumnTypes::UINT, "size" =>  4, "nullable" => false},
           {"name" => "tiny2",                "column_type" => ColumnTypes::UINT, "size" =>  1, "default_value" => "99"}, # note we've lost the (nonportable) display width (2) - size tells us the size of the integers, not the display width
+          {"name" => "nulldefaultstr",       "column_type" => ColumnTypes::VCHR, "size" => 255},
           {"name" => "timestampboth",        "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true},
           ({"name" => "timestampcreateonly", "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true} unless mysql_5_5?),
           {"name" => "select",               "column_type" => ColumnTypes::SINT, "size" =>  4},
@@ -346,17 +349,18 @@ SQL
     when 'postgresql'
       { "name"    => "\"postgresql\"tbl",
         "columns" => [
-          {"name" => "pri",                "column_type" => ColumnTypes::UUID,                "nullable" => false},
+          {"name" => "pri",                  "column_type" => ColumnTypes::UUID,                "nullable" => false},
           {"name" => "nolengthvaryingfield", "column_type" => ColumnTypes::VCHR},
           {"name" => "noprecisionnumericfield", "column_type" => ColumnTypes::DECI},
-          {"name" => "currentdatefield",   "column_type" => ColumnTypes::DATE,                                     "default_function" => CaseInsensitiveString.new("CURRENT_DATE")},
-          {"name" => "currentuserdefault", "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => CaseInsensitiveString.new("CURRENT_USER")},
-          {"name" => "sqlspecialdefault",  "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => CaseInsensitiveString.new("CURRENT_SCHEMA")}, # special treatment noted on System Information Functions documentation page
-          {"name" => "pgfunctiondefault",  "column_type" => ColumnTypes::TEXT,                                     "default_function" => "version()"},
-          {"name" => "timewithzone",       "column_type" => ColumnTypes::TIME, "time_zone" => true},
-          {"name" => "timestampwithzone",  "column_type" => ColumnTypes::DTTM, "time_zone" => true},
-          {"name" => "select",             "column_type" => ColumnTypes::SINT, "size" => 4},
-          {"name" => "\"quoted\"",         "column_type" => ColumnTypes::SINT, "size" =>  4},
+          {"name" => "nulldefaultstr",       "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => "NULL"}, # note different to mysql, where no default and DEFAULT NULL are the same thing
+          {"name" => "currentdatefield",     "column_type" => ColumnTypes::DATE,                                     "default_function" => CaseInsensitiveString.new("CURRENT_DATE")},
+          {"name" => "currentuserdefault",   "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => CaseInsensitiveString.new("CURRENT_USER")},
+          {"name" => "sqlspecialdefault",    "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => CaseInsensitiveString.new("CURRENT_SCHEMA")}, # special treatment noted on System Information Functions documentation page
+          {"name" => "pgfunctiondefault",    "column_type" => ColumnTypes::TEXT,                                     "default_function" => "version()"},
+          {"name" => "timewithzone",         "column_type" => ColumnTypes::TIME, "time_zone" => true},
+          {"name" => "timestampwithzone",    "column_type" => ColumnTypes::DTTM, "time_zone" => true},
+          {"name" => "select",               "column_type" => ColumnTypes::SINT, "size" => 4},
+          {"name" => "\"quoted\"",           "column_type" => ColumnTypes::SINT, "size" =>  4},
         ],
         "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
         "primary_key_columns" => [0],
