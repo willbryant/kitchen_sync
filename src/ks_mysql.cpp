@@ -10,6 +10,7 @@
 #include "row_printer.h"
 
 #define MYSQL_5_6_5 50605
+#define MARIADB_10_2_7 100207
 
 enum MySQLColumnConversion {
 	encode_raw = 0,
@@ -183,6 +184,7 @@ public:
 	string column_type(const Column &column);
 	string column_default(const Table &table, const Column &column);
 	string column_definition(const Table &table, const Column &column);
+	bool information_schema_column_default_shows_escaped_expressions();
 
 	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '`'); };
 	inline ColumnFlags supported_flags() const { return (ColumnFlags)(mysql_timestamp | mysql_on_update_timestamp); }
@@ -528,7 +530,11 @@ string MySQLClient::column_default(const Table &table, const Column &column) {
 		}
 
 		case DefaultType::default_function:
-			return " DEFAULT " + column.default_value;
+			if (column.default_value == "CURRENT_TIMESTAMP") {
+				return " DEFAULT " + column.default_value; // the only expression accepted prior to support for arbitrary expressions
+			} else {
+				return " DEFAULT (" + column.default_value + ")"; // mysql requires brackets around the expression; mariadb accepts and ignores them
+			}
 
 		default:
 			throw runtime_error("Don't know how to express default of " + column.name + " (" + to_string(column.default_type) + ")");
@@ -559,18 +565,44 @@ string MySQLClient::column_definition(const Table &table, const Column &column) 
 	return result;
 }
 
+bool MySQLClient::information_schema_column_default_shows_escaped_expressions() {
+	 return (mysql_get_server_version(&mysql) >= MARIADB_10_2_7 && strstr(mysql_get_server_info(&mysql), "MariaDB") != nullptr);
+}
+
 struct MySQLColumnLister {
-	inline MySQLColumnLister(Table &table): table(table) {}
+	inline MySQLColumnLister(Table &table, bool information_schema_column_default_shows_escaped_expressions): table(table), information_schema_column_default_shows_escaped_expressions(information_schema_column_default_shows_escaped_expressions) {}
 
 	inline void operator()(MySQLRow &row) {
 		string name(row.string_at(0));
 		string db_type(row.string_at(1));
 		bool nullable(row.string_at(2) == "YES");
 		bool unsign(db_type.length() > 8 && db_type.substr(db_type.length() - 8, 8) == "unsigned");
-		DefaultType default_type(row.null_at(4) ? DefaultType::no_default : DefaultType::default_value);
-		string default_value(default_type ? row.string_at(4) : string(""));
-		string extra(row.string_at(5));
-		if (extra.find("auto_increment") != string::npos) default_type = DefaultType::sequence;
+		DefaultType default_type(row.null_at(3) ? DefaultType::no_default : DefaultType::default_value);
+		string default_value(default_type ? row.string_at(3) : string(""));
+		string extra(row.string_at(4));
+
+		if (!row.null_at(3)) {
+			if (information_schema_column_default_shows_escaped_expressions) {
+				// mariadb 10.2.7 and above always represent the default value as an expression, which we want to turn back into a plain value if it is one (for compatibility)
+				if (default_value == "NULL") {
+					default_type = DefaultType::no_default;
+					default_value.clear();
+				} else if (default_value.length() >= 2 && default_value[0] == '\'' && default_value[default_value.length() - 1] == '\'') {
+					default_value = unescape_value(default_value.substr(1, default_value.length() - 2));
+				} else if (!default_value.empty() && default_value.find_first_not_of("0123456789.") != string::npos) {
+					default_type = DefaultType::default_function;
+				}
+			} else {
+				// mysql 8.0 and above show literal strings and expressions the same way in the COLUMN_DEFAULT field, but set the EXTRA field to DEFAULT_GENERATED for expressions
+				if (extra.find("DEFAULT_GENERATED") != string::npos) {
+					default_type = DefaultType::default_function;
+				}
+			}
+		}
+
+		if (extra.find("auto_increment") != string::npos) {
+			default_type = DefaultType::sequence;
+		}
 
 		if (db_type == "tinyint(1)") {
 			if (default_type) {
@@ -640,7 +672,30 @@ struct MySQLColumnLister {
 		}
 	}
 
+	inline string unescape_value(const string &escaped) {
+		// there's no library API to do this, so we do it ourselves.  used to parse column default values.
+		string result;
+		result.reserve(escaped.length());
+		for (size_t pos = 0; pos < escaped.length(); pos++) {
+			char c = escaped[pos];
+			if (c == '\'') {
+				pos++;
+			} else if (c == '\\') {
+				switch (c = escaped[++pos]) {
+					case '0': c = '\0'; break;
+					case 'b': c = '\b'; break;
+					case 'r': c = '\r'; break;
+					case 'n': c = '\n'; break;
+					case 't': c = '\t'; break;
+				}
+			}
+			result += c;
+		}
+		return result;
+	}
+
 	Table &table;
+	bool information_schema_column_default_shows_escaped_expressions;
 };
 
 struct MySQLKeyLister {
@@ -676,8 +731,8 @@ struct MySQLTableLister {
 	inline void operator()(MySQLRow &row) {
 		Table table(row.string_at(0));
 
-		MySQLColumnLister column_lister(table);
-		client.query("SHOW COLUMNS FROM " + client.quote_identifier(table.name), column_lister);
+		MySQLColumnLister column_lister(table, client.information_schema_column_default_shows_escaped_expressions());
+		client.query("SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = SCHEMA() AND TABLE_NAME = '" + client.escape_value(table.name) + "' ORDER BY ORDINAL_POSITION", column_lister);
 
 		MySQLKeyLister key_lister(table);
 		client.query("SHOW KEYS FROM " + client.quote_identifier(table.name), key_lister);

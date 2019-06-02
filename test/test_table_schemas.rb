@@ -223,6 +223,10 @@ SQL
     @database_server == 'mysql' && connection.server_version =~ /^5\.5/
   end
 
+  def mysql_default_expressions?
+    @database_server == 'mysql' && connection.server_version !~ /^5\./ && connection.server_version !~ /^10\.0/ && connection.server_version !~ /^10\.1/ # mysql 8.0+ or mariadb 10.2+ (note mariadb skipped 6 through 9)
+  end
+
   def create_defaultstbl
     execute(<<-SQL)
       CREATE TABLE defaultstbl (
@@ -304,6 +308,7 @@ SQL
           nulldefaultstr VARCHAR(255) DEFAULT NULL,
           timestampboth TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           #{"timestampcreateonly TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," unless mysql_5_5?}
+          #{"mysqlfunctiondefault VARCHAR(255) DEFAULT (uuid())," if mysql_default_expressions?}
           `select` INT,
           ```quoted``` INT,
           PRIMARY KEY(pri))
@@ -339,6 +344,7 @@ SQL
           {"name" => "nulldefaultstr",       "column_type" => ColumnTypes::VCHR, "size" => 255},
           {"name" => "timestampboth",        "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true},
           ({"name" => "timestampcreateonly", "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true} unless mysql_5_5?),
+          ({"name" => "mysqlfunctiondefault", "column_type" => ColumnTypes::VCHR, "size" => 255,                     "default_function" => "uuid()"} if mysql_default_expressions?),
           {"name" => "select",               "column_type" => ColumnTypes::SINT, "size" =>  4},
           {"name" => "`quoted`",             "column_type" => ColumnTypes::SINT, "size" =>  4},
         ].compact,
