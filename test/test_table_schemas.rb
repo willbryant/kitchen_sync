@@ -228,6 +228,10 @@ SQL
       CREATE TABLE defaultstbl (
         pri INT NOT NULL,
         varcharfield VARCHAR(32) DEFAULT 'test \\\\ with '' escaping©',
+        emptydefaultstr VARCHAR(255) DEFAULT '',
+        spacedefaultstr VARCHAR(255) DEFAULT ' ',
+        zerodefaultstr VARCHAR(255) DEFAULT '0',
+        nodefaultstr VARCHAR(255),
         charfield CHAR(5) DEFAULT 'test ',
         falseboolfield BOOL DEFAULT FALSE,
         trueboolfield BOOL DEFAULT TRUE,
@@ -247,6 +251,10 @@ SQL
       "columns" => [
         {"name" => "pri",                  "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false},
         {"name" => "varcharfield",         "column_type" => ColumnTypes::VCHR, "size" => 32,               "default_value" => "test \\ with ' escaping©"},
+        {"name" => "emptydefaultstr",      "column_type" => ColumnTypes::VCHR, "size" => 255, "default_value" => ""},
+        {"name" => "spacedefaultstr",      "column_type" => ColumnTypes::VCHR, "size" => 255, "default_value" => " "},
+        {"name" => "zerodefaultstr",       "column_type" => ColumnTypes::VCHR, "size" => 255, "default_value" => "0"},
+        {"name" => "nodefaultstr",         "column_type" => ColumnTypes::VCHR, "size" => 255},
         {"name" => "charfield",            "column_type" => ColumnTypes::FCHR, "size" =>  5,               "default_value" => "test "},
         {"name" => "falseboolfield",       "column_type" => ColumnTypes::BOOL,                             "default_value" => "false"},
         {"name" => "trueboolfield",        "column_type" => ColumnTypes::BOOL,                             "default_value" => "true"},
