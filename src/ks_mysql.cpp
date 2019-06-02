@@ -10,6 +10,7 @@
 #include "row_printer.h"
 
 #define MYSQL_5_6_5 50605
+#define MARIADB_10_0_0 100000
 #define MARIADB_10_2_7 100207
 
 enum MySQLColumnConversion {
@@ -173,6 +174,7 @@ public:
 	string export_snapshot();
 	void import_snapshot(const string &snapshot);
 	void unhold_snapshot();
+	bool supports_explicit_read_only_transactions();
 	void start_read_transaction();
 	void start_write_transaction();
 	void commit_transaction();
@@ -295,9 +297,17 @@ string MySQLClient::sql_error(const string &sql) {
 }
 
 
+bool MySQLClient::supports_explicit_read_only_transactions() {
+	if (strstr(mysql_get_server_info(&mysql), "MariaDB") == nullptr) {
+		return (mysql_get_server_version(&mysql) >= MYSQL_5_6_5);
+	} else {
+		return (mysql_get_server_version(&mysql) >= MARIADB_10_0_0);
+	}
+}
+
 void MySQLClient::start_read_transaction() {
 	execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
-	if (mysql_get_server_version(&mysql) >= MYSQL_5_6_5 && strstr(mysql_get_server_info(&mysql), "MariaDB") == nullptr) {
+	if (supports_explicit_read_only_transactions()) {
 		execute("START TRANSACTION READ ONLY, WITH CONSISTENT SNAPSHOT");
 	} else {
 		execute("START TRANSACTION WITH CONSISTENT SNAPSHOT");
