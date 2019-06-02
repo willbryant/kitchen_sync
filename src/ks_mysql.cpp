@@ -30,19 +30,19 @@ public:
 	string qualified_name_of_column(int column_number);
 
 private:
-	void populate_fields();
 	void populate_conversions();
-	MySQLColumnConversion conversion_for_field(MYSQL_FIELD *field);
+	MySQLColumnConversion conversion_for_field(const MYSQL_FIELD &field);
 
 	MYSQL_RES *_res;
 	int _n_columns;
-	vector<MYSQL_FIELD*> fields;
+	MYSQL_FIELD *_fields;
 	vector<MySQLColumnConversion> conversions;
 };
 
 MySQLRes::MySQLRes(MYSQL &mysql, bool buffer) {
 	_res = buffer ? mysql_store_result(&mysql) : mysql_use_result(&mysql);
 	_n_columns = mysql_num_fields(_res);
+	_fields = mysql_fetch_fields(_res);
 }
 
 MySQLRes::~MySQLRes() {
@@ -52,28 +52,18 @@ MySQLRes::~MySQLRes() {
 	}
 }
 
-void MySQLRes::populate_fields() {
-	fields.resize(_n_columns);
-
-	for (size_t i = 0; i < _n_columns; i++) {
-		fields[i] = mysql_fetch_field(_res);
-	}
-}
-
 void MySQLRes::populate_conversions() {
-	if (fields.empty()) populate_fields();
-
 	conversions.resize(_n_columns);
 
 	for (size_t i = 0; i < _n_columns; i++) {
-		conversions[i] = conversion_for_field(fields[i]);
+		conversions[i] = conversion_for_field(_fields[i]);
 	}
 }
 
-MySQLColumnConversion MySQLRes::conversion_for_field(MYSQL_FIELD *field) {
-	switch (field->type) {
+MySQLColumnConversion MySQLRes::conversion_for_field(const MYSQL_FIELD &field) {
+	switch (field.type) {
 		case MYSQL_TYPE_TINY:
-			if (field->length == 1) {
+			if (field.length == 1) {
 				return encode_bool;
 			} // else [[fallthrough]];
 
@@ -81,7 +71,7 @@ MySQLColumnConversion MySQLRes::conversion_for_field(MYSQL_FIELD *field) {
 		case MYSQL_TYPE_INT24:
 		case MYSQL_TYPE_LONG:
 		case MYSQL_TYPE_LONGLONG:
-			if (field->flags & UNSIGNED_FLAG) {
+			if (field.flags & UNSIGNED_FLAG) {
 				return encode_uint;
 			} else {
 				return encode_sint;
@@ -94,9 +84,7 @@ MySQLColumnConversion MySQLRes::conversion_for_field(MYSQL_FIELD *field) {
 }
 
 string MySQLRes::qualified_name_of_column(int column_number) {
-	if (fields.empty()) populate_fields();
-
-	return string(fields[column_number]->table) + "." + string(fields[column_number]->name);
+	return string(_fields[column_number].table) + "." + string(_fields[column_number].name);
 }
 
 
