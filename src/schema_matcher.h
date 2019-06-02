@@ -300,7 +300,7 @@ struct AddColumnClauses {
 			alter_table_clauses += ",";
 		}
 		alter_table_clauses += " ADD ";
-		if (column.nullable || column.default_type == DefaultType::default_value || column.default_type == DefaultType::default_function) {
+		if (column.nullable || column.default_type == DefaultType::default_value || column.default_type == DefaultType::default_expression) {
 			alter_table_clauses += client.column_definition(table, column);
 		} else {
 			// first add the column, with a default value to get past the non-nullability

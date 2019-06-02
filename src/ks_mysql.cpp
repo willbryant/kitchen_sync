@@ -382,7 +382,7 @@ void MySQLClient::convert_unsupported_database_schema(Database &database) {
 			// postgresql treats no default and DEFAULT NULL as separate things, even though they behave much the same.
 			// although mysql would happily accept the DEFAULT NULL strings we would produce below, we want to go ahead
 			// and convert it here so that the schema matcher also sees them as the same thing.
-			if (column.default_type == DefaultType::default_function && column.default_value == "NULL") {
+			if (column.default_type == DefaultType::default_expression && column.default_value == "NULL") {
 				column.default_type = DefaultType::no_default;
 				column.default_value = "";
 			}
@@ -529,7 +529,7 @@ string MySQLClient::column_default(const Table &table, const Column &column) {
 			return result;
 		}
 
-		case DefaultType::default_function:
+		case DefaultType::default_expression:
 			if (column.default_value == "CURRENT_TIMESTAMP") {
 				return " DEFAULT " + column.default_value; // the only expression accepted prior to support for arbitrary expressions
 			} else {
@@ -590,12 +590,12 @@ struct MySQLColumnLister {
 				} else if (default_value.length() >= 2 && default_value[0] == '\'' && default_value[default_value.length() - 1] == '\'') {
 					default_value = unescape_value(default_value.substr(1, default_value.length() - 2));
 				} else if (!default_value.empty() && default_value.find_first_not_of("0123456789.") != string::npos) {
-					default_type = DefaultType::default_function;
+					default_type = DefaultType::default_expression;
 				}
 			} else {
 				// mysql 8.0 and above show literal strings and expressions the same way in the COLUMN_DEFAULT field, but set the EXTRA field to DEFAULT_GENERATED for expressions
 				if (extra.find("DEFAULT_GENERATED") != string::npos) {
-					default_type = DefaultType::default_function;
+					default_type = DefaultType::default_expression;
 				}
 			}
 		}
@@ -659,7 +659,7 @@ struct MySQLColumnLister {
 		} else if (db_type == "datetime" || db_type == "timestamp") {
 			ColumnFlags flags = db_type == "timestamp" ? ColumnFlags::mysql_timestamp : ColumnFlags::nothing;
 			if (default_value == "CURRENT_TIMESTAMP" || default_value == "current_timestamp()") {
-				default_type = DefaultType::default_function;
+				default_type = DefaultType::default_expression;
 				default_value = "CURRENT_TIMESTAMP";
 			}
 			if (extra.find("on update CURRENT_TIMESTAMP") != string::npos || extra.find("on update current_timestamp()") != string::npos) {

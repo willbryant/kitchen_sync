@@ -50,8 +50,8 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 			packer << column.default_value;
 			break;
 
-		case DefaultType::default_function:
-			packer << string("default_function");
+		case DefaultType::default_expression:
+			packer << string("default_function"); // legacy name
 			packer << column.default_value;
 			break;
 	}
@@ -127,8 +127,8 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 		} else if (attr_key == "default_value") {
 			column.default_type = DefaultType::default_value;
 			unpacker >> column.default_value;
-		} else if (attr_key == "default_function") {
-			column.default_type = DefaultType::default_function;
+		} else if (attr_key == "default_function") { // legacy name
+			column.default_type = DefaultType::default_expression;
 			unpacker >> column.default_value;
 		} else if (attr_key == "mysql_timestamp") {
 			bool flag;

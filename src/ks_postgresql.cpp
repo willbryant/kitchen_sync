@@ -465,7 +465,7 @@ string PostgreSQLClient::column_default(const Table &table, const Column &column
 			}
 			break;
 
-		case DefaultType::default_function:
+		case DefaultType::default_expression:
 			result += column.default_value;
 
 		default:
@@ -516,14 +516,14 @@ struct PostgreSQLColumnLister {
 			} else if (default_value.substr(0, 6) == "NULL::" && db_type.substr(0, default_value.length() - 6) == default_value.substr(6)) {
 				// postgresql treats a NULL default as distinct to no default, so we try to respect that by keeping the value as a function,
 				// but chop off the type conversion for the sake of portability
-				default_type = DefaultType::default_function;
+				default_type = DefaultType::default_expression;
 				default_value = "NULL";
 
 			} else if (default_value.length() > 2 && default_value[0] == '\'') {
 				default_value = unescape_value(default_value.substr(1, default_value.rfind('\'') - 1));
 
 			} else if (default_value.length() > 0 && default_value != "false" && default_value != "true" && default_value.find_first_not_of("0123456789.") != string::npos) {
-				default_type = DefaultType::default_function;
+				default_type = DefaultType::default_expression;
 
 				// postgresql converts CURRENT_TIMESTAMP to now(); convert it back for portability
 				if (default_value == "now()") {

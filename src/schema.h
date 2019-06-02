@@ -34,7 +34,7 @@ enum DefaultType {
 	no_default = 0,
 	sequence = 1,
 	default_value = 2,
-	default_function = 3,
+	default_expression = 3,
 };
 
 enum ColumnFlags {
