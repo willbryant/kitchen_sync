@@ -131,17 +131,11 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 			column.default_type = DefaultType::default_expression;
 			unpacker >> column.default_value;
 		} else if (attr_key == "mysql_timestamp") {
-			bool flag;
-			unpacker >> flag;
-			if (flag) column.flags = (ColumnFlags)(column.flags | mysql_timestamp);
+			if (unpacker.template next<bool>()) column.flags = (ColumnFlags)(column.flags | mysql_timestamp);
 		} else if (attr_key == "mysql_on_update_timestamp") {
-			bool flag;
-			unpacker >> flag;
-			if (flag) column.flags = (ColumnFlags)(column.flags | mysql_on_update_timestamp);
+			if (unpacker.template next<bool>()) column.flags = (ColumnFlags)(column.flags | mysql_on_update_timestamp);
 		} else if (attr_key == "time_zone") {
-			bool flag;
-			unpacker >> flag;
-			if (flag) column.flags = (ColumnFlags)(column.flags | time_zone);
+			if (unpacker.template next<bool>()) column.flags = (ColumnFlags)(column.flags | time_zone);
 		} else {
 			// ignore anything else, for forward compatibility
 			unpacker.skip();
