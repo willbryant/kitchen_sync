@@ -181,7 +181,8 @@ public:
 	void rollback_transaction();
 	void populate_database_schema(Database &database);
 	void convert_unsupported_database_schema(Database &database);
-	string escape_value(const string &value);
+	string escape_string_value(const string &value);
+	string &append_escaped_generic_value_to(string &result, const string &value);
 	string &append_escaped_column_value_to(string &result, const Column &column, const string &value);
 	string column_type(const Column &column);
 	string column_default(const Table &table, const Column &column);
@@ -353,7 +354,7 @@ void MySQLClient::enable_referential_integrity() {
 	execute("SET foreign_key_checks = 1");
 }
 
-string MySQLClient::escape_value(const string &value) {
+string MySQLClient::escape_string_value(const string &value) {
 	string result;
 	result.resize(value.size()*2 + 1);
 	size_t result_length = mysql_real_escape_string(&mysql, (char*)result.data(), value.c_str(), value.size());
@@ -361,12 +362,16 @@ string MySQLClient::escape_value(const string &value) {
 	return result;
 }
 
-string &MySQLClient::append_escaped_column_value_to(string &result, const Column &column, const string &value) {
+string &MySQLClient::append_escaped_generic_value_to(string &result, const string &value) {
 	string buffer;
 	buffer.resize(value.size()*2 + 1);
 	size_t result_length = mysql_real_escape_string(&mysql, (char*)buffer.data(), value.c_str(), value.size());
 	result.append(buffer, 0, result_length);
 	return result;
+}
+
+string &MySQLClient::append_escaped_column_value_to(string &result, const Column &column, const string &value) {
+	return append_escaped_generic_value_to(result, value);
 }
 
 void MySQLClient::convert_unsupported_database_schema(Database &database) {
@@ -598,7 +603,7 @@ struct MySQLColumnLister {
 					default_type = DefaultType::no_default;
 					default_value.clear();
 				} else if (default_value.length() >= 2 && default_value[0] == '\'' && default_value[default_value.length() - 1] == '\'') {
-					default_value = unescape_value(default_value.substr(1, default_value.length() - 2));
+					default_value = unescape_string_value(default_value.substr(1, default_value.length() - 2));
 				} else if (!default_value.empty() && default_value.find_first_not_of("0123456789.") != string::npos) {
 					default_type = DefaultType::default_expression;
 				}
@@ -682,7 +687,7 @@ struct MySQLColumnLister {
 		}
 	}
 
-	inline string unescape_value(const string &escaped) {
+	inline string unescape_string_value(const string &escaped) {
 		// there's no library API to do this, so we do it ourselves.  used to parse column default values.
 		string result;
 		result.reserve(escaped.length());
@@ -742,7 +747,7 @@ struct MySQLTableLister {
 		Table table(row.string_at(0));
 
 		MySQLColumnLister column_lister(table, client.information_schema_column_default_shows_escaped_expressions());
-		client.query("SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = SCHEMA() AND TABLE_NAME = '" + client.escape_value(table.name) + "' ORDER BY ORDINAL_POSITION", column_lister);
+		client.query("SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = SCHEMA() AND TABLE_NAME = '" + client.escape_string_value(table.name) + "' ORDER BY ORDINAL_POSITION", column_lister);
 
 		MySQLKeyLister key_lister(table);
 		client.query("SHOW KEYS FROM " + client.quote_identifier(table.name), key_lister);

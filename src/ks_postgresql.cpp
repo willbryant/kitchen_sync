@@ -137,7 +137,9 @@ public:
 	void rollback_transaction();
 	void populate_database_schema(Database &database);
 	void convert_unsupported_database_schema(Database &database);
-	string escape_value(const string &value);
+	string escape_string_value(const string &value);
+	string &append_escaped_string_value_to(string &result, const string &value);
+	string &append_escaped_bytea_value_to(string &result, const string &value);
 	string &append_escaped_column_value_to(string &result, const Column &column, const string &value);
 	string column_type(const Column &column);
 	string column_sequence_name(const Table &table, const Column &column);
@@ -267,7 +269,7 @@ string PostgreSQLClient::export_snapshot() {
 
 void PostgreSQLClient::import_snapshot(const string &snapshot) {
 	execute("START TRANSACTION READ ONLY ISOLATION LEVEL REPEATABLE READ");
-	execute("SET TRANSACTION SNAPSHOT '" + escape_value(snapshot) + "'");
+	execute("SET TRANSACTION SNAPSHOT '" + escape_string_value(snapshot) + "'");
 }
 
 void PostgreSQLClient::unhold_snapshot() {
@@ -292,7 +294,7 @@ void PostgreSQLClient::enable_referential_integrity() {
 	*/
 }
 
-string PostgreSQLClient::escape_value(const string &value) {
+string PostgreSQLClient::escape_string_value(const string &value) {
 	string result;
 	result.resize(value.size()*2 + 1);
 	size_t result_length = PQescapeStringConn(conn, (char*)result.data(), value.c_str(), value.size(), nullptr);
@@ -300,21 +302,28 @@ string PostgreSQLClient::escape_value(const string &value) {
 	return result;
 }
 
-string &PostgreSQLClient::append_escaped_column_value_to(string &result, const Column &column, const string &value) {
-	if (column.column_type != ColumnTypes::BLOB) {
-		string buffer;
-		buffer.resize(value.size()*2 + 1);
-		size_t result_length = PQescapeStringConn(conn, (char*)buffer.data(), value.c_str(), value.size(), nullptr);
-		result.append(buffer, 0, result_length);
-		return result;
-	}
+string &PostgreSQLClient::append_escaped_string_value_to(string &result, const string &value) {
+	string buffer;
+	buffer.resize(value.size()*2 + 1);
+	size_t result_length = PQescapeStringConn(conn, (char*)buffer.data(), value.c_str(), value.size(), nullptr);
+	result.append(buffer, 0, result_length);
+	return result;
+}
 
+string &PostgreSQLClient::append_escaped_bytea_value_to(string &result, const string &value) {
 	size_t encoded_length;
 	const unsigned char *encoded = PQescapeByteaConn(conn, (const unsigned char *)value.c_str(), value.size(), &encoded_length);
 	result.append(encoded, encoded + encoded_length - 1); // encoded_length includes the null terminator
 	PQfreemem((void *)encoded);
-
 	return result;
+}
+
+string &PostgreSQLClient::append_escaped_column_value_to(string &result, const Column &column, const string &value) {
+	if (column.column_type == ColumnTypes::BLOB) {
+		return append_escaped_bytea_value_to(result, value);
+	} else {
+		return append_escaped_string_value_to(result, value);
+	}
 }
 
 void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
@@ -447,7 +456,7 @@ string PostgreSQLClient::column_default(const Table &table, const Column &column
 
 		case DefaultType::sequence:
 			result += "nextval('";
-			result += escape_value(column_sequence_name(table, column));
+			result += escape_string_value(column_sequence_name(table, column));
 			result += "'::regclass)";
 			break;
 
@@ -520,7 +529,7 @@ struct PostgreSQLColumnLister {
 				default_value = "NULL";
 
 			} else if (default_value.length() > 2 && default_value[0] == '\'') {
-				default_value = unescape_value(default_value.substr(1, default_value.rfind('\'') - 1));
+				default_value = unescape_string_value(default_value.substr(1, default_value.rfind('\'') - 1));
 
 			} else if (default_value.length() > 0 && default_value != "false" && default_value != "true" && default_value.find_first_not_of("0123456789.") != string::npos) {
 				default_type = DefaultType::default_expression;
@@ -585,7 +594,7 @@ struct PostgreSQLColumnLister {
 		}
 	}
 
-	inline string unescape_value(const string &escaped) {
+	inline string unescape_string_value(const string &escaped) {
 		string result;
 		result.reserve(escaped.length());
 		for (string::size_type n = 0; n < escaped.length(); n++) {
@@ -652,7 +661,7 @@ struct PostgreSQLTableLister {
 			  "LEFT JOIN pg_attrdef ON adrelid = attrelid AND adnum = attnum "
 			 "WHERE attnum > 0 AND "
 			       "NOT attisdropped AND "
-			       "relname = '" + client.escape_value(table.name) + "' "
+			       "relname = '" + client.escape_string_value(table.name) + "' "
 			 "ORDER BY attnum",
 			column_lister);
 
@@ -661,7 +670,7 @@ struct PostgreSQLTableLister {
 			"SELECT column_name "
 			  "FROM information_schema.table_constraints, "
 			       "information_schema.key_column_usage "
-			 "WHERE information_schema.table_constraints.table_name = '" + client.escape_value(table.name) + "' AND "
+			 "WHERE information_schema.table_constraints.table_name = '" + client.escape_string_value(table.name) + "' AND "
 			       "information_schema.key_column_usage.table_name = information_schema.table_constraints.table_name AND "
 			       "constraint_type = 'PRIMARY KEY' "
 			 "ORDER BY ordinal_position",
@@ -672,7 +681,7 @@ struct PostgreSQLTableLister {
 			"SELECT indexname, indisunique, attname "
 			  "FROM (SELECT table_class.oid AS table_oid, index_class.relname AS indexname, pg_index.indisunique, generate_series(1, array_length(indkey, 1)) AS position, unnest(indkey) AS attnum "
 			          "FROM pg_class table_class, pg_class index_class, pg_index "
-			         "WHERE table_class.relname = '" + client.escape_value(table.name) + "' AND "
+			         "WHERE table_class.relname = '" + client.escape_string_value(table.name) + "' AND "
 			               "table_class.relkind = 'r' AND "
 			               "index_class.relkind = 'i' AND "
 			               "pg_index.indrelid = table_class.oid AND "

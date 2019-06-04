@@ -14,9 +14,9 @@ struct ResetTableSequences <DatabaseClient, true> {
 		for (const Column &column : table.columns) {
 			if (column.default_type == DefaultType::sequence) {
 				string statement("SELECT setval(pg_get_serial_sequence('");
-				statement += client.escape_value(table.name);
+				statement += client.escape_string_value(table.name);
 				statement += "', '";
-				statement += client.escape_value(column.name);
+				statement += client.escape_string_value(column.name);
 				statement += "'), COALESCE(MAX(";
 				statement += client.quote_identifier(column.name);
 				statement += "), 0) + 1, false) FROM ";
