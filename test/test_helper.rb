@@ -281,8 +281,11 @@ module KitchenSync
           begin
             skip "pending" unless block
             before if respond_to?(:before)
-            instance_eval(&block)
-            after if respond_to?(:after)
+            begin
+              instance_eval(&block)
+            ensure
+              after if respond_to?(:after)
+            end
           ensure
             @spawner.stop_binary if @spawner
             @spawner = nil
