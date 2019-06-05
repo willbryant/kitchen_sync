@@ -30,6 +30,10 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-ubuntu:18.04-postgresql:11 # from PGDG's repos
+  ubuntu_18.04-postgresql_11_no_postgis:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile-ubuntu:18.04-postgresql:11-no-postgis # from PGDG's repos
   ubuntu_18.04-postgresql_10-mysql_5.7:
     build:
       context: ..
@@ -41,7 +45,7 @@ services:
   centos_7-mariadb_5.5-postgresql_9.2:
     build:
       context: ..
-      dockerfile: test/Dockerfile-centos:7-mariadb:5.5-postgresql:9.2
+      dockerfile: test/Dockerfile-centos:7-mariadb:5.5-postgresql:9.2-no-postgis
   ubuntu_18.04-checks:
     build:
       context: ..

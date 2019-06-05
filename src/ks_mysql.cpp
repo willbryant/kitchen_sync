@@ -371,7 +371,9 @@ string &MySQLClient::append_escaped_generic_value_to(string &result, const strin
 	string buffer;
 	buffer.resize(value.size()*2 + 1);
 	size_t result_length = mysql_real_escape_string(&mysql, (char*)buffer.data(), value.c_str(), value.size());
+	result += '\'';
 	result.append(buffer, 0, result_length);
+	result += '\'';
 	return result;
 }
 
@@ -519,30 +521,14 @@ string MySQLClient::column_type(const Column &column) {
 		} else {
 			return "datetime";
 		}
+
 	} else if (column.column_type == ColumnTypes::SPAT) {
-		string result("");
-
-		if (column.scale == SpatialType::multi) {
-			result += "multi";
-		}
-
-		if (column.size == SpatialType::geometry) {
-			result += "geometry";
-		} else if (column.size == SpatialType::linestring) {
-			result += "linestring";
-		} else if (column.size == SpatialType::point) {
-			result += "point";
-		} else if (column.size == SpatialType::polygon) {
-			result += "polygon";
+		if (column.type_restriction.empty()) {
+			return "geometry";
 		} else {
-			throw runtime_error("Don't know how to express spatial type of " + column.name);
+			return column.type_restriction;
 		}
 
-		if (column.scale == SpatialType::collection) {
-			result += "collection";
-		}
-
-		return result;
 	} else {
 		throw runtime_error("Don't know how to express column type of " + column.name + " (" + column.column_type + ")");
 	}
@@ -565,9 +551,7 @@ string MySQLClient::column_default(const Table &table, const Column &column) {
 				column.column_type == ColumnTypes::DECI) {
 				result += column.default_value;
 			} else {
-				result += "'";
 				append_escaped_column_value_to(result, column, column.default_value);
-				result += "'";
 			}
 			return result;
 		}
@@ -710,24 +694,12 @@ struct MySQLColumnLister {
 			}
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM, 0, 0, flags);
 		} else if (db_type == "geometry") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, SpatialType::geometry);
-		} else if (db_type == "point") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, SpatialType::point);
-		} else if (db_type == "linestring") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, SpatialType::linestring);
-		} else if (db_type == "polygon") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, SpatialType::polygon);
-		} else if (db_type == "geometrycollection") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, SpatialType::geometry, SpatialType::collection);
-		} else if (db_type == "multipoint") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, SpatialType::point, SpatialType::multi);
-		} else if (db_type == "multilinestring") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, SpatialType::linestring, SpatialType::multi);
-		} else if (db_type == "multipolygon") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, SpatialType::polygon, SpatialType::multi);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT);
+		} else if (db_type == "point" || db_type == "linestring" || db_type == "polygon" || db_type == "geometrycollection" || db_type == "multipoint" || db_type == "multilinestring" || db_type == "multipolygon") {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, 0, 0, ColumnFlags::nothing, db_type);
 		} else {
 			// not supported, but leave it till sync_to's check_tables_usable to complain about it so that it can be ignored
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UNKN, 0, 0, ColumnFlags::nothing, db_type);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UNKN, 0, 0, ColumnFlags::nothing, "", db_type);
 		}
 	}
 

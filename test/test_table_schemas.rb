@@ -387,6 +387,79 @@ SQL
     end
   end
 
+  def install_spatial_support
+    case @database_server
+    when 'postgresql'
+      omit "Skipping test that requires PostGIS" if ENV['SKIP_POSTGIS']
+      execute "CREATE EXTENSION postgis"
+    end
+  end
+
+  def uninstall_spatial_support
+    case @database_server
+    when 'postgresql'
+      execute "DROP EXTENSION IF EXISTS postgis"
+    end
+  end
+
+  def create_spatialtbl
+    case @database_server
+    when 'mysql'
+      execute(<<-SQL)
+        CREATE TABLE spatialtbl (
+          id INT NOT NULL,
+          plainspat GEOMETRY,
+          pointspat POINT,
+          PRIMARY KEY(id))
+SQL
+
+    when 'postgresql'
+      execute(<<-SQL)
+        CREATE TABLE spatialtbl (
+          id INT NOT NULL,
+          plainspat geometry,
+          pointspat geometry(Point),
+          PRIMARY KEY(id))
+SQL
+    end
+  end
+
+  def cleanup_spatialtbl
+    case @database_server
+    when 'postgresql'
+      execute "DROP TABLE IF EXISTS spatialtbl"
+    end
+  end
+
+  def spatialtbl_def
+    { "name"    => "spatialtbl",
+      "columns" => [
+        {"name" => "id",                   "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false},
+        {"name" => "plainspat",            "column_type" => ColumnTypes::SPAT},
+        {"name" => "pointspat",            "column_type" => ColumnTypes::SPAT, "type_restriction" => "point"},
+      ].compact,
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
+      "primary_key_columns" => [0],
+      "keys" => [] }
+  end
+
+  def spatial_reference_table_def
+    case @database_server
+    when 'postgresql'
+      # created by postgis in the public schema, and a PITA to move anywhere else
+      { "name" => "spatial_ref_sys",
+        "columns" => [
+          {"name" => "srid",      "column_type" => "INT",     "size" => 4, "nullable" => false},
+          {"name" => "auth_name", "column_type" => "VARCHAR", "size" => 256},
+          {"name" => "auth_srid", "column_type" => "INT",     "size" => 4},
+          {"name" => "srtext",    "column_type" => "VARCHAR", "size" => 2048},
+          {"name" => "proj4text", "column_type" => "VARCHAR", "size" => 2048}],
+        "primary_key_type" => 1,
+        "primary_key_columns" => [0],
+        "keys" => [] }
+    end
+  end
+
   def create_unsupportedtbl
     execute(<<-SQL)
       CREATE TABLE unsupportedtbl (

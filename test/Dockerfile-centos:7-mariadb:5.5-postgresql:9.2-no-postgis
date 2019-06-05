@@ -24,6 +24,7 @@ ADD src /tmp/src/
 ADD test/CMakeLists.txt test/*.cpp /tmp/test/
 
 WORKDIR /tmp/build
+ENV SKIP_POSTGIS=1
 RUN cmake .. && make
 
 ADD test /tmp/test

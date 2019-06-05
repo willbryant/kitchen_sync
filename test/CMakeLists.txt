@@ -17,6 +17,14 @@ add_test(filter_to_test          env BUNDLE_GEMFILE=../../test/Gemfile bundle ex
 add_test(column_types_to_test    env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/column_types_to_test.rb)
 add_test(column_types_from_test  env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/column_types_from_test.rb)
 add_test(sync_to_test            env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/sync_to_test.rb)
+add_test(spatial_from_test       env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/spatial_from_test.rb)
+add_test(spatial_to_test         env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/spatial_to_test.rb)
+
+if(DEFINED ENV{SKIP_POSTGIS})
+	# this only works on later versions of ctest
+	set_tests_properties(spatial_from_test PROPERTIES DISABLED true)
+	set_tests_properties(spatial_to_test PROPERTIES DISABLED true)
+endif()
 
 # we also have a performance test utility that is not run as part of the test suite because there's no particular pass/fail criteria
 add_executable(ks_bench ks_bench.cpp ../src/xxHash/xxhash.cpp)

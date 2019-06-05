@@ -63,6 +63,7 @@ module ColumnTypes
   DATE = "DATE"
   TIME = "TIME"
   DTTM = "DATETIME"
+  SPAT = "SPATIAL"
 
   UNKN = "UNKNOWN"
 end

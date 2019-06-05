@@ -61,9 +61,7 @@ string &sql_encode_and_append_packed_value_to(string &result, DatabaseClient &cl
 		}
 
 		default:
-			result += '\'';
 			client.append_escaped_column_value_to(result, column, unpacker.template next<string>());
-			result += '\'';
 			return result;
 	}
 }

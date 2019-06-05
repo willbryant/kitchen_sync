@@ -2,23 +2,30 @@
 
 #include <stdexcept>
 #include <set>
+#include <cctype>
 #include <libpq-fe.h>
 
 #include "schema.h"
 #include "database_client_traits.h"
 #include "sql_functions.h"
 #include "row_printer.h"
+#include "ewkb.h"
+
+struct TypeMap {
+	set<Oid> geometry;
+};
 
 enum PostgreSQLColumnConversion {
 	encode_raw,
 	encode_bool,
 	encode_sint,
 	encode_bytea,
+	encode_geom,
 };
 
 class PostgreSQLRes {
 public:
-	PostgreSQLRes(PGresult *res);
+	PostgreSQLRes(PGresult *res, const TypeMap &type_map);
 	~PostgreSQLRes();
 
 	inline PGresult *res() { return _res; }
@@ -33,12 +40,13 @@ private:
 	PostgreSQLColumnConversion conversion_for_type(Oid typid);
 
 	PGresult *_res;
+	const TypeMap &_type_map;
 	int _n_tuples;
 	int _n_columns;
 	vector<PostgreSQLColumnConversion> conversions;
 };
 
-PostgreSQLRes::PostgreSQLRes(PGresult *res): _res(res) {
+PostgreSQLRes::PostgreSQLRes(PGresult *res, const TypeMap &type_map): _res(res), _type_map(type_map) {
 	_n_tuples = PQntuples(_res);
 	_n_columns = PQnfields(_res);
 }
@@ -61,9 +69,11 @@ void PostgreSQLRes::populate_conversions() {
 // from pg_type.h, which isn't available/working on all distributions.
 #define BOOLOID			16
 #define BYTEAOID		17
+#define CHAROID			18
 #define INT2OID			21
 #define INT4OID			23
 #define INT8OID			20
+#define TEXTOID			25
 
 PostgreSQLColumnConversion PostgreSQLRes::conversion_for_type(Oid typid) {
 	switch (typid) {
@@ -78,8 +88,18 @@ PostgreSQLColumnConversion PostgreSQLRes::conversion_for_type(Oid typid) {
 		case BYTEAOID:
 			return encode_bytea;
 
+		case CHAROID:
+		case TEXTOID:
+			return encode_raw; // so this is actually just an optimised version of the default block below
+
 		default:
-			return encode_raw;
+			// because the Geometry type comes from the PostGIS extension, its OID isn't a constant, so we can't use it in a case statement. we've also
+			// used a set instead of a scalar in case there's somehow more than one OID found (presumably from different installs of the extension).
+			if (_type_map.geometry.count(typid)) {
+				return encode_geom;
+			} else {
+				return encode_raw;
+			}
 	}
 }
 
@@ -97,6 +117,7 @@ public:
 	inline      string string_at(int column_number) const { return string(result_at(column_number), length_of(column_number)); }
 	inline        bool   bool_at(int column_number) const { return (strcmp(result_at(column_number), "t") == 0); }
 	inline     int64_t    int_at(int column_number) const { return strtoll(result_at(column_number), nullptr, 10); }
+	inline    uint64_t   uint_at(int column_number) const { return strtoull(result_at(column_number), nullptr, 10); }
 
 	template <typename Packer>
 	inline void pack_column_into(Packer &packer, int column_number) const {
@@ -120,8 +141,13 @@ public:
 					break;
 				}
 
-				default:
+				case encode_geom:
+					packer << ewkb_hex_to_standard_geom_bin(result_at(column_number), length_of(column_number));
+					break;
+
+				case encode_raw:
 					packer << uncopied_byte_string(result_at(column_number), length_of(column_number));
+					break;
 			}
 		}
 	}
@@ -168,6 +194,7 @@ public:
 	string escape_string_value(const string &value);
 	string &append_escaped_string_value_to(string &result, const string &value);
 	string &append_escaped_bytea_value_to(string &result, const string &value);
+	string &append_escaped_spatial_value_to(string &result, const string &value);
 	string &append_escaped_column_value_to(string &result, const Column &column, const string &value);
 	string column_type(const Column &column);
 	string column_sequence_name(const Table &table, const Column &column);
@@ -182,7 +209,7 @@ public:
 
 	template <typename RowFunction>
 	size_t query(const string &sql, RowFunction &row_handler) {
-		PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, nullptr, nullptr, nullptr, nullptr, 0 /* text-format results only */));
+		PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, nullptr, nullptr, nullptr, nullptr, 0 /* text-format results only */), type_map);
 
 		if (res.status() != PGRES_TUPLES_OK) {
 			throw runtime_error(sql_error(sql));
@@ -201,6 +228,7 @@ protected:
 
 private:
 	PGconn *conn;
+	TypeMap type_map;
 
 	// forbid copying
 	PostgreSQLClient(const PostgreSQLClient &_) = delete;
@@ -241,7 +269,7 @@ PostgreSQLClient::~PostgreSQLClient() {
 }
 
 size_t PostgreSQLClient::execute(const string &sql) {
-    PostgreSQLRes res(PQexec(conn, sql.c_str()));
+    PostgreSQLRes res(PQexec(conn, sql.c_str()), type_map);
 
     if (res.status() != PGRES_COMMAND_OK && res.status() != PGRES_TUPLES_OK) {
 		throw runtime_error(sql_error(sql));
@@ -251,7 +279,7 @@ size_t PostgreSQLClient::execute(const string &sql) {
 }
 
 string PostgreSQLClient::select_one(const string &sql) {
-	PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, nullptr, nullptr, nullptr, nullptr, 0 /* text-format results only */));
+	PostgreSQLRes res(PQexecParams(conn, sql.c_str(), 0, nullptr, nullptr, nullptr, nullptr, 0 /* text-format results only */), type_map);
 
 	if (res.status() != PGRES_TUPLES_OK) {
 		throw runtime_error(sql_error(sql));
@@ -334,21 +362,36 @@ string &PostgreSQLClient::append_escaped_string_value_to(string &result, const s
 	string buffer;
 	buffer.resize(value.size()*2 + 1);
 	size_t result_length = PQescapeStringConn(conn, (char*)buffer.data(), value.c_str(), value.size(), nullptr);
+	result += '\'';
 	result.append(buffer, 0, result_length);
+	result += '\'';
 	return result;
 }
 
 string &PostgreSQLClient::append_escaped_bytea_value_to(string &result, const string &value) {
 	size_t encoded_length;
 	const unsigned char *encoded = PQescapeByteaConn(conn, (const unsigned char *)value.c_str(), value.size(), &encoded_length);
+	result += '\'';
 	result.append(encoded, encoded + encoded_length - 1); // encoded_length includes the null terminator
+	result += '\'';
 	PQfreemem((void *)encoded);
+	return result;
+}
+
+string &PostgreSQLClient::append_escaped_spatial_value_to(string &result, const string &value) {
+	result.append("ST_GeomFromWKB(");
+	append_escaped_bytea_value_to(result, value.substr(4));
+	result.append(",");
+	result.append(to_string(*(uint32_t*)value.c_str()));
+	result.append(")");
 	return result;
 }
 
 string &PostgreSQLClient::append_escaped_column_value_to(string &result, const Column &column, const string &value) {
 	if (column.column_type == ColumnTypes::BLOB) {
 		return append_escaped_bytea_value_to(result, value);
+	} else if (column.column_type == ColumnTypes::SPAT) {
+		return append_escaped_spatial_value_to(result, value);
 	} else {
 		return append_escaped_string_value_to(result, value);
 	}
@@ -464,6 +507,20 @@ string PostgreSQLClient::column_type(const Column &column) {
 			return "timestamp without time zone";
 		}
 
+	} else if (column.column_type == ColumnTypes::SPAT) {
+		// note that we have made the assumption that all the mysql geometry types should be mapped to
+		// PostGIS GEOMETRY objects, rather than to the built-in geometric types such as POINT, because
+		// postgresql's built-in geometric types don't support spatial reference systems (SRIDs), don't
+		// have any equivalent to the multi* types, the built-in POLYGON type doesn't support 'holes' (as
+		// created using the two-argument form on mysql). we haven't yet looked at the geography types.
+		string result("geometry");
+		if (!column.type_restriction.empty()) {
+			result += '(';
+			result += column.type_restriction;
+			result += ')';
+		}
+		return result;
+
 	} else {
 		throw runtime_error("Don't know how to express column type of " + column.name + " (" + column.column_type + ")");
 	}
@@ -496,9 +553,7 @@ string PostgreSQLClient::column_default(const Table &table, const Column &column
 				column.column_type == ColumnTypes::DECI) {
 				result += column.default_value;
 			} else {
-				result += '\'';
 				append_escaped_column_value_to(result, column, column.default_value);
-				result += '\'';
 			}
 			break;
 
@@ -616,9 +671,15 @@ struct PostgreSQLColumnLister {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM);
 		} else if (db_type == "timestamp with time zone") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM, 0, 0, ColumnFlags::time_zone);
+		} else if (db_type == "geometry") {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT);
+		} else if (db_type.substr(0, 9) == "geometry(") {
+			string type_restriction(db_type.substr(9, db_type.length() - 10));
+			transform(type_restriction.begin(), type_restriction.end(), type_restriction.begin(), [](unsigned char c){ return tolower(c); });
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, 0, 0, ColumnFlags::nothing, type_restriction);
 		} else {
 			// not supported, but leave it till sync_to's check_tables_usable to complain about it so that it can be ignored
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UNKN, 0, 0, ColumnFlags::nothing, db_type);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UNKN, 0, 0, ColumnFlags::nothing, "", db_type);
 		}
 	}
 
@@ -730,15 +791,38 @@ struct PostgreSQLTableLister {
 	Database &database;
 };
 
+struct PostgreSQLTypeMapCollector {
+	PostgreSQLTypeMapCollector(TypeMap &type_map): type_map(type_map) {}
+
+	void operator()(PostgreSQLRow &row) {
+		uint32_t oid(row.uint_at(0));
+		string typname(row.string_at(1));
+
+		if (typname == "geometry") {
+			type_map.geometry.insert(oid);
+		}
+	}
+
+	TypeMap &type_map;
+};
+
 void PostgreSQLClient::populate_database_schema(Database &database) {
 	PostgreSQLTableLister table_lister(*this, database);
-	query("SELECT relname "
-		     "FROM pg_class, pg_namespace "
-		    "WHERE pg_class.relnamespace = pg_namespace.oid AND "
-		          "pg_namespace.nspname = ANY (current_schemas(false)) AND "
-		          "relkind = 'r' "
-		 "ORDER BY pg_relation_size(pg_class.oid) DESC, relname ASC",
-		  table_lister);
+	query("SELECT pg_class.relname "
+		    "FROM pg_class, pg_namespace "
+		   "WHERE pg_class.relnamespace = pg_namespace.oid AND "
+		         "pg_namespace.nspname = ANY (current_schemas(false)) AND "
+		         "relkind = 'r' "
+		"ORDER BY pg_relation_size(pg_class.oid) DESC, relname ASC",
+		 table_lister);
+
+	PostgreSQLTypeMapCollector type_collector(type_map);
+	query("SELECT pg_type.oid, pg_type.typname "
+		    "FROM pg_type, pg_namespace "
+		   "WHERE pg_type.typnamespace = pg_namespace.oid AND "
+		         "pg_namespace.nspname = ANY (current_schemas(false)) AND "
+		         "pg_type.typname IN ('geometry')",
+		  type_collector);
 }
 
 
