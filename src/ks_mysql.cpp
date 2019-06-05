@@ -14,10 +14,10 @@
 #define MARIADB_10_2_7 100207
 
 enum MySQLColumnConversion {
-	encode_raw = 0,
-	encode_bool = 1,
-	encode_uint = 2,
-	encode_sint = 3,
+	encode_raw,
+	encode_bool,
+	encode_uint,
+	encode_sint,
 };
 
 class MySQLRes {
