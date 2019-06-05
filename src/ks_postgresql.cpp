@@ -9,6 +9,13 @@
 #include "sql_functions.h"
 #include "row_printer.h"
 
+enum PostgreSQLColumnConversion {
+	encode_raw,
+	encode_bool,
+	encode_sint,
+	encode_bytea,
+};
+
 class PostgreSQLRes {
 public:
 	PostgreSQLRes(PGresult *res);
@@ -19,25 +26,21 @@ public:
 	inline size_t rows_affected() const { return atoi(PQcmdTuples(_res)); }
 	inline int n_tuples() const  { return _n_tuples; }
 	inline int n_columns() const { return _n_columns; }
-	inline Oid type_of(int column_number) const { return types[column_number]; }
+	inline PostgreSQLColumnConversion conversion_for(int column_number) { if (conversions.empty()) populate_conversions(); return conversions[column_number]; }
 
 private:
+	void populate_conversions();
+	PostgreSQLColumnConversion conversion_for_type(Oid typid);
+
 	PGresult *_res;
 	int _n_tuples;
 	int _n_columns;
-	vector<Oid> types;
+	vector<PostgreSQLColumnConversion> conversions;
 };
 
-PostgreSQLRes::PostgreSQLRes(PGresult *res) {
-	_res = res;
-
+PostgreSQLRes::PostgreSQLRes(PGresult *res): _res(res) {
 	_n_tuples = PQntuples(_res);
 	_n_columns = PQnfields(_res);
-
-	types.resize(_n_columns);
-	for (size_t i = 0; i < _n_columns; i++) {
-		types[i] = PQftype(_res, i);
-	}
 }
 
 PostgreSQLRes::~PostgreSQLRes() {
@@ -46,6 +49,14 @@ PostgreSQLRes::~PostgreSQLRes() {
 	}
 }
 
+void PostgreSQLRes::populate_conversions() {
+	conversions.resize(_n_columns);
+
+	for (size_t i = 0; i < _n_columns; i++) {
+		Oid typid = PQftype(_res, i);
+		conversions[i] = conversion_for_type(typid);
+	}
+}
 
 // from pg_type.h, which isn't available/working on all distributions.
 #define BOOLOID			16
@@ -53,6 +64,25 @@ PostgreSQLRes::~PostgreSQLRes() {
 #define INT2OID			21
 #define INT4OID			23
 #define INT8OID			20
+
+PostgreSQLColumnConversion PostgreSQLRes::conversion_for_type(Oid typid) {
+	switch (typid) {
+		case BOOLOID:
+			return encode_bool;
+
+		case INT2OID:
+		case INT4OID:
+		case INT8OID:
+			return encode_sint;
+
+		case BYTEAOID:
+			return encode_bytea;
+
+		default:
+			return encode_raw;
+	}
+}
+
 
 class PostgreSQLRow {
 public:
@@ -73,18 +103,16 @@ public:
 		if (null_at(column_number)) {
 			packer << nullptr;
 		} else {
-			switch (_res.type_of(column_number)) {
-				case BOOLOID:
+			switch (_res.conversion_for(column_number)) {
+				case encode_bool:
 					packer << bool_at(column_number);
 					break;
 
-				case INT2OID:
-				case INT4OID:
-				case INT8OID:
+				case encode_sint:
 					packer << int_at(column_number);
 					break;
 
-				case BYTEAOID: {
+				case encode_bytea: {
 					size_t decoded_length;
 					void *decoded = PQunescapeBytea((const unsigned char *)result_at(column_number), &decoded_length);
 					packer << uncopied_byte_string(decoded, decoded_length);
