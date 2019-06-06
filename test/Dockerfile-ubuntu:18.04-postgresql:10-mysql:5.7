@@ -11,7 +11,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 	apt-get clean -y && \
 	rm -rf /var/cache/apt/archives/*
 
-RUN gem install bundler --no-ri --no-rdoc
+RUN gem install bundler -v 1.17.3 --no-ri --no-rdoc
 
 WORKDIR /tmp
 COPY test/Gemfile Gemfile
