@@ -223,6 +223,8 @@ protected:
 
 private:
 	MYSQL mysql;
+	bool server_is_mariadb;
+	unsigned long server_version;
 
 	// forbid copying
 	MySQLClient(const MySQLClient &_) = delete;
@@ -261,6 +263,9 @@ MySQLClient::MySQLClient(
 	if (!variables.empty()) {
 		execute("SET " + variables);
 	}
+
+	server_is_mariadb = strstr(mysql_get_server_info(&mysql), "MariaDB") != nullptr;
+	server_version = mysql_get_server_version(&mysql);
 }
 
 MySQLClient::~MySQLClient() {
@@ -299,10 +304,10 @@ string MySQLClient::sql_error(const string &sql) {
 
 
 bool MySQLClient::supports_explicit_read_only_transactions() {
-	if (strstr(mysql_get_server_info(&mysql), "MariaDB") == nullptr) {
-		return (mysql_get_server_version(&mysql) >= MYSQL_5_6_5);
+	if (server_is_mariadb) {
+		return (server_version >= MARIADB_10_0_0);
 	} else {
-		return (mysql_get_server_version(&mysql) >= MARIADB_10_0_0);
+		return (server_version >= MYSQL_5_6_5);
 	}
 }
 
@@ -581,7 +586,7 @@ string MySQLClient::column_definition(const Table &table, const Column &column) 
 }
 
 bool MySQLClient::information_schema_column_default_shows_escaped_expressions() {
-	 return (mysql_get_server_version(&mysql) >= MARIADB_10_2_7 && strstr(mysql_get_server_info(&mysql), "MariaDB") != nullptr);
+	 return (server_is_mariadb && server_version >= MARIADB_10_2_7);
 }
 
 struct MySQLColumnLister {
