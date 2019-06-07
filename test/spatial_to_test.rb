@@ -22,6 +22,10 @@ class SpatialToTest < KitchenSync::EndpointTestCase
     uninstall_spatial_support
   end
 
+  def force_long_lat_option
+    ", 'axis-order=long-lat'" if spatial_axis_order_depends_on_srs?
+  end
+
   test_each "runs on empty spatial tables" do
     expect_handshake_commands
     expect_command Commands::SCHEMA
@@ -32,7 +36,7 @@ class SpatialToTest < KitchenSync::EndpointTestCase
     expect_quit_and_close
 
     assert_equal [],
-                 query("SELECT id, ST_SRID(plainspat) AS plainspat_stid, ST_AsBinary(plainspat) AS paingeom_wkb, ST_SRID(pointspat) AS pointspat_srid, ST_AsBinary(pointspat) AS pointspat_wkb FROM spatialtbl ORDER BY id")
+                 query("SELECT id, ST_SRID(plainspat) AS plainspat_stid, ST_AsBinary(plainspat#{force_long_lat_option}) AS paingeom_wkb, ST_SRID(pointspat) AS pointspat_srid, ST_AsBinary(pointspat#{force_long_lat_option}) AS pointspat_wkb FROM spatialtbl ORDER BY id")
   end
 
   test_each "retrieves and saves row data without SRIDs in WKB format with a 4-byte zero SRID prefix" do
@@ -54,7 +58,7 @@ class SpatialToTest < KitchenSync::EndpointTestCase
 
     assert_equal [[1, 0, ["010100000000000000000024400000000000003440"].pack("H*"), 0, ["010100000000000000000034400000000000003E40"].pack("H*")],
                   [2, 0, ["010700000002000000010200000002000000000000000000F83F000000000000024000000000000009400000000000401040010600000002000000010300000001000000040000000000000000003E40000000000000344000000000008046400000000000004440000000000000244000000000000044400000000000003E400000000000003440010300000001000000050000000000000000002E4000000000000014400000000000004440000000000000244000000000000024400000000000003440000000000000144000000000000024400000000000002E400000000000001440"].pack("H*"), nil, nil]],
-                 query("SELECT id, ST_SRID(plainspat) AS plainspat_stid, ST_AsBinary(plainspat) AS paingeom_wkb, ST_SRID(pointspat) AS pointspat_srid, ST_AsBinary(pointspat) AS pointspat_wkb FROM spatialtbl ORDER BY id")
+                 query("SELECT id, ST_SRID(plainspat) AS plainspat_stid, ST_AsBinary(plainspat#{force_long_lat_option}) AS paingeom_wkb, ST_SRID(pointspat) AS pointspat_srid, ST_AsBinary(pointspat#{force_long_lat_option}) AS pointspat_wkb FROM spatialtbl ORDER BY id")
   end
 
   test_each "retrieves and saves row data with SRIDs in WKB format with a 4-byte SRID prefix" do
@@ -76,6 +80,6 @@ class SpatialToTest < KitchenSync::EndpointTestCase
 
     assert_equal [[1, 4326, ["010100000000000000000024400000000000003440"].pack("H*"), 4326, ["010100000000000000000034400000000000003E40"].pack("H*")],
                   [2, 4326, ["010700000002000000010200000002000000000000000000F83F000000000000024000000000000009400000000000401040010600000002000000010300000001000000040000000000000000003E40000000000000344000000000008046400000000000004440000000000000244000000000000044400000000000003E400000000000003440010300000001000000050000000000000000002E4000000000000014400000000000004440000000000000244000000000000024400000000000003440000000000000144000000000000024400000000000002E400000000000001440"].pack("H*"), nil, nil]],
-                 query("SELECT id, ST_SRID(plainspat) AS plainspat_stid, ST_AsBinary(plainspat) AS paingeom_wkb, ST_SRID(pointspat) AS pointspat_srid, ST_AsBinary(pointspat) AS pointspat_wkb FROM spatialtbl ORDER BY id")
+                 query("SELECT id, ST_SRID(plainspat) AS plainspat_stid, ST_AsBinary(plainspat#{force_long_lat_option}) AS paingeom_wkb, ST_SRID(pointspat) AS pointspat_srid, ST_AsBinary(pointspat#{force_long_lat_option}) AS pointspat_wkb FROM spatialtbl ORDER BY id")
   end
 end

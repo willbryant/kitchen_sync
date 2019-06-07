@@ -227,6 +227,10 @@ SQL
     @database_server == 'mysql' && connection.server_version !~ /^5\./ && connection.server_version !~ /^10\.0/ && connection.server_version !~ /^10\.1/ # mysql 8.0+ or mariadb 10.2+ (note mariadb skipped 6 through 9)
   end
 
+  def spatial_axis_order_depends_on_srs?
+    @database_server == 'mysql' && connection.server_version !~ /^5\./ && connection.server_version !~ /MariaDB/
+  end
+
   def create_defaultstbl
     execute(<<-SQL)
       CREATE TABLE defaultstbl (
