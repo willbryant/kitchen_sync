@@ -514,7 +514,13 @@ string PostgreSQLClient::column_type(const Column &column) {
 		// have any equivalent to the multi* types, the built-in POLYGON type doesn't support 'holes' (as
 		// created using the two-argument form on mysql). we haven't yet looked at the geography types.
 		string result("geometry");
-		if (!column.type_restriction.empty()) {
+		if (!column.reference_system.empty()) {
+			result += '(';
+			result += (column.type_restriction.empty() ? string("geometry") : column.type_restriction);
+			result += ',';
+			result += column.reference_system;
+			result += ')';
+		} else if (!column.type_restriction.empty()) {
 			result += '(';
 			result += column.type_restriction;
 			result += ')';
@@ -674,12 +680,12 @@ struct PostgreSQLColumnLister {
 		} else if (db_type == "geometry") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT);
 		} else if (db_type.substr(0, 9) == "geometry(") {
-			string type_restriction(db_type.substr(9, db_type.length() - 10));
-			transform(type_restriction.begin(), type_restriction.end(), type_restriction.begin(), [](unsigned char c){ return tolower(c); });
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, 0, 0, ColumnFlags::nothing, type_restriction);
+			string type_restriction, reference_system;
+			tie(type_restriction, reference_system) = extract_spatial_type_restriction_and_reference_system(db_type.substr(9, db_type.length() - 10));
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, 0, 0, ColumnFlags::nothing, type_restriction, reference_system);
 		} else {
 			// not supported, but leave it till sync_to's check_tables_usable to complain about it so that it can be ignored
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UNKN, 0, 0, ColumnFlags::nothing, "", db_type);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UNKN, 0, 0, ColumnFlags::nothing, "", "", db_type);
 		}
 	}
 
@@ -696,6 +702,21 @@ struct PostgreSQLColumnLister {
 			result += escaped[n];
 		}
 		return result;
+	}
+
+	inline tuple<string, string> extract_spatial_type_restriction_and_reference_system(string type_restriction) {
+		transform(type_restriction.begin(), type_restriction.end(), type_restriction.begin(), [](unsigned char c){ return tolower(c); });
+
+		size_t comma_pos = type_restriction.find(',');
+		if (comma_pos == string::npos) {
+			return make_tuple(type_restriction, "");
+		}
+
+		string reference_system(type_restriction.substr(comma_pos + 1));
+		type_restriction.resize(comma_pos);
+		if (type_restriction == "geometry") type_restriction.clear();
+
+		return make_tuple(type_restriction, reference_system);
 	}
 
 	Table &table;

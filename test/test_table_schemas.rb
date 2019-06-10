@@ -219,16 +219,28 @@ SQL
       "keys" => [] }
   end
 
-  def mysql_5_5?
-    @database_server == 'mysql' && connection.server_version =~ /^5\.5/
+  def supports_multiple_timestamp_columns?
+    @database_server == 'mysql' && connection.server_version !~ /^5\.5/
   end
 
   def mysql_default_expressions?
-    @database_server == 'mysql' && connection.server_version !~ /^5\./ && connection.server_version !~ /^10\.0/ && connection.server_version !~ /^10\.1/ # mysql 8.0+ or mariadb 10.2+ (note mariadb skipped 6 through 9)
+    # mysql 8.0+ or mariadb 10.2+ (note mariadb skipped 6 through 9)
+    @database_server == 'mysql' && connection.server_version !~ /^5\./ && connection.server_version !~ /^10\.0.*MariaDB/ && connection.server_version !~ /^10\.1.*MariaDB/
   end
 
   def spatial_axis_order_depends_on_srs?
+    # only mysql 8+ behaves this way
     @database_server == 'mysql' && connection.server_version !~ /^5\./ && connection.server_version !~ /MariaDB/
+  end
+
+  def supports_spatial_indexes?
+    # supported by postgresql, mysql 5.7+, mariadb 10.2+
+    @database_server != 'mysql' || (connection.server_version !~ /^5\.5/ && connection.server_version !~ /^10\.0.*MariaDB/ && connection.server_version !~ /^10\.1.*MariaDB/)
+  end
+
+  def schema_srid_settings?
+    # supported by postgresql and mysql 8+, not by mysql 5.x or mariadb
+    @database_server != 'mysql' || (connection.server_version !~ /^5\./ && connection.server_version !~ /MariaDB/)
   end
 
   def create_defaultstbl
@@ -246,7 +258,7 @@ SQL
         datefield DATE DEFAULT '2019-04-01',
         timefield TIME DEFAULT '12:34:56',
         datetimefield #{@database_server == 'postgresql' ? 'timestamp' : 'DATETIME'} DEFAULT '2019-04-01 12:34:56',
-        #{"currentdatetimefield #{@database_server == 'postgresql' ? 'timestamp' : 'DATETIME'} DEFAULT CURRENT_TIMESTAMP," unless mysql_5_5?}
+        #{"currentdatetimefield #{@database_server == 'postgresql' ? 'timestamp' : 'DATETIME'} DEFAULT CURRENT_TIMESTAMP," if supports_multiple_timestamp_columns?}
         floatfield #{@database_server == 'postgresql' ? 'real' : 'FLOAT'} DEFAULT 42.625,
         doublefield DOUBLE PRECISION DEFAULT 0.0625,
         decimalfield DECIMAL(9, 3) DEFAULT '123456.789',
@@ -269,7 +281,7 @@ SQL
         {"name" => "datefield",            "column_type" => ColumnTypes::DATE,                             "default_value" => "2019-04-01"},
         {"name" => "timefield",            "column_type" => ColumnTypes::TIME,                             "default_value" => "12:34:56"},
         {"name" => "datetimefield",        "column_type" => ColumnTypes::DTTM,                             "default_value" => "2019-04-01 12:34:56"},
-        ({"name" => "currentdatetimefield", "column_type" => ColumnTypes::DTTM,                             "default_function" => "CURRENT_TIMESTAMP"} unless mysql_5_5?),
+        ({"name" => "currentdatetimefield", "column_type" => ColumnTypes::DTTM,                             "default_function" => "CURRENT_TIMESTAMP"} if supports_multiple_timestamp_columns?),
         {"name" => "floatfield",           "column_type" => ColumnTypes::REAL, "size" =>  4,               "default_value" => "42.625"},
         {"name" => "doublefield",          "column_type" => ColumnTypes::REAL, "size" =>  8,               "default_value" => "0.0625"},
         {"name" => "decimalfield",         "column_type" => ColumnTypes::DECI, "size" =>  9, "scale" => 3, "default_value" => "123456.789"}
@@ -311,7 +323,7 @@ SQL
           tiny2 TINYINT(2) UNSIGNED DEFAULT 99,
           nulldefaultstr VARCHAR(255) DEFAULT NULL,
           timestampboth TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          #{"timestampcreateonly TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," unless mysql_5_5?}
+          #{"timestampcreateonly TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," if supports_multiple_timestamp_columns?}
           #{"mysqlfunctiondefault VARCHAR(255) DEFAULT (uuid())," if mysql_default_expressions?}
           `select` INT,
           ```quoted``` INT,
@@ -347,7 +359,7 @@ SQL
           {"name" => "tiny2",                "column_type" => ColumnTypes::UINT, "size" =>  1, "default_value" => "99"}, # note we've lost the (nonportable) display width (2) - size tells us the size of the integers, not the display width
           {"name" => "nulldefaultstr",       "column_type" => ColumnTypes::VCHR, "size" => 255},
           {"name" => "timestampboth",        "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true},
-          ({"name" => "timestampcreateonly", "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true} unless mysql_5_5?),
+          ({"name" => "timestampcreateonly", "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true} if supports_multiple_timestamp_columns?),
           ({"name" => "mysqlfunctiondefault", "column_type" => ColumnTypes::VCHR, "size" => 255,                     "default_function" => "uuid()"} if mysql_default_expressions?),
           {"name" => "select",               "column_type" => ColumnTypes::SINT, "size" =>  4},
           {"name" => "`quoted`",             "column_type" => ColumnTypes::SINT, "size" =>  4},
@@ -406,25 +418,27 @@ SQL
     end
   end
 
-  def create_spatialtbl
+  def create_spatialtbl(srid: nil)
     case @database_server
     when 'mysql'
       execute(<<-SQL)
         CREATE TABLE spatialtbl (
           id INT NOT NULL,
-          plainspat GEOMETRY,
-          pointspat POINT,
+          plainspat GEOMETRY NOT NULL#{" SRID #{srid}" if srid},
+          pointspat POINT#{" SRID #{srid}" if srid},
           PRIMARY KEY(id))
 SQL
+      execute "CREATE SPATIAL INDEX plainidx ON spatialtbl (plainspat)" if supports_spatial_indexes?
 
     when 'postgresql'
       execute(<<-SQL)
         CREATE TABLE spatialtbl (
           id INT NOT NULL,
-          plainspat geometry,
-          pointspat geometry(Point),
+          plainspat geometry#{"(Geometry,#{srid})" if srid} NOT NULL,
+          pointspat geometry(Point#{",#{srid}" if srid}),
           PRIMARY KEY(id))
 SQL
+      execute "CREATE INDEX plainidx ON spatialtbl USING GIST (plainspat)"
     end
   end
 
@@ -435,16 +449,23 @@ SQL
     end
   end
 
-  def spatialtbl_def
+  def spatialtbl_def(srid: nil)
     { "name"    => "spatialtbl",
-      "columns" => [
+      "columns" => add_srid_to([
         {"name" => "id",                   "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false},
-        {"name" => "plainspat",            "column_type" => ColumnTypes::SPAT},
-        {"name" => "pointspat",            "column_type" => ColumnTypes::SPAT, "type_restriction" => "point"},
-      ].compact,
+        {"name" => "plainspat",            "column_type" => ColumnTypes::SPAT,               "nullable" => false},
+        {"name" => "pointspat",            "column_type" => ColumnTypes::SPAT,                                   "type_restriction" => "point"},
+      ].compact, srid),
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
-      "keys" => [] }
+      "keys" => [
+        ({"name" => "plainidx", "unique" => false, "columns" => [1]} if supports_spatial_indexes?)
+      ].compact }
+  end
+
+  def add_srid_to(columns, srid)
+    return columns unless srid
+    columns.each {|column| column["reference_system"] = srid.to_s if column["column_type"] == ColumnTypes::SPAT}
   end
 
   def spatial_reference_table_def

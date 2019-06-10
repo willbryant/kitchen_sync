@@ -11,6 +11,7 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	if (column.scale) fields++;
 	if (!column.nullable) fields++;
 	if (!column.type_restriction.empty()) fields++;
+	if (!column.reference_system.empty()) fields++;
 	if (!column.db_type_def.empty()) fields++;
 	if (column.default_type) fields++;
 	if (column.flags & mysql_timestamp) fields++;
@@ -36,6 +37,10 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	if (!column.type_restriction.empty()) {
 		packer << string("type_restriction");
 		packer << column.type_restriction;
+	}
+	if (!column.reference_system.empty()) {
+		packer << string("reference_system");
+		packer << column.reference_system;
 	}
 	if (!column.db_type_def.empty()) {
 		packer << string("db_type_def");
@@ -126,6 +131,8 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 			unpacker >> column.nullable;
 		} else if (attr_key == "type_restriction") {
 			unpacker >> column.type_restriction;
+		} else if (attr_key == "reference_system") {
+			unpacker >> column.reference_system;
 		} else if (attr_key == "db_type_def") {
 			unpacker >> column.db_type_def;
 		} else if (attr_key == "sequence") {

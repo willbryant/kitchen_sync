@@ -10,6 +10,7 @@
 #include "row_printer.h"
 
 #define MYSQL_5_6_5 50605
+#define MYSQL_8_0_0 80000
 #define MARIADB_10_0_0 100000
 #define MARIADB_10_2_7 100207
 
@@ -181,16 +182,18 @@ public:
 	void rollback_transaction();
 	void populate_database_schema(Database &database);
 	void convert_unsupported_database_schema(Database &database);
+
+	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '`'); };
 	string escape_string_value(const string &value);
 	string &append_escaped_generic_value_to(string &result, const string &value);
 	string &append_escaped_column_value_to(string &result, const Column &column, const string &value);
 	string column_type(const Column &column);
 	string column_default(const Table &table, const Column &column);
 	string column_definition(const Table &table, const Column &column);
-	bool information_schema_column_default_shows_escaped_expressions();
 
-	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '`'); };
 	inline ColumnFlags supported_flags() const { return (ColumnFlags)(mysql_timestamp | mysql_on_update_timestamp); }
+	inline bool information_schema_column_default_shows_escaped_expressions() { return (server_is_mariadb && server_version >= MARIADB_10_2_7); }
+	inline bool supports_srid_settings_on_columns() { return (!server_is_mariadb && server_version >= MYSQL_8_0_0); }
 
 	size_t execute(const string &sql);
 	string select_one(const string &sql);
@@ -523,11 +526,17 @@ string MySQLClient::column_type(const Column &column) {
 		}
 
 	} else if (column.column_type == ColumnTypes::SPAT) {
-		if (column.type_restriction.empty()) {
-			return "geometry";
-		} else {
-			return column.type_restriction;
+		string result(column.type_restriction.empty() ? string("geometry") : column.type_restriction);
+
+		if (!column.reference_system.empty() && supports_srid_settings_on_columns()) {
+			// nb. mysql outputs this after options like 'NOT NULL', but it accepts it here too; it also
+			// outputs it using the special backwards-compatible /*! syntax, which we don't use since we
+			// need the version detection code for the information_schema query anyway.
+			result += " SRID ";
+			result += column.reference_system;
 		}
+
+		return result;
 
 	} else {
 		throw runtime_error("Don't know how to express column type of " + column.name + " (" + column.column_type + ")");
@@ -590,10 +599,6 @@ string MySQLClient::column_definition(const Table &table, const Column &column) 
 	}
 
 	return result;
-}
-
-bool MySQLClient::information_schema_column_default_shows_escaped_expressions() {
-	 return (server_is_mariadb && server_version >= MARIADB_10_2_7);
 }
 
 struct MySQLColumnLister {
@@ -693,13 +698,15 @@ struct MySQLColumnLister {
 				flags = (ColumnFlags)(flags | mysql_on_update_timestamp);
 			}
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM, 0, 0, flags);
-		} else if (db_type == "geometry") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT);
-		} else if (db_type == "point" || db_type == "linestring" || db_type == "polygon" || db_type == "geometrycollection" || db_type == "multipoint" || db_type == "multilinestring" || db_type == "multipolygon") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, 0, 0, ColumnFlags::nothing, db_type);
+		} else if (db_type == "geometry" || db_type == "point" || db_type == "linestring" || db_type == "polygon" || db_type == "geometrycollection" || db_type == "multipoint" || db_type == "multilinestring" || db_type == "multipolygon") {
+			string type_restriction(db_type);
+			if (type_restriction == "geometry") type_restriction.clear();
+			string reference_system;
+			if (!row.null_at(5)) reference_system = row.string_at(5);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, 0, 0, ColumnFlags::nothing, type_restriction, reference_system);
 		} else {
 			// not supported, but leave it till sync_to's check_tables_usable to complain about it so that it can be ignored
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UNKN, 0, 0, ColumnFlags::nothing, "", db_type);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UNKN, 0, 0, ColumnFlags::nothing, "", "", db_type);
 		}
 	}
 
@@ -763,13 +770,17 @@ struct MySQLTableLister {
 		Table table(row.string_at(0));
 
 		MySQLColumnLister column_lister(table, client.information_schema_column_default_shows_escaped_expressions());
-		client.query("SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = SCHEMA() AND TABLE_NAME = '" + client.escape_string_value(table.name) + "' ORDER BY ORDINAL_POSITION", column_lister);
+		client.query("SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, " + srid_column() + " AS SRS_ID FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = SCHEMA() AND TABLE_NAME = '" + client.escape_string_value(table.name) + "' ORDER BY ORDINAL_POSITION", column_lister);
 
 		MySQLKeyLister key_lister(table);
 		client.query("SHOW KEYS FROM " + client.quote_identifier(table.name), key_lister);
 		sort(table.keys.begin(), table.keys.end()); // order is arbitrary for keys, but both ends must be consistent, so we sort the keys by name
 
 		database.tables.push_back(table);
+	}
+
+	inline string srid_column() {
+		return (client.supports_srid_settings_on_columns() ? "SRS_ID" : "NULL");
 	}
 
 private:

@@ -26,6 +26,25 @@ class SpatialToTest < KitchenSync::EndpointTestCase
     ", 'axis-order=long-lat'" if spatial_axis_order_depends_on_srs?
   end
 
+  test_each "creates spatial tables if they don't exist" do
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command Commands::SCHEMA, ["tables" => [spatialtbl_def]]
+    read_command
+    assert connection.tables.include?("spatialtbl")
+    assert_equal nil, connection.table_srids("spatialtbl")["plainspat"]
+  end
+
+  test_each "creates spatial tables with SRID settings on columns when supported by the database" do
+    omit "This database doesn't support SRID settings on columns" unless schema_srid_settings?
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command Commands::SCHEMA, ["tables" => [spatialtbl_def(srid: 4326)]]
+    read_command
+    assert connection.tables.include?("spatialtbl")
+    assert_equal "4326", connection.table_srids("spatialtbl")["plainspat"]
+  end
+
   test_each "runs on empty spatial tables" do
     expect_handshake_commands
     expect_command Commands::SCHEMA

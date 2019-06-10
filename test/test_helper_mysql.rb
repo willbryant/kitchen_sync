@@ -52,6 +52,10 @@ class Mysql2::Client
     query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = row["Type"]}
   end
 
+  def table_srids(table_name)
+    query("SHOW CREATE TABLE #{table_name}").first["Create Table"].scan(/`(.*)`.*\/\*!80003 SRID (\d+)/).to_h
+  end
+
   def table_column_nullability(table_name)
     query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = (row["Null"] == "YES")}
   end

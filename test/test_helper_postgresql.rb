@@ -99,6 +99,10 @@ class PG::Connection
     SQL
   end
 
+  def table_srids(table_name)
+    table_column_types(table_name).each_with_object({}) {|(column_name, type), results| results[column_name] = Array(type.scan(/(?:geometry|geography)\(\w+,(\d+)\)/)[0])[0]}
+  end
+
   def table_column_nullability(table_name)
     query(<<-SQL).collect.with_object({}) {|row, results| results[row["attname"]] = !row["attnotnull"]}
       SELECT attname::TEXT, attnotnull
