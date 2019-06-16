@@ -190,6 +190,7 @@ public:
 	string column_type(const Column &column);
 	string column_default(const Table &table, const Column &column);
 	string column_definition(const Table &table, const Column &column);
+	string key_definition(const Table &table, const Key &key);
 
 	inline ColumnFlags supported_flags() const { return (ColumnFlags)(mysql_timestamp | mysql_on_update_timestamp); }
 	inline bool information_schema_column_default_shows_escaped_expressions() { return (server_is_mariadb && server_version >= MARIADB_10_2_7); }
@@ -601,6 +602,29 @@ string MySQLClient::column_definition(const Table &table, const Column &column) 
 	return result;
 }
 
+string MySQLClient::key_definition(const Table &table, const Key &key) {
+	string result;
+	switch (key.key_type) {
+		case standard_key:
+			result = "CREATE INDEX";
+			break;
+
+		case unique_key:
+			result = "CREATE UNIQUE INDEX";
+			break;
+
+		case spatial_key:
+			result = "CREATE SPATIAL INDEX";
+			break;
+	}
+	result += quote_identifier(key.name);
+	result += " ON ";
+	result += quote_identifier(table.name);
+	result += ' ';
+	result += columns_tuple(*this, table.columns, key.columns);
+	return result;
+}
+
 struct MySQLColumnLister {
 	inline MySQLColumnLister(Table &table, bool information_schema_column_default_shows_escaped_expressions): table(table), information_schema_column_default_shows_escaped_expressions(information_schema_column_default_shows_escaped_expressions) {}
 
@@ -740,11 +764,10 @@ struct MySQLKeyLister {
 	inline MySQLKeyLister(Table &table): table(table) {}
 
 	inline void operator()(MySQLRow &row) {
-		bool unique = (row.string_at(1) == "0");
-		string key_name = row.string_at(2);
-		string column_name = row.string_at(4);
-		size_t column_index = table.index_of_column(column_name);
-		// FUTURE: consider representing collation, sub_part, packed, index_type, and perhaps comment/index_comment
+		string key_name(row.string_at(2));
+		string column_name(row.string_at(4));
+		size_t column_index(table.index_of_column(column_name));
+		// FUTURE: consider representing collation, sub_part, packed, and perhaps comment/index_comment
 
 		if (key_name == "PRIMARY") {
 			// there is of course only one primary key; we get a row for each column it includes
@@ -754,7 +777,13 @@ struct MySQLKeyLister {
 		} else {
 			// a column in a generic key, which may or may not be unique
 			if (table.keys.empty() || table.keys.back().name != key_name) {
-				table.keys.push_back(Key(key_name, unique));
+				KeyType key_type(standard_key);
+				if (row.string_at(1) == "0") {
+					key_type = unique_key;
+				} else if (row.string_at(10) == "SPATIAL") {
+					key_type = spatial_key;
+				}
+				table.keys.push_back(Key(key_name, key_type));
 			}
 			table.keys.back().columns.push_back(column_index);
 		}

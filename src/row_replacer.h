@@ -32,7 +32,7 @@ struct RowReplacerBuilder {
 	static void construct_clearers(RowReplacer<DatabaseClient> &row_replacer) {
 		// databases that don't support the REPLACE statement must explicitly clear conflicting rows
 		for (const Key &key : row_replacer.table.keys) {
-			if (key.unique) {
+			if (key.unique()) {
 				row_replacer.unique_key_clearers.emplace_back(row_replacer.client, row_replacer.table, key.columns);
 			}
 		}

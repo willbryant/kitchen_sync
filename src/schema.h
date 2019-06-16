@@ -73,16 +73,25 @@ struct Column {
 typedef vector<Column> Columns;
 typedef vector<string> ColumnNames;
 
+enum KeyType {
+	unique_key = 0,
+	standard_key = 1,
+	spatial_key = 2,
+};
+
 struct Key {
 	string name;
-	bool unique;
+	KeyType key_type;
 	ColumnIndices columns;
 
-	inline Key(const string &name, bool unique): name(name), unique(unique) {}
-	inline Key() {}
+	inline Key(const string &name, KeyType key_type): name(name), key_type(key_type) {}
+	inline Key(): key_type(standard_key) {}
 
-	inline bool operator <(const Key &other) const { return (unique != other.unique ? unique : name < other.name); }
-	inline bool operator ==(const Key &other) const { return (name == other.name && unique == other.unique && columns == other.columns); }
+	inline bool unique() const { return (key_type == unique_key); }
+	inline bool spatial() const { return (key_type == spatial_key); }
+
+	inline bool operator <(const Key &other) const { return (key_type != other.key_type ? key_type < other.key_type : name < other.name); }
+	inline bool operator ==(const Key &other) const { return (name == other.name && key_type == other.key_type && columns == other.columns); }
 	inline bool operator !=(const Key &other) const { return (!(*this == other)); }
 };
 

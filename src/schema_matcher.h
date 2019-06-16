@@ -33,13 +33,7 @@ struct DropKeyStatements <DatabaseClient, true> {
 template <typename DatabaseClient>
 struct CreateKeyStatements {
 	static void add_to(Statements &statements, DatabaseClient &client, const Table &table, const Key &key) {
-		string result(key.unique ? "CREATE UNIQUE INDEX " : "CREATE INDEX ");
-		result += client.quote_identifier(key.name);
-		result += " ON ";
-		result += client.quote_identifier(table.name);
-		result += ' ';
-		result += columns_tuple(client, table.columns, key.columns);
-		statements.push_back(result);
+		statements.push_back(client.key_definition(table, key));
 	}
 };
 
@@ -280,7 +274,7 @@ struct DropColumnClauses {
 		} else {
 			Keys::iterator key = table.keys.begin();
 			while (key != table.keys.end()) {
-				if (UpdateKeyForDroppedColumn<DatabaseClient>::update_key_columns(key->columns, key->unique, column_index)) {
+				if (UpdateKeyForDroppedColumn<DatabaseClient>::update_key_columns(key->columns, key->unique(), column_index)) {
 					++key;
 				} else {
 					// proactively drop the key at the start to work around one case of https://bugs.mysql.com/bug.php?id=57497 -

@@ -84,8 +84,24 @@ void operator << (Packer<OutputStream> &packer, const Key &key) {
 	pack_map_length(packer, 3);
 	packer << string("name");
 	packer << key.name;
-	packer << string("unique");
-	packer << key.unique;
+	switch (key.key_type) {
+		case standard_key:
+			// we send the "unique" flag for backwards compatibility with v1.17 and earlier; therefore, there's no point in sending "key_type" as well
+			packer << string("unique");
+			packer << false;
+			break;
+
+		case unique_key:
+			// as for standard_key
+			packer << string("unique");
+			packer << true;
+			break;
+
+		case spatial_key:
+			packer << string("key_type");
+			packer << string("spatial");
+			break;
+	}
 	packer << string("columns");
 	packer << key.columns;
 }
@@ -167,7 +183,16 @@ void operator >> (Unpacker<InputStream> &unpacker, Key &key) {
 		if (attr_key == "name") {
 			unpacker >> key.name;
 		} else if (attr_key == "unique") {
-			unpacker >> key.unique;
+			key.key_type = (unpacker.template next<bool>() ? unique_key : standard_key);
+		} else if (attr_key == "key_type") {
+			string key_type(unpacker.template next<string>());
+			if (key_type == "standard") {
+				key.key_type = standard_key;
+			} else if (key_type == "unique") {
+				key.key_type = unique_key;
+			} else if (key_type == "spatial") {
+				key.key_type = spatial_key;
+			}
 		} else if (attr_key == "columns") {
 			unpacker >> key.columns;
 		} else {

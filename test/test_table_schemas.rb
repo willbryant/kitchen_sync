@@ -459,7 +459,7 @@ SQL
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
       "keys" => [
-        ({"name" => "plainidx", "unique" => false, "columns" => [1]} if supports_spatial_indexes?)
+        ({"name" => "plainidx", "key_type" => "spatial", "columns" => [1]} if supports_spatial_indexes?)
       ].compact }
   end
 

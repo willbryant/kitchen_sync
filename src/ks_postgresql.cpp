@@ -200,6 +200,7 @@ public:
 	string column_sequence_name(const Table &table, const Column &column);
 	string column_default(const Table &table, const Column &column);
 	string column_definition(const Table &table, const Column &column);
+	string key_definition(const Table &table, const Key &key);
 
 	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '"'); };
 	inline ColumnFlags supported_flags() const { return ColumnFlags::time_zone; }
@@ -591,6 +592,17 @@ string PostgreSQLClient::column_definition(const Table &table, const Column &col
 	return result;
 }
 
+string PostgreSQLClient::key_definition(const Table &table, const Key &key) {
+	string result(key.unique() ? "CREATE UNIQUE INDEX " : "CREATE INDEX ");
+	result += quote_identifier(key.name);
+	result += " ON ";
+	result += quote_identifier(table.name);
+	result += ' ';
+	if (key.spatial()) result += "USING gist ";
+	result += columns_tuple(*this, table.columns, key.columns);
+	return result;
+}
+
 struct PostgreSQLColumnLister {
 	inline PostgreSQLColumnLister(Table &table): table(table) {}
 
@@ -742,13 +754,15 @@ struct PostgreSQLKeyLister {
 		// if we have no primary key, we might need to use another unique key as a surrogate - see PostgreSQLTableLister below
 		// furthermore this key must have no NULLable columns, as they effectively make the index not unique
 		string key_name = row.string_at(0);
-		bool unique = (row.string_at(1) == "t");
-		string column_name = row.string_at(2);
+		string column_name = row.string_at(3);
 		size_t column_index = table.index_of_column(column_name);
 		// FUTURE: consider representing collation, index type, partial keys etc.
 
 		if (table.keys.empty() || table.keys.back().name != key_name) {
-			table.keys.push_back(Key(key_name, unique));
+			KeyType key_type(standard_key);
+			if (row.string_at(1) == "t") key_type = unique_key;
+			if (row.string_at(2).find("USING gist ") != string::npos) key_type = spatial_key;
+			table.keys.push_back(Key(key_name, key_type));
 		}
 		table.keys.back().columns.push_back(column_index);
 	}
@@ -788,8 +802,8 @@ struct PostgreSQLTableLister {
 
 		PostgreSQLKeyLister key_lister(table);
 		client.query(
-			"SELECT indexname, indisunique, attname "
-			  "FROM (SELECT table_class.oid AS table_oid, index_class.relname AS indexname, pg_index.indisunique, generate_series(1, array_length(indkey, 1)) AS position, unnest(indkey) AS attnum "
+			"SELECT indexname, indisunique, indexdef, attname "
+			  "FROM (SELECT table_class.oid AS table_oid, index_class.relname AS indexname, pg_index.indisunique, pg_get_indexdef(indexrelid) AS indexdef, generate_series(1, array_length(indkey, 1)) AS position, unnest(indkey) AS attnum "
 			          "FROM pg_class table_class, pg_class index_class, pg_index "
 			         "WHERE table_class.relname = '" + client.escape_string_value(table.name) + "' AND "
 			               "table_class.relkind = 'r' AND "
