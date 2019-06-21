@@ -43,6 +43,7 @@ enum ColumnFlags {
 	mysql_timestamp = 1,
 	mysql_on_update_timestamp = 2,
 	time_zone = 4,
+	simple_geometry = 8,
 };
 
 struct Column {

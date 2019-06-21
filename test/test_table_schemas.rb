@@ -434,8 +434,8 @@ SQL
       execute(<<-SQL)
         CREATE TABLE spatialtbl (
           id INT NOT NULL,
-          plainspat geometry#{"(Geometry,#{srid})" if srid} NOT NULL,
-          pointspat geometry(Point#{",#{srid}" if srid}),
+          plainspat #{srid ? "geography(Geometry,#{srid})" : "geometry"} NOT NULL,
+          pointspat #{srid ? "geography(Point,#{srid})" : "geometry(Point)"},
           PRIMARY KEY(id))
 SQL
       execute "CREATE INDEX plainidx ON spatialtbl USING GIST (plainspat)"

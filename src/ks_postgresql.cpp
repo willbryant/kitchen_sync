@@ -12,7 +12,7 @@
 #include "ewkb.h"
 
 struct TypeMap {
-	set<Oid> geometry;
+	set<Oid> spatial;
 };
 
 enum PostgreSQLColumnConversion {
@@ -93,9 +93,10 @@ PostgreSQLColumnConversion PostgreSQLRes::conversion_for_type(Oid typid) {
 			return encode_raw; // so this is actually just an optimised version of the default block below
 
 		default:
-			// because the Geometry type comes from the PostGIS extension, its OID isn't a constant, so we can't use it in a case statement. we've also
-			// used a set instead of a scalar in case there's somehow more than one OID found (presumably from different installs of the extension).
-			if (_type_map.geometry.count(typid)) {
+			// because the Geometry type comes from the PostGIS extension, its OID isn't a constant, so we can't use it in a case statement.
+			// we also need to look for the type for Geography, so we've used a set instead of a scalar; this means we'll also tolerate
+			// finding more than one OID found per type (presumably from different installs of the extension).
+			if (_type_map.spatial.count(typid)) {
 				return encode_geom;
 			} else {
 				return encode_raw;
@@ -203,7 +204,7 @@ public:
 	string key_definition(const Table &table, const Key &key);
 
 	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '"'); };
-	inline ColumnFlags supported_flags() const { return ColumnFlags::time_zone; }
+	inline ColumnFlags supported_flags() const { return (ColumnFlags)(ColumnFlags::time_zone | ColumnFlags::simple_geometry); }
 
 	size_t execute(const string &sql);
 	string select_one(const string &sql);
@@ -508,11 +509,18 @@ string PostgreSQLClient::column_type(const Column &column) {
 
 	} else if (column.column_type == ColumnTypes::SPAT) {
 		// note that we have made the assumption that all the mysql geometry types should be mapped to
-		// PostGIS GEOMETRY objects, rather than to the built-in geometric types such as POINT, because
+		// PostGIS objects, rather than to the built-in geometric types such as POINT, because
 		// postgresql's built-in geometric types don't support spatial reference systems (SRIDs), don't
 		// have any equivalent to the multi* types, the built-in POLYGON type doesn't support 'holes' (as
-		// created using the two-argument form on mysql). we haven't yet looked at the geography types.
-		string result("geometry");
+		// created using the two-argument form on mysql), etc.
+		// this still leaves us with a choice between geometry and geography; the difference is that
+		// geography does calculations on spheroids whereas geometry calculates using simple planes.
+		// geography defaults to SRID 4326 (and until recently, only supported 4326) and will even use
+		// that default if you specify 0.  geometry allows you to specify any SRID and remembers it, but
+		// always calculates is as if using SRID 0, so there's no real benefit to doing so.  so we have
+		// made the assumption that generally SRID set => want the geography type, when coming from other
+		// databases, but we've added a simple_geometry flag so we can round-trip geometry with an SRID.
+		string result(column.reference_system.empty() || (column.flags & ColumnFlags::simple_geometry) ? "geometry" : "geography");
 		if (!column.reference_system.empty()) {
 			result += '(';
 			result += (column.type_restriction.empty() ? string("geometry") : column.type_restriction);
@@ -689,9 +697,16 @@ struct PostgreSQLColumnLister {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM, 0, 0, ColumnFlags::time_zone);
 		} else if (db_type == "geometry") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT);
+		} else if (db_type == "geography") {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, 0, 0, ColumnFlags::nothing, "", "4326"); // this default SRID is baked into PostGIS (and was the only SRID supported for the geography type in early versions)
 		} else if (db_type.substr(0, 9) == "geometry(") {
 			string type_restriction, reference_system;
 			tie(type_restriction, reference_system) = extract_spatial_type_restriction_and_reference_system(db_type.substr(9, db_type.length() - 10));
+			ColumnFlags flags = reference_system.empty() ? ColumnFlags::nothing : ColumnFlags::simple_geometry; // as discussed in column_type, we mainly expect SRIDs to be used with the geography type, but use this flag to turn the column back into a geometry type for this case
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, 0, 0, flags, type_restriction, reference_system);
+		} else if (db_type.substr(0, 10) == "geography(") {
+			string type_restriction, reference_system;
+			tie(type_restriction, reference_system) = extract_spatial_type_restriction_and_reference_system(db_type.substr(10, db_type.length() - 11));
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, 0, 0, ColumnFlags::nothing, type_restriction, reference_system);
 		} else {
 			// not supported, but leave it till sync_to's check_tables_usable to complain about it so that it can be ignored
@@ -724,7 +739,7 @@ struct PostgreSQLColumnLister {
 
 		string reference_system(type_restriction.substr(comma_pos + 1));
 		type_restriction.resize(comma_pos);
-		if (type_restriction == "geometry") type_restriction.clear();
+		if (type_restriction == "geometry") type_restriction.clear(); // normalize; note that it still says "geometry" for geography types
 
 		return make_tuple(type_restriction, reference_system);
 	}
@@ -831,8 +846,8 @@ struct PostgreSQLTypeMapCollector {
 		uint32_t oid(row.uint_at(0));
 		string typname(row.string_at(1));
 
-		if (typname == "geometry") {
-			type_map.geometry.insert(oid);
+		if (typname == "geometry" || typname == "geography") {
+			type_map.spatial.insert(oid);
 		}
 	}
 
@@ -854,7 +869,7 @@ void PostgreSQLClient::populate_database_schema(Database &database) {
 		    "FROM pg_type, pg_namespace "
 		   "WHERE pg_type.typnamespace = pg_namespace.oid AND "
 		         "pg_namespace.nspname = ANY (current_schemas(false)) AND "
-		         "pg_type.typname IN ('geometry')",
+		         "pg_type.typname IN ('geometry', 'geography')",
 		  type_collector);
 }
 
