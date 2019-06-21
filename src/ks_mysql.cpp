@@ -8,6 +8,7 @@
 #include "database_client_traits.h"
 #include "sql_functions.h"
 #include "row_printer.h"
+#include "ewkb.h"
 
 #define MYSQL_5_6_5 50605
 #define MYSQL_8_0_0 80000
@@ -19,6 +20,7 @@ enum MySQLColumnConversion {
 	encode_bool,
 	encode_uint,
 	encode_sint,
+	encode_geom,
 };
 
 class MySQLRes {
@@ -81,6 +83,9 @@ MySQLColumnConversion MySQLRes::conversion_for_field(const MYSQL_FIELD &field) {
 			}
 			break;
 
+		case MYSQL_TYPE_GEOMETRY:
+			return encode_geom;
+
 		default:
 			return encode_raw;
 	}
@@ -132,6 +137,10 @@ public:
 
 				case encode_sint:
 					packer << int_at(column_number);
+					break;
+
+				case encode_geom:
+					packer << mysql_bin_to_ewkb_bin(result_at(column_number), length_of(column_number));
 					break;
 
 				case encode_raw:
@@ -186,6 +195,7 @@ public:
 	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '`'); };
 	string escape_string_value(const string &value);
 	string &append_escaped_generic_value_to(string &result, const string &value);
+	string &append_escaped_spatial_value_to(string &result, const string &value);
 	string &append_escaped_column_value_to(string &result, const Column &column, const string &value);
 	string column_type(const Column &column);
 	string column_default(const Table &table, const Column &column);
@@ -381,8 +391,16 @@ string &MySQLClient::append_escaped_generic_value_to(string &result, const strin
 	return result;
 }
 
+string &MySQLClient::append_escaped_spatial_value_to(string &result, const string &value) {
+	return append_escaped_generic_value_to(result, ewkb_bin_to_mysql_bin(value));
+}
+
 string &MySQLClient::append_escaped_column_value_to(string &result, const Column &column, const string &value) {
-	return append_escaped_generic_value_to(result, value);
+	if (column.column_type == ColumnTypes::SPAT) {
+		return append_escaped_spatial_value_to(result, value);
+	} else {
+		return append_escaped_generic_value_to(result, value);
+	}
 }
 
 void MySQLClient::convert_unsupported_database_schema(Database &database) {

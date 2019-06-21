@@ -142,7 +142,7 @@ public:
 				}
 
 				case encode_geom:
-					packer << ewkb_hex_to_standard_geom_bin(result_at(column_number), length_of(column_number));
+					packer << hex_to_bin_string(result_at(column_number), length_of(column_number));
 					break;
 
 				case encode_raw:
@@ -380,10 +380,8 @@ string &PostgreSQLClient::append_escaped_bytea_value_to(string &result, const st
 }
 
 string &PostgreSQLClient::append_escaped_spatial_value_to(string &result, const string &value) {
-	result.append("ST_GeomFromWKB(");
-	append_escaped_bytea_value_to(result, value.substr(4));
-	result.append(",");
-	result.append(to_string(*(uint32_t*)value.c_str()));
+	result.append("ST_GeomFromEWKB(");
+	append_escaped_bytea_value_to(result, value);
 	result.append(")");
 	return result;
 }
