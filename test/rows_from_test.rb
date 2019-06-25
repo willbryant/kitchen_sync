@@ -165,8 +165,8 @@ class RowsFromTest < KitchenSync::EndpointTestCase
   test_each "uses a consistent format for misc column types such as dates and times" do
     clear_schema
     create_misctbl
-    execute "INSERT INTO misctbl (pri, boolfield, datefield, timefield, datetimefield, floatfield, doublefield, decimalfield, vchrfield, fchrfield, textfield, blobfield) VALUES " \
-            "                    (1, true, '2018-12-31', '23:59', '2018-12-31 23:59', 1.0, 0.5, 012345.6789, 'vchrvalue', 'fchrvalue', 'textvalue', 'blobvalue')"
+    execute %Q{INSERT INTO misctbl (pri, boolfield, datefield, timefield, datetimefield, floatfield, doublefield, decimalfield, vchrfield, fchrfield, textfield, blobfield, jsonfield) VALUES
+                                   (1, true, '2018-12-31', '23:59', '2018-12-31 23:59', 1.0, 0.5, 012345.6789, 'vchrvalue', 'fchrvalue', 'textvalue', 'blobvalue', '{"one": 1, "two": "test"}')}
     send_handshake_commands
 
     # note that we currently use string format for float and double fields, though we could convert them to proper msgpack types instead
@@ -174,7 +174,7 @@ class RowsFromTest < KitchenSync::EndpointTestCase
     send_command   Commands::ROWS, ["misctbl", [], []]
     expect_command Commands::ROWS,
                    ["misctbl", [], []],
-                   [1, true, '2018-12-31', '23:59:00', '2018-12-31 23:59:00', '1', '0.5', '12345.6789', 'vchrvalue', 'fchrvalue', 'textvalue', 'blobvalue']
+                   [1, true, '2018-12-31', '23:59:00', '2018-12-31 23:59:00', '1', '0.5', '12345.6789', 'vchrvalue', 'fchrvalue', 'textvalue', 'blobvalue', '{"one": 1, "two": "test"}']
   end
 
   test_each "uses the chosen substitute key if the table has no real primary key but has a suitable unique key" do

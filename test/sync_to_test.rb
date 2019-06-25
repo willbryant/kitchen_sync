@@ -361,7 +361,8 @@ class SyncToTest < KitchenSync::EndpointTestCase
 
     bytes = (0..255).to_a.pack("C*")
     bytes = bytes.reverse + bytes
-    row = [1] + [nil]*(misctbl_def["columns"].size - 2) + [bytes]
+    row = [1] + [nil]*(misctbl_def["columns"].size - 1)
+    row[misctbl_def["columns"].index {|c| c["name"] == "blobfield"}] = bytes
     @rows = [row]
     @keys = @rows.collect {|row| [row[0]]}
 

@@ -100,6 +100,11 @@ class Mysql2::Client
     server_version !~ /^5\./ && server_version !~ /MariaDB/
   end
 
+  def explicit_json_column_type?
+    # supported by mysql 5.7.8+, not by mysql 5.x or mariadb
+    server_version !~ /^5\.5/ && server_version !~ /MariaDB/
+  end
+
   def sequence_column_type
     'INT NOT NULL AUTO_INCREMENT'
   end
@@ -110,6 +115,14 @@ class Mysql2::Client
 
   def blob_column_type
     'LONGBLOB'
+  end
+
+  def json_column_type(column_name)
+    if explicit_json_column_type?
+      "JSON"
+    else
+      "LONGTEXT COMMENT 'JSON' CHECK (json_valid(#{column_name}))"
+    end
   end
 
   def datetime_column_type

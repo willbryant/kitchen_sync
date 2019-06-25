@@ -11,6 +11,7 @@
 #include "ewkb.h"
 
 #define MYSQL_5_6_5 50605
+#define MYSQL_5_7_8 50708
 #define MYSQL_8_0_0 80000
 #define MARIADB_10_0_0 100000
 #define MARIADB_10_2_7 100207
@@ -196,15 +197,18 @@ public:
 	string escape_string_value(const string &value);
 	string &append_escaped_generic_value_to(string &result, const string &value);
 	string &append_escaped_spatial_value_to(string &result, const string &value);
+	string &append_escaped_json_value_to(string &result, const string &value);
 	string &append_escaped_column_value_to(string &result, const Column &column, const string &value);
-	string column_type(const Column &column);
+	tuple<string, string> column_type(const Column &column);
 	string column_default(const Table &table, const Column &column);
 	string column_definition(const Table &table, const Column &column);
 	string key_definition(const Table &table, const Key &key);
 
 	inline ColumnFlags supported_flags() const { return (ColumnFlags)(mysql_timestamp | mysql_on_update_timestamp); }
-	inline bool information_schema_column_default_shows_escaped_expressions() { return (server_is_mariadb && server_version >= MARIADB_10_2_7); }
-	inline bool supports_srid_settings_on_columns() { return (!server_is_mariadb && server_version >= MYSQL_8_0_0); }
+	inline bool information_schema_column_default_shows_escaped_expressions() const { return (server_is_mariadb && server_version >= MARIADB_10_2_7); }
+	inline bool supports_srid_settings_on_columns() const { return (!server_is_mariadb && server_version >= MYSQL_8_0_0); }
+	inline bool supports_check_constraints() const { return check_constraints_table_exists; }
+	inline bool explicit_json_column_type() const { return (!server_is_mariadb && server_version >= MYSQL_5_7_8); }
 
 	size_t execute(const string &sql);
 	string select_one(const string &sql);
@@ -238,6 +242,7 @@ protected:
 private:
 	MYSQL mysql;
 	bool server_is_mariadb;
+	bool check_constraints_table_exists;
 	unsigned long server_version;
 
 	// forbid copying
@@ -280,6 +285,7 @@ MySQLClient::MySQLClient(
 
 	server_is_mariadb = strstr(mysql_get_server_info(&mysql), "MariaDB") != nullptr;
 	server_version = mysql_get_server_version(&mysql);
+	check_constraints_table_exists = atoi(select_one("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='INFORMATION_SCHEMA' AND TABLE_NAME='CHECK_CONSTRAINTS'").c_str());
 }
 
 MySQLClient::~MySQLClient() {
@@ -395,9 +401,26 @@ string &MySQLClient::append_escaped_spatial_value_to(string &result, const strin
 	return append_escaped_generic_value_to(result, ewkb_bin_to_mysql_bin(value));
 }
 
+string &MySQLClient::append_escaped_json_value_to(string &result, const string &value) {
+	// normally you wouldn't have to do anything special to be able to insert into a JSON field.
+	// but we set the MYSQL_SET_CHARSET_NAME option to "binary" to avoid having to interpret
+	// character sets, and unfortunately they added an explicit check which causes
+	// "Cannot create a JSON value from a string with CHARACTER SET 'binary'" errors, so we have
+	// to tell it to convert our "binary" string (which should already actually be UTF-8);
+	// conversion from binary effectively just changes the encoding setting, it doesn't actually
+	// convert anything.  note that mysql has defined the JSON type as always having encoding
+	// utf8mb4 - it isn't like varchar and text.
+	result += "CONVERT(";
+	append_escaped_generic_value_to(result, value);
+	result += " USING utf8mb4)";
+	return result;
+}
+
 string &MySQLClient::append_escaped_column_value_to(string &result, const Column &column, const string &value) {
 	if (column.column_type == ColumnTypes::SPAT) {
 		return append_escaped_spatial_value_to(result, value);
+	} else if (column.column_type == ColumnTypes::JSON && explicit_json_column_type()) {
+		return append_escaped_json_value_to(result, value);
 	} else {
 		return append_escaped_generic_value_to(result, value);
 	}
@@ -434,41 +457,35 @@ void MySQLClient::convert_unsupported_database_schema(Database &database) {
 	}
 }
 
-string MySQLClient::column_type(const Column &column) {
+tuple<string, string> MySQLClient::column_type(const Column &column) {
 	if (column.column_type == ColumnTypes::BLOB) {
 		switch (column.size) {
 			case 1:
-				return "tinyblob";
-				break;
+				return make_tuple("tinyblob", "");
 
 			case 2:
-				return "blob";
-				break;
+				return make_tuple("blob", "");
 
 			case 3:
-				return "mediumblob";
-				break;
+				return make_tuple("mediumblob", "");
 
 			default:
-				return "longblob";
+				return make_tuple("longblob", "");
 		}
 
 	} else if (column.column_type == ColumnTypes::TEXT) {
 		switch (column.size) {
 			case 1:
-				return "tinytext";
-				break;
+				return make_tuple("tinytext", "");
 
 			case 2:
-				return "text";
-				break;
+				return make_tuple("text", "");
 
 			case 3:
-				return "mediumtext";
-				break;
+				return make_tuple("mediumtext", "");
 
 			default:
-				return "longtext";
+				return make_tuple("longtext", "");
 		}
 
 	} else if (column.column_type == ColumnTypes::VCHR) {
@@ -479,16 +496,32 @@ string MySQLClient::column_type(const Column &column) {
 			result += to_string(column.size);
 			result += ')';
 		}
-		return result;
+		return make_tuple(result, "");
 
 	} else if (column.column_type == ColumnTypes::FCHR) {
 		string result("char(");
 		result += to_string(column.size);
 		result += ")";
-		return result;
+		return make_tuple(result, "");
+
+	} else if (column.column_type == ColumnTypes::JSON) {
+		// mysql has a proper json type (5.7.8+), but mariadb doesn't, instead they aliased json to longtext (10.2.7+)
+		// and later added a json_valid check constraint (10.4.3+) when asking for the json column type.  we do this
+		// ourselves so that we can get the same behavior when running our tests against earlier versions.  note that
+		// check constraints themselves were only added in mariadb 10.2 (and mysql 8, but we don't need them there
+		// since mysql 8 has the actual column type), but earlier versions accepted the syntax (and ignored them).
+		// part 2 is in the column_definition() function because we need to put the NOT NULL bit in first.  (we also
+		// support using a column comment as a marker on older versions which don't support check constraints.)
+		if (explicit_json_column_type()) {
+			return make_tuple("json", "");
+		} else if (supports_check_constraints()) {
+			return make_tuple("longtext", " CHECK (json_valid(" + quote_identifier(column.name) + "))");
+		} else {
+			return make_tuple("longtext", " COMMENT 'JSON'");
+		}
 
 	} else if (column.column_type == ColumnTypes::BOOL) {
-		return "tinyint(1)";
+		return make_tuple("tinyint(1)", "");
 
 	} else if (column.column_type == ColumnTypes::SINT || column.column_type == ColumnTypes::UINT) {
 		string result;
@@ -518,10 +551,10 @@ string MySQLClient::column_type(const Column &column) {
 			result += " unsigned";
 		}
 
-		return result;
+		return make_tuple(result, "");
 
 	} else if (column.column_type == ColumnTypes::REAL) {
-		return (column.size == 4 ? "float" : "double");
+		return make_tuple(column.size == 4 ? "float" : "double", "");
 
 	} else if (column.column_type == ColumnTypes::DECI) {
 		string result("decimal(");
@@ -529,19 +562,19 @@ string MySQLClient::column_type(const Column &column) {
 		result += ',';
 		result += to_string(column.scale);
 		result += ')';
-		return result;
+		return make_tuple(result, "");
 
 	} else if (column.column_type == ColumnTypes::DATE) {
-		return "date";
+		return make_tuple("date", "");
 
 	} else if (column.column_type == ColumnTypes::TIME) {
-		return "time";
+		return make_tuple("time", "");
 
 	} else if (column.column_type == ColumnTypes::DTTM) {
 		if (column.flags & ColumnFlags::mysql_timestamp) {
-			return "timestamp";
+			return make_tuple("timestamp", "");
 		} else {
-			return "datetime";
+			return make_tuple("datetime", "");
 		}
 
 	} else if (column.column_type == ColumnTypes::SPAT) {
@@ -555,7 +588,7 @@ string MySQLClient::column_type(const Column &column) {
 			result += column.reference_system;
 		}
 
-		return result;
+		return make_tuple(result, "");
 
 	} else {
 		throw runtime_error("Don't know how to express column type of " + column.name + " (" + column.column_type + ")");
@@ -601,12 +634,19 @@ string MySQLClient::column_definition(const Table &table, const Column &column) 
 	result += quote_identifier(column.name);
 	result += ' ';
 
-	result += column_type(column);
+	string type, extra;
+	tie(type, extra) = column_type(column);
+	result += type;
 
 	if (!column.nullable) {
 		result += " NOT NULL";
 	} else if (column.flags & ColumnFlags::mysql_timestamp) {
 		result += " NULL";
+	}
+
+	// used for JSON etc. which need to add stuff after the NOT NULL bit in some cases; see discussion in column_type()
+	if (!extra.empty()) {
+		result += extra;
 	}
 
 	if (column.default_type) {
@@ -717,7 +757,13 @@ struct MySQLColumnLister {
 		} else if (db_type == "mediumtext") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TEXT, 3);
 		} else if (db_type == "longtext") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TEXT); // no specific size for compatibility, but 4 in current mysql
+			if ((!row.null_at(6) && row.string_at(6).substr(0, 4) == "JSON") || (!row.null_at(7) && row.int_at(7))) { // 6 is the comment and 7 the check constraint; the check constraint is the canonical way to handle JSON in mariadb, but we also support using the comment for the sake of older versions (mariadb 10.1 and below, mysql 5.5)
+				table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::JSON);
+			} else {
+				table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TEXT); // no specific size for compatibility, but 4 in current mysql
+			}
+		} else if (db_type == "json") {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::JSON);
 		} else if (db_type == "tinyblob") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BLOB, 1);
 		} else if (db_type == "blob") {
@@ -817,7 +863,7 @@ struct MySQLTableLister {
 		Table table(row.string_at(0));
 
 		MySQLColumnLister column_lister(table, client.information_schema_column_default_shows_escaped_expressions());
-		client.query("SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, " + srid_column() + " AS SRS_ID FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = SCHEMA() AND TABLE_NAME = '" + client.escape_string_value(table.name) + "' ORDER BY ORDINAL_POSITION", column_lister);
+		client.query("SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, " + srid_column() + " AS SRS_ID, COLUMN_COMMENT, " + json_check_constraint_expression() + " AS JSON_CHECK_CONSTRAINT FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = SCHEMA() AND TABLE_NAME = '" + client.escape_string_value(table.name) + "' ORDER BY ORDINAL_POSITION", column_lister);
 
 		MySQLKeyLister key_lister(table);
 		client.query("SHOW KEYS FROM " + client.quote_identifier(table.name), key_lister);
@@ -828,6 +874,14 @@ struct MySQLTableLister {
 
 	inline string srid_column() {
 		return (client.supports_srid_settings_on_columns() ? "SRS_ID" : "NULL");
+	}
+
+	inline string json_check_constraint_expression() {
+		if (client.explicit_json_column_type() || !client.supports_check_constraints()) {
+			return "NULL";
+		} else {
+			return "DATA_TYPE = 'longtext' AND EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = SCHEMA() AND CONSTRAINT_NAME = COLUMN_NAME AND CHECK_CONSTRAINTS.TABLE_NAME = COLUMNS.TABLE_NAME AND REPLACE(CHECK_CLAUSE, '`', '') = CONCAT('json_valid(', COLUMN_NAME, ')'))";
+		}
 	}
 
 private:

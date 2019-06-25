@@ -54,6 +54,7 @@ module ColumnTypes
   TEXT = "TEXT"
   VCHR = "VARCHAR"
   FCHR = "CHAR"
+  JSON = "JSON"
   UUID = "UUID"
   BOOL = "BOOL"
   SINT = "INT"

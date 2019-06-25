@@ -3,6 +3,7 @@ require 'pg'
 ENDPOINT_DATABASES["postgresql"] = {
   :connect => lambda { |host, port, name, username, password|
     PG::BasicTypeRegistry.alias_type(0, 'time', 'text')
+    PG::BasicTypeRegistry.alias_type(0, 'json', 'text') # disable the default conversion of JSON fields to Ruby hashes, as we treat them as strings in KS, so it would make the tests awkward to write if they came back as hashes
     PG.connect(
       host,
       port,
@@ -166,6 +167,10 @@ class PG::Connection
 
   def blob_column_type
     'bytea'
+  end
+
+  def json_column_type(fieldname)
+    'json'
   end
 
   def datetime_column_type

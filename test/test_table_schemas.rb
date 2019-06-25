@@ -130,6 +130,7 @@ SQL
         fchrfield CHAR(9),
         textfield #{connection.text_column_type},
         blobfield #{connection.blob_column_type},
+        jsonfield #{connection.json_column_type 'jsonfield'},
         PRIMARY KEY(pri))
 SQL
   end
@@ -148,7 +149,9 @@ SQL
         {"name" => "vchrfield",     "column_type" => ColumnTypes::VCHR, "size" => 9},
         {"name" => "fchrfield",     "column_type" => ColumnTypes::FCHR, "size" => 9},
         {"name" => "textfield",     "column_type" => ColumnTypes::TEXT},
-        {"name" => "blobfield",     "column_type" => ColumnTypes::BLOB}],
+        {"name" => "blobfield",     "column_type" => ColumnTypes::BLOB},
+        {"name" => "jsonfield",     "column_type" => ColumnTypes::JSON},
+      ],
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
       "keys" => [] }
