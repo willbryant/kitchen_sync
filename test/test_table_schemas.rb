@@ -220,7 +220,7 @@ SQL
   end
 
   def supports_multiple_timestamp_columns?
-    @database_server == 'mysql' && connection.server_version !~ /^5\.5/
+    @database_server != 'mysql' || connection.server_version !~ /^5\.5/
   end
 
   def mysql_default_expressions?
