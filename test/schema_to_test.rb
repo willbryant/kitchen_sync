@@ -364,7 +364,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_secondtbl
 
     expect_handshake_commands
-    expect_stderr("Don't know how to interpret type of unsupportedtbl.unsupported (#{unsupported_column_type}).  Please check https://github.com/willbryant/kitchen_sync/blob/master/SCHEMA.md.") do
+    expect_stderr("Don't know how to interpret type of unsupportedtbl.unsupported (#{connection.unsupported_column_type}).  Please check https://github.com/willbryant/kitchen_sync/blob/master/SCHEMA.md.") do
       expect_command Commands::SCHEMA
       send_command   Commands::SCHEMA, ["tables" => [unsupportedtbl_def, secondtbl_def]]
       read_command rescue nil
@@ -376,7 +376,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_secondtbl
 
     expect_handshake_commands
-    expect_stderr("Don't know how to interpret type of unsupportedtbl.unsupported (#{unsupported_column_type}).  Please check https://github.com/willbryant/kitchen_sync/blob/master/SCHEMA.md.") do
+    expect_stderr("Don't know how to interpret type of unsupportedtbl.unsupported (#{connection.unsupported_column_type}).  Please check https://github.com/willbryant/kitchen_sync/blob/master/SCHEMA.md.") do
       expect_command Commands::SCHEMA
       send_command   Commands::SCHEMA, ["tables" => [unsupportedtbl_def, secondtbl_def]]
       read_command rescue nil
@@ -1053,7 +1053,7 @@ SQL
       clear_schema
       create_adapterspecifictbl(from_database)
 
-      tbldef = adapterspecifictbl_def((from_database))
+      tbldef = adapterspecifictbl_def(from_database)
       expect_handshake_commands
       expect_command Commands::SCHEMA
       send_command Commands::SCHEMA, [{"tables" => [tbldef]}]

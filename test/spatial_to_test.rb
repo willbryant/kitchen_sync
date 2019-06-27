@@ -9,21 +9,21 @@ class SpatialToTest < KitchenSync::EndpointTestCase
 
   def before
     program_env["ENDPOINT_ONLY_TABLES"] = "spatialtbl"
-    cleanup_spatialtbl
-    uninstall_spatial_support
+    remove_spatialtbl
+    connection.uninstall_spatial_support
     clear_schema
-    install_spatial_support
+    connection.install_spatial_support
     create_spatialtbl
   end
 
   def after
     spawner.stop_binary # done automatically by teardown, but we need to end the transaction before we can remove the extension
-    cleanup_spatialtbl
-    uninstall_spatial_support
+    remove_spatialtbl # we do this explicitly as otherwise we need to use a force-uninstall option on postgis, which in some situations blocks on locks in a way this doesn't
+    connection.uninstall_spatial_support
   end
 
   def force_long_lat_option
-    ", 'axis-order=long-lat'" if spatial_axis_order_depends_on_srs?
+    ", 'axis-order=long-lat'" if connection.spatial_axis_order_depends_on_srs?
   end
 
   test_each "creates spatial tables if they don't exist" do
@@ -36,7 +36,7 @@ class SpatialToTest < KitchenSync::EndpointTestCase
   end
 
   test_each "creates spatial tables with SRID settings on columns when supported by the database" do
-    omit "This database doesn't support SRID settings on columns" unless schema_srid_settings?
+    omit "This database doesn't support SRID settings on columns" unless connection.schema_srid_settings?
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command Commands::SCHEMA, ["tables" => [spatialtbl_def(srid: 4326)]]

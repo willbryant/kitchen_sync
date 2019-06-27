@@ -75,4 +75,70 @@ class Mysql2::Client
   def zero_time_value
     Time.new(2000, 1, 1, 0, 0, 0)
   end
+
+  def supports_multiple_timestamp_columns?
+    server_version !~ /^5\.5/
+  end
+
+  def mysql_default_expressions?
+    # mysql 8.0+ or mariadb 10.2+ (note mariadb skipped 6 through 9)
+    server_version !~ /^5\./ && server_version !~ /^10\.0.*MariaDB/ && server_version !~ /^10\.1.*MariaDB/
+  end
+
+  def spatial_axis_order_depends_on_srs?
+    # only mysql 8+ behaves this way
+    server_version !~ /^5\./ && server_version !~ /MariaDB/
+  end
+
+  def supports_spatial_indexes?
+    # supported by mysql 5.7+, andmariadb 10.2+
+    server_version !~ /^5\.5/ && server_version !~ /^10\.0.*MariaDB/ && server_version !~ /^10\.1.*MariaDB/
+  end
+
+  def schema_srid_settings?
+    # supported by mysql 8+, not by mysql 5.x or mariadb
+    server_version !~ /^5\./ && server_version !~ /MariaDB/
+  end
+
+  def sequence_column_type
+    'INT NOT NULL AUTO_INCREMENT'
+  end
+
+  def text_column_type
+    'LONGTEXT'
+  end
+
+  def blob_column_type
+    'LONGBLOB'
+  end
+
+  def datetime_column_type
+    'DATETIME'
+  end
+
+  def real_column_type
+    'FLOAT'
+  end
+
+  def unsupported_column_type
+    'bit(8)'
+  end
+
+  def install_spatial_support
+  end
+
+  def uninstall_spatial_support
+  end
+
+  def create_spatial_index(index_name, table_name, *columns)
+    execute "CREATE SPATIAL INDEX #{index_name} ON #{table_name} (#{columns.join ', '})"
+  end
+
+  def spatial_column_type(geometry_type: 'geometry', srid:)
+    "#{geometry_type}#{" SRID #{srid}" if srid}"
+  end
+
+  def spatial_reference_table_definitions
+    []
+  end
 end

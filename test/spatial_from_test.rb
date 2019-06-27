@@ -8,20 +8,20 @@ class SpatialFromTest < KitchenSync::EndpointTestCase
   end
 
   def before
-    cleanup_spatialtbl
-    uninstall_spatial_support
+    remove_spatialtbl
+    connection.uninstall_spatial_support
     clear_schema
-    install_spatial_support
+    connection.install_spatial_support
   end
 
   def after
     spawner.stop_binary # done automatically by teardown, but we need to end the transaction before we can remove the extension
-    cleanup_spatialtbl
-    uninstall_spatial_support
+    remove_spatialtbl # we do this explicitly as otherwise we need to use a force-uninstall option on postgis, which in some situations blocks on locks in a way this doesn't
+    connection.uninstall_spatial_support
   end
 
   def force_long_lat_option
-    ", 'axis-order=long-lat'" if spatial_axis_order_depends_on_srs?
+    ", 'axis-order=long-lat'" if connection.spatial_axis_order_depends_on_srs?
   end
 
   test_each "extracts the schema for spatial types" do
@@ -30,17 +30,17 @@ class SpatialFromTest < KitchenSync::EndpointTestCase
 
     send_command   Commands::SCHEMA
     expect_command Commands::SCHEMA,
-                   [{"tables" => [spatial_reference_table_def, spatialtbl_def].compact}]
+                   [{"tables" => connection.spatial_reference_table_definitions + [spatialtbl_def]}]
   end
 
   test_each "extracts the schema for spatial types with SRID settings on columns when supported by the database" do
-    omit "This database doesn't support SRID settings on columns" unless schema_srid_settings?
+    omit "This database doesn't support SRID settings on columns" unless connection.schema_srid_settings?
     create_spatialtbl(srid: 4326)
     send_handshake_commands
 
     send_command   Commands::SCHEMA
     expect_command Commands::SCHEMA,
-                   [{"tables" => [spatial_reference_table_def, spatialtbl_def(srid: 4326)].compact}]
+                   [{"tables" => connection.spatial_reference_table_definitions + [spatialtbl_def(srid: 4326)]}]
   end
 
   test_each "retrieves row data without SRIDs in WKB format with no SRID specified" do
@@ -76,7 +76,7 @@ class SpatialFromTest < KitchenSync::EndpointTestCase
   end
 
   test_each "supports SRID settings on columns when supported by the database" do
-    omit "This database doesn't support SRID settings on columns" unless schema_srid_settings?
+    omit "This database doesn't support SRID settings on columns" unless connection.schema_srid_settings?
     create_spatialtbl(srid: 4326)
 
     execute "INSERT INTO spatialtbl VALUES (1, ST_GeomFromText('POINT(10 20)', 4326#{force_long_lat_option}), ST_GeomFromText('POINT(20 30)', 4326#{force_long_lat_option})), " \
@@ -88,7 +88,7 @@ class SpatialFromTest < KitchenSync::EndpointTestCase
 
     send_command   Commands::SCHEMA
     expect_command Commands::SCHEMA,
-                   [{"tables" => [spatial_reference_table_def, spatialtbl_def(srid: 4326)].compact}]
+                   [{"tables" => connection.spatial_reference_table_definitions + [spatialtbl_def(srid: 4326)]}]
 
     send_command   Commands::ROWS, ["spatialtbl", [], []]
     expect_command Commands::ROWS,

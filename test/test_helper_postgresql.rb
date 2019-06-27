@@ -139,4 +139,77 @@ class PG::Connection
   def zero_time_value
     "00:00:00"
   end
+
+  def supports_multiple_timestamp_columns?
+    true
+  end
+
+  def spatial_axis_order_depends_on_srs?
+    false
+  end
+
+  def supports_spatial_indexes?
+    true
+  end
+
+  def schema_srid_settings?
+    true
+  end
+
+  def sequence_column_type
+    'SERIAL'
+  end
+
+  def text_column_type
+    'text'
+  end
+
+  def blob_column_type
+    'bytea'
+  end
+
+  def datetime_column_type
+    'timestamp'
+  end
+
+  def real_column_type
+    'real'
+  end
+
+  def unsupported_column_type
+    'tsvector'
+  end
+
+  def install_spatial_support
+    raise Test::Unit::OmittedError.new("Skipping test that requires PostGIS") if ENV['SKIP_POSTGIS']
+    execute "CREATE EXTENSION postgis"
+  end
+
+  def uninstall_spatial_support
+    execute "DROP EXTENSION IF EXISTS postgis"
+  end
+
+  def create_spatial_index(index_name, table_name, *columns)
+    execute "CREATE INDEX #{index_name} ON #{table_name} USING gist (#{columns.join ', '})"
+  end
+
+  def spatial_column_type(geometry_type: 'geometry', srid:)
+    srid ? "geography(#{geometry_type},#{srid})" : "geometry(#{geometry_type})"
+  end
+
+  def spatial_reference_table_definitions
+    [
+      # created by postgis in the public schema, and a PITA to move anywhere else
+      { "name" => "spatial_ref_sys",
+        "columns" => [
+          {"name" => "srid",      "column_type" => "INT",     "size" => 4, "nullable" => false},
+          {"name" => "auth_name", "column_type" => "VARCHAR", "size" => 256},
+          {"name" => "auth_srid", "column_type" => "INT",     "size" => 4},
+          {"name" => "srtext",    "column_type" => "VARCHAR", "size" => 2048},
+          {"name" => "proj4text", "column_type" => "VARCHAR", "size" => 2048}],
+        "primary_key_type" => 1,
+        "primary_key_columns" => [0],
+        "keys" => [] },
+    ]
+  end
 end

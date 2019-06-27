@@ -100,7 +100,7 @@ SQL
     execute(<<-SQL)
       CREATE TABLE texttbl (
         pri INT NOT NULL,
-        textfield TEXT#{'(268435456)' if @database_server == 'mysql'},
+        textfield #{connection.text_column_type},
         PRIMARY KEY(pri))
 SQL
   end
@@ -122,14 +122,14 @@ SQL
         boolfield BOOL,
         datefield DATE,
         timefield TIME,
-        datetimefield #{@database_server == 'postgresql' ? 'timestamp' : 'DATETIME'},
-        floatfield #{@database_server == 'postgresql' ? 'real' : 'FLOAT'},
+        datetimefield #{connection.datetime_column_type},
+        floatfield #{connection.real_column_type},
         doublefield DOUBLE PRECISION,
         decimalfield DECIMAL(10, 4),
         vchrfield VARCHAR(9),
         fchrfield CHAR(9),
-        textfield TEXT#{'(268435456)' if @database_server == 'mysql'},
-        blobfield #{@database_server == 'postgresql' ? 'bytea' : 'BLOB'}#{'(268435456)' if @database_server == 'mysql'},
+        textfield #{connection.text_column_type},
+        blobfield #{connection.blob_column_type},
         PRIMARY KEY(pri))
 SQL
   end
@@ -219,30 +219,6 @@ SQL
       "keys" => [] }
   end
 
-  def supports_multiple_timestamp_columns?
-    @database_server != 'mysql' || connection.server_version !~ /^5\.5/
-  end
-
-  def mysql_default_expressions?
-    # mysql 8.0+ or mariadb 10.2+ (note mariadb skipped 6 through 9)
-    @database_server == 'mysql' && connection.server_version !~ /^5\./ && connection.server_version !~ /^10\.0.*MariaDB/ && connection.server_version !~ /^10\.1.*MariaDB/
-  end
-
-  def spatial_axis_order_depends_on_srs?
-    # only mysql 8+ behaves this way
-    @database_server == 'mysql' && connection.server_version !~ /^5\./ && connection.server_version !~ /MariaDB/
-  end
-
-  def supports_spatial_indexes?
-    # supported by postgresql, mysql 5.7+, mariadb 10.2+
-    @database_server != 'mysql' || (connection.server_version !~ /^5\.5/ && connection.server_version !~ /^10\.0.*MariaDB/ && connection.server_version !~ /^10\.1.*MariaDB/)
-  end
-
-  def schema_srid_settings?
-    # supported by postgresql and mysql 8+, not by mysql 5.x or mariadb
-    @database_server != 'mysql' || (connection.server_version !~ /^5\./ && connection.server_version !~ /MariaDB/)
-  end
-
   def create_defaultstbl
     execute(<<-SQL)
       CREATE TABLE defaultstbl (
@@ -257,9 +233,9 @@ SQL
         trueboolfield BOOL DEFAULT TRUE,
         datefield DATE DEFAULT '2019-04-01',
         timefield TIME DEFAULT '12:34:56',
-        datetimefield #{@database_server == 'postgresql' ? 'timestamp' : 'DATETIME'} DEFAULT '2019-04-01 12:34:56',
-        #{"currentdatetimefield #{@database_server == 'postgresql' ? 'timestamp' : 'DATETIME'} DEFAULT CURRENT_TIMESTAMP," if supports_multiple_timestamp_columns?}
-        floatfield #{@database_server == 'postgresql' ? 'real' : 'FLOAT'} DEFAULT 42.625,
+        datetimefield #{connection.datetime_column_type} DEFAULT '2019-04-01 12:34:56',
+        #{"currentdatetimefield #{connection.datetime_column_type} DEFAULT CURRENT_TIMESTAMP," if connection.supports_multiple_timestamp_columns?}
+        floatfield #{connection.real_column_type} DEFAULT 42.625,
         doublefield DOUBLE PRECISION DEFAULT 0.0625,
         decimalfield DECIMAL(9, 3) DEFAULT '123456.789',
         PRIMARY KEY(pri))
@@ -281,7 +257,7 @@ SQL
         {"name" => "datefield",            "column_type" => ColumnTypes::DATE,                             "default_value" => "2019-04-01"},
         {"name" => "timefield",            "column_type" => ColumnTypes::TIME,                             "default_value" => "12:34:56"},
         {"name" => "datetimefield",        "column_type" => ColumnTypes::DTTM,                             "default_value" => "2019-04-01 12:34:56"},
-        ({"name" => "currentdatetimefield", "column_type" => ColumnTypes::DTTM,                             "default_function" => "CURRENT_TIMESTAMP"} if supports_multiple_timestamp_columns?),
+        ({"name" => "currentdatetimefield", "column_type" => ColumnTypes::DTTM,                             "default_function" => "CURRENT_TIMESTAMP"} if connection.supports_multiple_timestamp_columns?),
         {"name" => "floatfield",           "column_type" => ColumnTypes::REAL, "size" =>  4,               "default_value" => "42.625"},
         {"name" => "doublefield",          "column_type" => ColumnTypes::REAL, "size" =>  8,               "default_value" => "0.0625"},
         {"name" => "decimalfield",         "column_type" => ColumnTypes::DECI, "size" =>  9, "scale" => 3, "default_value" => "123456.789"}
@@ -292,13 +268,9 @@ SQL
   end
 
   def create_autotbl
-    sequence_column_type = case @database_server
-    when 'mysql'      then 'INT NOT NULL AUTO_INCREMENT'
-    when 'postgresql' then 'SERIAL'
-    end
     execute(<<-SQL)
       CREATE TABLE autotbl (
-        inc #{sequence_column_type},
+        inc #{connection.sequence_column_type},
         payload INT NOT NULL,
         PRIMARY KEY(inc))
 SQL
@@ -323,8 +295,8 @@ SQL
           tiny2 TINYINT(2) UNSIGNED DEFAULT 99,
           nulldefaultstr VARCHAR(255) DEFAULT NULL,
           timestampboth TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          #{"timestampcreateonly TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," if supports_multiple_timestamp_columns?}
-          #{"mysqlfunctiondefault VARCHAR(255) DEFAULT (uuid())," if mysql_default_expressions?}
+          #{"timestampcreateonly TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," if connection.supports_multiple_timestamp_columns?}
+          #{"mysqlfunctiondefault VARCHAR(255) DEFAULT (uuid())," if connection.mysql_default_expressions?}
           `select` INT,
           ```quoted``` INT,
           PRIMARY KEY(pri))
@@ -359,8 +331,8 @@ SQL
           {"name" => "tiny2",                "column_type" => ColumnTypes::UINT, "size" =>  1, "default_value" => "99"}, # note we've lost the (nonportable) display width (2) - size tells us the size of the integers, not the display width
           {"name" => "nulldefaultstr",       "column_type" => ColumnTypes::VCHR, "size" => 255},
           {"name" => "timestampboth",        "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true},
-          ({"name" => "timestampcreateonly", "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true} if supports_multiple_timestamp_columns?),
-          ({"name" => "mysqlfunctiondefault", "column_type" => ColumnTypes::VCHR, "size" => 255,                     "default_function" => "uuid()"} if mysql_default_expressions?),
+          ({"name" => "timestampcreateonly", "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true} if connection.supports_multiple_timestamp_columns?),
+          ({"name" => "mysqlfunctiondefault", "column_type" => ColumnTypes::VCHR, "size" => 255,                     "default_function" => "uuid()"} if connection.mysql_default_expressions?),
           {"name" => "select",               "column_type" => ColumnTypes::SINT, "size" =>  4},
           {"name" => "`quoted`",             "column_type" => ColumnTypes::SINT, "size" =>  4},
         ].compact,
@@ -403,50 +375,19 @@ SQL
     end
   end
 
-  def install_spatial_support
-    case @database_server
-    when 'postgresql'
-      omit "Skipping test that requires PostGIS" if ENV['SKIP_POSTGIS']
-      execute "CREATE EXTENSION postgis"
-    end
-  end
-
-  def uninstall_spatial_support
-    case @database_server
-    when 'postgresql'
-      execute "DROP EXTENSION IF EXISTS postgis"
-    end
-  end
-
   def create_spatialtbl(srid: nil)
-    case @database_server
-    when 'mysql'
-      execute(<<-SQL)
-        CREATE TABLE spatialtbl (
-          id INT NOT NULL,
-          plainspat GEOMETRY NOT NULL#{" SRID #{srid}" if srid},
-          pointspat POINT#{" SRID #{srid}" if srid},
-          PRIMARY KEY(id))
+    execute(<<-SQL)
+      CREATE TABLE spatialtbl (
+        id INT NOT NULL,
+        plainspat #{connection.spatial_column_type srid: srid} NOT NULL,
+        pointspat #{connection.spatial_column_type srid: srid, geometry_type: 'point'},
+        PRIMARY KEY(id))
 SQL
-      execute "CREATE SPATIAL INDEX plainidx ON spatialtbl (plainspat)" if supports_spatial_indexes?
-
-    when 'postgresql'
-      execute(<<-SQL)
-        CREATE TABLE spatialtbl (
-          id INT NOT NULL,
-          plainspat #{srid ? "geography(Geometry,#{srid})" : "geometry"} NOT NULL,
-          pointspat #{srid ? "geography(Point,#{srid})" : "geometry(Point)"},
-          PRIMARY KEY(id))
-SQL
-      execute "CREATE INDEX plainidx ON spatialtbl USING GIST (plainspat)"
-    end
+    connection.create_spatial_index "plainidx", "spatialtbl", "plainspat" if connection.supports_spatial_indexes?
   end
 
-  def cleanup_spatialtbl
-    case @database_server
-    when 'postgresql'
-      execute "DROP TABLE IF EXISTS spatialtbl"
-    end
+  def remove_spatialtbl
+    execute "DROP TABLE IF EXISTS spatialtbl"
   end
 
   def spatialtbl_def(srid: nil)
@@ -459,7 +400,7 @@ SQL
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
       "keys" => [
-        ({"name" => "plainidx", "key_type" => "spatial", "columns" => [1]} if supports_spatial_indexes?)
+        ({"name" => "plainidx", "key_type" => "spatial", "columns" => [1]} if connection.supports_spatial_indexes?)
       ].compact }
   end
 
@@ -468,46 +409,20 @@ SQL
     columns.each {|column| column["reference_system"] = srid.to_s if column["column_type"] == ColumnTypes::SPAT}
   end
 
-  def spatial_reference_table_def
-    case @database_server
-    when 'postgresql'
-      # created by postgis in the public schema, and a PITA to move anywhere else
-      { "name" => "spatial_ref_sys",
-        "columns" => [
-          {"name" => "srid",      "column_type" => "INT",     "size" => 4, "nullable" => false},
-          {"name" => "auth_name", "column_type" => "VARCHAR", "size" => 256},
-          {"name" => "auth_srid", "column_type" => "INT",     "size" => 4},
-          {"name" => "srtext",    "column_type" => "VARCHAR", "size" => 2048},
-          {"name" => "proj4text", "column_type" => "VARCHAR", "size" => 2048}],
-        "primary_key_type" => 1,
-        "primary_key_columns" => [0],
-        "keys" => [] }
-    end
-  end
-
   def create_unsupportedtbl
     execute(<<-SQL)
       CREATE TABLE unsupportedtbl (
         pri INT NOT NULL,
-        unsupported #{unsupported_column_type},
+        unsupported #{connection.unsupported_column_type},
         PRIMARY KEY(pri))
 SQL
   end
 
-  def unsupported_column_type(database_server = @database_server)
-    case database_server
-    when 'mysql'
-      'bit(8)'
-    when 'postgresql'
-      'tsvector'
-    end
-  end
-
-  def unsupportedtbl_def(database_server = @database_server)
+  def unsupportedtbl_def
     { "name"    => "unsupportedtbl",
       "columns" => [
         {"name" => "pri",         "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
-        {"name" => "unsupported", "column_type" => ColumnTypes::UNKN, "db_type_def" => unsupported_column_type(database_server)}],
+        {"name" => "unsupported", "column_type" => ColumnTypes::UNKN, "db_type_def" => connection.unsupported_column_type}],
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
       "keys" => [] }
