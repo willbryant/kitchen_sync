@@ -38,10 +38,13 @@ Currently the following fully-compatible standard types are supported:
 | `DATE` | `date` | |
 | `TIME` | `time without time zone` | |
 | `DATETIME` | `timestamp without time zone` | |
+| `JSON` | `json` | On MariaDB there is no separate `JSON` type, a `LONGTEXT` with a `JSON_VALID` `CHECK` constraint will be used instead |
 
-### MySQL variations on basic types
+See also the spatial types list below.
 
-And the following MySQL types are supported and mapped to the PostgreSQL equivalents shown:
+### MySQL-specific types
+
+The following MySQL-specific types are supported and mapped to the PostgreSQL equivalents shown:
 
 | MySQL type | PostgreSQL type | Conversion notes |
 | --- | --- | --- |
@@ -58,6 +61,14 @@ And the following MySQL types are supported and mapped to the PostgreSQL equival
 | `UNSIGNED MEDIUMINT` | `integer` | Type promotion, PostgreSQL conversion supports all values |
 | `UNSIGNED INT` | `integer` | PostgreSQL conversion will fail for unsigned values over 2^31 |
 | `UNSIGNED BIGINT` | `bigint` | PostgreSQL conversion will fail for unsigned values over 2^63 |
+
+### PostgreSQL-specific types
+
+The following PostgreSQL types are supported and mapped to the MySQL equivalents shown:
+
+| PostgreSQL | MySQL type | Conversion notes |
+| --- | --- | --- |
+| `json` | `CHAR(36)` | A comment will be used to mark the field as JSON so that you can sync back the other way |
 
 ### Spatial types
 
