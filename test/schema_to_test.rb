@@ -790,8 +790,9 @@ SQL
     assert_equal 0, BigDecimal(rows[0][7].to_s) # return type not consistent between ruby clients
     assert_equal "", rows[0][8]
     assert_equal "", rows[0][9].strip # padding not consistent between ruby clients
-    assert_equal "", rows[0][10]
+    assert_equal "00000000-0000-0000-0000-000000000000", rows[0][10]
     assert_equal "", rows[0][11]
+    assert_equal "", rows[0][12]
   end
 
   test_each "recreates the table as necessary to make columns not nullable if they have unique keys" do

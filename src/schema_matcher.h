@@ -217,6 +217,8 @@ struct OverwriteColumnNullValueClauses {
 			return "00:00:00";
 		} else if (column.column_type == ColumnTypes::DTTM) {
 			return "2000-01-01 00:00:00";
+		} else if (column.column_type == ColumnTypes::UUID) {
+			return "00000000-0000-0000-0000-000000000000";
 		} else {
 			return "0"; // covers bool too - quoted '0' values will be accepted by mysql, but quoted 'false' values wouldn't
 		}

@@ -161,6 +161,10 @@ class PG::Connection
     'SERIAL'
   end
 
+  def uuid_column_type
+    'uuid'
+  end
+
   def text_column_type
     'text'
   end

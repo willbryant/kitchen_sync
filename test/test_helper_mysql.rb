@@ -109,6 +109,10 @@ class Mysql2::Client
     'INT NOT NULL AUTO_INCREMENT'
   end
 
+  def uuid_column_type
+    "CHAR(36) COMMENT 'UUID'"
+  end
+
   def text_column_type
     'LONGTEXT'
   end
