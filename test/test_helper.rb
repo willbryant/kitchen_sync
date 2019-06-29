@@ -258,7 +258,7 @@ module KitchenSync
     end
 
     def hash_of(rows, hash_algorithm = HashAlgorithm::MD5)
-      data = rows.collect(&:to_msgpack).join
+      data = rows.collect {|row| MessagePack.pack(row, compatibility_mode: true)}.join
 
       case hash_algorithm
       when HashAlgorithm::MD5

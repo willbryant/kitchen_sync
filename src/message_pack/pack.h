@@ -181,7 +181,9 @@ void pack_raw_length(Packer<Stream> &packer, size_t size) {
 	if (size <= MSGPACK_FIXRAW_MAX - MSGPACK_FIXRAW_MIN) {
 		packer.write_bytes((uint8_t) (MSGPACK_FIXRAW_MIN + size));
 
-	/* we could/should use MSGPACK_RAW8 here when size <= 0xff, but that's a breaking change for hash calculation */
+	/* we could/should use MSGPACK_RAW8 here when size <= 0xff, but that's a breaking change for hash calculation;
+	   the STR8 and RAW8 types didn't exist when we implemented this originally, so anyone wanting to reproduce our
+	   hashes should set 'compatibility mode' in their msgpack packer to get the same behavior we have. */
 
 	} else if (size <= 0xffff) {
 		packer.write_bytes(MSGPACK_RAW16);
