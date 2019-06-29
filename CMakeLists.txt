@@ -99,7 +99,7 @@ endif()
 # and one endpoint program for postgresql
 if(NOT NO_DATABASES)
 	set(PostgreSQL_ADDITIONAL_SEARCH_PATHS /usr/include/postgresql)
-	set(PostgreSQL_ADDITIONAL_VERSIONS "11" "10" "9.6" "9.5" "9.4" "9.3" "9.2")
+	set(PostgreSQL_ADDITIONAL_VERSIONS "12" "11" "10" "9.6" "9.5" "9.4" "9.3" "9.2")
 	find_package(PostgreSQL)
 endif()
 
