@@ -157,8 +157,6 @@ module PrimaryKeyType
   SUITABLE_UNIQUE_KEY = 2
 end
 
-Verbs = Commands.constants.each_with_object({}) {|k, results| results[Commands.const_get(k)] = k.to_s.downcase}.freeze
-
 module KitchenSync
   class TestCase < Test::Unit::TestCase
     EARLIEST_PROTOCOL_VERSION_SUPPORTED = 7
