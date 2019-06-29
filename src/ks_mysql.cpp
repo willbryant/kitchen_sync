@@ -429,15 +429,6 @@ string &MySQLClient::append_escaped_column_value_to(string &result, const Column
 void MySQLClient::convert_unsupported_database_schema(Database &database) {
 	for (Table &table : database.tables) {
 		for (Column &column : table.columns) {
-			// mysql and mariadb still don't have a proper UUID type, so we convert them to the equivalent strings
-			// this is obviously not the only choice - packed binary columns would be more efficient - but we'd need
-			// to know about the application specifics to make any other choice (eg. for binary, have the bytes been
-			// swapped using the option for timestamp UUIDs?).
-			if (column.column_type == ColumnTypes::UUID) {
-				column.column_type = ColumnTypes::FCHR; // somewhat arbitrary - we could use varchar, since char is more old-fashioned, but since UUIDs are all the same length char seems more logical
-				column.size = 36;
-			}
-
 			// postgresql allows numeric with no precision or scale specification and preserves the given input data
 			// up to an implementation-defined precision and scale limit; mysql doesn't, and silently converts
 			// `numeric` to `numeric(10, 0)`.  lacking any better knowledge, we follow their lead and do the same
@@ -503,6 +494,15 @@ tuple<string, string> MySQLClient::column_type(const Column &column) {
 		result += to_string(column.size);
 		result += ")";
 		return make_tuple(result, "");
+
+	} else if (column.column_type == ColumnTypes::UUID) {
+		// mysql and mariadb still don't have a proper UUID type (may come in mariadb 10.5), so we convert UUIDs
+		// to the equivalent strings. this is obviously not the only choice - packed binary columns would be more
+		// efficient - but we'd need to know about the application specifics to make any other choice (eg. for
+		// binary, have the bytes been swapped using the option for timestamp UUIDs?).  we somewhat arbitrarily
+		// use char - we could use varchar, since char is more old-fashioned, but since UUIDs are all the same
+		// length char seems more logical.
+		return make_tuple("char(36)", " COMMENT 'UUID'");
 
 	} else if (column.column_type == ColumnTypes::JSON) {
 		// mysql has a proper json type (5.7.8+), but mariadb doesn't, instead they aliased json to longtext (10.2.7+)
@@ -748,8 +748,13 @@ struct MySQLColumnLister {
 		} else if (db_type.substr(0, 8) == "varchar(") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::VCHR, extract_column_length(db_type));
 		} else if (db_type.substr(0, 5) == "char(") {
-			while (default_type && default_value.length() < extract_column_length(db_type)) default_value += ' ';
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::FCHR, extract_column_length(db_type));
+			size_t length = extract_column_length(db_type);
+			if (length == 36 && !row.null_at(6) && row.string_at(6).substr(0, 4) == "UUID") {
+				table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UUID);
+			} else {
+				while (default_type && default_value.length() < length) default_value += ' ';
+				table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::FCHR, length);
+			}
 		} else if (db_type == "tinytext") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TEXT, 1);
 		} else if (db_type == "text") {
