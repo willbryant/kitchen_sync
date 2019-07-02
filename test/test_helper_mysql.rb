@@ -85,6 +85,10 @@ class Mysql2::Client
     server_version !~ /^5\./ && server_version !~ /^10\.0.*MariaDB/ && server_version !~ /^10\.1.*MariaDB/
   end
 
+  def default_expressions?
+    mysql_default_expressions?
+  end
+
   def spatial_axis_order_depends_on_srs?
     # only mysql 8+ behaves this way
     server_version !~ /^5\./ && server_version !~ /MariaDB/

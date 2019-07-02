@@ -308,15 +308,17 @@ SQL
 SQL
 
     when 'postgresql'
+      # note default_expressions? is always true for postgresql itself, but some columns here are conditional for the benefit of the
+      # mysql 5.7 cross-compatibility tests; these still run for the mysql 8/mariadb cross-compatibility tests
       execute(<<-SQL)
         CREATE TABLE """postgresql""tbl" (
           pri UUID NOT NULL,
           nolengthvaryingfield CHARACTER VARYING,
           noprecisionnumericfield NUMERIC,
           nulldefaultstr VARCHAR(255) DEFAULT NULL,
-          currentdatefield DATE DEFAULT CURRENT_DATE,
-          currentuserdefault VARCHAR(255) DEFAULT current_user,
-          pgfunctiondefault TEXT DEFAULT version(),
+          #{"currentdatefield DATE DEFAULT CURRENT_DATE," if connection.default_expressions?}
+          #{"currentuserdefault VARCHAR(255) DEFAULT current_user," if connection.default_expressions?}
+          #{"pgfunctiondefault TEXT DEFAULT version()," if connection.default_expressions?}
           timewithzone time with time zone,
           timestampwithzone timestamp with time zone,
           "select" INT,
@@ -351,14 +353,14 @@ SQL
           {"name" => "nolengthvaryingfield", "column_type" => ColumnTypes::VCHR},
           {"name" => "noprecisionnumericfield", "column_type" => ColumnTypes::DECI},
           {"name" => "nulldefaultstr",       "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => "NULL"}, # note different to mysql, where no default and DEFAULT NULL are the same thing
-          {"name" => "currentdatefield",     "column_type" => ColumnTypes::DATE,                                     "default_function" => CaseInsensitiveString.new("CURRENT_DATE")},
-          {"name" => "currentuserdefault",   "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => CaseInsensitiveString.new("CURRENT_USER")},
-          {"name" => "pgfunctiondefault",    "column_type" => ColumnTypes::TEXT,                                     "default_function" => "version()"},
+          ({"name" => "currentdatefield",     "column_type" => ColumnTypes::DATE,                                     "default_function" => CaseInsensitiveString.new("CURRENT_DATE")} if connection.default_expressions?), # only conditional for the benefit of the mysql 5.7 cross-compatibility tests
+          ({"name" => "currentuserdefault",   "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => CaseInsensitiveString.new("CURRENT_USER")} if connection.default_expressions?),
+          ({"name" => "pgfunctiondefault",    "column_type" => ColumnTypes::TEXT,                                     "default_function" => "version()"} if connection.default_expressions?),
           {"name" => "timewithzone",         "column_type" => ColumnTypes::TIME, "time_zone" => true},
           {"name" => "timestampwithzone",    "column_type" => ColumnTypes::DTTM, "time_zone" => true},
           {"name" => "select",               "column_type" => ColumnTypes::SINT, "size" => 4},
           {"name" => "\"quoted\"",           "column_type" => ColumnTypes::SINT, "size" =>  4},
-        ],
+        ].compact,
         "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
         "primary_key_columns" => [0],
         "keys" => [] }
