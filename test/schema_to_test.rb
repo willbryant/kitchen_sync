@@ -911,7 +911,7 @@ SQL
   end
 
 
-  test_each "creates missing tables with sequence primary key columns" do
+  test_each "creates missing tables with identity/serial/auto_increment primary key columns" do
     clear_schema
 
     expect_handshake_commands

@@ -59,7 +59,7 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
                    [{"tables" => [defaultstbl_def]}]
   end
 
-  test_each "describes serial/auto_increment sequence columns" do
+  test_each "describes identity/serial/auto_increment sequence columns" do
     clear_schema
     create_autotbl
     send_handshake_commands

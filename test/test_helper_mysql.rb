@@ -105,6 +105,10 @@ class Mysql2::Client
     server_version !~ /^5\.5/ && server_version !~ /MariaDB/
   end
 
+  def supports_generated_as_identity?
+    false
+  end
+
   def sequence_column_type
     'INT NOT NULL AUTO_INCREMENT'
   end

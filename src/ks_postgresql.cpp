@@ -11,6 +11,8 @@
 #include "row_printer.h"
 #include "ewkb.h"
 
+#define POSTGRESQL_10 100000
+
 struct TypeMap {
 	set<Oid> spatial;
 	map<string, vector<string>> enum_type_values;
@@ -207,6 +209,7 @@ public:
 
 	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '"'); };
 	inline ColumnFlags supported_flags() const { return (ColumnFlags)(ColumnFlags::time_zone | ColumnFlags::simple_geometry); }
+	inline bool supports_generated_as_identity() const { return (server_version >= POSTGRESQL_10); }
 
 	size_t execute(const string &sql);
 	string select_one(const string &sql);
@@ -232,6 +235,7 @@ protected:
 
 private:
 	PGconn *conn;
+	int server_version;
 	TypeMap type_map;
 
 	// forbid copying
@@ -264,6 +268,8 @@ PostgreSQLClient::PostgreSQLClient(
 	if (!variables.empty()) {
 		execute("SET " + variables);
 	}
+
+	server_version = PQserverVersion(conn);
 
 	// we call this ourselves as all instances need to know the type OIDs that need special conversion,
 	// whereas populate_database_schema is only called for the leader at the 'to' end
@@ -654,7 +660,11 @@ struct PostgreSQLColumnLister {
 		DefaultType default_type(DefaultType::no_default);
 		string default_value;
 
-		if (row.string_at(3) == "t") {
+		if (!row.null_at(5) && row.string_at(5) != "\0") {
+			// attidentity set (will be 'a' for 'always' and 'd' for 'by default', but we don't distinguish the two)
+			default_type = DefaultType::sequence;
+
+		} else if (row.string_at(3) == "t") {
 			default_type = DefaultType::default_value;
 			default_value = row.string_at(4);
 
@@ -832,7 +842,7 @@ struct PostgreSQLTableLister {
 
 		PostgreSQLColumnLister column_lister(table, type_map);
 		client.query(
-			"SELECT attname, format_type(atttypid, atttypmod), attnotnull, atthasdef, pg_get_expr(adbin, adrelid) "
+			"SELECT attname, format_type(atttypid, atttypmod), attnotnull, atthasdef, pg_get_expr(adbin, adrelid), " + attidentity_column() + " AS attidentity "
 			  "FROM pg_attribute "
 			  "JOIN pg_class ON attrelid = pg_class.oid "
 			  "JOIN pg_type ON atttypid = pg_type.oid "
@@ -874,6 +884,10 @@ struct PostgreSQLTableLister {
 		sort(table.keys.begin(), table.keys.end()); // order is arbitrary for keys, but both ends must be consistent, so we sort the keys by name
 
 		database.tables.push_back(table);
+	}
+
+	inline string attidentity_column() {
+		return (client.supports_generated_as_identity() ? "attidentity" : "NULL");
 	}
 
 	PostgreSQLClient &client;
