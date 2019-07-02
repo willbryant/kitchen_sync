@@ -437,6 +437,19 @@ void MySQLClient::convert_unsupported_database_schema(Database &database) {
 				column.size = 10;
 			}
 
+			// postgresql allows character varying with no length specification (an extension to the standard).
+			// mysql never uses VCHR without a length specification; we don't know what length to make the column -
+			// we could make it long but because the maximum mysql permits in a row depends on the character set and
+			// what other columns there are on the row, and the maximum permits in an index similarly depends.
+			// we change it to a text type to bypass the row limit, and hope that the user hasn't indexed it (which
+			// is actually possible, but requires you to specify the length to index); if they have indexed it,
+			// they'll need to make their source schema standards-conformant by specifying a length or create the
+			// destination schema with a suitable index themselves - no worse than any other case in which they use
+			// prefix indexes.
+			if (column.column_type == ColumnTypes::VCHR && !column.size) {
+				column.column_type = ColumnTypes::TEXT;
+			}
+
 			// postgresql treats no default and DEFAULT NULL as separate things, even though they behave much the same.
 			// although mysql would happily accept the DEFAULT NULL strings we would produce below, we want to go ahead
 			// and convert it here so that the schema matcher also sees them as the same thing.
@@ -480,13 +493,9 @@ tuple<string, string> MySQLClient::column_type(const Column &column) {
 		}
 
 	} else if (column.column_type == ColumnTypes::VCHR) {
-		string result("varchar");
-		if (column.size > 0) {
-			// mysql never uses VCHR without a length specification, but you can see it from postgresql; we don't know what length to make the column because the maximum mysql permits depends on the character set and what other columns there are on the row, so we just let mysql take the default
-			result += '(';
-			result += to_string(column.size);
-			result += ')';
-		}
+		string result("varchar(");
+		result += to_string(column.size);
+		result += ')';
 		return make_tuple(result, "");
 
 	} else if (column.column_type == ColumnTypes::FCHR) {
