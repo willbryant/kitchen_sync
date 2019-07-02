@@ -1049,10 +1049,9 @@ SQL
     assert_same_keys(secondtbl_def)
   end
 
-  ENDPOINT_DATABASES.keys do |from_database|
+  ENDPOINT_DATABASES.keys.each do |from_database|
     test_each "can run the table creation code for adapter-specific columns from #{from_database}" do
       clear_schema
-      create_adapterspecifictbl(from_database)
 
       tbldef = adapterspecifictbl_def(from_database)
       expect_handshake_commands
