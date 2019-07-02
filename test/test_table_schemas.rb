@@ -316,7 +316,6 @@ SQL
           nulldefaultstr VARCHAR(255) DEFAULT NULL,
           currentdatefield DATE DEFAULT CURRENT_DATE,
           currentuserdefault VARCHAR(255) DEFAULT current_user,
-          sqlspecialdefault VARCHAR(255) DEFAULT current_schema,
           pgfunctiondefault TEXT DEFAULT version(),
           timewithzone time with time zone,
           timestampwithzone timestamp with time zone,
@@ -354,7 +353,6 @@ SQL
           {"name" => "nulldefaultstr",       "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => "NULL"}, # note different to mysql, where no default and DEFAULT NULL are the same thing
           {"name" => "currentdatefield",     "column_type" => ColumnTypes::DATE,                                     "default_function" => CaseInsensitiveString.new("CURRENT_DATE")},
           {"name" => "currentuserdefault",   "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => CaseInsensitiveString.new("CURRENT_USER")},
-          {"name" => "sqlspecialdefault",    "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => CaseInsensitiveString.new("CURRENT_SCHEMA")}, # special treatment noted on System Information Functions documentation page
           {"name" => "pgfunctiondefault",    "column_type" => ColumnTypes::TEXT,                                     "default_function" => "version()"},
           {"name" => "timewithzone",         "column_type" => ColumnTypes::TIME, "time_zone" => true},
           {"name" => "timestampwithzone",    "column_type" => ColumnTypes::DTTM, "time_zone" => true},
