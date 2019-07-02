@@ -38,6 +38,8 @@ struct CreateKeyStatements {
 };
 
 // sequences - for cross-compatibility, these are only supported for sequence columns
+// all this can go away once we drop support for postgresql 9.6 and earlier, as 10+ use the new identity columns
+// which can be implemented the same way as mysql's auto_increment (just a different DEFAULT string)
 
 template <typename DatabaseClient, bool = is_base_of<SequenceColumns, DatabaseClient>::value>
 struct CreateTableSequencesStatements {
@@ -50,7 +52,7 @@ template <typename DatabaseClient>
 struct CreateTableSequencesStatements <DatabaseClient, true> {
 	static void add_to(Statements &statements, DatabaseClient &client, const Table &table) {
 		for (const Column &column : table.columns) {
-			if (column.default_type == DefaultType::sequence) {
+			if (column.default_type == DefaultType::sequence && !client.supports_generated_as_identity()) {
 				string result("DROP SEQUENCE IF EXISTS ");
 				result += client.quote_identifier(client.column_sequence_name(table, column));
 				statements.push_back(result);
@@ -74,7 +76,7 @@ template <typename DatabaseClient>
 struct OwnTableSequencesStatements <DatabaseClient, true> {
 	static void add_to(Statements &statements, DatabaseClient &client, const Table &table) {
 		for (const Column &column : table.columns) {
-			if (column.default_type == DefaultType::sequence) {
+			if (column.default_type == DefaultType::sequence && !client.supports_generated_as_identity()) {
 				string result("ALTER SEQUENCE ");
 				result += client.quote_identifier(client.column_sequence_name(table, column));
 				result += " OWNED BY ";
