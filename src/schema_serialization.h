@@ -19,6 +19,7 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	if (column.flags & mysql_on_update_timestamp) fields++;
 	if (column.flags & time_zone) fields++;
 	if (column.flags & simple_geometry) fields++;
+	if (column.flags & identity_generated_always) fields++;
 	pack_map_length(packer, fields);
 	packer << string("name");
 	packer << column.name;
@@ -85,6 +86,10 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	}
 	if (column.flags & ColumnFlags::simple_geometry) {
 		packer << string("simple_geometry");
+		packer << true;
+	}
+	if (column.flags & ColumnFlags::identity_generated_always) {
+		packer << string("identity_generated_always");
 		packer << true;
 	}
 }
@@ -180,6 +185,8 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 			if (unpacker.template next<bool>()) column.flags = (ColumnFlags)(column.flags | time_zone);
 		} else if (attr_key == "simple_geometry") {
 			if (unpacker.template next<bool>()) column.flags = (ColumnFlags)(column.flags | simple_geometry);
+		} else if (attr_key == "identity_generated_always") {
+			if (unpacker.template next<bool>()) column.flags = (ColumnFlags)(column.flags | identity_generated_always);
 		} else {
 			// ignore anything else, for forward compatibility
 			unpacker.skip();

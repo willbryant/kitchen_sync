@@ -299,7 +299,7 @@ SQL
     when 'mysql'
       execute(<<-SQL)
         CREATE TABLE ```mysql``tbl` (
-          pri INT UNSIGNED NOT NULL,
+          pri INT UNSIGNED NOT NULL AUTO_INCREMENT,
           tiny2 TINYINT(2) UNSIGNED DEFAULT 99,
           nulldefaultstr VARCHAR(255) DEFAULT NULL,
           timestampboth TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -315,7 +315,8 @@ SQL
       # mysql 5.7 cross-compatibility tests; these still run for the mysql 8/mariadb cross-compatibility tests
       execute(<<-SQL)
         CREATE TABLE """postgresql""tbl" (
-          pri UUID NOT NULL,
+          pri #{connection.supports_generated_as_identity? ? 'integer GENERATED ALWAYS AS IDENTITY' : 'SERIAL'},
+          uu UUID NOT NULL,
           nolengthvaryingfield CHARACTER VARYING,
           noprecisionnumericfield NUMERIC,
           nulldefaultstr VARCHAR(255) DEFAULT NULL,
@@ -336,7 +337,7 @@ SQL
     when 'mysql'
       { "name"    => "`mysql`tbl",
         "columns" => [
-          {"name" => "pri",                  "column_type" => ColumnTypes::UINT, "size" =>  4, "nullable" => false},
+          {"name" => "pri",                  "column_type" => ColumnTypes::UINT, "size" =>  4, "nullable" => false, "sequence" => ""},
           {"name" => "tiny2",                "column_type" => ColumnTypes::UINT, "size" =>  1, "default_value" => "99"}, # note we've lost the (nonportable) display width (2) - size tells us the size of the integers, not the display width
           {"name" => "nulldefaultstr",       "column_type" => ColumnTypes::VCHR, "size" => 255},
           {"name" => "timestampboth",        "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true},
@@ -352,7 +353,8 @@ SQL
     when 'postgresql'
       { "name"    => "\"postgresql\"tbl",
         "columns" => [
-          {"name" => "pri",                  "column_type" => ColumnTypes::UUID,                "nullable" => false},
+          {"name" => "pri",                  "column_type" => ColumnTypes::SINT, "size" =>  4,  "nullable" => false, "sequence" => ""}.merge(connection.supports_generated_as_identity? ? {"identity_generated_always" => true} : {}),
+          {"name" => "uu",                   "column_type" => ColumnTypes::UUID,                "nullable" => false},
           {"name" => "nolengthvaryingfield", "column_type" => ColumnTypes::VCHR},
           {"name" => "noprecisionnumericfield", "column_type" => ColumnTypes::DECI},
           {"name" => "nulldefaultstr",       "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => "NULL"}, # note different to mysql, where no default and DEFAULT NULL are the same thing
@@ -373,11 +375,11 @@ SQL
   def adapterspecifictbl_row(database_server = @database_server)
     case database_server
     when 'mysql'
-      { "pri" => 12345678,
-        "tiny2" => 12 }
+      { "tiny2" => 12,
+        "timestampboth" => "2019-07-03 00:00:01" }
 
     when 'postgresql'
-      { "pri" => "3d190b75-dbb1-4d34-a41e-d590c1c8a895",
+      { "uu" => "3d190b75-dbb1-4d34-a41e-d590c1c8a895",
         "nolengthvaryingfield" => "test data",
         "noprecisionnumericfield" => "1234567890.0987654321" }
     end

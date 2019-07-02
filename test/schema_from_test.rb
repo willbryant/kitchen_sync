@@ -88,8 +88,12 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
     row_data = command.pop
     raise "expected command #{expected_command.inspect} but received #{command.inspect}" unless expected_command == command
     expected_row_data.each do |column_name, value|
-      column_index = adapterspecifictbl_def["columns"].index { |column_def| column_def["name"] == column_name }
-      assert_equal value, row_data[column_index]
+      if column_name == "pri"
+        assert_equal 1, value # auto-increment should start at 1 for a new table
+      else
+        column_index = adapterspecifictbl_def["columns"].index { |column_def| column_def["name"] == column_name }
+        assert_equal value, row_data[column_index]
+      end
     end
   end
 
