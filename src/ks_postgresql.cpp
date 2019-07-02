@@ -13,6 +13,7 @@
 
 struct TypeMap {
 	set<Oid> spatial;
+	map<string, vector<string>> enum_type_values;
 };
 
 enum PostgreSQLColumnConversion {
@@ -421,6 +422,17 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 				// postgresql doesn't have different sized TEXT/BLOB columns, they're all equivalent to mysql's biggest type
 				column.size = 0;
 			}
+
+			if (column.column_type == ColumnTypes::ENUM && !column.type_restriction.empty()) {
+				// postgresql requires that you create a material type for each enumeration, whereas mysql just lists the
+				// possible values on the column itself.  we don't currently implement creation/maintainance of these custom
+				// types ourselves - users need to do that - but we need to find the name of the type they've (hopefully) created.
+				for (auto it = type_map.enum_type_values.begin(); it != type_map.enum_type_values.end() && column.type_restriction.empty(); ++it) {
+					if (it->second == column.enumeration_values) {
+						column.type_restriction = it->first;
+					}
+				}
+			}
 		}
 
 		for (Key &key : table.keys) {
@@ -537,6 +549,20 @@ string PostgreSQLClient::column_type(const Column &column) {
 		}
 		return result;
 
+	} else if (column.column_type == ColumnTypes::ENUM) {
+		// a named ENUM type (presumably from another postgresql instance); we don't create/maintain
+		// these types ourselves currently, they need to exist already.
+		if (column.type_restriction.empty()) {
+			throw runtime_error("Can't find an enumerated type with possible values " + values_list(*this, column.enumeration_values) + " for column " + column.name + ", please create one using CREATE TYPE");
+		}
+		if (!type_map.enum_type_values.count(column.type_restriction)) {
+			throw runtime_error("Need an enumerated type named " + column.type_restriction + " with possible values " + values_list(*this, column.enumeration_values) + " for column " + column.name + ", please create one using CREATE TYPE");
+		}
+		if (type_map.enum_type_values[column.type_restriction] != column.enumeration_values) {
+			throw runtime_error("The enumerated type named " + column.type_restriction + " has possible values " + values_list(*this, type_map.enum_type_values[column.type_restriction]) + " but should have possible values " + values_list(*this, column.enumeration_values) + " for column " + column.name + ", please alter the type");
+		}
+		return column.type_restriction;
+
 	} else {
 		throw runtime_error("Don't know how to express column type of " + column.name + " (" + column.column_type + ")");
 	}
@@ -614,7 +640,7 @@ string PostgreSQLClient::key_definition(const Table &table, const Key &key) {
 }
 
 struct PostgreSQLColumnLister {
-	inline PostgreSQLColumnLister(Table &table): table(table) {}
+	inline PostgreSQLColumnLister(Table &table, TypeMap &type_map): table(table), type_map(type_map) {}
 
 	inline void operator()(PostgreSQLRow &row) {
 		string name(row.string_at(0));
@@ -714,6 +740,9 @@ struct PostgreSQLColumnLister {
 			string type_restriction, reference_system;
 			tie(type_restriction, reference_system) = extract_spatial_type_restriction_and_reference_system(db_type.substr(10, db_type.length() - 11));
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, 0, 0, ColumnFlags::nothing, type_restriction, reference_system);
+		} else if (type_map.enum_type_values.count(db_type)) {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::ENUM, 0, 0, ColumnFlags::nothing, db_type);
+			table.columns.back().enumeration_values = type_map.enum_type_values[db_type];
 		} else {
 			// not supported, but leave it till sync_to's check_tables_usable to complain about it so that it can be ignored
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UNKN, 0, 0, ColumnFlags::nothing, "", "", db_type);
@@ -751,6 +780,7 @@ struct PostgreSQLColumnLister {
 	}
 
 	Table &table;
+	TypeMap &type_map;
 };
 
 struct PostgreSQLPrimaryKeyLister {
@@ -790,12 +820,12 @@ struct PostgreSQLKeyLister {
 };
 
 struct PostgreSQLTableLister {
-	PostgreSQLTableLister(PostgreSQLClient &client, Database &database): client(client), database(database) {}
+	PostgreSQLTableLister(PostgreSQLClient &client, Database &database, TypeMap &type_map): client(client), database(database), type_map(type_map) {}
 
 	void operator()(PostgreSQLRow &row) {
 		Table table(row.string_at(0));
 
-		PostgreSQLColumnLister column_lister(table);
+		PostgreSQLColumnLister column_lister(table, type_map);
 		client.query(
 			"SELECT attname, format_type(atttypid, atttypmod), attnotnull, atthasdef, pg_get_expr(adbin, adrelid) "
 			  "FROM pg_attribute "
@@ -843,6 +873,7 @@ struct PostgreSQLTableLister {
 
 	PostgreSQLClient &client;
 	Database &database;
+	TypeMap &type_map;
 };
 
 struct PostgreSQLTypeMapCollector {
@@ -860,23 +891,51 @@ struct PostgreSQLTypeMapCollector {
 	TypeMap &type_map;
 };
 
-void PostgreSQLClient::populate_database_schema(Database &database) {
-	PostgreSQLTableLister table_lister(*this, database);
-	query("SELECT pg_class.relname "
-		    "FROM pg_class, pg_namespace "
-		   "WHERE pg_class.relnamespace = pg_namespace.oid AND "
-		         "pg_namespace.nspname = ANY (current_schemas(false)) AND "
-		         "relkind = 'r' "
-		"ORDER BY pg_relation_size(pg_class.oid) DESC, relname ASC",
-		 table_lister);
+struct PostgreSQLEnumValuesCollector {
+	PostgreSQLEnumValuesCollector(TypeMap &type_map): type_map(type_map) {}
 
+	void operator()(PostgreSQLRow &row) {
+		string typname(row.string_at(0));
+		string value(row.string_at(1));
+
+		type_map.enum_type_values[typname].push_back(value);
+	}
+
+	TypeMap &type_map;
+};
+
+void PostgreSQLClient::populate_database_schema(Database &database) {
 	PostgreSQLTypeMapCollector type_collector(type_map);
-	query("SELECT pg_type.oid, pg_type.typname "
-		    "FROM pg_type, pg_namespace "
-		   "WHERE pg_type.typnamespace = pg_namespace.oid AND "
-		         "pg_namespace.nspname = ANY (current_schemas(false)) AND "
-		         "pg_type.typname IN ('geometry', 'geography')",
-		  type_collector);
+	query(
+		"SELECT pg_type.oid, pg_type.typname "
+		  "FROM pg_type, pg_namespace "
+		 "WHERE pg_type.typnamespace = pg_namespace.oid AND "
+		       "pg_namespace.nspname = ANY (current_schemas(false)) AND "
+		       "pg_type.typname IN ('geometry', 'geography')",
+		type_collector);
+
+	PostgreSQLEnumValuesCollector enum_values_collector(type_map);
+	query(
+		"SELECT typname, "
+		       "enumlabel "
+		  "FROM pg_type, "
+		       "pg_namespace, "
+		       "pg_enum "
+		 "WHERE pg_type.typnamespace = pg_namespace.oid AND "
+		       "pg_namespace.nspname = ANY (current_schemas(false)) AND "
+		       "pg_type.oid = enumtypid "
+		 "ORDER BY enumtypid, enumsortorder",
+		enum_values_collector);
+
+	PostgreSQLTableLister table_lister(*this, database, type_map);
+	query(
+		"SELECT pg_class.relname "
+		  "FROM pg_class, pg_namespace "
+		 "WHERE pg_class.relnamespace = pg_namespace.oid AND "
+		       "pg_namespace.nspname = ANY (current_schemas(false)) AND "
+		       "relkind = 'r' "
+		 "ORDER BY pg_relation_size(pg_class.oid) DESC, relname ASC",
+		table_lister);
 }
 
 

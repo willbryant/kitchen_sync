@@ -357,7 +357,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
 
   test_each "handles requesting and saving arbitrary binary values in BLOB fields" do
     clear_schema
-    create_texttbl
+    create_misctbl
 
     bytes = (0..255).to_a.pack("C*")
     bytes = bytes.reverse + bytes

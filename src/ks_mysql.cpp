@@ -599,6 +599,10 @@ tuple<string, string> MySQLClient::column_type(const Column &column) {
 
 		return make_tuple(result, "");
 
+	} else if (column.column_type == ColumnTypes::ENUM) {
+		string result("ENUM" + values_list(*this, column.enumeration_values));
+		return make_tuple(result, "");
+
 	} else {
 		throw runtime_error("Don't know how to express column type of " + column.name + " (" + column.column_type + ")");
 	}
@@ -806,6 +810,9 @@ struct MySQLColumnLister {
 			string reference_system;
 			if (!row.null_at(5)) reference_system = row.string_at(5);
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, 0, 0, ColumnFlags::nothing, type_restriction, reference_system);
+		} else if (db_type.substr(0, 5) == "enum(" && db_type.length() > 6 && db_type[db_type.length() - 1] == ')') {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::ENUM);
+			table.columns.back().enumeration_values = parse_bracketed_list(db_type, 4);
 		} else {
 			// not supported, but leave it till sync_to's check_tables_usable to complain about it so that it can be ignored
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UNKN, 0, 0, ColumnFlags::nothing, "", "", db_type);
@@ -832,6 +839,27 @@ struct MySQLColumnLister {
 			result += c;
 		}
 		return result;
+	}
+
+	vector<string> parse_bracketed_list(const string &str, string::size_type pos = 0) {
+		vector<string> result;
+		if (str[pos] != '(' || str[pos + 1] != '\'' || str[str.length() - 1] != ')' || str[str.length() - 2] != '\'') return result;
+
+		string value;
+		pos += 2;
+		while (true) {
+			if (str[pos] != '\'') {
+				value += str[pos++];
+			} else if (str[++pos] == '\'') {
+				value += str[pos++];
+			} else {
+				result.push_back(value);
+				if (str[pos] == ')') return result;
+				if (str[pos] !=	',') throw runtime_error("invalid value list at position " + to_string(pos) + ": " + str);
+				value.clear();
+				pos += 2; // skip the comma and the opening quote for the next string
+			}
+		}
 	}
 
 	Table &table;

@@ -28,6 +28,7 @@ namespace ColumnTypes {
 	const string TIME = "TIME";
 	const string DTTM = "DATETIME";
 	const string SPAT = "SPATIAL";
+	const string ENUM = "ENUM";
 
 	const string UNKN = "UNKNOWN";
 }
@@ -58,6 +59,7 @@ struct Column {
 	ColumnFlags flags;
 	string type_restriction;
 	string reference_system;
+	vector<string> enumeration_values;
 
 	// serialized but not compared; used only for passing along unknown column types so you get an intelligible error, and non-portable
 	string db_type_def;
@@ -68,7 +70,19 @@ struct Column {
 	inline Column(const string &name, bool nullable, DefaultType default_type, string default_value, string column_type, size_t size = 0, size_t scale = 0, ColumnFlags flags = ColumnFlags::nothing, const string &type_restriction = "", const string &reference_system = "", const string &db_type_def = ""): name(name), nullable(nullable), default_type(default_type), default_value(default_value), column_type(column_type), size(size), scale(scale), flags(flags), type_restriction(type_restriction), reference_system(reference_system), db_type_def(db_type_def) {}
 	inline Column(): nullable(true), size(0), scale(0), default_type(DefaultType::no_default), flags(ColumnFlags::nothing) {}
 
-	inline bool operator ==(const Column &other) const { return (name == other.name && nullable == other.nullable && column_type == other.column_type && size == other.size && scale == other.scale && default_type == other.default_type && default_value == other.default_value && flags == other.flags && type_restriction == other.type_restriction && reference_system == other.reference_system); }
+	inline bool operator ==(const Column &other) const {
+		return (name == other.name &&
+				nullable == other.nullable &&
+				column_type == other.column_type &&
+				size == other.size &&
+				scale == other.scale &&
+				default_type == other.default_type &&
+				default_value == other.default_value &&
+				flags == other.flags &&
+				type_restriction == other.type_restriction &&
+				reference_system == other.reference_system &&
+				enumeration_values == other.enumeration_values);
+	}
 	inline bool operator !=(const Column &other) const { return (!(*this == other)); }
 };
 

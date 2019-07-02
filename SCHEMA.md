@@ -39,6 +39,7 @@ Currently the following fully-compatible standard types are supported:
 | `TIME` | `time without time zone` | |
 | `DATETIME` | `timestamp without time zone` | |
 | `JSON` | `json` | On MariaDB there is no separate `JSON` type, a `LONGTEXT` with a `JSON_VALID` `CHECK` constraint will be used instead |
+| `ENUM` | (custom type) | For PostgreSQL, the matching enumerated type must exist already |
 
 See also the spatial types list below.
 

@@ -219,6 +219,8 @@ struct OverwriteColumnNullValueClauses {
 			return "2000-01-01 00:00:00";
 		} else if (column.column_type == ColumnTypes::UUID) {
 			return "00000000-0000-0000-0000-000000000000";
+		} else if (column.column_type == ColumnTypes::ENUM) {
+			return (column.enumeration_values.empty() ? "" : column.enumeration_values[0]); // should never be empty in reality, but don't segfault
 		} else {
 			return "0"; // covers bool too - quoted '0' values will be accepted by mysql, but quoted 'false' values wouldn't
 		}

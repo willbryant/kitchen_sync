@@ -77,6 +77,23 @@ string values_list(DatabaseClient &client, const Table &table, const ColumnValue
 }
 
 template <typename DatabaseClient>
+string values_list(DatabaseClient &client, const vector<string> &values) {
+	if (values.empty()) {
+		return "(NULL)";
+	}
+
+	string result("('");
+	for (size_t n = 0; n < values.size(); n++) {
+		if (n > 0) {
+			result += "', '";
+		}
+		result += client.escape_string_value(values[n]);
+	}
+	result += "')";
+	return result;
+}
+
+template <typename DatabaseClient>
 string where_sql(DatabaseClient &client, const Table &table, const char *op1, const ColumnValues &key1, const char *op2, const ColumnValues &key2, const char *op3, const ColumnValues &key3, const string &extra_where_conditions = "") {
 	const char *prefix = " WHERE ";
 	string key_columns(columns_tuple(client, table.columns, table.primary_key_columns));

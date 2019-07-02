@@ -116,6 +116,7 @@ SQL
   end
 
   def create_misctbl
+    connection.create_enum_column_type
     execute(<<-SQL)
       CREATE TABLE misctbl (
         pri INT NOT NULL,
@@ -132,6 +133,7 @@ SQL
         textfield #{connection.text_column_type},
         blobfield #{connection.blob_column_type},
         jsonfield #{connection.json_column_type 'jsonfield'},
+        enumfield #{connection.enum_column_type},
         PRIMARY KEY(pri))
 SQL
   end
@@ -153,6 +155,7 @@ SQL
         {"name" => "textfield",     "column_type" => ColumnTypes::TEXT},
         {"name" => "blobfield",     "column_type" => ColumnTypes::BLOB},
         {"name" => "jsonfield",     "column_type" => ColumnTypes::JSON},
+        {"name" => "enumfield",     "column_type" => ColumnTypes::ENUM, "enumeration_values" => ["red", "green", "blue", "with'quote"]}.merge(connection.enum_column_type_restriction),
       ],
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],

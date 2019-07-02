@@ -141,8 +141,16 @@ class Mysql2::Client
     'FLOAT'
   end
 
-  def unsupported_column_type
-    'bit(8)'
+  def create_enum_column_type
+  end
+
+  def enum_column_type
+    "ENUM('red', 'green', 'blue', 'with''quote')"
+  end
+
+  def enum_column_type_restriction
+    # mysql doesn't name the specific enumeration types
+    {}
   end
 
   def install_spatial_support
@@ -161,5 +169,9 @@ class Mysql2::Client
 
   def spatial_reference_table_definitions
     []
+  end
+
+  def unsupported_column_type
+    'bit(8)'
   end
 end

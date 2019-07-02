@@ -194,8 +194,17 @@ class PG::Connection
     'real'
   end
 
-  def unsupported_column_type
-    'tsvector'
+  def create_enum_column_type
+    execute "DROP TYPE IF EXISTS #{enum_column_type}"
+    execute "CREATE TYPE #{enum_column_type} AS ENUM('red', 'green', 'blue', 'with''quote')"
+  end
+
+  def enum_column_type
+    'our_enum_t'
+  end
+
+  def enum_column_type_restriction
+    {'type_restriction' => enum_column_type}
   end
 
   def install_spatial_support
@@ -229,5 +238,9 @@ class PG::Connection
         "primary_key_columns" => [0],
         "keys" => [] },
     ]
+  end
+
+  def unsupported_column_type
+    'tsvector'
   end
 end

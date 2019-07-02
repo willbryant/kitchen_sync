@@ -46,6 +46,7 @@ module ColumnTypes
   TIME = "TIME"
   DTTM = "DATETIME"
   SPAT = "SPATIAL"
+  ENUM = "ENUM"
 
   UNKN = "UNKNOWN"
 end
