@@ -158,6 +158,10 @@ class PG::Connection
     true
   end
 
+  def mysql_default_expressions?
+    false # obviously
+  end
+
   def sequence_column_type
     'SERIAL'
   end
