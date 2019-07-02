@@ -33,39 +33,39 @@ class Mysql2::Client
   end
 
   def table_keys(table_name)
-    query("SHOW KEYS FROM #{table_name}").collect {|row| row["Key_name"] unless row["Key_name"] == "PRIMARY"}.compact.uniq
+    query("SHOW KEYS FROM #{quote_ident table_name}").collect {|row| row["Key_name"] unless row["Key_name"] == "PRIMARY"}.compact.uniq
   end
 
   def table_keys_unique(table_name)
-    query("SHOW KEYS FROM #{table_name}").each_with_object({}) {|row, results| results[row["Key_name"]] = row["Non_unique"].zero? unless row["Key_name"] == "PRIMARY"}
+    query("SHOW KEYS FROM #{quote_ident table_name}").each_with_object({}) {|row, results| results[row["Key_name"]] = row["Non_unique"].zero? unless row["Key_name"] == "PRIMARY"}
   end
 
   def table_key_columns(table_name)
-    query("SHOW KEYS FROM #{table_name}").each_with_object({}) {|row, results| (results[row["Key_name"]] ||= []) << row["Column_name"]}
+    query("SHOW KEYS FROM #{quote_ident table_name}").each_with_object({}) {|row, results| (results[row["Key_name"]] ||= []) << row["Column_name"]}
   end
 
   def table_column_names(table_name)
-    query("SHOW COLUMNS FROM #{table_name}").collect {|row| row.values.first}.compact
+    query("SHOW COLUMNS FROM #{quote_ident table_name}").collect {|row| row.values.first}.compact
   end
 
   def table_column_types(table_name)
-    query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = row["Type"]}
+    query("SHOW COLUMNS FROM #{quote_ident table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = row["Type"]}
   end
 
   def table_srids(table_name)
-    query("SHOW CREATE TABLE #{table_name}").first["Create Table"].scan(/`(.*)`.*\/\*!80003 SRID (\d+)/).to_h
+    query("SHOW CREATE TABLE #{quote_ident table_name}").first["Create Table"].scan(/`(.*)`.*\/\*!80003 SRID (\d+)/).to_h
   end
 
   def table_column_nullability(table_name)
-    query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = (row["Null"] == "YES")}
+    query("SHOW COLUMNS FROM #{quote_ident table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = (row["Null"] == "YES")}
   end
 
   def table_column_defaults(table_name)
-    query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = row["Default"]}
+    query("SHOW COLUMNS FROM #{quote_ident table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = row["Default"]}
   end
 
   def table_column_sequences(table_name)
-    query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = !!(row["Extra"] =~ /auto_increment/)}
+    query("SHOW COLUMNS FROM #{quote_ident table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = !!(row["Extra"] =~ /auto_increment/)}
   end
 
   def quote_ident(name)
@@ -148,7 +148,7 @@ class Mysql2::Client
   end
 
   def create_spatial_index(index_name, table_name, *columns)
-    execute "CREATE SPATIAL INDEX #{index_name} ON #{table_name} (#{columns.join ', '})"
+    execute "CREATE SPATIAL INDEX #{quote_ident index_name} ON #{quote_ident table_name} (#{columns.join ', '})"
   end
 
   def spatial_column_type(geometry_type: 'geometry', srid:)
