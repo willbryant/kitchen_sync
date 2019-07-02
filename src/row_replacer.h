@@ -29,6 +29,10 @@ struct RowReplacerBuilder {
 		return "INSERT INTO ";
 	}
 
+	static const char *values_base(const DatabaseClient &client) {
+		return (client.supports_generated_as_identity() ? " OVERRIDING SYSTEM VALUE VALUES\n(" : " VALUES\n(");
+	}
+
 	static void construct_clearers(RowReplacer<DatabaseClient> &row_replacer) {
 		// databases that don't support the REPLACE statement must explicitly clear conflicting rows
 		for (const Key &key : row_replacer.table.keys) {
@@ -48,6 +52,10 @@ struct RowReplacerBuilder<DatabaseClient, true> {
 		return "REPLACE INTO ";
 	}
 
+	static const char *values_base(const DatabaseClient &client) {
+		return " VALUES\n(";
+	}
+
 	static void construct_clearers(RowReplacer<DatabaseClient> &row_replacer) {
 		// databases that support the REPLACE statement will clear any conflicting rows automatically
 		row_replacer.replace_clearers_start = row_replacer.unique_key_clearers.end();
@@ -60,7 +68,7 @@ struct RowReplacer {
 	RowReplacer(DatabaseClient &client, const Table &table, bool commit_often, ProgressCallback progress_callback):
 		client(client),
 		table(table),
-		insert_sql(RowReplacerBuilder<DatabaseClient>::insert_sql_base() + client.quote_identifier(table.name) + " VALUES\n(", ")"),
+		insert_sql(RowReplacerBuilder<DatabaseClient>::insert_sql_base() + client.quote_identifier(table.name) + RowReplacerBuilder<DatabaseClient>::values_base(client), ")"),
 		commit_often(commit_often),
 		progress_callback(progress_callback),
 		rows_changed(0) {
