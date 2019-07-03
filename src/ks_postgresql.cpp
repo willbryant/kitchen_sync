@@ -428,7 +428,7 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 				column.size = 0;
 			}
 
-			if (column.column_type == ColumnTypes::ENUM && !column.type_restriction.empty()) {
+			if (column.column_type == ColumnTypes::ENUM && column.type_restriction.empty()) {
 				// postgresql requires that you create a material type for each enumeration, whereas mysql just lists the
 				// possible values on the column itself.  we don't currently implement creation/maintainance of these custom
 				// types ourselves - users need to do that - but we need to find the name of the type they've (hopefully) created.

@@ -457,6 +457,12 @@ void MySQLClient::convert_unsupported_database_schema(Database &database) {
 				column.default_type = DefaultType::no_default;
 				column.default_value = "";
 			}
+
+			// mysql doesn't use named types for enumerations, but postgresql does; mask out any enumeration names we
+			// receive so that the tables compare equal in the schema matcher.
+			if (column.column_type == ColumnTypes::ENUM && !column.type_restriction.empty()) {
+				column.type_restriction.clear();
+			}
 		}
 	}
 }
