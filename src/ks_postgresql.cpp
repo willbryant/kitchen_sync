@@ -191,6 +191,7 @@ public:
 	void start_write_transaction();
 	void commit_transaction();
 	void rollback_transaction();
+	void populate_types();
 	void populate_database_schema(Database &database);
 	void convert_unsupported_database_schema(Database &database);
 	string escape_string_value(const string &value);
@@ -263,6 +264,10 @@ PostgreSQLClient::PostgreSQLClient(
 	if (!variables.empty()) {
 		execute("SET " + variables);
 	}
+
+	// we call this ourselves as all instances need to know the type OIDs that need special conversion,
+	// whereas populate_database_schema is only called for the leader at the 'to' end
+	populate_types();
 }
 
 PostgreSQLClient::~PostgreSQLClient() {
@@ -904,7 +909,7 @@ struct PostgreSQLEnumValuesCollector {
 	TypeMap &type_map;
 };
 
-void PostgreSQLClient::populate_database_schema(Database &database) {
+void PostgreSQLClient::populate_types() {
 	PostgreSQLTypeMapCollector type_collector(type_map);
 	query(
 		"SELECT pg_type.oid, pg_type.typname "
@@ -926,7 +931,9 @@ void PostgreSQLClient::populate_database_schema(Database &database) {
 		       "pg_type.oid = enumtypid "
 		 "ORDER BY enumtypid, enumsortorder",
 		enum_values_collector);
+}
 
+void PostgreSQLClient::populate_database_schema(Database &database) {
 	PostgreSQLTableLister table_lister(*this, database, type_map);
 	query(
 		"SELECT pg_class.relname "
