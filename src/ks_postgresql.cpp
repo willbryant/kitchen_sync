@@ -595,7 +595,7 @@ string PostgreSQLClient::column_default(const Table &table, const Column &column
 		case DefaultType::sequence:
 			if (!supports_generated_as_identity()) {
 				string result(" DEFAULT nextval('");
-				result += escape_string_value(column_sequence_name(table, column));
+				result += escape_string_value(quote_identifier(column_sequence_name(table, column)));
 				result += "'::regclass)";
 				return result;
 			} else if (column.flags & ColumnFlags::identity_generated_always) {
