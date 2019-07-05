@@ -140,7 +140,7 @@ struct AlterColumnDefaultClauses {
 		alter_table_clauses += " ALTER ";
 		alter_table_clauses += client.quote_identifier(to_column.name);
 		if (from_column.default_type) {
-			alter_table_clauses += " SET ";
+			alter_table_clauses += " SET";
 			alter_table_clauses += client.column_default(table, from_column);
 		} else {
 			alter_table_clauses += " DROP DEFAULT";
@@ -150,8 +150,8 @@ struct AlterColumnDefaultClauses {
 	}
 };
 
-template <typename DatabaseClient, bool = is_base_of<SetNullability, DatabaseClient>::value>
-struct AlterColumnNullabilityClauses {
+template <typename DatabaseClient>
+struct ModifyColumnDefinitionClauses {
 	static void add_to(string &alter_table_clauses, DatabaseClient &client, const Table &table, const Column &from_column, Column &to_column) {
 		if (!alter_table_clauses.empty()) {
 			alter_table_clauses += ",";
@@ -160,8 +160,16 @@ struct AlterColumnNullabilityClauses {
 		alter_table_clauses += client.column_definition(table, from_column);
 		to_column.nullable = from_column.nullable;
 		to_column.default_type = from_column.default_type;
-		// MODIFY column_definition will actually change the data type too, but that may or may not succeed,
-		// so currently we don't say we've fixed the type so that our matcher algorithm will still drop and recreate
+		to_column.default_value = from_column.default_value;
+		// MODIFY column_definition will actually change the data type too, but that may or may not succeed (if the current values aren't
+		// valid for the new type), so currently we don't say we've fixed the type so that our matcher algorithm will still drop and recreate
+	}
+};
+
+template <typename DatabaseClient, bool = is_base_of<SetNullability, DatabaseClient>::value>
+struct AlterColumnNullabilityClauses {
+	static void add_to(string &alter_table_clauses, DatabaseClient &client, const Table &table, const Column &from_column, Column &to_column) {
+		ModifyColumnDefinitionClauses<DatabaseClient>::add_to(alter_table_clauses, client, table, from_column, to_column);
 	}
 };
 

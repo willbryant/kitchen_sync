@@ -873,6 +873,28 @@ SQL
     assert_footbl_rows_present
   end
 
+  test_each "changes the column default if they need to be changed at the same time as making the column non-nullable, without recreating the table" do
+    clear_schema
+    create_footbl
+    insert_footbl_rows
+    execute("ALTER TABLE footbl ALTER another_col SET DEFAULT 42")
+    table_def = footbl_def
+    table_def["columns"][1]["default_value"] = "23"
+    table_def["columns"][1]["nullable"] = false
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command Commands::SCHEMA, ["tables" => [table_def]]
+    read_command
+    assert_equal({"col1" => nil, "another_col" => "23", "col3" => nil}, connection.table_column_defaults("footbl"))
+    assert_equal [[2,     10,       "test"],
+                  [4,      0,        "foo"], # overwrite happens before we redefine the column as non-nullable, so another_col gets value 0 on the rows that were nil
+                  [5,      0,          nil], # ideally we would apply the new default, but correctness is all that counts
+                  [8,     -1, "longer str"],
+                  [1001,   0,       "last"]],
+                 query("SELECT * FROM footbl ORDER BY col1")
+  end
+
   test_each "changes the column default if they need to be set on a string column, without recreating the table" do
     clear_schema
     create_footbl
