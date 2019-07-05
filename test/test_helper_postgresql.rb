@@ -130,10 +130,6 @@ class PG::Connection
     SQL
   end
 
-  def table_column_sequences(table_name)
-    table_column_defaults(table_name).collect.with_object({}) {|(column, default), results| results[column] = !!(default =~ /^nextval\('\w+_seq'::regclass\)/)}
-  end
-
   def quote_ident(name)
     self.class.quote_ident(name)
   end

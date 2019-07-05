@@ -918,7 +918,8 @@ SQL
     expect_command Commands::SCHEMA
     send_command Commands::SCHEMA, ["tables" => [autotbl_def]]
     read_command
-    assert_equal({"inc" => true, "payload" => false}, connection.table_column_sequences("autotbl"))
+    execute "INSERT INTO autotbl (payload) VALUES (10), (11)"
+    assert_equal [[1, 10], [2, 11]], query("SELECT inc, payload FROM autotbl")
   end
 
 

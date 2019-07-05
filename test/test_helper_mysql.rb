@@ -64,10 +64,6 @@ class Mysql2::Client
     query("SHOW COLUMNS FROM #{quote_ident table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = row["Default"]}
   end
 
-  def table_column_sequences(table_name)
-    query("SHOW COLUMNS FROM #{quote_ident table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = !!(row["Extra"] =~ /auto_increment/)}
-  end
-
   def quote_ident(name)
     "`#{name.gsub('`', '``')}`"
   end
