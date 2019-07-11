@@ -212,6 +212,7 @@ public:
 
 	size_t execute(const string &sql);
 	string select_one(const string &sql);
+	vector<string> select_all(const string &sql);
 
 	template <typename RowFunction>
 	size_t query(const string &sql, RowFunction &row_handler, bool buffer = false) {
@@ -285,7 +286,9 @@ MySQLClient::MySQLClient(
 
 	server_is_mariadb = strstr(mysql_get_server_info(&mysql), "MariaDB") != nullptr;
 	server_version = mysql_get_server_version(&mysql);
-	check_constraints_table_exists = atoi(select_one("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='INFORMATION_SCHEMA' AND TABLE_NAME='CHECK_CONSTRAINTS'").c_str());
+
+	// mysql doesn't represent the INFORMATION_SCHEMA tables themselves in INFORMATION_SCHEMA, so we have to use the old-style schema info SHOW statements and can't use COUNT(*) etc.
+	check_constraints_table_exists = !select_all("SHOW TABLES FROM INFORMATION_SCHEMA LIKE 'CHECK_CONSTRAINTS'").empty();
 }
 
 MySQLClient::~MySQLClient() {
@@ -312,6 +315,29 @@ string MySQLClient::select_one(const string &sql) {
 	}
 
 	return MySQLRow(res, mysql_fetch_row(res.res())).string_at(0);
+}
+
+vector<string> MySQLClient::select_all(const string &sql) {
+	if (mysql_real_query(&mysql, sql.c_str(), sql.length())) {
+		throw runtime_error(sql_error(sql));
+	}
+
+	MySQLRes res(mysql, false);
+	vector<string> results;
+
+	while (true) {
+		MYSQL_ROW mysql_row = mysql_fetch_row(res.res());
+		if (!mysql_row) break;
+		MySQLRow row(res, mysql_row);
+		results.push_back(row.string_at(0));
+	}
+
+	// check again for errors, as mysql_fetch_row would return NULL for both errors & no more rows
+	if (mysql_errno(&mysql)) {
+		throw runtime_error(sql_error(sql));
+	}
+
+	return results;
 }
 
 string MySQLClient::sql_error(const string &sql) {
