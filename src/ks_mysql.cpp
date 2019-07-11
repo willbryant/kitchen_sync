@@ -12,7 +12,6 @@
 
 #define MYSQL_5_6_5 50605
 #define MYSQL_5_7_8 50708
-#define MYSQL_8_0_0 80000
 #define MARIADB_10_0_0 100000
 #define MARIADB_10_2_7 100207
 
@@ -206,7 +205,7 @@ public:
 
 	inline ColumnFlags supported_flags() const { return (ColumnFlags)(mysql_timestamp | mysql_on_update_timestamp); }
 	inline bool information_schema_column_default_shows_escaped_expressions() const { return (server_is_mariadb && server_version >= MARIADB_10_2_7); }
-	inline bool supports_srid_settings_on_columns() const { return (!server_is_mariadb && server_version >= MYSQL_8_0_0); }
+	inline bool supports_srid_settings_on_columns() const { return srid_column_exists; }
 	inline bool supports_check_constraints() const { return check_constraints_table_exists; }
 	inline bool explicit_json_column_type() const { return (!server_is_mariadb && server_version >= MYSQL_5_7_8); }
 
@@ -244,6 +243,7 @@ private:
 	MYSQL mysql;
 	bool server_is_mariadb;
 	bool check_constraints_table_exists;
+	bool srid_column_exists;
 	unsigned long server_version;
 
 	// forbid copying
@@ -289,6 +289,7 @@ MySQLClient::MySQLClient(
 
 	// mysql doesn't represent the INFORMATION_SCHEMA tables themselves in INFORMATION_SCHEMA, so we have to use the old-style schema info SHOW statements and can't use COUNT(*) etc.
 	check_constraints_table_exists = !select_all("SHOW TABLES FROM INFORMATION_SCHEMA LIKE 'CHECK_CONSTRAINTS'").empty();
+	srid_column_exists = !select_all("SHOW COLUMNS FROM INFORMATION_SCHEMA.COLUMNS LIKE 'SRS_ID'").empty();
 }
 
 MySQLClient::~MySQLClient() {
