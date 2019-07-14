@@ -11,9 +11,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 	rm -rf /var/cache/apt/archives/*
 
 RUN DEBIAN_FRONTEND=noninteractive apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 ACCC4CF8 && \
-	DEBIAN_FRONTEND=noninteractive add-apt-repository 'deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main' && \
+	DEBIAN_FRONTEND=noninteractive add-apt-repository 'deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main 11' && \
 	DEBIAN_FRONTEND=noninteractive apt-get update && \
-	DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql libpq-dev postgis && \
+	DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql-11 postgresql-client-11 libpq-dev postgis && \
 	apt-get clean -y && \
 	rm -rf /var/cache/apt/archives/*
 
