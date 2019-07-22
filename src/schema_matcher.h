@@ -385,9 +385,6 @@ struct SchemaMatcher {
 		sort(from_table.keys.begin(), from_table.keys.end());
 		sort(  to_table.keys.begin(),   to_table.keys.end());
 
-		// turn off any flags not supported by the target database
-		mask_unsupported_flags(from_table);
-
 		// if the tables match, we don't have to do anything
 		if (from_table == to_table) return;
 
@@ -406,12 +403,6 @@ struct SchemaMatcher {
 			DropTableStatements<DatabaseClient>::add_to(statements, client, to_table);
 			CreateTableStatements<DatabaseClient>::add_to(statements, client, from_table);
 			to_table = from_table;
-		}
-	}
-
-	void mask_unsupported_flags(Table &from_table) {
-		for (Column &column : from_table.columns) {
-			column.flags = (ColumnFlags)(column.flags & client.supported_flags());
 		}
 	}
 

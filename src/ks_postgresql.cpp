@@ -415,6 +415,8 @@ string &PostgreSQLClient::append_escaped_column_value_to(string &result, const C
 void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 	for (Table &table : database.tables) {
 		for (Column &column : table.columns) {
+			column.flags = (ColumnFlags)(column.flags & supported_flags());
+
 			if (column.column_type == ColumnTypes::UINT) {
 				// postgresql doesn't support unsigned columns; to make migration from databases that do
 				// easier, we don't reject unsigned columns, we just convert them to the signed equivalent

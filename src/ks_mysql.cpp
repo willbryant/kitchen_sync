@@ -456,6 +456,8 @@ string &MySQLClient::append_escaped_column_value_to(string &result, const Column
 void MySQLClient::convert_unsupported_database_schema(Database &database) {
 	for (Table &table : database.tables) {
 		for (Column &column : table.columns) {
+			column.flags = (ColumnFlags)(column.flags & supported_flags());
+
 			// postgresql allows numeric with no precision or scale specification and preserves the given input data
 			// up to an implementation-defined precision and scale limit; mysql doesn't, and silently converts
 			// `numeric` to `numeric(10, 0)`.  lacking any better knowledge, we follow their lead and do the same
