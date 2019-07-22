@@ -203,7 +203,7 @@ public:
 	string column_definition(const Table &table, const Column &column);
 	string key_definition(const Table &table, const Key &key);
 
-	inline ColumnFlags supported_flags() const { return (ColumnFlags)(mysql_timestamp | mysql_on_update_timestamp); }
+	inline ColumnFlags::flag_t supported_flags() const { return (ColumnFlags::mysql_timestamp | ColumnFlags::mysql_on_update_timestamp); }
 	inline bool information_schema_column_default_shows_escaped_expressions() const { return (server_is_mariadb && server_version >= MARIADB_10_2_7); }
 	inline bool supports_srid_settings_on_columns() const { return srid_column_exists; }
 	inline bool supports_check_constraints() const { return check_constraints_table_exists; }
@@ -456,7 +456,7 @@ string &MySQLClient::append_escaped_column_value_to(string &result, const Column
 void MySQLClient::convert_unsupported_database_schema(Database &database) {
 	for (Table &table : database.tables) {
 		for (Column &column : table.columns) {
-			column.flags = (ColumnFlags)(column.flags & supported_flags());
+			column.flags &= supported_flags();
 
 			// postgresql allows numeric with no precision or scale specification and preserves the given input data
 			// up to an implementation-defined precision and scale limit; mysql doesn't, and silently converts
@@ -701,7 +701,7 @@ string MySQLClient::column_definition(const Table &table, const Column &column) 
 		result += column_default(table, column);
 	}
 
-	if (column.flags & mysql_on_update_timestamp) {
+	if (column.flags & ColumnFlags::mysql_on_update_timestamp) {
 		result += " ON UPDATE CURRENT_TIMESTAMP";
 	}
 
@@ -830,13 +830,13 @@ struct MySQLColumnLister {
 		} else if (db_type == "time") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TIME);
 		} else if (db_type == "datetime" || db_type == "timestamp") {
-			ColumnFlags flags = db_type == "timestamp" ? ColumnFlags::mysql_timestamp : ColumnFlags::nothing;
+			ColumnFlags::flag_t flags = db_type == "timestamp" ? ColumnFlags::mysql_timestamp : ColumnFlags::nothing;
 			if (default_value == "CURRENT_TIMESTAMP" || default_value == "current_timestamp()") {
 				default_type = DefaultType::default_expression;
 				default_value = "CURRENT_TIMESTAMP";
 			}
 			if (extra.find("on update CURRENT_TIMESTAMP") != string::npos || extra.find("on update current_timestamp()") != string::npos) {
-				flags = (ColumnFlags)(flags | mysql_on_update_timestamp);
+				flags |= ColumnFlags::mysql_on_update_timestamp;
 			}
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM, 0, 0, flags);
 		} else if (db_type == "geometry" || db_type == "point" || db_type == "linestring" || db_type == "polygon" || db_type == "geometrycollection" || db_type == "multipoint" || db_type == "multilinestring" || db_type == "multipolygon") {

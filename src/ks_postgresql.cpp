@@ -208,8 +208,8 @@ public:
 	string key_definition(const Table &table, const Key &key);
 
 	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '"'); };
-	inline ColumnFlags supported_flags() const {
-		return (ColumnFlags)(ColumnFlags::time_zone | ColumnFlags::simple_geometry |
+	inline ColumnFlags::flag_t supported_flags() const {
+		return (ColumnFlags::time_zone | ColumnFlags::simple_geometry |
 				(supports_generated_as_identity() ? ColumnFlags::identity_generated_always : 0));
 	}
 	inline bool supports_generated_as_identity() const { return (server_version >= POSTGRESQL_10); }
@@ -415,7 +415,7 @@ string &PostgreSQLClient::append_escaped_column_value_to(string &result, const C
 void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 	for (Table &table : database.tables) {
 		for (Column &column : table.columns) {
-			column.flags = (ColumnFlags)(column.flags & supported_flags());
+			column.flags &= supported_flags();
 
 			if (column.column_type == ColumnTypes::UINT) {
 				// postgresql doesn't support unsigned columns; to make migration from databases that do
@@ -666,7 +666,7 @@ struct PostgreSQLColumnLister {
 		bool nullable(row.string_at(2) == "f");
 		DefaultType default_type(DefaultType::no_default);
 		string default_value;
-		ColumnFlags default_flags(ColumnFlags::nothing);
+		ColumnFlags::flag_t default_flags(ColumnFlags::nothing);
 
 		if (!row.null_at(5) && row.string_at(5) != "\0") {
 			// attidentity set (will be 'a' for 'always' and 'd' for 'by default')
@@ -758,7 +758,7 @@ struct PostgreSQLColumnLister {
 		} else if (db_type.substr(0, 9) == "geometry(") {
 			string type_restriction, reference_system;
 			tie(type_restriction, reference_system) = extract_spatial_type_restriction_and_reference_system(db_type.substr(9, db_type.length() - 10));
-			ColumnFlags flags = reference_system.empty() ? ColumnFlags::nothing : ColumnFlags::simple_geometry; // as discussed in column_type, we mainly expect SRIDs to be used with the geography type, but use this flag to turn the column back into a geometry type for this case
+			ColumnFlags::flag_t flags = reference_system.empty() ? ColumnFlags::nothing : ColumnFlags::simple_geometry; // as discussed in column_type, we mainly expect SRIDs to be used with the geography type, but use this flag to turn the column back into a geometry type for this case
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, 0, 0, flags, type_restriction, reference_system);
 		} else if (db_type.substr(0, 10) == "geography(") {
 			string type_restriction, reference_system;

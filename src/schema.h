@@ -41,14 +41,15 @@ enum DefaultType {
 	default_expression = 3,
 };
 
-enum ColumnFlags {
+namespace ColumnFlags {
 	// these flags are serialized by name not value, so the values here can be changed if required
-	nothing = 0,
-	mysql_timestamp = 1,
-	mysql_on_update_timestamp = 2,
-	time_zone = 4,
-	simple_geometry = 8,
-	identity_generated_always = 16,
+	typedef uint32_t flag_t;
+	const flag_t nothing = 0;
+	const flag_t mysql_timestamp = 1;
+	const flag_t mysql_on_update_timestamp = 2;
+	const flag_t time_zone = 4;
+	const flag_t simple_geometry = 8;
+	const flag_t identity_generated_always = 16;
 };
 
 struct Column {
@@ -59,7 +60,7 @@ struct Column {
 	size_t scale;
 	DefaultType default_type;
 	string default_value;
-	ColumnFlags flags;
+	ColumnFlags::flag_t flags;
 	string type_restriction;
 	string reference_system;
 	vector<string> enumeration_values;
@@ -70,7 +71,7 @@ struct Column {
 	// the following member isn't serialized currently (could be, but not required):
 	string filter_expression;
 
-	inline Column(const string &name, bool nullable, DefaultType default_type, string default_value, string column_type, size_t size = 0, size_t scale = 0, ColumnFlags flags = ColumnFlags::nothing, const string &type_restriction = "", const string &reference_system = "", const string &db_type_def = ""): name(name), nullable(nullable), default_type(default_type), default_value(default_value), column_type(column_type), size(size), scale(scale), flags(flags), type_restriction(type_restriction), reference_system(reference_system), db_type_def(db_type_def) {}
+	inline Column(const string &name, bool nullable, DefaultType default_type, string default_value, string column_type, size_t size = 0, size_t scale = 0, ColumnFlags::flag_t flags = ColumnFlags::nothing, const string &type_restriction = "", const string &reference_system = "", const string &db_type_def = ""): name(name), nullable(nullable), default_type(default_type), default_value(default_value), column_type(column_type), size(size), scale(scale), flags(flags), type_restriction(type_restriction), reference_system(reference_system), db_type_def(db_type_def) {}
 	inline Column(): nullable(true), size(0), scale(0), default_type(DefaultType::no_default), flags(ColumnFlags::nothing) {}
 
 	inline bool operator ==(const Column &other) const {
