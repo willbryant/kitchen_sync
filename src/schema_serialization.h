@@ -14,7 +14,7 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	if (!column.reference_system.empty()) fields++;
 	if (!column.enumeration_values.empty()) fields++;
 	if (!column.db_type_def.empty()) fields++;
-	if (column.default_type) fields++;
+	if (column.default_type != DefaultType::no_default) fields++;
 	if (column.flags & ColumnFlags::mysql_timestamp) fields++;
 	if (column.flags & ColumnFlags::mysql_on_update_timestamp) fields++;
 	if (column.flags & ColumnFlags::time_zone) fields++;
@@ -100,19 +100,19 @@ void operator << (Packer<OutputStream> &packer, const Key &key) {
 	packer << string("name");
 	packer << key.name;
 	switch (key.key_type) {
-		case standard_key:
+		case KeyType::standard_key:
 			// we send the "unique" flag for backwards compatibility with v1.17 and earlier; therefore, there's no point in sending "key_type" as well
 			packer << string("unique");
 			packer << false;
 			break;
 
-		case unique_key:
-			// as for standard_key
+		case KeyType::unique_key:
+			// as for KeyType::standard_key
 			packer << string("unique");
 			packer << true;
 			break;
 
-		case spatial_key:
+		case KeyType::spatial_key:
 			packer << string("key_type");
 			packer << string("spatial");
 			break;
@@ -131,7 +131,7 @@ void operator << (Packer<OutputStream> &packer, const Table &table) {
 	packer << string("primary_key_columns");
 	packer << table.primary_key_columns;
 	packer << string("primary_key_type");
-	packer << table.primary_key_type;
+	packer << static_cast<int>(table.primary_key_type); // unfortunately this was implemented as value-serialised, unlike the other enums
 	packer << string("keys");
 	packer << table.keys;
 }
@@ -204,15 +204,15 @@ void operator >> (Unpacker<InputStream> &unpacker, Key &key) {
 		if (attr_key == "name") {
 			unpacker >> key.name;
 		} else if (attr_key == "unique") {
-			key.key_type = (unpacker.template next<bool>() ? unique_key : standard_key);
+			key.key_type = (unpacker.template next<bool>() ? KeyType::unique_key : KeyType::standard_key);
 		} else if (attr_key == "key_type") {
 			string key_type(unpacker.template next<string>());
 			if (key_type == "standard") {
-				key.key_type = standard_key;
+				key.key_type = KeyType::standard_key;
 			} else if (key_type == "unique") {
-				key.key_type = unique_key;
+				key.key_type = KeyType::unique_key;
 			} else if (key_type == "spatial") {
-				key.key_type = spatial_key;
+				key.key_type = KeyType::spatial_key;
 			}
 		} else if (attr_key == "columns") {
 			unpacker >> key.columns;
@@ -239,7 +239,8 @@ void operator >> (Unpacker<InputStream> &unpacker, Table &table) {
 		} else if (attr_key == "primary_key_columns") {
 			unpacker >> table.primary_key_columns;
 		} else if (attr_key == "primary_key_type") {
-			unpacker >> table.primary_key_type;
+			// unfortunately this was implemented as value-serialised, unlike the other enums
+			table.primary_key_type = static_cast<PrimaryKeyType>(unpacker.template next<int>());
 			primary_key_type_set = true;
 		} else if (attr_key == "keys") {
 			unpacker >> table.keys;
@@ -251,7 +252,7 @@ void operator >> (Unpacker<InputStream> &unpacker, Table &table) {
 
 	// backwards compatibility with v1.13 and earlier, which didn't have primary_key_type
 	if (!primary_key_type_set) {
-		table.primary_key_type = table.primary_key_columns.empty() ? no_available_key : explicit_primary_key;
+		table.primary_key_type = table.primary_key_columns.empty() ? PrimaryKeyType::no_available_key : PrimaryKeyType::explicit_primary_key;
 	}
 }
 

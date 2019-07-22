@@ -624,7 +624,7 @@ string PostgreSQLClient::column_default(const Table &table, const Column &column
 			return " DEFAULT " + column.default_value; // the only expression accepted prior to support for arbitrary expressions
 
 		default:
-			throw runtime_error("Don't know how to express default of " + column.name + " (" + to_string(column.default_type) + ")");
+			throw runtime_error("Don't know how to express default of " + column.name + " (" + to_string((int)column.default_type) + ")");
 	}
 }
 
@@ -639,7 +639,7 @@ string PostgreSQLClient::column_definition(const Table &table, const Column &col
 		result += " NOT NULL";
 	}
 
-	if (column.default_type) {
+	if (column.default_type != DefaultType::no_default) {
 		result += column_default(table, column);
 	}
 
@@ -814,7 +814,7 @@ struct PostgreSQLPrimaryKeyLister {
 		string column_name = row.string_at(0);
 		size_t column_index = table.index_of_column(column_name);
 		table.primary_key_columns.push_back(column_index);
-		table.primary_key_type = explicit_primary_key;
+		table.primary_key_type = PrimaryKeyType::explicit_primary_key;
 	}
 
 	Table &table;
@@ -832,9 +832,9 @@ struct PostgreSQLKeyLister {
 		// FUTURE: consider representing collation, index type, partial keys etc.
 
 		if (table.keys.empty() || table.keys.back().name != key_name) {
-			KeyType key_type(standard_key);
-			if (row.string_at(1) == "t") key_type = unique_key;
-			if (row.string_at(2).find("USING gist ") != string::npos) key_type = spatial_key;
+			KeyType key_type(KeyType::standard_key);
+			if (row.string_at(1) == "t") key_type = KeyType::unique_key;
+			if (row.string_at(2).find("USING gist ") != string::npos) key_type = KeyType::spatial_key;
 			table.keys.push_back(Key(key_name, key_type));
 		}
 		table.keys.back().columns.push_back(column_index);

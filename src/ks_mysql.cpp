@@ -673,7 +673,7 @@ string MySQLClient::column_default(const Table &table, const Column &column) {
 			}
 
 		default:
-			throw runtime_error("Don't know how to express default of " + column.name + " (" + to_string(column.default_type) + ")");
+			throw runtime_error("Don't know how to express default of " + column.name + " (" + to_string((int)column.default_type) + ")");
 	}
 }
 
@@ -697,7 +697,7 @@ string MySQLClient::column_definition(const Table &table, const Column &column) 
 		result += extra;
 	}
 
-	if (column.default_type) {
+	if (column.default_type != DefaultType::no_default) {
 		result += column_default(table, column);
 	}
 
@@ -711,15 +711,15 @@ string MySQLClient::column_definition(const Table &table, const Column &column) 
 string MySQLClient::key_definition(const Table &table, const Key &key) {
 	string result;
 	switch (key.key_type) {
-		case standard_key:
+		case KeyType::standard_key:
 			result = "CREATE INDEX";
 			break;
 
-		case unique_key:
+		case KeyType::unique_key:
 			result = "CREATE UNIQUE INDEX";
 			break;
 
-		case spatial_key:
+		case KeyType::spatial_key:
 			result = "CREATE SPATIAL INDEX";
 			break;
 	}
@@ -740,7 +740,7 @@ struct MySQLColumnLister {
 		bool nullable(row.string_at(2) == "YES");
 		bool unsign(db_type.length() > 8 && db_type.substr(db_type.length() - 8, 8) == "unsigned");
 		DefaultType default_type(row.null_at(3) ? DefaultType::no_default : DefaultType::default_value);
-		string default_value(default_type ? row.string_at(3) : string(""));
+		string default_value(row.null_at(3) ? string("") : row.string_at(3));
 		string extra(row.string_at(4));
 
 		if (!row.null_at(3)) {
@@ -767,7 +767,7 @@ struct MySQLColumnLister {
 		}
 
 		if (db_type == "tinyint(1)") {
-			if (default_type) {
+			if (default_type != DefaultType::no_default) {
 				if (default_value == "0") {
 					default_value = "false";
 				} else if (default_value == "1") {
@@ -800,7 +800,7 @@ struct MySQLColumnLister {
 			if (length == 36 && !row.null_at(6) && row.string_at(6).substr(0, 4) == "UUID") {
 				table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UUID);
 			} else {
-				while (default_type && default_value.length() < length) default_value += ' ';
+				while (default_type != DefaultType::no_default && default_value.length() < length) default_value += ' ';
 				table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::FCHR, length);
 			}
 		} else if (db_type == "tinytext") {
@@ -913,16 +913,16 @@ struct MySQLKeyLister {
 		if (key_name == "PRIMARY") {
 			// there is of course only one primary key; we get a row for each column it includes
 			table.primary_key_columns.push_back(column_index);
-			table.primary_key_type = explicit_primary_key;
+			table.primary_key_type = PrimaryKeyType::explicit_primary_key;
 
 		} else {
 			// a column in a generic key, which may or may not be unique
 			if (table.keys.empty() || table.keys.back().name != key_name) {
-				KeyType key_type(standard_key);
+				KeyType key_type(KeyType::standard_key);
 				if (row.string_at(1) == "0") {
-					key_type = unique_key;
+					key_type = KeyType::unique_key;
 				} else if (row.string_at(10) == "SPATIAL") {
-					key_type = spatial_key;
+					key_type = KeyType::spatial_key;
 				}
 				table.keys.push_back(Key(key_name, key_type));
 			}

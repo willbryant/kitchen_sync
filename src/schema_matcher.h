@@ -108,7 +108,7 @@ struct CreateTableStatements {
 			result += (column == table.columns.begin() ? " (\n  " : ",\n  ");
 			result += client.column_definition(table, *column);
 		}
-		if (table.primary_key_type == explicit_primary_key) {
+		if (table.primary_key_type == PrimaryKeyType::explicit_primary_key) {
 			result += ",\n  PRIMARY KEY";
 			result += columns_tuple(client, table.columns, table.primary_key_columns);
 		}
@@ -141,7 +141,7 @@ struct AlterColumnDefaultClauses {
 		}
 		alter_table_clauses += " ALTER ";
 		alter_table_clauses += client.quote_identifier(to_column.name);
-		if (from_column.default_type) {
+		if (from_column.default_type != DefaultType::no_default) {
 			alter_table_clauses += " SET";
 			alter_table_clauses += client.column_default(table, from_column);
 		} else {

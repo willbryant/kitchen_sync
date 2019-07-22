@@ -15,7 +15,7 @@ struct ColumnNullable {
 
 inline void choose_primary_key_for(Table &table) {
 	// generally we expect most tables to have a real primary key
-	if (table.primary_key_type == explicit_primary_key) return;
+	if (table.primary_key_type == PrimaryKeyType::explicit_primary_key) return;
 
 	ColumnNullable nullable(table);
 
@@ -23,7 +23,7 @@ inline void choose_primary_key_for(Table &table) {
 	for (const Key &key : table.keys) {
 		if (key.unique() && none_of(key.columns.begin(), key.columns.end(), nullable)) {
 			table.primary_key_columns = key.columns;
-			table.primary_key_type = suitable_unique_key;
+			table.primary_key_type = PrimaryKeyType::suitable_unique_key;
 			return;
 		}
 	}
