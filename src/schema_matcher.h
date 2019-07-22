@@ -411,11 +411,7 @@ struct SchemaMatcher {
 
 	void mask_unsupported_flags(Table &from_table) {
 		for (Column &column : from_table.columns) {
-			ColumnFlags masked_flags = (ColumnFlags)(column.flags & client.supported_flags());
-			if (column.flags != masked_flags) {
-				cerr << "Warning: the schema for column " << from_table.name << '.' << column.name << " is not fully supported by this database." << endl;
-				column.flags = masked_flags;
-			}
+			column.flags = (ColumnFlags)(column.flags & client.supported_flags());
 		}
 	}
 
