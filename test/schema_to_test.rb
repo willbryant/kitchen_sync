@@ -661,9 +661,10 @@ SQL
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [footbl_def.merge("columns" => footbl_def["columns"][1..-1] + footbl_def["columns"][0..0])]]
-    assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
+    columns = footbl_def["columns"][1..-1] + footbl_def["columns"][0..0]
+    send_command Commands::SCHEMA, ["tables" => [footbl_def.merge("columns" => columns)]]
     read_command
+    assert_equal columns.collect {|column| column["name"]}, connection.table_column_names("footbl")
   end
 
   test_each "updates or recreates keys that consisted solely of columns that it moves" do
