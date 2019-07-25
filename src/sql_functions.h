@@ -79,9 +79,26 @@ string values_list(DatabaseClient &client, const Table &table, const ColumnValue
 		if (n > 0) {
 			result += ',';
 		}
-		result += encode(client, table.columns[table.primary_key_columns[n]], values[n]);
+		sql_encode_and_append_packed_value_to(result, client, table.columns[table.primary_key_columns[n]], values[n]);
 	}
 	result += ")";
+	return result;
+}
+
+template <typename DatabaseClient>
+string values_list(DatabaseClient &client, const vector<string> &values) {
+	if (values.empty()) {
+		return "(NULL)";
+	}
+
+	string result("('");
+	for (size_t n = 0; n < values.size(); n++) {
+		if (n > 0) {
+			result += "', '";
+		}
+		result += client.escape_string_value(values[n]);
+	}
+	result += "')";
 	return result;
 }
 

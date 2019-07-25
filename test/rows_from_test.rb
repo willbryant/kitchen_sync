@@ -165,8 +165,8 @@ class RowsFromTest < KitchenSync::EndpointTestCase
   test_each "uses a consistent format for misc column types such as dates and times" do
     clear_schema
     create_misctbl
-    execute "INSERT INTO misctbl (pri, boolfield, datefield, timefield, datetimefield, floatfield, doublefield, decimalfield, vchrfield, fchrfield, textfield, blobfield) VALUES " \
-            "                    (1, true, '2018-12-31', '23:59', '2018-12-31 23:59', 1.0, 0.5, 012345.6789, 'vchrvalue', 'fchrvalue', 'textvalue', 'blobvalue')"
+    execute %Q{INSERT INTO misctbl (pri, boolfield, datefield, timefield, datetimefield, floatfield, doublefield, decimalfield, vchrfield, fchrfield, uuidfield, textfield, blobfield, jsonfield, enumfield) VALUES
+                                   (1, true, '2018-12-31', '23:59', '2018-12-31 23:59', 1.25, 0.5, 012345.6789, 'vchrvalue', 'fchrvalue', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'textvalue', 'blobvalue', '{"one": 1, "two": "test"}', 'with''quote')}
     send_handshake_commands
 
     # note that we currently use string format for float and double fields, though we could convert them to proper msgpack types instead
@@ -174,7 +174,31 @@ class RowsFromTest < KitchenSync::EndpointTestCase
     send_command   Commands::ROWS, ["misctbl", [], []]
     expect_command Commands::ROWS,
                    ["misctbl", [], []],
-                   [1, true, '2018-12-31', '23:59:00', '2018-12-31 23:59:00', '1', '0.5', '12345.6789', 'vchrvalue', 'fchrvalue', 'textvalue', 'blobvalue']
+                   [1, true, '2018-12-31', '23:59:00', '2018-12-31 23:59:00', '1.25', '0.5', '12345.6789', 'vchrvalue', 'fchrvalue', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'textvalue', 'blobvalue', '{"one": 1, "two": "test"}', "with'quote"]
+  end
+
+  test_each "returns the appropriate representation of adapter-specific column definitions" do
+    clear_schema
+    create_adapterspecifictbl
+    expected_row_data = adapterspecifictbl_row
+    execute "INSERT INTO #{connection.quote_ident adapterspecifictbl_def["name"]} (#{expected_row_data.keys.collect {|k| connection.quote_ident k}.join(", ")}) VALUES (#{expected_row_data.values.collect {|v| "'#{connection.escape v.to_s}'"}.join(", ")})"
+
+    send_handshake_commands
+
+    send_command   Commands::ROWS, [adapterspecifictbl_def["name"], [], []]
+    expected_command = [Commands::ROWS, [adapterspecifictbl_def["name"], [], []]]
+    command = read_command
+    raise "expected command followed by one row but received #{command.inspect}" unless command.size == expected_command.size + 1
+    row_data = command.pop
+    raise "expected command #{expected_command.inspect} but received #{command.inspect}" unless expected_command == command
+    expected_row_data.each do |column_name, value|
+      if column_name == "pri"
+        assert_equal 1, value # auto-increment should start at 1 for a new table
+      else
+        column_index = adapterspecifictbl_def["columns"].index { |column_def| column_def["name"] == column_name }
+        assert_equal value, row_data[column_index]
+      end
+    end
   end
 
   test_each "uses the chosen substitute key if the table has no real primary key but has a suitable unique key" do

@@ -181,7 +181,9 @@ void pack_raw_length(Packer<Stream> &packer, size_t size) {
 	if (size <= MSGPACK_FIXRAW_MAX - MSGPACK_FIXRAW_MIN) {
 		packer.write_bytes((uint8_t) (MSGPACK_FIXRAW_MIN + size));
 
-	/* we could/should use MSGPACK_RAW8 here when size <= 0xff, but that's a breaking change for hash calculation */
+	/* we could/should use MSGPACK_RAW8 here when size <= 0xff, but that's a breaking change for hash calculation;
+	   the STR8 and RAW8 types didn't exist when we implemented this originally, so anyone wanting to reproduce our
+	   hashes should set 'compatibility mode' in their msgpack packer to get the same behavior we have. */
 
 	} else if (size <= 0xffff) {
 		packer.write_bytes(MSGPACK_RAW16);
@@ -210,8 +212,8 @@ inline Packer<Stream> &operator <<(Packer<Stream> &packer, const std::string &ob
 
 // tiny wrapper around a pointer with length so we can avoid copying bytes into
 // std::string objects when we only need them to call << to get pack_raw anyway.
-struct memory {
-	inline memory(const void *buf, size_t size): buf(buf), size(size) {}
+struct uncopied_byte_string {
+	inline uncopied_byte_string(const void *buf, size_t size): buf(buf), size(size) {}
 
 	const void *buf;
 	size_t size;
@@ -220,11 +222,11 @@ private:
 	// forbid copying to reduce bugs - you shouldn't use this class like this.
 	// could be tolerated if required in future, as long as you can guarantee
 	// the backing pointers are still valid.
-	memory(const memory& copy_from) { throw logic_error("copying forbidden"); }
+	uncopied_byte_string(const uncopied_byte_string& copy_from) { throw logic_error("copying forbidden"); }
 };
 
 template <typename Stream>
-inline Packer<Stream> &operator <<(Packer<Stream> &packer, const memory &obj) {
+inline Packer<Stream> &operator <<(Packer<Stream> &packer, const uncopied_byte_string &obj) {
 	pack_raw(packer, (const uint8_t *)obj.buf, obj.size);
 	return packer;
 }

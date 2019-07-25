@@ -33,35 +33,35 @@ class Mysql2::Client
   end
 
   def table_keys(table_name)
-    query("SHOW KEYS FROM #{table_name}").collect {|row| row["Key_name"] unless row["Key_name"] == "PRIMARY"}.compact.uniq
+    query("SHOW KEYS FROM #{quote_ident table_name}").collect {|row| row["Key_name"] unless row["Key_name"] == "PRIMARY"}.compact.uniq
   end
 
   def table_keys_unique(table_name)
-    query("SHOW KEYS FROM #{table_name}").each_with_object({}) {|row, results| results[row["Key_name"]] = row["Non_unique"].zero? unless row["Key_name"] == "PRIMARY"}
+    query("SHOW KEYS FROM #{quote_ident table_name}").each_with_object({}) {|row, results| results[row["Key_name"]] = row["Non_unique"].zero? unless row["Key_name"] == "PRIMARY"}
   end
 
   def table_key_columns(table_name)
-    query("SHOW KEYS FROM #{table_name}").each_with_object({}) {|row, results| (results[row["Key_name"]] ||= []) << row["Column_name"]}
+    query("SHOW KEYS FROM #{quote_ident table_name}").each_with_object({}) {|row, results| (results[row["Key_name"]] ||= []) << row["Column_name"]}
   end
 
   def table_column_names(table_name)
-    query("SHOW COLUMNS FROM #{table_name}").collect {|row| row.values.first}.compact
+    query("SHOW COLUMNS FROM #{quote_ident table_name}").collect {|row| row.values.first}.compact
   end
 
   def table_column_types(table_name)
-    query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = row["Type"]}
+    query("SHOW COLUMNS FROM #{quote_ident table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = row["Type"]}
+  end
+
+  def table_srids(table_name)
+    query("SHOW CREATE TABLE #{quote_ident table_name}").first["Create Table"].scan(/`(.*)`.*\/\*!80003 SRID (\d+)/).to_h
   end
 
   def table_column_nullability(table_name)
-    query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = (row["Null"] == "YES")}
+    query("SHOW COLUMNS FROM #{quote_ident table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = (row["Null"] == "YES")}
   end
 
   def table_column_defaults(table_name)
-    query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = row["Default"]}
-  end
-
-  def table_column_sequences(table_name)
-    query("SHOW COLUMNS FROM #{table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = !!(row["Extra"] =~ /auto_increment/)}
+    query("SHOW COLUMNS FROM #{quote_ident table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = row["Default"]}
   end
 
   def analyze_table(name)
@@ -74,5 +74,108 @@ class Mysql2::Client
 
   def zero_time_value
     Time.new(2000, 1, 1, 0, 0, 0)
+  end
+
+  def supports_multiple_timestamp_columns?
+    server_version !~ /^5\.5/
+  end
+
+  def mysql_default_expressions?
+    # mysql 8.0+ or mariadb 10.2+ (note mariadb skipped 6 through 9)
+    server_version !~ /^5\./ && server_version !~ /^10\.0.*MariaDB/ && server_version !~ /^10\.1.*MariaDB/
+  end
+
+  def default_expressions?
+    mysql_default_expressions?
+  end
+
+  def spatial_axis_order_depends_on_srs?
+    # only mysql 8+ behaves this way
+    server_version !~ /^5\./ && server_version !~ /MariaDB/
+  end
+
+  def supports_spatial_indexes?
+    # supported by mysql 5.7+, andmariadb 10.2+
+    server_version !~ /^5\.5/ && server_version !~ /^10\.0.*MariaDB/ && server_version !~ /^10\.1.*MariaDB/
+  end
+
+  def schema_srid_settings?
+    # supported by mysql 8+, not by mysql 5.x or mariadb
+    server_version !~ /^5\./ && server_version !~ /MariaDB/
+  end
+
+  def explicit_json_column_type?
+    # supported by mysql 5.7.8+, not by mysql 5.x or mariadb
+    server_version !~ /^5\.5/ && server_version !~ /MariaDB/
+  end
+
+  def supports_generated_as_identity?
+    false
+  end
+
+  def sequence_column_type
+    'INT NOT NULL AUTO_INCREMENT'
+  end
+
+  def uuid_column_type
+    "CHAR(36) COMMENT 'UUID'"
+  end
+
+  def text_column_type
+    'LONGTEXT'
+  end
+
+  def blob_column_type
+    'LONGBLOB'
+  end
+
+  def json_column_type(column_name)
+    if explicit_json_column_type?
+      "JSON"
+    else
+      "LONGTEXT COMMENT 'JSON' CHECK (json_valid(#{column_name}))"
+    end
+  end
+
+  def datetime_column_type
+    'DATETIME'
+  end
+
+  def real_column_type
+    'FLOAT'
+  end
+
+  def create_enum_column_type
+  end
+
+  def enum_column_type
+    "ENUM('red', 'green', 'blue', 'with''quote')"
+  end
+
+  def enum_column_type_restriction
+    # mysql doesn't name the specific enumeration types
+    {}
+  end
+
+  def install_spatial_support
+  end
+
+  def uninstall_spatial_support
+  end
+
+  def create_spatial_index(index_name, table_name, *columns)
+    execute "CREATE SPATIAL INDEX #{quote_ident index_name} ON #{quote_ident table_name} (#{columns.join ', '})"
+  end
+
+  def spatial_column_type(geometry_type: 'geometry', srid:)
+    "#{geometry_type}#{" SRID #{srid}" if srid}"
+  end
+
+  def spatial_reference_table_definitions
+    []
+  end
+
+  def unsupported_column_type
+    'bit(8)'
   end
 end

@@ -357,11 +357,12 @@ class SyncToTest < KitchenSync::EndpointTestCase
 
   test_each "handles requesting and saving arbitrary binary values in BLOB fields" do
     clear_schema
-    create_texttbl
+    create_misctbl
 
     bytes = (0..255).to_a.pack("C*")
     bytes = bytes.reverse + bytes
-    row = [1] + [nil]*(misctbl_def["columns"].size - 2) + [bytes]
+    row = [1] + [nil]*(misctbl_def["columns"].size - 1)
+    row[misctbl_def["columns"].index {|c| c["name"] == "blobfield"}] = bytes
     @rows = [row]
     @keys = @rows.collect {|row| [row[0]]}
 
@@ -451,6 +452,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
   end
 
   test_each "supports composite keys" do
+    clear_schema
     create_secondtbl
 
     @rows = [[100,       100, "aa", 100], # first because aa is the first term in the key, then 100 the next
@@ -526,5 +528,29 @@ class SyncToTest < KitchenSync::EndpointTestCase
 
     assert_equal @rows,
                  query("SELECT * FROM noprimaryjointbl ORDER BY table2_id, table1_id")
+  end
+
+  test_each "retains the given values identity/serial/auto_increment primary key columns even if the database supports (and the table uses) GENERATED ALWAYS" do
+    clear_schema
+    table_def = autotbl_def
+    table_def["columns"][0]["identity_generated_always"] = true # has no effect on mysql, but it may be sent this by postgresql anyway
+
+    @rows = (0..99).collect {|n| [n*2 + 5, n]}
+    @keys = @rows.collect {|row| [row[0]]}
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command Commands::SCHEMA, ["tables" => [table_def]]
+    expect_sync_start_commands
+    expect_command Commands::RANGE, ["autotbl"]
+    send_command   Commands::RANGE, ["autotbl", @keys[0], @keys[-1]]
+    expect_command Commands::ROWS, ["autotbl", [], @keys[-1]]
+    send_results   Commands::ROWS,
+                   ["autotbl", [], @keys[-1]],
+                   *@rows
+    expect_quit_and_close
+
+    assert_equal @rows,
+                 query("SELECT * FROM autotbl ORDER by inc")
   end
 end

@@ -183,6 +183,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
   test_each "can create all supported types of columns" do
     clear_schema
+    connection.create_enum_column_type # this isn't done by KS itself at the moment
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
@@ -393,7 +394,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_secondtbl
 
     expect_handshake_commands
-    expect_stderr("Don't know how to interpret type of unsupportedtbl.unsupported (#{unsupported_column_type}).  Please check https://github.com/willbryant/kitchen_sync/blob/master/SCHEMA.md.") do
+    expect_stderr("Don't know how to interpret type of unsupportedtbl.unsupported (#{connection.unsupported_column_type}).  Please check https://github.com/willbryant/kitchen_sync/blob/master/SCHEMA.md.") do
       expect_command Commands::SCHEMA
       send_command   Commands::SCHEMA, ["tables" => [unsupportedtbl_def, secondtbl_def]]
       read_command rescue nil
@@ -405,7 +406,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_secondtbl
 
     expect_handshake_commands
-    expect_stderr("Don't know how to interpret type of unsupportedtbl.unsupported (#{unsupported_column_type}).  Please check https://github.com/willbryant/kitchen_sync/blob/master/SCHEMA.md.") do
+    expect_stderr("Don't know how to interpret type of unsupportedtbl.unsupported (#{connection.unsupported_column_type}).  Please check https://github.com/willbryant/kitchen_sync/blob/master/SCHEMA.md.") do
       expect_command Commands::SCHEMA
       send_command   Commands::SCHEMA, ["tables" => [unsupportedtbl_def, secondtbl_def]]
       read_command rescue nil
@@ -819,8 +820,9 @@ SQL
     assert_equal 0, BigDecimal(rows[0][7].to_s) # return type not consistent between ruby clients
     assert_equal "", rows[0][8]
     assert_equal "", rows[0][9].strip # padding not consistent between ruby clients
-    assert_equal "", rows[0][10]
+    assert_equal "00000000-0000-0000-0000-000000000000", rows[0][10]
     assert_equal "", rows[0][11]
+    assert_equal "", rows[0][12]
   end
 
   test_each "recreates the table as necessary to make columns not nullable if they have unique keys" do
@@ -900,6 +902,28 @@ SQL
     assert_footbl_rows_present
   end
 
+  test_each "changes the column default if they need to be changed at the same time as making the column non-nullable, without recreating the table" do
+    clear_schema
+    create_footbl
+    insert_footbl_rows
+    execute("ALTER TABLE footbl ALTER another_col SET DEFAULT 42")
+    table_def = footbl_def
+    table_def["columns"][1]["default_value"] = "23"
+    table_def["columns"][1]["nullable"] = false
+
+    expect_handshake_commands
+    expect_command Commands::SCHEMA
+    send_command Commands::SCHEMA, ["tables" => [table_def]]
+    read_command
+    assert_equal({"col1" => nil, "another_col" => "23", "col3" => nil}, connection.table_column_defaults("footbl"))
+    assert_equal [[2,     10,       "test"],
+                  [4,      0,        "foo"], # overwrite happens before we redefine the column as non-nullable, so another_col gets value 0 on the rows that were nil
+                  [5,      0,          nil], # ideally we would apply the new default, but correctness is all that counts
+                  [8,     -1, "longer str"],
+                  [1001,   0,       "last"]],
+                 query("SELECT * FROM footbl ORDER BY col1")
+  end
+
   test_each "changes the column default if they need to be set on a string column, without recreating the table" do
     clear_schema
     create_footbl
@@ -916,14 +940,15 @@ SQL
   end
 
 
-  test_each "creates missing tables with sequence primary key columns" do
+  test_each "creates missing tables with identity/serial/auto_increment primary key columns" do
     clear_schema
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
     send_command Commands::SCHEMA, ["tables" => [autotbl_def]]
     read_command
-    assert_equal({"inc" => true, "payload" => false}, connection.table_column_sequences("autotbl"))
+    execute "INSERT INTO autotbl (payload) VALUES (10), (11)"
+    assert_equal [[1, 10], [2, 11]], query("SELECT inc, payload FROM autotbl")
   end
 
 
@@ -1077,12 +1102,11 @@ SQL
     assert_same_keys(secondtbl_def)
   end
 
-  ENDPOINT_DATABASES.keys do |from_database|
+  ENDPOINT_DATABASES.keys.each do |from_database|
     test_each "can run the table creation code for adapter-specific columns from #{from_database}" do
       clear_schema
-      create_adapterspecifictbl(from_database)
 
-      tbldef = adapterspecifictbl_def((from_database))
+      tbldef = adapterspecifictbl_def(from_database)
       expect_handshake_commands
       expect_command Commands::SCHEMA
       send_command Commands::SCHEMA, [{"tables" => [tbldef]}]

@@ -33,17 +33,13 @@ struct DropKeyStatements <DatabaseClient, true> {
 template <typename DatabaseClient>
 struct CreateKeyStatements {
 	static void add_to(Statements &statements, DatabaseClient &client, const Table &table, const Key &key) {
-		string result(key.unique ? "CREATE UNIQUE INDEX " : "CREATE INDEX ");
-		result += client.quote_identifier(key.name);
-		result += " ON ";
-		result += client.quote_identifier(table.name);
-		result += ' ';
-		result += columns_tuple(client, table.columns, key.columns);
-		statements.push_back(result);
+		statements.push_back(client.key_definition(table, key));
 	}
 };
 
 // sequences - for cross-compatibility, these are only supported for sequence columns
+// all this can go away once we drop support for postgresql 9.6 and earlier, as 10+ use the new identity columns
+// which can be implemented the same way as mysql's auto_increment (just a different DEFAULT string)
 
 template <typename DatabaseClient, bool = is_base_of<SequenceColumns, DatabaseClient>::value>
 struct CreateTableSequencesStatements {
@@ -56,7 +52,7 @@ template <typename DatabaseClient>
 struct CreateTableSequencesStatements <DatabaseClient, true> {
 	static void add_to(Statements &statements, DatabaseClient &client, const Table &table) {
 		for (const Column &column : table.columns) {
-			if (column.default_type == DefaultType::sequence) {
+			if (column.default_type == DefaultType::sequence && !client.supports_generated_as_identity()) {
 				string result("DROP SEQUENCE IF EXISTS ");
 				result += client.quote_identifier(client.column_sequence_name(table, column));
 				statements.push_back(result);
@@ -80,7 +76,7 @@ template <typename DatabaseClient>
 struct OwnTableSequencesStatements <DatabaseClient, true> {
 	static void add_to(Statements &statements, DatabaseClient &client, const Table &table) {
 		for (const Column &column : table.columns) {
-			if (column.default_type == DefaultType::sequence) {
+			if (column.default_type == DefaultType::sequence && !client.supports_generated_as_identity()) {
 				string result("ALTER SEQUENCE ");
 				result += client.quote_identifier(client.column_sequence_name(table, column));
 				result += " OWNED BY ";
@@ -112,7 +108,7 @@ struct CreateTableStatements {
 			result += (column == table.columns.begin() ? " (\n  " : ",\n  ");
 			result += client.column_definition(table, *column);
 		}
-		if (table.primary_key_type == explicit_primary_key) {
+		if (table.primary_key_type == PrimaryKeyType::explicit_primary_key) {
 			result += ",\n  PRIMARY KEY";
 			result += columns_tuple(client, table.columns, table.primary_key_columns);
 		}
@@ -145,8 +141,8 @@ struct AlterColumnDefaultClauses {
 		}
 		alter_table_clauses += " ALTER ";
 		alter_table_clauses += client.quote_identifier(to_column.name);
-		if (from_column.default_type) {
-			alter_table_clauses += " SET ";
+		if (from_column.default_type != DefaultType::no_default) {
+			alter_table_clauses += " SET";
 			alter_table_clauses += client.column_default(table, from_column);
 		} else {
 			alter_table_clauses += " DROP DEFAULT";
@@ -156,8 +152,8 @@ struct AlterColumnDefaultClauses {
 	}
 };
 
-template <typename DatabaseClient, bool = is_base_of<SetNullability, DatabaseClient>::value>
-struct AlterColumnNullabilityClauses {
+template <typename DatabaseClient>
+struct ModifyColumnDefinitionClauses {
 	static void add_to(string &alter_table_clauses, DatabaseClient &client, const Table &table, const Column &from_column, Column &to_column) {
 		if (!alter_table_clauses.empty()) {
 			alter_table_clauses += ",";
@@ -166,8 +162,16 @@ struct AlterColumnNullabilityClauses {
 		alter_table_clauses += client.column_definition(table, from_column);
 		to_column.nullable = from_column.nullable;
 		to_column.default_type = from_column.default_type;
-		// MODIFY column_definition will actually change the data type too, but that may or may not succeed,
-		// so currently we don't say we've fixed the type so that our matcher algorithm will still drop and recreate
+		to_column.default_value = from_column.default_value;
+		// MODIFY column_definition will actually change the data type too, but that may or may not succeed (if the current values aren't
+		// valid for the new type), so currently we don't say we've fixed the type so that our matcher algorithm will still drop and recreate
+	}
+};
+
+template <typename DatabaseClient, bool = is_base_of<SetNullability, DatabaseClient>::value>
+struct AlterColumnNullabilityClauses {
+	static void add_to(string &alter_table_clauses, DatabaseClient &client, const Table &table, const Column &from_column, Column &to_column) {
+		ModifyColumnDefinitionClauses<DatabaseClient>::add_to(alter_table_clauses, client, table, from_column, to_column);
 	}
 };
 
@@ -208,9 +212,9 @@ struct OverwriteColumnNullValueClauses {
 		update_table_clauses += client.quote_identifier(column.name);
 		update_table_clauses += " = COALESCE(";
 		update_table_clauses += client.quote_identifier(column.name);
-		update_table_clauses += ", '";
-		update_table_clauses += client.escape_column_value(column, usable_column_value(column));
-		update_table_clauses += "')";
+		update_table_clauses += ", ";
+		client.append_escaped_column_value_to(update_table_clauses, column, usable_column_value(column));
+		update_table_clauses += ")";
 	}
 
 	static string usable_column_value(const Column &column) {
@@ -223,6 +227,10 @@ struct OverwriteColumnNullValueClauses {
 			return "00:00:00";
 		} else if (column.column_type == ColumnTypes::DTTM) {
 			return "2000-01-01 00:00:00";
+		} else if (column.column_type == ColumnTypes::UUID) {
+			return "00000000-0000-0000-0000-000000000000";
+		} else if (column.column_type == ColumnTypes::ENUM) {
+			return (column.enumeration_values.empty() ? "" : column.enumeration_values[0]); // should never be empty in reality, but don't segfault
 		} else {
 			return "0"; // covers bool too - quoted '0' values will be accepted by mysql, but quoted 'false' values wouldn't
 		}
@@ -280,7 +288,7 @@ struct DropColumnClauses {
 		} else {
 			Keys::iterator key = table.keys.begin();
 			while (key != table.keys.end()) {
-				if (UpdateKeyForDroppedColumn<DatabaseClient>::update_key_columns(key->columns, key->unique, column_index)) {
+				if (UpdateKeyForDroppedColumn<DatabaseClient>::update_key_columns(key->columns, key->unique(), column_index)) {
 					++key;
 				} else {
 					// proactively drop the key at the start to work around one case of https://bugs.mysql.com/bug.php?id=57497 -
@@ -300,7 +308,7 @@ struct AddColumnClauses {
 			alter_table_clauses += ",";
 		}
 		alter_table_clauses += " ADD ";
-		if (column.nullable || column.default_type == DefaultType::default_value || column.default_type == DefaultType::default_function) {
+		if (column.nullable || column.default_type == DefaultType::default_value || column.default_type == DefaultType::default_expression) {
 			alter_table_clauses += client.column_definition(table, column);
 		} else {
 			// first add the column, with a default value to get past the non-nullability
@@ -377,9 +385,6 @@ struct SchemaMatcher {
 		sort(from_table.keys.begin(), from_table.keys.end());
 		sort(  to_table.keys.begin(),   to_table.keys.end());
 
-		// turn off any flags not supported by the target database
-		mask_unsupported_flags(from_table);
-
 		// if the tables match, we don't have to do anything
 		if (from_table == to_table) return;
 
@@ -398,16 +403,6 @@ struct SchemaMatcher {
 			DropTableStatements<DatabaseClient>::add_to(statements, client, to_table);
 			CreateTableStatements<DatabaseClient>::add_to(statements, client, from_table);
 			to_table = from_table;
-		}
-	}
-
-	void mask_unsupported_flags(Table &from_table) {
-		for (Column &column : from_table.columns) {
-			ColumnFlags masked_flags = (ColumnFlags)(column.flags & client.supported_flags());
-			if (column.flags != masked_flags) {
-				cerr << "Warning: the schema for column " << from_table.name << '.' << column.name << " is not fully supported by this database." << endl;
-				column.flags = masked_flags;
-			}
 		}
 	}
 

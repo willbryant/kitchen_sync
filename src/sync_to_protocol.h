@@ -55,7 +55,7 @@ struct SyncToProtocol {
 			cout << "starting " << table_job->table.name << endl << flush;
 		}
 
-		if (table_job->table.primary_key_type != no_available_key) {
+		if (table_job->table.primary_key_type != PrimaryKeyType::no_available_key) {
 			// start by scoping out the table
 			if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << " <- range " << table_job->table.name << endl;
 			send_command(output, Commands::RANGE, table_job->table.name);
@@ -180,7 +180,7 @@ struct SyncToProtocol {
 		RowHasherAndLastKey hasher(hash_algorithm, table.primary_key_columns);
 		size_t row_count = retrieve_rows(worker.client, hasher, table, prev_key, last_key, range_to_check.rows_to_hash);
 
-		if (table.primary_key_type == partial_key && row_count == range_to_check.rows_to_hash) {
+		if (table.primary_key_type == PrimaryKeyType::partial_key && row_count == range_to_check.rows_to_hash) {
 			row_count += retrieve_extra_rows_with_same_key(worker.client, hasher, table, prev_key, last_key, hasher.last_key, range_to_check.rows_to_hash);
 		}
 

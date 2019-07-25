@@ -1,6 +1,10 @@
 Installing Kitchen Sync
 =======================
 
+We recommend that you install tagged release versions rather than the current `master` branch in git.  `master` generally works fine but may contain work in progress, and in particular forward & backwards compatibility with other versions (ie. when syncing against another server's install of Kitchen Sync using the `--via` option) is not guaranteed.
+
+You can see the latest tagged release from the GitHub releases page at https://github.com/willbryant/kitchen_sync/releases.
+
 To compile Kitchen Sync, you will need:
 * a C++14 compiler
 * CMake

@@ -44,7 +44,7 @@ void configure_partial_key(Table &table, const Key &key) {
 	ColumnNullable nullable(table);
 	ColumnIndices::const_iterator first_nullable = find_if(key.columns.cbegin(), key.columns.cend(), nullable);
 
-	table.primary_key_type = partial_key;
+	table.primary_key_type = PrimaryKeyType::partial_key;
 	table.primary_key_columns.insert(table.primary_key_columns.begin(), key.columns.cbegin(), first_nullable);
 	table.secondary_sort_columns.insert(table.secondary_sort_columns.begin(), first_nullable, key.columns.cend());
 
@@ -64,14 +64,14 @@ void configure_partial_key(Table &table, const Key &key) {
 template <typename DatabaseClient>
 void choose_primary_key_for(DatabaseClient &client, Table &table) {
 	// generally we expect most tables to have a real primary key
-	if (table.primary_key_type == explicit_primary_key) return;
+	if (table.primary_key_type == PrimaryKeyType::explicit_primary_key) return;
 
 	ColumnNullable nullable(table);
 
 	// if not, we need to find a unique key with no nullable columns to act as a surrogate primary key
 	for (const Key &key : table.keys) {
-		if (key.unique && none_of(key.columns.begin(), key.columns.end(), nullable)) {
-			table.primary_key_type = suitable_unique_key;
+		if (key.unique() && none_of(key.columns.begin(), key.columns.end(), nullable)) {
+			table.primary_key_type = PrimaryKeyType::suitable_unique_key;
 			table.primary_key_columns = key.columns;
 			return;
 		}

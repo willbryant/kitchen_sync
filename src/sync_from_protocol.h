@@ -98,7 +98,7 @@ struct SyncFromProtocol {
 		RowHasherAndLastKey hasher(hash_algorithm, table.primary_key_columns);
 		size_t row_count = retrieve_rows(worker.client, hasher, table, prev_key, last_key, rows_to_hash);
 
-		if (table.primary_key_type == partial_key && row_count == rows_to_hash) {
+		if (table.primary_key_type == PrimaryKeyType::partial_key && row_count == rows_to_hash) {
 			row_count += retrieve_extra_rows_with_same_key(worker.client, hasher, table, prev_key, last_key, hasher.last_key, rows_to_hash);
 		}
 
@@ -123,7 +123,7 @@ struct SyncFromProtocol {
 		// queries that would otherwise be logged on the server and reduce buffering.  this only
 		// works if we have a usable (explicit or substitute) primary key as otherwise there's no
 		// way to consistently find where we left off.
-		ssize_t batch_size = table.primary_key_type == partial_key ? NO_ROW_COUNT_LIMIT : 10000;
+		ssize_t batch_size = table.primary_key_type == PrimaryKeyType::partial_key ? NO_ROW_COUNT_LIMIT : 10000;
 		RowPackerAndLastKey<FDWriteStream> row_packer(output, table.primary_key_columns);
 
 		while (true) {

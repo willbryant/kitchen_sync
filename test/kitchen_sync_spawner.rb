@@ -36,19 +36,9 @@ class KitchenSyncSpawner
     
     stdin_r, stdin_w = IO.pipe
     stdout_r, stdout_w = IO.pipe
-    @child_pid = fork do
-      begin
-        stdin_w.close
-        stdout_r.close
-        STDIN.reopen(stdin_r)
-        STDOUT.reopen(stdout_w)
-        STDERR.reopen(@capture_stderr_in, "wb") if @capture_stderr_in
-      rescue => e
-        puts e
-        exit 1
-      end
-      exec @program_env, *exec_args
-    end
+    options = {in: stdin_r, out: stdout_w, close_others: true}
+    options[:err] = [@capture_stderr_in, "wb"] if @capture_stderr_in
+    @child_pid = spawn(@program_env, *exec_args, options)
     stdin_r.close
     stdout_w.close
     @program_stdin = stdin_w

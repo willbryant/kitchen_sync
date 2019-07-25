@@ -14,28 +14,9 @@ require File.expand_path(File.join(File.dirname(__FILE__), 'test_helper_mysql'))
 
 require File.expand_path(File.join(File.dirname(__FILE__), 'kitchen_sync_spawner'))
 require File.expand_path(File.join(File.dirname(__FILE__), 'test_table_schemas'))
+require File.expand_path(File.join(File.dirname(__FILE__), 'basic_type_formatters'))
 
 FileUtils.mkdir_p(File.join(File.dirname(__FILE__), 'tmp'))
-
-class Date
-  def to_s
-    strftime("%Y-%m-%d") # make the standard input format the output format
-  end
-
-  def to_msgpack(*args)
-    to_s.to_msgpack(*args)
-  end
-end
-
-class Time
-  def to_s
-    strftime("%Y-%m-%d %H:%M:%S") # not interested in %z for tests
-  end
-
-  def to_msgpack(*args)
-    to_s.to_msgpack(*args)
-  end
-end
 
 class Object
   def try!(method, *args)
@@ -54,6 +35,7 @@ module ColumnTypes
   TEXT = "TEXT"
   VCHR = "VARCHAR"
   FCHR = "CHAR"
+  JSON = "JSON"
   UUID = "UUID"
   BOOL = "BOOL"
   SINT = "INT"
@@ -63,6 +45,8 @@ module ColumnTypes
   DATE = "DATE"
   TIME = "TIME"
   DTTM = "DATETIME"
+  SPAT = "SPATIAL"
+  ENUM = "ENUM"
 
   UNKN = "UNKNOWN"
 end
@@ -95,8 +79,6 @@ module PrimaryKeyType
   SUITABLE_UNIQUE_KEY = 2
   PARTIAL_KEY = 3
 end
-
-Verbs = Commands.constants.each_with_object({}) {|k, results| results[Commands.const_get(k)] = k.to_s.downcase}.freeze
 
 module KitchenSync
   class TestCase < Test::Unit::TestCase
@@ -133,7 +115,7 @@ module KitchenSync
 
     def expect_command(*args)
       command = read_command
-      raise "expected command #{args.inspect} but received #{command.inspect}" unless args == command # use this instead of assert_equal so we get the backtrace
+      raise "expected command: [#{args.collect {|arg| PP.pp(arg, "", 200).strip}.join(",\n")}]\nbut received: [#{command.collect {|arg| PP.pp(arg, "", 200).strip}.join(",\n")}}]" unless args == command # use this instead of assert_equal so we get the backtrace
     rescue EOFError
       fail "expected #{args.inspect} but the connection was closed; stderr: #{spawner.stderr_contents}"
     end
@@ -257,7 +239,7 @@ module KitchenSync
     end
 
     def hash_of(rows, hash_algorithm = HashAlgorithm::MD5)
-      data = rows.collect(&:to_msgpack).join
+      data = rows.collect {|row| MessagePack.pack(row, compatibility_mode: true)}.join
 
       case hash_algorithm
       when HashAlgorithm::MD5
@@ -282,8 +264,11 @@ module KitchenSync
           begin
             skip "pending" unless block
             before if respond_to?(:before)
-            instance_eval(&block)
-            after if respond_to?(:after)
+            begin
+              instance_eval(&block)
+            ensure
+              after if respond_to?(:after)
+            end
           ensure
             @spawner.stop_binary if @spawner
             @spawner = nil

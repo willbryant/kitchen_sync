@@ -11,18 +11,15 @@ class ColumnTypesToTest < KitchenSync::EndpointTestCase
     clear_schema
     create_misctbl
 
-    # the adapters need further work to return these columns to ruby with a consistent type, so leave them out of the test for now
-    execute "ALTER TABLE misctbl DROP column timefield, DROP column floatfield, DROP column doublefield, DROP column decimalfield"
-    trimmed_misctbl_def = misctbl_def.merge("columns" => misctbl_def["columns"].reject {|column| %w(timefield floatfield doublefield decimalfield).include?(column["name"])})
-
-    execute "INSERT INTO misctbl VALUES (-21, true, '2099-12-31', '2014-04-13 01:02:03', 'vartext', 'fixedtext', 'sometext', 'test')" # insert the first row but not the second
-    @rows = [[-21,  true, Date.parse('2099-12-31'), Time.parse('2014-04-13 01:02:03'), 'vartext', 'fixedtext', 'sometext', 'test'],
-             [ 42, false, Date.parse('1900-01-01'), Time.parse('1970-02-03 23:59:59'), 'vartext', 'fixedtext', 'sometext', "binary\001test"]]
+    execute %Q{INSERT INTO misctbl (pri, boolfield, datefield, timefield, datetimefield, floatfield, doublefield, decimalfield, vchrfield, fchrfield, uuidfield, textfield, blobfield, jsonfield, enumfield) VALUES
+                                   (-21, true, '2099-12-31', '12:34:56', '2014-04-13 01:02:03', 1.25, 0.5, 123456.4321, 'vartext', 'fixedtext', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'sometext', 'test', '{"one": 1, "two": "test"}', 'green')} # insert the first row but not the second
+    @rows = [[-21,  true, Date.parse('2099-12-31'), TimeOnlyWrapper.new('12:34:56'), Time.parse('2014-04-13 01:02:03'), HashAsStringWrapper.new(1.25), HashAsStringWrapper.new(0.5), BigDecimal.new('123456.4321'), 'vartext', 'fixedtext', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'sometext', 'test',           '{"one": 1, "two": "test"}', 'green'],
+             [ 42, false, Date.parse('1900-01-01'), TimeOnlyWrapper.new('00:00:00'), Time.parse('1970-02-03 23:59:59'), HashAsStringWrapper.new(1.25), HashAsStringWrapper.new(0.5), BigDecimal.new('654321.1234'), 'vartext', 'fixedtext', 'c26ae0c4-b071-4058-9044-92042d6740fc', 'sometext', "binary\001test", '{"somearray": [1, 2, 3]}',  "with'quote"]]
     @keys = @rows.collect {|row| [row[0]]}
 
     expect_handshake_commands
     expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [trimmed_misctbl_def]]
+    send_command   Commands::SCHEMA, ["tables" => [misctbl_def]]
     expect_sync_start_commands
     expect_command Commands::RANGE, ["misctbl"]
     send_command   Commands::RANGE, ["misctbl", @keys[0], @keys[-1]]

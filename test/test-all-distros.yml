@@ -10,6 +10,10 @@
 
 version: '3'
 services:
+  ubuntu_18.04-mariadb_10.4:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile-ubuntu:18.04-mariadb:10.4 # from MariaDB's repos
   ubuntu_18.04-mariadb_10.3:
     build:
       context: ..
@@ -26,6 +30,10 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-ubuntu:18.04-postgresql:11 # from PGDG's repos
+  ubuntu_18.04-postgresql_11_no_postgis:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile-ubuntu:18.04-postgresql:11-no-postgis # from PGDG's repos
   ubuntu_18.04-postgresql_10-mysql_5.7:
     build:
       context: ..
@@ -34,14 +42,10 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-ubuntu:16.04-postgresql:9.5-mysql:5.7
-  ubuntu_14.04-postgresql_9.3-mysql_5.5:
-    build:
-      context: ..
-      dockerfile: test/Dockerfile-ubuntu:14.04-postgresql:9.3-mysql:5.5
   centos_7-mariadb_5.5-postgresql_9.2:
     build:
       context: ..
-      dockerfile: test/Dockerfile-centos:7-mariadb:5.5-postgresql:9.2
+      dockerfile: test/Dockerfile-centos:7-mariadb:5.5-postgresql:9.2-no-postgis
   ubuntu_18.04-checks:
     build:
       context: ..

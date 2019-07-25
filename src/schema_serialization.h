@@ -10,11 +10,16 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	if (column.size) fields++;
 	if (column.scale) fields++;
 	if (!column.nullable) fields++;
+	if (!column.type_restriction.empty()) fields++;
+	if (!column.reference_system.empty()) fields++;
+	if (!column.enumeration_values.empty()) fields++;
 	if (!column.db_type_def.empty()) fields++;
-	if (column.default_type) fields++;
-	if (column.flags & mysql_timestamp) fields++;
-	if (column.flags & mysql_on_update_timestamp) fields++;
-	if (column.flags & time_zone) fields++;
+	if (column.default_type != DefaultType::no_default) fields++;
+	if (column.flags & ColumnFlags::mysql_timestamp) fields++;
+	if (column.flags & ColumnFlags::mysql_on_update_timestamp) fields++;
+	if (column.flags & ColumnFlags::time_zone) fields++;
+	if (column.flags & ColumnFlags::simple_geometry) fields++;
+	if (column.flags & ColumnFlags::identity_generated_always) fields++;
 	pack_map_length(packer, fields);
 	packer << string("name");
 	packer << column.name;
@@ -31,6 +36,18 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	if (!column.nullable) {
 		packer << string("nullable");
 		packer << column.nullable;
+	}
+	if (!column.type_restriction.empty()) {
+		packer << string("type_restriction");
+		packer << column.type_restriction;
+	}
+	if (!column.reference_system.empty()) {
+		packer << string("reference_system");
+		packer << column.reference_system;
+	}
+	if (!column.enumeration_values.empty()) {
+		packer << string("enumeration_values");
+		packer << column.enumeration_values;
 	}
 	if (!column.db_type_def.empty()) {
 		packer << string("db_type_def");
@@ -50,8 +67,8 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 			packer << column.default_value;
 			break;
 
-		case DefaultType::default_function:
-			packer << string("default_function");
+		case DefaultType::default_expression:
+			packer << string("default_function"); // legacy name
 			packer << column.default_value;
 			break;
 	}
@@ -67,6 +84,14 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 		packer << string("time_zone");
 		packer << true;
 	}
+	if (column.flags & ColumnFlags::simple_geometry) {
+		packer << string("simple_geometry");
+		packer << true;
+	}
+	if (column.flags & ColumnFlags::identity_generated_always) {
+		packer << string("identity_generated_always");
+		packer << true;
+	}
 }
 
 template <typename OutputStream>
@@ -74,8 +99,24 @@ void operator << (Packer<OutputStream> &packer, const Key &key) {
 	pack_map_length(packer, 3);
 	packer << string("name");
 	packer << key.name;
-	packer << string("unique");
-	packer << key.unique;
+	switch (key.key_type) {
+		case KeyType::standard_key:
+			// we send the "unique" flag for backwards compatibility with v1.17 and earlier; therefore, there's no point in sending "key_type" as well
+			packer << string("unique");
+			packer << false;
+			break;
+
+		case KeyType::unique_key:
+			// as for KeyType::standard_key
+			packer << string("unique");
+			packer << true;
+			break;
+
+		case KeyType::spatial_key:
+			packer << string("key_type");
+			packer << string("spatial");
+			break;
+	}
 	packer << string("columns");
 	packer << key.columns;
 }
@@ -92,7 +133,7 @@ void operator << (Packer<OutputStream> &packer, const Table &table) {
 	packer << string("primary_key_columns");
 	packer << table.primary_key_columns;
 	packer << string("primary_key_type");
-	packer << table.primary_key_type;
+	packer << static_cast<int>(table.primary_key_type); // unfortunately this was implemented as value-serialised, unlike the other enums
 	if (!table.secondary_sort_columns.empty()) {
 		packer << string("secondary_sort_columns");
 		packer << table.secondary_sort_columns;
@@ -125,6 +166,12 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 			unpacker >> column.scale;
 		} else if (attr_key == "nullable") {
 			unpacker >> column.nullable;
+		} else if (attr_key == "type_restriction") {
+			unpacker >> column.type_restriction;
+		} else if (attr_key == "reference_system") {
+			unpacker >> column.reference_system;
+		} else if (attr_key == "enumeration_values") {
+			unpacker >> column.enumeration_values;
 		} else if (attr_key == "db_type_def") {
 			unpacker >> column.db_type_def;
 		} else if (attr_key == "sequence") {
@@ -133,21 +180,19 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 		} else if (attr_key == "default_value") {
 			column.default_type = DefaultType::default_value;
 			unpacker >> column.default_value;
-		} else if (attr_key == "default_function") {
-			column.default_type = DefaultType::default_function;
+		} else if (attr_key == "default_function") { // legacy name
+			column.default_type = DefaultType::default_expression;
 			unpacker >> column.default_value;
 		} else if (attr_key == "mysql_timestamp") {
-			bool flag;
-			unpacker >> flag;
-			if (flag) column.flags = (ColumnFlags)(column.flags | mysql_timestamp);
+			if (unpacker.template next<bool>()) column.flags |= ColumnFlags::mysql_timestamp;
 		} else if (attr_key == "mysql_on_update_timestamp") {
-			bool flag;
-			unpacker >> flag;
-			if (flag) column.flags = (ColumnFlags)(column.flags | mysql_on_update_timestamp);
+			if (unpacker.template next<bool>()) column.flags |= ColumnFlags::mysql_on_update_timestamp;
 		} else if (attr_key == "time_zone") {
-			bool flag;
-			unpacker >> flag;
-			if (flag) column.flags = (ColumnFlags)(column.flags | time_zone);
+			if (unpacker.template next<bool>()) column.flags |= ColumnFlags::time_zone;
+		} else if (attr_key == "simple_geometry") {
+			if (unpacker.template next<bool>()) column.flags |= ColumnFlags::simple_geometry;
+		} else if (attr_key == "identity_generated_always") {
+			if (unpacker.template next<bool>()) column.flags |= ColumnFlags::identity_generated_always;
 		} else {
 			// ignore anything else, for forward compatibility
 			unpacker.skip();
@@ -165,7 +210,16 @@ void operator >> (Unpacker<InputStream> &unpacker, Key &key) {
 		if (attr_key == "name") {
 			unpacker >> key.name;
 		} else if (attr_key == "unique") {
-			unpacker >> key.unique;
+			key.key_type = (unpacker.template next<bool>() ? KeyType::unique_key : KeyType::standard_key);
+		} else if (attr_key == "key_type") {
+			string key_type(unpacker.template next<string>());
+			if (key_type == "standard") {
+				key.key_type = KeyType::standard_key;
+			} else if (key_type == "unique") {
+				key.key_type = KeyType::unique_key;
+			} else if (key_type == "spatial") {
+				key.key_type = KeyType::spatial_key;
+			}
 		} else if (attr_key == "columns") {
 			unpacker >> key.columns;
 		} else {
@@ -180,7 +234,7 @@ void operator >> (Unpacker<InputStream> &unpacker, Table &table) {
 	size_t map_length = unpacker.next_map_length(); // checks type
 
 	// backwards compatibility with v1.13 and earlier, which didn't have primary_key_type
-	table.primary_key_type = explicit_primary_key;
+	table.primary_key_type = PrimaryKeyType::explicit_primary_key;
 
 	while (map_length--) {
 		string attr_key = unpacker.template next<string>();
@@ -192,7 +246,8 @@ void operator >> (Unpacker<InputStream> &unpacker, Table &table) {
 		} else if (attr_key == "primary_key_columns") {
 			unpacker >> table.primary_key_columns;
 		} else if (attr_key == "primary_key_type") {
-			unpacker >> table.primary_key_type;
+			// unfortunately this was implemented as value-serialised, unlike the other enums
+			table.primary_key_type = static_cast<PrimaryKeyType>(unpacker.template next<int>());
 		} else if (attr_key == "secondary_sort_columns") {
 			unpacker >> table.secondary_sort_columns;
 		} else if (attr_key == "keys") {

@@ -111,7 +111,7 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
                    [{"tables" => [defaultstbl_def]}]
   end
 
-  test_each "describes serial/auto_increment sequence columns" do
+  test_each "describes identity/serial/auto_increment sequence columns" do
     clear_schema
     create_autotbl
     send_handshake_commands
@@ -124,25 +124,12 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
   test_each "returns the appropriate representation of adapter-specific column definitions" do
     clear_schema
     create_adapterspecifictbl
-    expected_row_data = adapterspecifictbl_row
-    execute "INSERT INTO #{connection.quote_ident adapterspecifictbl_def["name"]} (#{expected_row_data.keys.collect {|k| connection.quote_ident k}.join(", ")}) VALUES (#{expected_row_data.values.collect {|v| "'#{connection.escape v.to_s}'"}.join(", ")})"
 
     send_handshake_commands
 
     send_command   Commands::SCHEMA
     expect_command Commands::SCHEMA,
                    [{"tables" => [adapterspecifictbl_def]}]
-
-    send_command   Commands::ROWS, [adapterspecifictbl_def["name"], [], []]
-    expected_command = [Commands::ROWS, [adapterspecifictbl_def["name"], [], []]]
-    command = read_command
-    raise "expected command followed by one row but received #{command.inspect}" unless command.size == expected_command.size + 1
-    row_data = command.pop
-    raise "expected command #{expected_command.inspect} but received #{command.inspect}" unless expected_command == command
-    expected_row_data.each do |column_name, value|
-      column_index = adapterspecifictbl_def["columns"].index { |column_def| column_def["name"] == column_name }
-      assert_equal value, row_data[column_index]
-    end
   end
 
   test_each "ignores views" do
