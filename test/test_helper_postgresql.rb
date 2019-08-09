@@ -190,8 +190,20 @@ class PG::Connection
     'json'
   end
 
+  def time_column_type
+    'time'
+  end
+
   def datetime_column_type
     'timestamp'
+  end
+
+  def time_precision
+    {'size' => 6}
+  end
+
+  def supports_fractional_seconds?
+    true # hardcoded to microsecond precision, though
   end
 
   def real_column_type

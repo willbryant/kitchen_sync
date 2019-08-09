@@ -12,6 +12,7 @@
 
 #define MYSQL_5_6_5 50605
 #define MYSQL_5_7_8 50708
+#define MYSQL_8_0_0 80000
 #define MARIADB_10_0_0 100000
 #define MARIADB_10_2_7 100207
 
@@ -20,6 +21,8 @@ enum MySQLColumnConversion {
 	encode_bool,
 	encode_uint,
 	encode_sint,
+	encode_dttm,
+	encode_time,
 	encode_geom,
 };
 
@@ -83,6 +86,12 @@ MySQLColumnConversion MySQLRes::conversion_for_field(const MYSQL_FIELD &field) {
 			}
 			break;
 
+		case MYSQL_TYPE_DATETIME:
+			return encode_dttm;
+
+		case MYSQL_TYPE_TIME:
+			return encode_time;
+
 		case MYSQL_TYPE_GEOMETRY:
 			return encode_geom;
 
@@ -95,6 +104,39 @@ string MySQLRes::qualified_name_of_column(int column_number) {
 	return string(_fields[column_number].table) + "." + string(_fields[column_number].name);
 }
 
+
+size_t length_of_value_after_trimming_fractional_zeros(const char *str, size_t length, size_t decimal_point_at) {
+	if (length <= decimal_point_at || str[decimal_point_at] != '.') return length;
+	while (true) {
+		switch (str[length - 1]) {
+			case '0':
+				length--;
+				break;
+
+			case '.':
+				return length - 1;
+
+			default:
+				return length;
+		}
+	}
+}
+
+inline size_t length_of_datetime_value_after_trimming_fractional_zeros(const char *str, size_t length) {
+	return length_of_value_after_trimming_fractional_zeros(str, length, 19);
+}
+
+inline size_t length_of_time_value_after_trimming_fractional_zeros(const char *str, size_t length) {
+	return length_of_value_after_trimming_fractional_zeros(str, length, 8);
+}
+
+inline string datetime_value_after_trimming_fractional_zeros(const string &str) {
+	return string(str.data(), length_of_datetime_value_after_trimming_fractional_zeros(str.data(), str.length()));
+}
+
+inline string time_value_after_trimming_fractional_zeros(const string &str) {
+	return string(str.data(), length_of_time_value_after_trimming_fractional_zeros(str.data(), str.length()));
+}
 
 class MySQLRow {
 public:
@@ -137,6 +179,14 @@ public:
 
 				case encode_sint:
 					packer << int_at(column_number);
+					break;
+
+				case encode_dttm:
+					packer << uncopied_byte_string(result_at(column_number), length_of_datetime_value_after_trimming_fractional_zeros(result_at(column_number), length_of(column_number)));
+					break;
+
+				case encode_time:
+					packer << uncopied_byte_string(result_at(column_number), length_of_time_value_after_trimming_fractional_zeros(result_at(column_number), length_of(column_number)));
 					break;
 
 				case encode_geom:
@@ -206,6 +256,7 @@ public:
 	inline ColumnFlags::flag_t supported_flags() const { return (ColumnFlags::mysql_timestamp | ColumnFlags::mysql_on_update_timestamp); }
 	inline bool information_schema_column_default_shows_escaped_expressions() const { return (server_is_mariadb && server_version >= MARIADB_10_2_7); }
 	inline bool supports_srid_settings_on_columns() const { return srid_column_exists; }
+	inline bool supports_fractional_seconds() const { return ((server_is_mariadb && server_version >= MARIADB_10_0_0) || (!server_is_mariadb && server_version >= MYSQL_8_0_0)); } // mariadb 5.3 does support microseconds, but doesn't support all the required functions
 	inline bool supports_check_constraints() const { return check_constraints_table_exists; }
 	inline bool explicit_json_column_type() const { return (!server_is_mariadb && server_version >= MYSQL_5_7_8); }
 
@@ -479,6 +530,13 @@ void MySQLClient::convert_unsupported_database_schema(Database &database) {
 				column.column_type = ColumnTypes::TEXT;
 			}
 
+			// mariadb, mysql 8.0.0+, and postgresql all support fractional seconds, but earlier mysql versions don't.
+			// we strip that information here so the schema compares equal and we don't attempt pointless alters.
+			if (!supports_fractional_seconds() && column.size &&
+				(column.column_type == ColumnTypes::DTTM || column.column_type == ColumnTypes::TIME)) {
+				column.size = 0;
+			}
+
 			// postgresql treats no default and DEFAULT NULL as separate things, even though they behave much the same.
 			// although mysql would happily accept the DEFAULT NULL strings we would produce below, we want to go ahead
 			// and convert it here so that the schema matcher also sees them as the same thing.
@@ -612,14 +670,27 @@ tuple<string, string> MySQLClient::column_type(const Column &column) {
 		return make_tuple("date", "");
 
 	} else if (column.column_type == ColumnTypes::TIME) {
-		return make_tuple("time", "");
+		string result("time");
+		if (column.size) {
+			result += '(';
+			result += to_string(column.size);
+			result += ')';
+		}
+		return make_tuple(result, "");
 
 	} else if (column.column_type == ColumnTypes::DTTM) {
+		string result;
 		if (column.flags & ColumnFlags::mysql_timestamp) {
-			return make_tuple("timestamp", "");
+			result = "timestamp";
 		} else {
-			return make_tuple("datetime", "");
+			result = "datetime";
 		}
+		if (column.size) {
+			result += '(';
+			result += to_string(column.size);
+			result += ')';
+		}
+		return make_tuple(result, "");
 
 	} else if (column.column_type == ColumnTypes::SPAT) {
 		string result(column.type_restriction.empty() ? string("geometry") : column.type_restriction);
@@ -666,7 +737,7 @@ string MySQLClient::column_default(const Table &table, const Column &column) {
 		}
 
 		case DefaultType::default_expression:
-			if (column.default_value == "CURRENT_TIMESTAMP") {
+			if (column.default_value.substr(0, 17) == "CURRENT_TIMESTAMP") {
 				return " DEFAULT " + column.default_value; // the only expression accepted prior to support for arbitrary expressions
 			} else {
 				return " DEFAULT (" + column.default_value + ")"; // mysql requires brackets around the expression; mariadb accepts and ignores them
@@ -702,7 +773,11 @@ string MySQLClient::column_definition(const Table &table, const Column &column) 
 	}
 
 	if (column.flags & ColumnFlags::mysql_on_update_timestamp) {
-		result += " ON UPDATE CURRENT_TIMESTAMP";
+		if (column.size) {
+			result += " ON UPDATE CURRENT_TIMESTAMP(" + to_string(column.size) + ")"; // mysql 8 insists on the precision being explicitly specified
+		} else {
+			result += " ON UPDATE CURRENT_TIMESTAMP";
+		}
 	}
 
 	return result;
@@ -827,18 +902,27 @@ struct MySQLColumnLister {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BLOB); // no specific size for compatibility, but 4 in current mysql
 		} else if (db_type == "date") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DATE);
-		} else if (db_type == "time") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TIME);
-		} else if (db_type == "datetime" || db_type == "timestamp") {
-			ColumnFlags::flag_t flags = db_type == "timestamp" ? ColumnFlags::mysql_timestamp : ColumnFlags::nothing;
-			if (default_value == "CURRENT_TIMESTAMP" || default_value == "current_timestamp()") {
-				default_type = DefaultType::default_expression;
-				default_value = "CURRENT_TIMESTAMP";
+		} else if (db_type == "time" || db_type.substr(0, 5) == "time(") {
+			if (default_type == DefaultType::default_value) {
+				default_value = time_value_after_trimming_fractional_zeros(default_value);
 			}
-			if (extra.find("on update CURRENT_TIMESTAMP") != string::npos || extra.find("on update current_timestamp()") != string::npos) {
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TIME, extract_time_precision(db_type));
+		} else if (db_type == "datetime" || db_type.substr(0, 9) ==  "datetime(" || db_type == "timestamp" || db_type.substr(0, 10) == "timestamp(") {
+			ColumnFlags::flag_t flags = db_type == "timestamp" || db_type.substr(0, 10) == "timestamp(" ? ColumnFlags::mysql_timestamp : ColumnFlags::nothing;
+			if (default_value == "CURRENT_TIMESTAMP" || default_value == "CURRENT_TIMESTAMP()" || default_value == "current_timestamp()") {
+				default_type = DefaultType::default_expression;
+				default_value = "CURRENT_TIMESTAMP"; // normalize
+			} else if (default_value.length() == 20 && default_value[19] == ')' && (default_value.substr(0, 18) == "CURRENT_TIMESTAMP("  || default_value.substr(0, 18) == "current_timestamp(")) {
+				default_type = DefaultType::default_expression;
+				default_value.replace(0, 17, "CURRENT_TIMESTAMP"); // normalize case
+			}
+			if (extra.find("on update CURRENT_TIMESTAMP") != string::npos || extra.find("on update current_timestamp(") != string::npos) {
 				flags |= ColumnFlags::mysql_on_update_timestamp;
 			}
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM, 0, 0, flags);
+			if (default_type == DefaultType::default_value) {
+				default_value = datetime_value_after_trimming_fractional_zeros(default_value);
+			}
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM, extract_time_precision(db_type), 0, flags);
 		} else if (db_type == "geometry" || db_type == "point" || db_type == "linestring" || db_type == "polygon" || db_type == "geometrycollection" || db_type == "multipoint" || db_type == "multilinestring" || db_type == "multipolygon") {
 			string type_restriction(db_type);
 			if (type_restriction == "geometry") type_restriction.clear();
@@ -894,6 +978,14 @@ struct MySQLColumnLister {
 				value.clear();
 				pos += 2; // skip the comma and the opening quote for the next string
 			}
+		}
+	}
+
+	size_t extract_time_precision(const string &db_type) {
+		if (db_type[db_type.length() - 1] == ')') {
+			return extract_column_length(db_type);
+		} else {
+			return 0;
 		}
 	}
 

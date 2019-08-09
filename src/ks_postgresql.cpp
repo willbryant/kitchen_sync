@@ -439,6 +439,12 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 				column.size = 0;
 			}
 
+			if (column.column_type == ColumnTypes::DTTM || column.column_type == ColumnTypes::TIME) {
+				// postgresql only supports microsecond precision on time columns; enforce this on the definitions on
+				// incoming column definitions so the schema compares equal and we don't attempt pointless alters.
+				column.size = 6;
+			}
+
 			if (column.column_type == ColumnTypes::ENUM && column.type_restriction.empty()) {
 				// postgresql requires that you create a material type for each enumeration, whereas mysql just lists the
 				// possible values on the column itself.  we don't currently implement creation/maintainance of these custom
@@ -695,11 +701,15 @@ struct PostgreSQLColumnLister {
 			} else if (default_value.length() > 0 && default_value != "false" && default_value != "true" && default_value.find_first_not_of("0123456789.") != string::npos) {
 				default_type = DefaultType::default_expression;
 
-				// postgresql converts CURRENT_TIMESTAMP to now(); convert it back for portability
+				// earlier versions of postgresql convert CURRENT_TIMESTAMP to now(); convert it back for portability
 				if (default_value == "now()") {
 					default_value = "CURRENT_TIMESTAMP";
 
-				// do the same for its conversion of CURRENT_DATE
+				// do the same for its conversion of CURRENT_TIMESTAMP(n)
+				} else if (default_value.length() == 42 && default_value.substr(0, 25) == "('now'::text)::timestamp(" && default_value.substr(26, 16) == ") with time zone") {
+					default_value = "CURRENT_TIMESTAMP(" + default_value.substr(25, 1) + ")";
+
+				// and do the same for its conversion of CURRENT_DATE
 				} else if (default_value == "('now'::text)::date") {
 					default_value = "CURRENT_DATE";
 
@@ -744,13 +754,13 @@ struct PostgreSQLColumnLister {
 		} else if (db_type == "date") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DATE);
 		} else if (db_type == "time without time zone") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TIME);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TIME, 6 /* microsecond precision */);
 		} else if (db_type == "time with time zone") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TIME, 0, 0, ColumnFlags::time_zone);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TIME, 6 /* microsecond precision */, 0, ColumnFlags::time_zone);
 		} else if (db_type == "timestamp without time zone") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM, 6 /* microsecond precision */);
 		} else if (db_type == "timestamp with time zone") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM, 0, 0, ColumnFlags::time_zone);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM, 6 /* microsecond precision */, 0, ColumnFlags::time_zone);
 		} else if (db_type == "geometry") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT);
 		} else if (db_type == "geography") {

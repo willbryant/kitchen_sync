@@ -91,7 +91,7 @@ class Mysql2::Client
   end
 
   def supports_spatial_indexes?
-    # supported by mysql 5.7+, andmariadb 10.2+
+    # supported by mysql 5.7+, and mariadb 10.2+
     server_version !~ /^5\.5/ && server_version !~ /^10\.0.*MariaDB/ && server_version !~ /^10\.1.*MariaDB/
   end
 
@@ -103,6 +103,12 @@ class Mysql2::Client
   def explicit_json_column_type?
     # supported by mysql 5.7.8+, not by mysql 5.x or mariadb
     server_version !~ /^5\.5/ && server_version !~ /MariaDB/
+  end
+
+  def supports_fractional_seconds?
+    # supported by mysql 8+ or any version of mariadb, but since mariadb 5.x doesn't support precision arguments
+    # to functions like CURRENT_TIMESTAMP, we only support fractional precision on non-5.x versions of either
+    server_version !~ /^5\./
   end
 
   def supports_generated_as_identity?
@@ -133,8 +139,28 @@ class Mysql2::Client
     end
   end
 
+  def time_column_type
+    if supports_fractional_seconds?
+      'TIME(6)'
+    else
+      'TIME'
+    end
+  end
+
   def datetime_column_type
-    'DATETIME'
+    if supports_fractional_seconds?
+      'DATETIME(6)'
+    else
+      'DATETIME'
+    end
+  end
+
+  def time_precision
+    if supports_fractional_seconds?
+      {'size' => 6}
+    else
+      {}
+    end
   end
 
   def real_column_type

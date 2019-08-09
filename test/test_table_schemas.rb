@@ -122,7 +122,7 @@ SQL
         pri INT NOT NULL,
         boolfield BOOL,
         datefield DATE,
-        timefield TIME,
+        timefield #{connection.time_column_type},
         datetimefield #{connection.datetime_column_type},
         floatfield #{connection.real_column_type},
         doublefield DOUBLE PRECISION,
@@ -143,9 +143,9 @@ SQL
       "columns" => [
         {"name" => "pri",           "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
         {"name" => "boolfield",     "column_type" => ColumnTypes::BOOL},
-        {"name" => "datefield",     "column_type" => ColumnTypes::DATE},
-        {"name" => "timefield",     "column_type" => ColumnTypes::TIME},
-        {"name" => "datetimefield", "column_type" => ColumnTypes::DTTM},
+        {"name" => "datefield",     "column_type" => ColumnTypes::DATE}, 
+        {"name" => "timefield",     "column_type" => ColumnTypes::TIME}.merge(connection.time_precision),
+        {"name" => "datetimefield", "column_type" => ColumnTypes::DTTM}.merge(connection.time_precision),
         {"name" => "floatfield",    "column_type" => ColumnTypes::REAL, "size" => 4},
         {"name" => "doublefield",   "column_type" => ColumnTypes::REAL, "size" => 8},
         {"name" => "decimalfield",  "column_type" => ColumnTypes::DECI, "size" => 10, "scale" => 4},
@@ -240,9 +240,9 @@ SQL
         falseboolfield BOOL DEFAULT FALSE,
         trueboolfield BOOL DEFAULT TRUE,
         datefield DATE DEFAULT '2019-04-01',
-        timefield TIME DEFAULT '12:34:56',
+        timefield #{connection.time_column_type} DEFAULT '12:34:56',
         datetimefield #{connection.datetime_column_type} DEFAULT '2019-04-01 12:34:56',
-        #{"currentdatetimefield #{connection.datetime_column_type} DEFAULT CURRENT_TIMESTAMP," if connection.supports_multiple_timestamp_columns?}
+        #{"currentdatetimefield #{connection.datetime_column_type} DEFAULT CURRENT_TIMESTAMP#{"(6)" if connection.supports_fractional_seconds?}," if connection.supports_multiple_timestamp_columns?}
         floatfield #{connection.real_column_type} DEFAULT 42.625,
         doublefield DOUBLE PRECISION DEFAULT 0.0625,
         decimalfield DECIMAL(9, 3) DEFAULT '123456.789',
@@ -263,9 +263,9 @@ SQL
         {"name" => "falseboolfield",       "column_type" => ColumnTypes::BOOL,                             "default_value" => "false"},
         {"name" => "trueboolfield",        "column_type" => ColumnTypes::BOOL,                             "default_value" => "true"},
         {"name" => "datefield",            "column_type" => ColumnTypes::DATE,                             "default_value" => "2019-04-01"},
-        {"name" => "timefield",            "column_type" => ColumnTypes::TIME,                             "default_value" => "12:34:56"},
-        {"name" => "datetimefield",        "column_type" => ColumnTypes::DTTM,                             "default_value" => "2019-04-01 12:34:56"},
-        ({"name" => "currentdatetimefield", "column_type" => ColumnTypes::DTTM,                             "default_function" => "CURRENT_TIMESTAMP"} if connection.supports_multiple_timestamp_columns?),
+        {"name" => "timefield",            "column_type" => ColumnTypes::TIME,                             "default_value" => "12:34:56"}.merge(connection.time_precision),
+        {"name" => "datetimefield",        "column_type" => ColumnTypes::DTTM,                             "default_value" => "2019-04-01 12:34:56"}.merge(connection.time_precision),
+        ({"name" => "currentdatetimefield", "column_type" => ColumnTypes::DTTM,                             "default_function" => "CURRENT_TIMESTAMP#{"(6)" if connection.supports_fractional_seconds?}"}.merge(connection.time_precision) if connection.supports_multiple_timestamp_columns?),
         {"name" => "floatfield",           "column_type" => ColumnTypes::REAL, "size" =>  4,               "default_value" => "42.625"},
         {"name" => "doublefield",          "column_type" => ColumnTypes::REAL, "size" =>  8,               "default_value" => "0.0625"},
         {"name" => "decimalfield",         "column_type" => ColumnTypes::DECI, "size" =>  9, "scale" => 3, "default_value" => "123456.789"}
@@ -302,8 +302,17 @@ SQL
           pri INT UNSIGNED NOT NULL AUTO_INCREMENT,
           tiny2 TINYINT(2) UNSIGNED DEFAULT 99,
           nulldefaultstr VARCHAR(255) DEFAULT NULL,
+          secondstime TIME,
+          #{"tenthstime TIME(1)," if connection.supports_fractional_seconds?}
+          #{"millistime TIME(3)," if connection.supports_fractional_seconds?}
+          #{"microstime TIME(6)," if connection.supports_fractional_seconds?}
+          secondsdatetime DATETIME,
+          #{"tenthsdatetime DATETIME(1)," if connection.supports_fractional_seconds?}
+          #{"millisdatetime DATETIME(3)," if connection.supports_fractional_seconds?}
+          #{"microsdatetime DATETIME(6)," if connection.supports_fractional_seconds?}
           timestampboth TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           #{"timestampcreateonly TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," if connection.supports_multiple_timestamp_columns?}
+          #{"microstimestampboth TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)," if connection.supports_fractional_seconds?}
           #{"mysqlfunctiondefault VARCHAR(255) DEFAULT (uuid())," if connection.mysql_default_expressions?}
           `select` INT,
           ```quoted``` INT,
@@ -340,8 +349,17 @@ SQL
           {"name" => "pri",                  "column_type" => ColumnTypes::UINT, "size" =>  4, "nullable" => false, "sequence" => ""},
           {"name" => "tiny2",                "column_type" => ColumnTypes::UINT, "size" =>  1, "default_value" => "99"}, # note we've lost the (nonportable) display width (2) - size tells us the size of the integers, not the display width
           {"name" => "nulldefaultstr",       "column_type" => ColumnTypes::VCHR, "size" => 255},
+          {"name" => "secondstime",          "column_type" => ColumnTypes::TIME},
+          ({"name" => "tenthstime",          "column_type" => ColumnTypes::TIME, "size" => 1} if connection.supports_fractional_seconds?),
+          ({"name" => "millistime",          "column_type" => ColumnTypes::TIME, "size" => 3} if connection.supports_fractional_seconds?),
+          ({"name" => "microstime",          "column_type" => ColumnTypes::TIME, "size" => 6} if connection.supports_fractional_seconds?),
+          {"name" => "secondsdatetime",      "column_type" => ColumnTypes::DTTM},
+          ({"name" => "tenthsdatetime",      "column_type" => ColumnTypes::DTTM, "size" => 1} if connection.supports_fractional_seconds?),
+          ({"name" => "millisdatetime",      "column_type" => ColumnTypes::DTTM, "size" => 3} if connection.supports_fractional_seconds?),
+          ({"name" => "microsdatetime",      "column_type" => ColumnTypes::DTTM, "size" => 6} if connection.supports_fractional_seconds?),
           {"name" => "timestampboth",        "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true},
           ({"name" => "timestampcreateonly", "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true} if connection.supports_multiple_timestamp_columns?),
+          ({"name" => "microstimestampboth", "column_type" => ColumnTypes::DTTM, "size" => 6,  "nullable" => false, "default_function" => "CURRENT_TIMESTAMP(6)", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true} if connection.supports_fractional_seconds?),
           ({"name" => "mysqlfunctiondefault", "column_type" => ColumnTypes::VCHR, "size" => 255,                     "default_function" => "uuid()"} if connection.mysql_default_expressions?),
           {"name" => "select",               "column_type" => ColumnTypes::SINT, "size" =>  4},
           {"name" => "`quoted`",             "column_type" => ColumnTypes::SINT, "size" =>  4},
@@ -361,8 +379,8 @@ SQL
           ({"name" => "currentdatefield",     "column_type" => ColumnTypes::DATE,                                     "default_function" => CaseInsensitiveString.new("CURRENT_DATE")} if connection.default_expressions?), # only conditional for the benefit of the mysql 5.7 cross-compatibility tests
           ({"name" => "currentuserdefault",   "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => CaseInsensitiveString.new("CURRENT_USER")} if connection.default_expressions?),
           ({"name" => "pgfunctiondefault",    "column_type" => ColumnTypes::TEXT,                                     "default_function" => "version()"} if connection.default_expressions?),
-          {"name" => "timewithzone",         "column_type" => ColumnTypes::TIME, "time_zone" => true},
-          {"name" => "timestampwithzone",    "column_type" => ColumnTypes::DTTM, "time_zone" => true},
+          {"name" => "timewithzone",         "column_type" => ColumnTypes::TIME, "time_zone" => true, "size" => 6},
+          {"name" => "timestampwithzone",    "column_type" => ColumnTypes::DTTM, "time_zone" => true, "size" => 6},
           {"name" => "select",               "column_type" => ColumnTypes::SINT, "size" => 4},
           {"name" => "\"quoted\"",           "column_type" => ColumnTypes::SINT, "size" =>  4},
         ].compact,
@@ -376,7 +394,8 @@ SQL
     case database_server
     when 'mysql'
       { "tiny2" => 12,
-        "timestampboth" => "2019-07-03 00:00:01" }
+        "timestampboth" => "2019-07-03 00:00:01" }.merge(
+        connection.supports_fractional_seconds? ? { "microstimestampboth" => "2019-07-03 01:02:03.123456" } : {})
 
     when 'postgresql'
       { "uu" => "3d190b75-dbb1-4d34-a41e-d590c1c8a895",
