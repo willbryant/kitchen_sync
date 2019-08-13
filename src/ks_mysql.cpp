@@ -549,7 +549,7 @@ void MySQLClient::convert_unsupported_database_schema(Database &database) {
 			}
 
 			// turn off unsupported flags; we always define flags in such a way that this is a graceful degradation
-			column.flags.time_zone = column.flags.simple_geometry = column.flags.identity_generated_always = false;
+			column.flags.time_zone = column.flags.simple_geometry = column.flags.binary_storage = column.flags.identity_generated_always = false;
 		}
 	}
 }

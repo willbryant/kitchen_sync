@@ -46,6 +46,7 @@ struct ColumnFlags {
 	bool mysql_on_update_timestamp = false;
 	bool time_zone = false;
 	bool simple_geometry = false;
+	bool binary_storage = false;
 	bool identity_generated_always = false;
 
 	inline bool operator ==(const ColumnFlags &other) const {
@@ -53,6 +54,7 @@ struct ColumnFlags {
 				mysql_on_update_timestamp == other.mysql_on_update_timestamp &&
 				time_zone == other.time_zone &&
 				simple_geometry == other.simple_geometry &&
+				binary_storage == other.binary_storage &&
 				identity_generated_always == other.identity_generated_always);
 	}
 };

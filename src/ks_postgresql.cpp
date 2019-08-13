@@ -487,7 +487,11 @@ string PostgreSQLClient::column_type(const Column &column) {
 		return result;
 
 	} else if (column.column_type == ColumnTypes::JSON) {
-		return "json";
+		if (column.flags.binary_storage) {
+			return "jsonb";
+		} else {
+			return "json";
+		}
 
 	} else if (column.column_type == ColumnTypes::UUID) {
 		return "uuid";
@@ -747,6 +751,9 @@ struct PostgreSQLColumnLister {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BLOB);
 		} else if (db_type == "json") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::JSON);
+		} else if (db_type == "jsonb") {
+			default_flags.binary_storage = true;
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::JSON, 0, 0, default_flags);
 		} else if (db_type == "uuid") {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UUID);
 		} else if (db_type == "date") {

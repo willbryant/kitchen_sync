@@ -19,6 +19,7 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	if (column.flags.mysql_on_update_timestamp) fields++;
 	if (column.flags.time_zone) fields++;
 	if (column.flags.simple_geometry) fields++;
+	if (column.flags.binary_storage) fields++;
 	if (column.flags.identity_generated_always) fields++;
 	pack_map_length(packer, fields);
 	packer << string("name");
@@ -86,6 +87,10 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	}
 	if (column.flags.simple_geometry) {
 		packer << string("simple_geometry");
+		packer << true;
+	}
+	if (column.flags.binary_storage) {
+		packer << string("binary_storage");
 		packer << true;
 	}
 	if (column.flags.identity_generated_always) {
@@ -185,6 +190,8 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 			unpacker >> column.flags.time_zone;
 		} else if (attr_key == "simple_geometry") {
 			unpacker >> column.flags.simple_geometry;
+		} else if (attr_key == "binary_storage") {
+			unpacker >> column.flags.binary_storage;
 		} else if (attr_key == "identity_generated_always") {
 			unpacker >> column.flags.identity_generated_always;
 		} else {
