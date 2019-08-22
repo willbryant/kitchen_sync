@@ -2,7 +2,7 @@
 #include "schema_serialization.h"
 #include "filter_serialization.h"
 #include "filters.h"
-#include "fdstream.h"
+#include "versioned_stream.h"
 #include "sync_from_protocol.h"
 #include "substitute_primary_key.h"
 
@@ -13,13 +13,12 @@ struct SyncFromWorker {
 		const string &set_variables,
 		int read_from_descriptor, int write_to_descriptor, char *status_area, size_t status_size):
 			client(database_host, database_port, database_name, database_username, database_password, set_variables),
-			in(read_from_descriptor),
-			input(in),
-			out(write_to_descriptor),
-			output(out),
+			input_stream(read_from_descriptor),
+			input(input_stream),
+			output_stream(write_to_descriptor),
+			output(output_stream),
 			status_area(status_area),
-			status_size(status_size),
-			protocol_version(0) {
+			status_size(status_size) {
 	}
 
 	void operator()() {
@@ -79,10 +78,10 @@ struct SyncFromWorker {
 		read_expected_command(input, Commands::PROTOCOL, their_protocol_version);
 
 		// the usable protocol is the highest out of those supported by the two ends, unless lower than the minimum in which case no version is usable
-		protocol_version = max(EARLIEST_PROTOCOL_VERSION_SUPPORTED, min(LATEST_PROTOCOL_VERSION_SUPPORTED, their_protocol_version));
+		output_stream.protocol_version = max(EARLIEST_PROTOCOL_VERSION_SUPPORTED, min(LATEST_PROTOCOL_VERSION_SUPPORTED, their_protocol_version));
 
 		// tell the other end what version was selected
-		send_command(output, Commands::PROTOCOL, protocol_version);
+		send_command(output, Commands::PROTOCOL, output_stream.protocol_version);
 	}
 
 	void populate_database_schema() {
@@ -114,14 +113,12 @@ struct SyncFromWorker {
 	DatabaseClient client;
 	Database database;
 	map<string, Table*> tables_by_name;
-	FDReadStream in;
+	FDReadStream input_stream;
 	Unpacker<FDReadStream> input;
-	FDWriteStream out;
-	Packer<FDWriteStream> output;
+	VersionedFDWriteStream output_stream;
+	Packer<VersionedFDWriteStream> output;
 	char *status_area;
 	size_t status_size;
-
-	int protocol_version;
 };
 
 template<class DatabaseClient, typename... Options>

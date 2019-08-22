@@ -406,7 +406,7 @@ struct SyncToProtocol {
 	DatabaseClient &client;
 	SyncQueue<DatabaseClient> &sync_queue;
 	Unpacker<FDReadStream> &input;
-	Packer<FDWriteStream> &output;
+	Packer<VersionedFDWriteStream> &output;
 	HashAlgorithm hash_algorithm;
 	size_t target_minimum_block_size;
 	size_t target_maximum_block_size;

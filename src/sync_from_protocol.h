@@ -113,7 +113,7 @@ struct SyncFromProtocol {
 		// we limit individual queries to an arbitrary limit of 10000 rows, to reduce annoying slow
 		// queries that would otherwise be logged on the server and reduce buffering.
 		const int BATCH_SIZE = 10000;
-		RowPackerAndLastKey<FDWriteStream> row_packer(output, table.primary_key_columns);
+		RowPackerAndLastKey<VersionedFDWriteStream> row_packer(output, table.primary_key_columns);
 
 		while (true) {
 			size_t row_count = retrieve_rows(worker.client, row_packer, table, prev_key, last_key, BATCH_SIZE);
@@ -142,6 +142,6 @@ struct SyncFromProtocol {
 
 	Worker &worker;
 	Unpacker<FDReadStream> &input;
-	Packer<FDWriteStream> &output;
+	Packer<VersionedFDWriteStream> &output;
 	HashAlgorithm hash_algorithm;
 };
