@@ -15,11 +15,11 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	if (!column.enumeration_values.empty()) fields++;
 	if (!column.db_type_def.empty()) fields++;
 	if (column.default_type != DefaultType::no_default) fields++;
-	if (column.flags & ColumnFlags::mysql_timestamp) fields++;
-	if (column.flags & ColumnFlags::mysql_on_update_timestamp) fields++;
-	if (column.flags & ColumnFlags::time_zone) fields++;
-	if (column.flags & ColumnFlags::simple_geometry) fields++;
-	if (column.flags & ColumnFlags::identity_generated_always) fields++;
+	if (column.flags.mysql_timestamp) fields++;
+	if (column.flags.mysql_on_update_timestamp) fields++;
+	if (column.flags.time_zone) fields++;
+	if (column.flags.simple_geometry) fields++;
+	if (column.flags.identity_generated_always) fields++;
 	pack_map_length(packer, fields);
 	packer << string("name");
 	packer << column.name;
@@ -72,23 +72,23 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 			packer << column.default_value;
 			break;
 	}
-	if (column.flags & ColumnFlags::mysql_timestamp) {
+	if (column.flags.mysql_timestamp) {
 		packer << string("mysql_timestamp");
 		packer << true;
 	}
-	if (column.flags & ColumnFlags::mysql_on_update_timestamp) {
+	if (column.flags.mysql_on_update_timestamp) {
 		packer << string("mysql_on_update_timestamp");
 		packer << true;
 	}
-	if (column.flags & ColumnFlags::time_zone) {
+	if (column.flags.time_zone) {
 		packer << string("time_zone");
 		packer << true;
 	}
-	if (column.flags & ColumnFlags::simple_geometry) {
+	if (column.flags.simple_geometry) {
 		packer << string("simple_geometry");
 		packer << true;
 	}
-	if (column.flags & ColumnFlags::identity_generated_always) {
+	if (column.flags.identity_generated_always) {
 		packer << string("identity_generated_always");
 		packer << true;
 	}
@@ -178,15 +178,15 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 			column.default_type = DefaultType::default_expression;
 			unpacker >> column.default_value;
 		} else if (attr_key == "mysql_timestamp") {
-			if (unpacker.template next<bool>()) column.flags |= ColumnFlags::mysql_timestamp;
+			unpacker >> column.flags.mysql_timestamp;
 		} else if (attr_key == "mysql_on_update_timestamp") {
-			if (unpacker.template next<bool>()) column.flags |= ColumnFlags::mysql_on_update_timestamp;
+			unpacker >> column.flags.mysql_on_update_timestamp;
 		} else if (attr_key == "time_zone") {
-			if (unpacker.template next<bool>()) column.flags |= ColumnFlags::time_zone;
+			unpacker >> column.flags.time_zone;
 		} else if (attr_key == "simple_geometry") {
-			if (unpacker.template next<bool>()) column.flags |= ColumnFlags::simple_geometry;
+			unpacker >> column.flags.simple_geometry;
 		} else if (attr_key == "identity_generated_always") {
-			if (unpacker.template next<bool>()) column.flags |= ColumnFlags::identity_generated_always;
+			unpacker >> column.flags.identity_generated_always;
 		} else {
 			// ignore anything else, for forward compatibility
 			unpacker.skip();

@@ -253,7 +253,6 @@ public:
 	string column_definition(const Table &table, const Column &column);
 	string key_definition(const Table &table, const Key &key);
 
-	inline ColumnFlags::flag_t supported_flags() const { return (ColumnFlags::mysql_timestamp | ColumnFlags::mysql_on_update_timestamp); }
 	inline bool information_schema_column_default_shows_escaped_expressions() const { return (server_is_mariadb && server_version >= MARIADB_10_2_7); }
 	inline bool supports_srid_settings_on_columns() const { return srid_column_exists; }
 	inline bool supports_fractional_seconds() const { return ((server_is_mariadb && server_version >= MARIADB_10_0_0) || (!server_is_mariadb && server_version >= MYSQL_8_0_0)); } // mariadb 5.3 does support microseconds, but doesn't support all the required functions
@@ -507,8 +506,6 @@ string &MySQLClient::append_escaped_column_value_to(string &result, const Column
 void MySQLClient::convert_unsupported_database_schema(Database &database) {
 	for (Table &table : database.tables) {
 		for (Column &column : table.columns) {
-			column.flags &= supported_flags();
-
 			// postgresql allows numeric with no precision or scale specification and preserves the given input data
 			// up to an implementation-defined precision and scale limit; mysql doesn't, and silently converts
 			// `numeric` to `numeric(10, 0)`.  lacking any better knowledge, we follow their lead and do the same
@@ -550,6 +547,9 @@ void MySQLClient::convert_unsupported_database_schema(Database &database) {
 			if (column.column_type == ColumnTypes::ENUM && !column.type_restriction.empty()) {
 				column.type_restriction.clear();
 			}
+
+			// turn off unsupported flags; we always define flags in such a way that this is a graceful degradation
+			column.flags.time_zone = column.flags.simple_geometry = column.flags.identity_generated_always = false;
 		}
 	}
 }
@@ -680,7 +680,7 @@ tuple<string, string> MySQLClient::column_type(const Column &column) {
 
 	} else if (column.column_type == ColumnTypes::DTTM) {
 		string result;
-		if (column.flags & ColumnFlags::mysql_timestamp) {
+		if (column.flags.mysql_timestamp) {
 			result = "timestamp";
 		} else {
 			result = "datetime";
@@ -759,7 +759,7 @@ string MySQLClient::column_definition(const Table &table, const Column &column) 
 
 	if (!column.nullable) {
 		result += " NOT NULL";
-	} else if (column.flags & ColumnFlags::mysql_timestamp) {
+	} else if (column.flags.mysql_timestamp) {
 		result += " NULL";
 	}
 
@@ -772,7 +772,7 @@ string MySQLClient::column_definition(const Table &table, const Column &column) 
 		result += column_default(table, column);
 	}
 
-	if (column.flags & ColumnFlags::mysql_on_update_timestamp) {
+	if (column.flags.mysql_on_update_timestamp) {
 		if (column.size) {
 			result += " ON UPDATE CURRENT_TIMESTAMP(" + to_string(column.size) + ")"; // mysql 8 insists on the precision being explicitly specified
 		} else {
@@ -908,7 +908,8 @@ struct MySQLColumnLister {
 			}
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TIME, extract_time_precision(db_type));
 		} else if (db_type == "datetime" || db_type.substr(0, 9) ==  "datetime(" || db_type == "timestamp" || db_type.substr(0, 10) == "timestamp(") {
-			ColumnFlags::flag_t flags = db_type == "timestamp" || db_type.substr(0, 10) == "timestamp(" ? ColumnFlags::mysql_timestamp : ColumnFlags::nothing;
+			ColumnFlags flags;
+			if (db_type == "timestamp" || db_type.substr(0, 10) == "timestamp(") flags.mysql_timestamp = true;
 			if (default_value == "CURRENT_TIMESTAMP" || default_value == "CURRENT_TIMESTAMP()" || default_value == "current_timestamp()") {
 				default_type = DefaultType::default_expression;
 				default_value = "CURRENT_TIMESTAMP"; // normalize
@@ -917,7 +918,7 @@ struct MySQLColumnLister {
 				default_value.replace(0, 17, "CURRENT_TIMESTAMP"); // normalize case
 			}
 			if (extra.find("on update CURRENT_TIMESTAMP") != string::npos || extra.find("on update current_timestamp(") != string::npos) {
-				flags |= ColumnFlags::mysql_on_update_timestamp;
+				flags.mysql_on_update_timestamp = true;
 			}
 			if (default_type == DefaultType::default_value) {
 				default_value = datetime_value_after_trimming_fractional_zeros(default_value);
@@ -928,13 +929,13 @@ struct MySQLColumnLister {
 			if (type_restriction == "geometry") type_restriction.clear();
 			string reference_system;
 			if (!row.null_at(5)) reference_system = row.string_at(5);
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, 0, 0, ColumnFlags::nothing, type_restriction, reference_system);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, 0, 0, ColumnFlags(), type_restriction, reference_system);
 		} else if (db_type.substr(0, 5) == "enum(" && db_type.length() > 6 && db_type[db_type.length() - 1] == ')') {
 			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::ENUM);
 			table.columns.back().enumeration_values = parse_bracketed_list(db_type, 4);
 		} else {
 			// not supported, but leave it till sync_to's check_tables_usable to complain about it so that it can be ignored
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UNKN, 0, 0, ColumnFlags::nothing, "", "", db_type);
+			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UNKN, 0, 0, ColumnFlags(), "", "", db_type);
 		}
 	}
 

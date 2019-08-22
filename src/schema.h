@@ -41,15 +41,20 @@ enum class DefaultType {
 	default_expression = 3,
 };
 
-namespace ColumnFlags {
-	// these flags are serialized by name not value, so the values here can be changed if required
-	typedef uint32_t flag_t;
-	const flag_t nothing = 0;
-	const flag_t mysql_timestamp = 1;
-	const flag_t mysql_on_update_timestamp = 2;
-	const flag_t time_zone = 4;
-	const flag_t simple_geometry = 8;
-	const flag_t identity_generated_always = 16;
+struct ColumnFlags {
+	bool mysql_timestamp = false;
+	bool mysql_on_update_timestamp = false;
+	bool time_zone = false;
+	bool simple_geometry = false;
+	bool identity_generated_always = false;
+
+	inline bool operator ==(const ColumnFlags &other) const {
+		return (mysql_timestamp == other.mysql_timestamp &&
+				mysql_on_update_timestamp == other.mysql_on_update_timestamp &&
+				time_zone == other.time_zone &&
+				simple_geometry == other.simple_geometry &&
+				identity_generated_always == other.identity_generated_always);
+	}
 };
 
 struct Column {
@@ -60,7 +65,7 @@ struct Column {
 	size_t scale;
 	DefaultType default_type;
 	string default_value;
-	ColumnFlags::flag_t flags;
+	ColumnFlags flags;
 	string type_restriction;
 	string reference_system;
 	vector<string> enumeration_values;
@@ -71,8 +76,8 @@ struct Column {
 	// the following member isn't serialized currently (could be, but not required):
 	string filter_expression;
 
-	inline Column(const string &name, bool nullable, DefaultType default_type, string default_value, string column_type, size_t size = 0, size_t scale = 0, ColumnFlags::flag_t flags = ColumnFlags::nothing, const string &type_restriction = "", const string &reference_system = "", const string &db_type_def = ""): name(name), nullable(nullable), default_type(default_type), default_value(default_value), column_type(column_type), size(size), scale(scale), flags(flags), type_restriction(type_restriction), reference_system(reference_system), db_type_def(db_type_def) {}
-	inline Column(): nullable(true), size(0), scale(0), default_type(DefaultType::no_default), flags(ColumnFlags::nothing) {}
+	inline Column(const string &name, bool nullable, DefaultType default_type, string default_value, string column_type, size_t size = 0, size_t scale = 0, ColumnFlags flags = ColumnFlags(), const string &type_restriction = "", const string &reference_system = "", const string &db_type_def = ""): name(name), nullable(nullable), default_type(default_type), default_value(default_value), column_type(column_type), size(size), scale(scale), flags(flags), type_restriction(type_restriction), reference_system(reference_system), db_type_def(db_type_def) {}
+	inline Column(): nullable(true), size(0), scale(0), default_type(DefaultType::no_default) {}
 
 	inline bool operator ==(const Column &other) const {
 		return (name == other.name &&
