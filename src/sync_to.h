@@ -1,15 +1,17 @@
 #include <thread>
 
-#include "command.h"
+#include "defaults.h"
 #include "commit_level.h"
+#include "command.h"
+#include "versioned_stream.h"
+#include "schema.h"
+#include "schema_serialization.h"
 #include "schema_functions.h"
 #include "schema_matcher.h"
 #include "sync_queue.h"
 #include "row_range_applier.h"
 #include "reset_table_sequences.h"
-#include "versioned_stream.h"
 #include "sync_to_algorithm.h"
-#include "defaults.h"
 
 using namespace std;
 
