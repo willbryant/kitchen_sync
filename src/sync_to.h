@@ -8,7 +8,7 @@
 #include "row_range_applier.h"
 #include "reset_table_sequences.h"
 #include "versioned_stream.h"
-#include "sync_to_protocol.h"
+#include "sync_to_algorithm.h"
 #include "defaults.h"
 
 using namespace std;
@@ -90,7 +90,7 @@ struct SyncToWorker {
 			client.start_write_transaction();
 			client.disable_referential_integrity();
 
-			SyncToProtocol<SyncToWorker<DatabaseClient>, DatabaseClient> sync_to_protocol(*this);
+			SyncToAlgorithm<SyncToWorker<DatabaseClient>, DatabaseClient> sync_to_protocol(*this);
 			sync_to_protocol.sync_tables();
 
 			wait_for_finish();

@@ -17,8 +17,8 @@ struct HashResult {
 };
 
 template <class Worker, class DatabaseClient>
-struct SyncToProtocol {
-	SyncToProtocol(Worker &worker):
+struct SyncToAlgorithm {
+	SyncToAlgorithm(Worker &worker):
 		worker(worker),
 		client(worker.client),
 		sync_queue(worker.sync_queue),
@@ -172,7 +172,7 @@ struct SyncToProtocol {
 
 		// while that end is working, do the same at our end
 		RowHasherAndLastKey hasher(hash_algorithm, table.primary_key_columns);
-		size_t row_count = retrieve_rows(worker.client, hasher, table, prev_key, last_key, range_to_check.rows_to_hash);
+		size_t row_count = retrieve_rows(client, hasher, table, prev_key, last_key, range_to_check.rows_to_hash);
 
 		// when the table has a subdividable primary key, we try to break the remaining range into two, so that if
 		// there's another worker free it can start checking the second half.  we don't actually queue either half
@@ -241,7 +241,7 @@ struct SyncToProtocol {
 		client.execute(delete_from + " > " + values_list(client, table_job->table, their_last_key));
 
 		// having done that, find our last key, which must now be no greater than their_last_key
-		ColumnValues our_last_key(last_key(worker.client, table_job->table));
+		ColumnValues our_last_key(last_key(client, table_job->table));
 
 		if (!our_last_key.empty()) {
 			// queue up a sync of everything up to our_last_key
