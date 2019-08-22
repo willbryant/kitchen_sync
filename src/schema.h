@@ -61,11 +61,11 @@ struct ColumnFlags {
 
 struct Column {
 	string name;
-	bool nullable;
+	bool nullable = true; // so we only serialize if changed to false
 	string column_type;
-	size_t size;
-	size_t scale;
-	DefaultType default_type;
+	size_t size = 0;
+	size_t scale = 0;
+	DefaultType default_type = DefaultType::no_default;
 	string default_value;
 	ColumnFlags flags;
 	string type_restriction;
@@ -77,9 +77,6 @@ struct Column {
 
 	// the following member isn't serialized currently (could be, but not required):
 	string filter_expression;
-
-	inline Column(const string &name, bool nullable, DefaultType default_type, string default_value, string column_type, size_t size = 0, size_t scale = 0, ColumnFlags flags = ColumnFlags(), const string &type_restriction = "", const string &reference_system = "", const string &db_type_def = ""): name(name), nullable(nullable), default_type(default_type), default_value(default_value), column_type(column_type), size(size), scale(scale), flags(flags), type_restriction(type_restriction), reference_system(reference_system), db_type_def(db_type_def) {}
-	inline Column(): nullable(true), size(0), scale(0), default_type(DefaultType::no_default) {}
 
 	inline bool operator ==(const Column &other) const {
 		return (name == other.name &&

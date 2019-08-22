@@ -810,133 +810,181 @@ struct MySQLColumnLister {
 	inline MySQLColumnLister(Table &table, bool information_schema_column_default_shows_escaped_expressions): table(table), information_schema_column_default_shows_escaped_expressions(information_schema_column_default_shows_escaped_expressions) {}
 
 	inline void operator()(MySQLRow &row) {
-		string name(row.string_at(0));
+		Column column;
+
+		column.name = row.string_at(0);
 		string db_type(row.string_at(1));
-		bool nullable(row.string_at(2) == "YES");
+		column.nullable = (row.string_at(2) == "YES");
 		bool unsign(db_type.length() > 8 && db_type.substr(db_type.length() - 8, 8) == "unsigned");
-		DefaultType default_type(row.null_at(3) ? DefaultType::no_default : DefaultType::default_value);
-		string default_value(row.null_at(3) ? string("") : row.string_at(3));
 		string extra(row.string_at(4));
 
 		if (!row.null_at(3)) {
+			column.default_type = DefaultType::default_value;
+			column.default_value = row.string_at(3);
+
 			if (information_schema_column_default_shows_escaped_expressions) {
 				// mariadb 10.2.7 and above always represent the default value as an expression, which we want to turn back into a plain value if it is one (for compatibility)
-				if (default_value == "NULL") {
-					default_type = DefaultType::no_default;
-					default_value.clear();
-				} else if (default_value.length() >= 2 && default_value[0] == '\'' && default_value[default_value.length() - 1] == '\'') {
-					default_value = unescape_string_value(default_value.substr(1, default_value.length() - 2));
-				} else if (!default_value.empty() && default_value.find_first_not_of("0123456789.") != string::npos) {
-					default_type = DefaultType::default_expression;
+				if (column.default_value == "NULL") {
+					column.default_type = DefaultType::no_default;
+					column.default_value.clear();
+				} else if (column.default_value.length() >= 2 && column.default_value[0] == '\'' && column.default_value[column.default_value.length() - 1] == '\'') {
+					column.default_value = unescape_string_value(column.default_value.substr(1, column.default_value.length() - 2));
+				} else if (!column.default_value.empty() && column.default_value.find_first_not_of("0123456789.") != string::npos) {
+					column.default_type = DefaultType::default_expression;
 				}
 			} else {
 				// mysql 8.0 and above show literal strings and expressions the same way in the COLUMN_DEFAULT field, but set the EXTRA field to DEFAULT_GENERATED for expressions
 				if (extra.find("DEFAULT_GENERATED") != string::npos) {
-					default_type = DefaultType::default_expression;
+					column.default_type = DefaultType::default_expression;
 				}
 			}
 		}
 
 		if (extra.find("auto_increment") != string::npos) {
-			default_type = DefaultType::sequence;
+			column.default_type = DefaultType::sequence;
 		}
 
+
 		if (db_type == "tinyint(1)") {
-			if (default_type != DefaultType::no_default) {
-				if (default_value == "0") {
-					default_value = "false";
-				} else if (default_value == "1") {
-					default_value = "true";
+			if (column.default_type != DefaultType::no_default) {
+				if (column.default_value == "0") {
+					column.default_value = "false";
+				} else if (column.default_value == "1") {
+					column.default_value = "true";
 				} else {
-					throw runtime_error("Invalid default value for boolean column " + table.name + "." + name + ": " + default_value + " (we assume tinyint(1) is used for booleans)");
+					throw runtime_error("Invalid default value for boolean column " + table.name + "." + column.name + ": " + column.default_value + " (we assume tinyint(1) is used for booleans)");
 				}
 			}
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BOOL);
+			column.column_type = ColumnTypes::BOOL;
+
 		} else if (db_type.substr(0, 8) == "tinyint(") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 1);
+			column.column_type = unsign ? ColumnTypes::UINT : ColumnTypes::SINT;
+			column.size = 1;
+
 		} else if (db_type.substr(0, 9) == "smallint(") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 2);
+			column.column_type = unsign ? ColumnTypes::UINT : ColumnTypes::SINT;
+			column.size = 2;
+
 		} else if (db_type.substr(0, 10) == "mediumint(") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 3);
+			column.column_type = unsign ? ColumnTypes::UINT : ColumnTypes::SINT;
+			column.size = 3;
+
 		} else if (db_type.substr(0, 4) == "int(") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 4);
+			column.column_type = unsign ? ColumnTypes::UINT : ColumnTypes::SINT;
+			column.size = 4;
+
 		} else if (db_type.substr(0, 7) == "bigint(") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, unsign ? ColumnTypes::UINT : ColumnTypes::SINT, 8);
+			column.column_type = unsign ? ColumnTypes::UINT : ColumnTypes::SINT;
+			column.size = 8;
+
 		} else if (db_type.substr(0, 8) == "decimal(") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DECI, extract_column_length(db_type), extract_column_scale(db_type));
+			column.column_type = ColumnTypes::DECI;
+			column.size = extract_column_length(db_type);
+			column.scale = extract_column_scale(db_type);
+
 		} else if (db_type == "float") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::REAL, 4);
+			column.column_type = ColumnTypes::REAL;
+			column.size = 4;
+
 		} else if (db_type == "double") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::REAL, 8);
+			column.column_type = ColumnTypes::REAL;
+			column.size = 8;
+
 		} else if (db_type.substr(0, 8) == "varchar(") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::VCHR, extract_column_length(db_type));
+			column.column_type = ColumnTypes::VCHR;
+			column.size = extract_column_length(db_type);
+
 		} else if (db_type.substr(0, 5) == "char(") {
 			size_t length = extract_column_length(db_type);
 			if (length == 36 && !row.null_at(6) && row.string_at(6).substr(0, 4) == "UUID") {
-				table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UUID);
+				column.column_type = ColumnTypes::UUID;
 			} else {
-				while (default_type != DefaultType::no_default && default_value.length() < length) default_value += ' ';
-				table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::FCHR, length);
+				while (column.default_type != DefaultType::no_default && column.default_value.length() < length) column.default_value += ' ';
+				column.column_type = ColumnTypes::FCHR;
+				column.size = length;
 			}
+
 		} else if (db_type == "tinytext") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TEXT, 1);
+			column.column_type = ColumnTypes::TEXT;
+			column.size = 1;
+
 		} else if (db_type == "text") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TEXT, 2);
+			column.column_type = ColumnTypes::TEXT;
+			column.size = 2;
+
 		} else if (db_type == "mediumtext") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TEXT, 3);
+			column.column_type = ColumnTypes::TEXT;
+			column.size = 3;
+
 		} else if (db_type == "longtext") {
 			if ((!row.null_at(6) && row.string_at(6).substr(0, 4) == "JSON") || (!row.null_at(7) && row.int_at(7))) { // 6 is the comment and 7 the check constraint; the check constraint is the canonical way to handle JSON in mariadb, but we also support using the comment for the sake of older versions (mariadb 10.1 and below, mysql 5.5)
-				table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::JSON);
+				column.column_type = ColumnTypes::JSON;
 			} else {
-				table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TEXT); // no specific size for compatibility, but 4 in current mysql
+				column.column_type = ColumnTypes::TEXT; // no specific size for compatibility, but 4 in current mysql
 			}
+
 		} else if (db_type == "json") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::JSON);
+			column.column_type = ColumnTypes::JSON;
+
 		} else if (db_type == "tinyblob") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BLOB, 1);
+			column.column_type = ColumnTypes::BLOB;
+			column.size = 1;
+
 		} else if (db_type == "blob") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BLOB, 2);
+			column.column_type = ColumnTypes::BLOB;
+			column.size = 2;
+
 		} else if (db_type == "mediumblob") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BLOB, 3);
+			column.column_type = ColumnTypes::BLOB;
+			column.size = 3;
+
 		} else if (db_type == "longblob") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BLOB); // no specific size for compatibility, but 4 in current mysql
+			column.column_type = ColumnTypes::BLOB; // no specific size for compatibility, but 4 in current mysql
+
 		} else if (db_type == "date") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DATE);
+			column.column_type = ColumnTypes::DATE;
+
 		} else if (db_type == "time" || db_type.substr(0, 5) == "time(") {
-			if (default_type == DefaultType::default_value) {
-				default_value = time_value_after_trimming_fractional_zeros(default_value);
+			if (column.default_type == DefaultType::default_value) {
+				column.default_value = time_value_after_trimming_fractional_zeros(column.default_value);
 			}
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TIME, extract_time_precision(db_type));
+			column.column_type = ColumnTypes::TIME;
+			column.size = extract_time_precision(db_type);
+
 		} else if (db_type == "datetime" || db_type.substr(0, 9) ==  "datetime(" || db_type == "timestamp" || db_type.substr(0, 10) == "timestamp(") {
-			ColumnFlags flags;
-			if (db_type == "timestamp" || db_type.substr(0, 10) == "timestamp(") flags.mysql_timestamp = true;
-			if (default_value == "CURRENT_TIMESTAMP" || default_value == "CURRENT_TIMESTAMP()" || default_value == "current_timestamp()") {
-				default_type = DefaultType::default_expression;
-				default_value = "CURRENT_TIMESTAMP"; // normalize
-			} else if (default_value.length() == 20 && default_value[19] == ')' && (default_value.substr(0, 18) == "CURRENT_TIMESTAMP("  || default_value.substr(0, 18) == "current_timestamp(")) {
-				default_type = DefaultType::default_expression;
-				default_value.replace(0, 17, "CURRENT_TIMESTAMP"); // normalize case
+			if (db_type == "timestamp" || db_type.substr(0, 10) == "timestamp(") column.flags.mysql_timestamp = true;
+			if (column.default_value == "CURRENT_TIMESTAMP" || column.default_value == "CURRENT_TIMESTAMP()" || column.default_value == "current_timestamp()") {
+				column.default_type = DefaultType::default_expression;
+				column.default_value = "CURRENT_TIMESTAMP"; // normalize
+			} else if (column.default_value.length() == 20 && column.default_value[19] == ')' && (column.default_value.substr(0, 18) == "CURRENT_TIMESTAMP("  || column.default_value.substr(0, 18) == "current_timestamp(")) {
+				column.default_type = DefaultType::default_expression;
+				column.default_value.replace(0, 17, "CURRENT_TIMESTAMP"); // normalize case
 			}
 			if (extra.find("on update CURRENT_TIMESTAMP") != string::npos || extra.find("on update current_timestamp(") != string::npos) {
-				flags.mysql_on_update_timestamp = true;
+				column.flags.mysql_on_update_timestamp = true;
 			}
-			if (default_type == DefaultType::default_value) {
-				default_value = datetime_value_after_trimming_fractional_zeros(default_value);
+			if (column.default_type == DefaultType::default_value) {
+				column.default_value = datetime_value_after_trimming_fractional_zeros(column.default_value);
 			}
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM, extract_time_precision(db_type), 0, flags);
+			column.column_type = ColumnTypes::DTTM;
+			column.size = extract_time_precision(db_type);
+
 		} else if (db_type == "geometry" || db_type == "point" || db_type == "linestring" || db_type == "polygon" || db_type == "geometrycollection" || db_type == "multipoint" || db_type == "multilinestring" || db_type == "multipolygon") {
-			string type_restriction(db_type);
-			if (type_restriction == "geometry") type_restriction.clear();
-			string reference_system;
-			if (!row.null_at(5)) reference_system = row.string_at(5);
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, 0, 0, ColumnFlags(), type_restriction, reference_system);
+			if (db_type != "geometry") column.type_restriction = db_type;
+			if (!row.null_at(5)) column.reference_system = row.string_at(5);
+			column.column_type = ColumnTypes::SPAT;
+
 		} else if (db_type.substr(0, 5) == "enum(" && db_type.length() > 6 && db_type[db_type.length() - 1] == ')') {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::ENUM);
-			table.columns.back().enumeration_values = parse_bracketed_list(db_type, 4);
+			column.column_type = ColumnTypes::ENUM;
+			column.enumeration_values = parse_bracketed_list(db_type, 4);
+
 		} else {
 			// not supported, but leave it till sync_to's check_tables_usable to complain about it so that it can be ignored
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UNKN, 0, 0, ColumnFlags(), "", "", db_type);
+			column.column_type = ColumnTypes::UNKN;
+			column.db_type_def = db_type;
 		}
+
+		table.columns.push_back(column);
 	}
 
 	inline string unescape_string_value(const string &escaped) {

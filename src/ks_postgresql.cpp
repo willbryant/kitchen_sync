@@ -669,125 +669,167 @@ struct PostgreSQLColumnLister {
 	inline PostgreSQLColumnLister(Table &table, TypeMap &type_map): table(table), type_map(type_map) {}
 
 	inline void operator()(PostgreSQLRow &row) {
-		string name(row.string_at(0));
+		Column column;
+
+		column.name = row.string_at(0);
 		string db_type(row.string_at(1));
-		bool nullable(row.string_at(2) == "f");
-		DefaultType default_type(DefaultType::no_default);
-		string default_value;
-		ColumnFlags default_flags;
+		column.nullable = (row.string_at(2) == "f");
 
 		if (!row.null_at(5) && row.string_at(5) != "\0") {
 			// attidentity set (will be 'a' for 'always' and 'd' for 'by default')
-			default_type = DefaultType::sequence;
-			if (row.string_at(5) == "a") default_flags.identity_generated_always = true;
+			column.default_type = DefaultType::sequence;
+			if (row.string_at(5) == "a") column.flags.identity_generated_always = true;
 
 		} else if (row.string_at(3) == "t") {
-			default_type = DefaultType::default_value;
-			default_value = row.string_at(4);
+			column.default_type = DefaultType::default_value;
+			column.default_value = row.string_at(4);
 
-			if (default_value.length() > 20 &&
-				default_value.substr(0, 9) == "nextval('" &&
-				default_value.substr(default_value.length() - 12, 12) == "'::regclass)") {
-				default_type = DefaultType::sequence;
-				default_value = "";
+			if (column.default_value.length() > 20 &&
+				column.default_value.substr(0, 9) == "nextval('" &&
+				column.default_value.substr(column.default_value.length() - 12, 12) == "'::regclass)") {
+				// this is what you got back when you used the historic SERIAL pseudo-type (subsequently replaced by the new standard IDENTITY GENERATED ... AS IDENTITY)
+				column.default_type = DefaultType::sequence;
+				column.default_value = "";
 
-			} else if (default_value.substr(0, 6) == "NULL::" && db_type.substr(0, default_value.length() - 6) == default_value.substr(6)) {
+			} else if (column.default_value.substr(0, 6) == "NULL::" && db_type.substr(0, column.default_value.length() - 6) == column.default_value.substr(6)) {
 				// postgresql treats a NULL default as distinct to no default, so we try to respect that by keeping the value as a function,
 				// but chop off the type conversion for the sake of portability
-				default_type = DefaultType::default_expression;
-				default_value = "NULL";
+				column.default_type = DefaultType::default_expression;
+				column.default_value = "NULL";
 
-			} else if (default_value.length() > 2 && default_value[0] == '\'') {
-				default_value = unescape_string_value(default_value.substr(1, default_value.rfind('\'') - 1));
+			} else if (column.default_value.length() > 2 && column.default_value[0] == '\'') {
+				column.default_value = unescape_string_value(column.default_value.substr(1, column.default_value.rfind('\'') - 1));
 
-			} else if (default_value.length() > 0 && default_value != "false" && default_value != "true" && default_value.find_first_not_of("0123456789.") != string::npos) {
-				default_type = DefaultType::default_expression;
+			} else if (column.default_value.length() > 0 && column.default_value != "false" && column.default_value != "true" && column.default_value.find_first_not_of("0123456789.") != string::npos) {
+				column.default_type = DefaultType::default_expression;
 
 				// earlier versions of postgresql convert CURRENT_TIMESTAMP to now(); convert it back for portability
-				if (default_value == "now()") {
-					default_value = "CURRENT_TIMESTAMP";
+				if (column.default_value == "now()") {
+					column.default_value = "CURRENT_TIMESTAMP";
 
 				// do the same for its conversion of CURRENT_TIMESTAMP(n)
-				} else if (default_value.length() == 42 && default_value.substr(0, 25) == "('now'::text)::timestamp(" && default_value.substr(26, 16) == ") with time zone") {
-					default_value = "CURRENT_TIMESTAMP(" + default_value.substr(25, 1) + ")";
+				} else if (column.default_value.length() == 42 && column.default_value.substr(0, 25) == "('now'::text)::timestamp(" && column.default_value.substr(26, 16) == ") with time zone") {
+					column.default_value = "CURRENT_TIMESTAMP(" + column.default_value.substr(25, 1) + ")";
 
 				// and do the same for its conversion of CURRENT_DATE
-				} else if (default_value == "('now'::text)::date") {
-					default_value = "CURRENT_DATE";
+				} else if (column.default_value == "('now'::text)::date") {
+					column.default_value = "CURRENT_DATE";
 
 				// other SQL-reserved zero-argument functions come back with quoted identifiers and brackets, see Note on the
 				// 'System Information Functions' page; the list here is shorter because some get converted to one of the others by pg
-				} else if (default_value == "\"current_schema\"()" || default_value == "\"current_user\"()" || default_value == "\"session_user\"()") {
-					default_value = default_value.substr(1, default_value.length() - 4);
+				} else if (column.default_value == "\"current_schema\"()" || column.default_value == "\"current_user\"()" || column.default_value == "\"session_user\"()") {
+					column.default_value = column.default_value.substr(1, column.default_value.length() - 4);
 				}
 			}
 		}
 
 		if (db_type == "boolean") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BOOL);
+			column.column_type = ColumnTypes::BOOL;
+
 		} else if (db_type == "smallint") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SINT, 2, 0, default_flags);
+			column.column_type = ColumnTypes::SINT;
+			column.size = 2;
+
 		} else if (db_type == "integer") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SINT, 4, 0, default_flags);
+			column.column_type = ColumnTypes::SINT;
+			column.size = 4;
+
 		} else if (db_type == "bigint") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SINT, 8, 0, default_flags);
+			column.column_type = ColumnTypes::SINT;
+			column.size = 8;
+
 		} else if (db_type == "real") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::REAL, 4);
+			column.column_type = ColumnTypes::REAL;
+			column.size = 4;
+
 		} else if (db_type == "double precision") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::REAL, 8);
+			column.column_type = ColumnTypes::REAL;
+			column.size = 8;
+
 		} else if (db_type.substr(0, 8) == "numeric(") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DECI, extract_column_length(db_type), extract_column_scale(db_type));
+			column.column_type = ColumnTypes::DECI;
+			column.size = extract_column_length(db_type);
+			column.scale = extract_column_scale(db_type);
+
 		} else if (db_type.substr(0, 7) == "numeric") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DECI);
+			column.column_type = ColumnTypes::DECI;
+
 		} else if (db_type.substr(0, 18) == "character varying(") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::VCHR, extract_column_length(db_type));
+			column.column_type = ColumnTypes::VCHR;
+			column.size = extract_column_length(db_type);
+
 		} else if (db_type.substr(0, 18) == "character varying") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::VCHR /* no length limit */);
+			column.column_type = ColumnTypes::VCHR; /* no length limit */
+
 		} else if (db_type.substr(0, 10) == "character(") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::FCHR, extract_column_length(db_type));
+			column.column_type = ColumnTypes::FCHR;
+			column.size = extract_column_length(db_type);
+
 		} else if (db_type == "text") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TEXT);
+			column.column_type = ColumnTypes::TEXT;
+
 		} else if (db_type == "bytea") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::BLOB);
+			column.column_type = ColumnTypes::BLOB;
+
 		} else if (db_type == "json") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::JSON);
+			column.column_type = ColumnTypes::JSON;
+
 		} else if (db_type == "jsonb") {
-			default_flags.binary_storage = true;
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::JSON, 0, 0, default_flags);
+			column.column_type = ColumnTypes::JSON;
+			column.flags.binary_storage = true;
+
 		} else if (db_type == "uuid") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UUID);
+			column.column_type = ColumnTypes::UUID;
+
 		} else if (db_type == "date") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DATE);
+			column.column_type = ColumnTypes::DATE;
+
 		} else if (db_type == "time without time zone") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TIME, 6 /* microsecond precision */);
+			column.column_type = ColumnTypes::TIME;
+			column.size = 6; /* microsecond precision */
+
 		} else if (db_type == "time with time zone") {
-			default_flags.time_zone = true;
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::TIME, 6 /* microsecond precision */, 0, default_flags);
+			column.column_type = ColumnTypes::TIME;
+			column.flags.time_zone = true;
+			column.size = 6; /* microsecond precision */
+
 		} else if (db_type == "timestamp without time zone") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM, 6 /* microsecond precision */);
+			column.column_type = ColumnTypes::DTTM;
+			column.size = 6; /* microsecond precision */
+
 		} else if (db_type == "timestamp with time zone") {
-			default_flags.time_zone = true;
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::DTTM, 6 /* microsecond precision */, 0, default_flags);
+			column.column_type = ColumnTypes::DTTM;
+			column.flags.time_zone = true;
+			column.size = 6; /* microsecond precision */
+
 		} else if (db_type == "geometry") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT);
+			column.column_type = ColumnTypes::SPAT;
+
 		} else if (db_type == "geography") {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, 0, 0, default_flags, "", "4326"); // this default SRID is baked into PostGIS (and was the only SRID supported for the geography type in early versions)
+			column.column_type = ColumnTypes::SPAT;
+			column.reference_system = "4326"; // this default SRID is baked into PostGIS (and was the only SRID supported for the geography type in early version)
+
 		} else if (db_type.substr(0, 9) == "geometry(") {
-			string type_restriction, reference_system;
-			tie(type_restriction, reference_system) = extract_spatial_type_restriction_and_reference_system(db_type.substr(9, db_type.length() - 10));
-			if (!reference_system.empty()) default_flags.ColumnFlags::simple_geometry = true; // as discussed in column_type, we mainly expect SRIDs to be used with the geography type, but use this flag to turn the column back into a geometry type for this case
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, 0, 0, default_flags, type_restriction, reference_system);
+			tie(column.type_restriction, column.reference_system) = extract_spatial_type_restriction_and_reference_system(db_type.substr(9, db_type.length() - 10));
+			if (!column.reference_system.empty()) column.flags.simple_geometry = true; // as discussed in column_type, we mainly expect SRIDs to be used with the geography type, but use this flag to turn the column back into a geometry type for this case
+			column.column_type = ColumnTypes::SPAT;
+
 		} else if (db_type.substr(0, 10) == "geography(") {
-			string type_restriction, reference_system;
-			tie(type_restriction, reference_system) = extract_spatial_type_restriction_and_reference_system(db_type.substr(10, db_type.length() - 11));
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::SPAT, 0, 0, default_flags, type_restriction, reference_system);
+			tie(column.type_restriction, column.reference_system) = extract_spatial_type_restriction_and_reference_system(db_type.substr(10, db_type.length() - 11));
+			column.column_type = ColumnTypes::SPAT;
+
 		} else if (type_map.enum_type_values.count(db_type)) {
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::ENUM, 0, 0, default_flags, db_type);
-			table.columns.back().enumeration_values = type_map.enum_type_values[db_type];
+			column.column_type = ColumnTypes::ENUM;
+			column.type_restriction = db_type;
+			column.enumeration_values = type_map.enum_type_values[db_type];
+
 		} else {
 			// not supported, but leave it till sync_to's check_tables_usable to complain about it so that it can be ignored
-			table.columns.emplace_back(name, nullable, default_type, default_value, ColumnTypes::UNKN, 0, 0, default_flags, "", "", db_type);
+			column.column_type = ColumnTypes::UNKN;
+			column.db_type_def = db_type;
 		}
+
+		table.columns.push_back(column);
 	}
 
 	inline string unescape_string_value(const string &escaped) {
