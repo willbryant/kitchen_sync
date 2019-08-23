@@ -118,7 +118,7 @@ struct SyncToWorker {
 
 	void negotiate_protocol_version() {
 		const int EARLIEST_PROTOCOL_VERSION_SUPPORTED = 7;
-		const int LATEST_PROTOCOL_VERSION_SUPPORTED = 7;
+		const int LATEST_PROTOCOL_VERSION_SUPPORTED = 8;
 
 		// tell the other end what version of the protocol we can speak, and have them tell us which version we're able to converse in
 		send_command(output, Commands::PROTOCOL, LATEST_PROTOCOL_VERSION_SUPPORTED);

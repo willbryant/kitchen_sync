@@ -103,7 +103,7 @@ struct SyncFromWorker {
 
 	void negotiate_protocol_version() {
 		const int EARLIEST_PROTOCOL_VERSION_SUPPORTED = 7;
-		const int LATEST_PROTOCOL_VERSION_SUPPORTED = 7;
+		const int LATEST_PROTOCOL_VERSION_SUPPORTED = 8;
 
 		// all conversations must start with a Commands::PROTOCOL command to establish the language to be used
 		int their_protocol_version;
