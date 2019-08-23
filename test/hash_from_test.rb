@@ -107,7 +107,7 @@ class HashFromTest < KitchenSync::EndpointTestCase
   end
 
   test_each "optionally supports xxHash64 hashes" do
-    setup_with_footbl(1, HashAlgorithm::XXH64)
+    setup_with_footbl(target_minimum_block_size: 1, hash_algorithm: HashAlgorithm::XXH64)
 
     send_command   Commands::HASH, ["footbl", @keys[1], @keys[3], 1000]
     expect_command Commands::HASH, ["footbl", @keys[1], @keys[3], 1000, 2, hash_of(@rows[2..3], HashAlgorithm::XXH64)]

@@ -127,7 +127,7 @@ module KitchenSync
       spawner.send_results(*args)
     end
 
-    def send_handshake_commands(target_minimum_block_size = 1, hash_algorithm = HashAlgorithm::MD5)
+    def send_handshake_commands(target_minimum_block_size: 1, hash_algorithm: HashAlgorithm::MD5)
       send_protocol_command
       send_without_snapshot_command
       send_hash_algorithm_command(hash_algorithm)
@@ -159,7 +159,7 @@ module KitchenSync
       send_command   Commands::WITHOUT_SNAPSHOT
     end
 
-    def expect_sync_start_commands(hash_algorithm = HashAlgorithm::MD5)
+    def expect_sync_start_commands(hash_algorithm: HashAlgorithm::MD5)
       assert_equal   Commands::HASH_ALGORITHM, read_command.first
       send_command   Commands::HASH_ALGORITHM, [hash_algorithm]
     end
