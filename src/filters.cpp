@@ -11,7 +11,7 @@ void load_filter_scalar(const string &table_name, TableFilter &table_filter, con
 	if (action == "clear") {
 		table_filter.where_conditions = "false";
 	} else {
-		throw runtime_error("Don't know how to '" + action + "' table '" + table_name + "'");
+		throw filter_definition_error("Don't know how to '" + action + "' table '" + table_name + "'");
 	}
 }
 
@@ -46,7 +46,7 @@ void load_filter_map(const string &table_name, TableFilter &table_filter, const 
 			load_filter_rows(table_name, table_filter, action_it->second);
 
 		} else {
-			throw runtime_error("Don't how to filter table '" + table_name + "'; action given: " + to_string(action_it->first));
+			throw filter_definition_error("Don't how to filter table '" + table_name + "'; action given: " + to_string(action_it->first));
 		}
 	}
 }
@@ -74,7 +74,7 @@ TableFilters load_filters(const string &filters_file) {
 				break;
 
 			default:
-				throw runtime_error("Don't how to filter table '" + table_name + "'; action given: " + to_string(table_it->second));
+				throw filter_definition_error("Don't how to filter table '" + table_name + "'; action given: " + to_string(table_it->second));
 		}
 	}
 
@@ -94,7 +94,7 @@ void apply_filter(Table &table, const TableFilter &table_filter) {
 		const string &filter_expression(it.second);
 
 		Column *column = columns_by_name[column_name];
-		if (!column) throw runtime_error("Can't find column '" + column_name + "' to filter in table '" + table.name + "'");
+		if (!column) throw filter_definition_error("Can't find column '" + column_name + "' to filter in table '" + table.name + "'");
 
 		column->filter_expression = filter_expression;
 	}
@@ -112,7 +112,7 @@ void apply_filters(const TableFilters &table_filters, Tables &tables) {
 		const TableFilter &table_filter(it.second);
 
 		Table *table = tables_by_name[table_name];
-		if (!table) throw runtime_error("Filtered table '" + table_name + "' not found");
+		if (!table) throw filter_definition_error("Filtered table '" + table_name + "' not found");
 
 		apply_filter(*table, table_filter);
 	}

@@ -9,6 +9,10 @@
 
 using namespace std;
 
+struct filter_definition_error: public runtime_error {
+	filter_definition_error(const string &error): runtime_error(error) { }
+};
+
 struct TableFilter {
 	string where_conditions;
 	map<string, string> filter_expressions;
