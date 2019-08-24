@@ -126,8 +126,8 @@ module KitchenSync
     def send_handshake_commands(protocol_version: LATEST_PROTOCOL_VERSION_SUPPORTED, target_minimum_block_size: 1, hash_algorithm: HashAlgorithm::MD5, filters: nil)
       send_protocol_command(protocol_version)
       send_hash_algorithm_command(hash_algorithm)
-      send_without_snapshot_command
       send_filters_command(filters) if filters
+      send_without_snapshot_command
     end
 
     def send_protocol_command(protocol_version)
@@ -159,17 +159,17 @@ module KitchenSync
       assert_equal   Commands::HASH_ALGORITHM, read_command.first
       send_command   Commands::HASH_ALGORITHM, [hash_algorithm]
 
+      if filters
+        expect_command Commands::FILTERS, [filters]
+        send_command   Commands::FILTERS
+      end
+
       # since we haven't asked for multiple workers, we'll always get sent the snapshot-less start command
       expect_command Commands::WITHOUT_SNAPSHOT
       send_command   Commands::WITHOUT_SNAPSHOT
 
       expect_command Commands::SCHEMA
       send_command   Commands::SCHEMA, [schema]
-
-      if filters
-        expect_command Commands::FILTERS, [filters]
-        send_command   Commands::FILTERS
-      end
     end
 
     def expect_quit_and_close

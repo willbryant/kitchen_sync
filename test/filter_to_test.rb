@@ -71,4 +71,21 @@ class FilterToTest < KitchenSync::EndpointTestCase
         filters: {"footbl" => {"where_conditions" => "col1 BETWEEN 4 AND 7", "filter_expressions" => {"another_col" => "col1 + CHAR_LENGTH(col3)", "col3" => "COALESCE(col3, 'default')"}}})
     end
   end
+
+  test_each "sends filters after the schema instead of before, for protocol version 7 and below" do
+    create_some_tables
+    execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"
+    @filtered_rows = [[4,   7,     "foo"],
+                      [5, nil, "default"]]
+
+    with_filter_file("footbl:\n  replace:\n    another_col: col1 + CHAR_LENGTH(col3)\n    col3: COALESCE(col3, 'default')\n  only: col1 BETWEEN 4 AND 7") do
+      expect_handshake_commands(
+        protocol_version_supported: 7,
+        schema: {"tables" => [footbl_def]})
+
+      expect_command Commands::FILTERS,
+                     [{"footbl" => {"where_conditions" => "col1 BETWEEN 4 AND 7", "filter_expressions" => {"another_col" => "col1 + CHAR_LENGTH(col3)", "col3" => "COALESCE(col3, 'default')"}}}]
+      send_command   Commands::FILTERS
+    end
+  end
 end

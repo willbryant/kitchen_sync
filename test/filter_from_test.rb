@@ -15,6 +15,9 @@ class FilterFromTest < KitchenSync::EndpointTestCase
 
     send_handshake_commands(filters: {"footbl" => {"where_conditions" => "false"}})
 
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA, [{"tables" => [footbl_def, secondtbl_def]}]
+
     send_command   Commands::RANGE, ["footbl"]
     expect_command Commands::RANGE,
                    ["footbl", [], []]
@@ -27,6 +30,9 @@ class FilterFromTest < KitchenSync::EndpointTestCase
                       [5, nil,   nil]]
 
     send_handshake_commands(filters: {"footbl" => {"where_conditions" => "col1 BETWEEN 4 AND 7"}})
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA, [{"tables" => [footbl_def, secondtbl_def]}]
 
     send_command   Commands::RANGE, ["footbl"]
     expect_command Commands::RANGE,
@@ -64,6 +70,9 @@ class FilterFromTest < KitchenSync::EndpointTestCase
 
     send_handshake_commands(filters: {"footbl" => {"filter_expressions" => {"another_col" => "col1 + CHAR_LENGTH(col3)", "col3" => "COALESCE(col3 || 'x', 'default')"}}})
 
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA, [{"tables" => [footbl_def, secondtbl_def]}]
+
     send_command   Commands::HASH, ["footbl", [], [2], 1000]
     expect_command Commands::HASH,
                    ["footbl", [], [2], 1000, 1, hash_of(@filtered_rows[0..0])]
@@ -84,6 +93,35 @@ class FilterFromTest < KitchenSync::EndpointTestCase
                       [5, nil, "default"]]
 
     send_handshake_commands(filters: {"footbl" => {"where_conditions" => "col1 BETWEEN 4 AND 7", "filter_expressions" => {"another_col" => "col1 + CHAR_LENGTH(col3)", "col3" => "COALESCE(col3, 'default')"}}})
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA, [{"tables" => [footbl_def, secondtbl_def]}]
+
+    send_command   Commands::HASH, ["footbl", [], [4], 1000]
+    expect_command Commands::HASH,
+                   ["footbl", [], [4], 1000, 1, hash_of(@filtered_rows[0..0])]
+
+    send_command   Commands::ROWS, ["footbl", [], []]
+    expect_command Commands::ROWS,
+                   ["footbl", [], []],
+                   @filtered_rows[0],
+                   @filtered_rows[1]
+  end
+
+  test_each "accepts and applies filters given after the schema instead of before, for protocol version 7 and below" do
+    create_some_tables
+    execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"
+    @filtered_rows = [[4,   7,     "foo"],
+                      [5, nil, "default"]]
+
+    send_handshake_commands(protocol_version: 7)
+
+    send_command   Commands::FILTERS,
+                   [{"footbl" => {"where_conditions" => "col1 BETWEEN 4 AND 7", "filter_expressions" => {"another_col" => "col1 + CHAR_LENGTH(col3)", "col3" => "COALESCE(col3, 'default')"}}}]
+    expect_command Commands::FILTERS
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA, [{"tables" => [footbl_def, secondtbl_def]}]
 
     send_command   Commands::HASH, ["footbl", [], [4], 1000]
     expect_command Commands::HASH,

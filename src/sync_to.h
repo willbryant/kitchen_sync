@@ -70,10 +70,11 @@ struct SyncToWorker {
 		try {
 			negotiate_protocol_version();
 			negotiate_hash_algorithm();
+			if (output_stream.protocol_version > LAST_FILTERS_AFTER_SNAPSHOT_PROTOCOL_VERSION) send_filters(); // send early so they can be factored into substitute PK decisions
 			share_snapshot();
 			retrieve_database_schema();
 			compare_schema();
-			send_filters();
+			if (output_stream.protocol_version <= LAST_FILTERS_AFTER_SNAPSHOT_PROTOCOL_VERSION) send_filters(); // we used to send them later after checking the rest of the schema
 			sync_queue.wait_at_barrier();
 
 			return true;
@@ -260,15 +261,6 @@ struct SyncToWorker {
 		restrict_table_filters();
 
 		if (!table_filters.empty()) {
-			if (leader) {
-				// we can give better error feedback to the user if we check the filters before we send them
-				// to the N workers at the other end.  we work on a copy of the table schema object (taken
-				// before calling restrict_tables) here because don't want to actually apply the filters to
-				// our end (since then we'd ignore rows that we really need to change or clear).
-				Tables copy(database.tables);
-				apply_filters(table_filters, copy);
-			}
-
 			send_command(output, Commands::FILTERS, table_filters);
 			read_expected_command(input, Commands::FILTERS);
 		}

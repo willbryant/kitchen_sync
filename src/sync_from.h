@@ -114,6 +114,20 @@ struct SyncFromWorker {
 		send_command(output, Commands::PROTOCOL, output_stream.protocol_version);
 	}
 
+	void handle_filters_command() {
+		read_all_arguments(input, table_filters);
+
+		// versions 7 and below of the protocol sent the FILTERS command after retrieving the schema,
+		// so we applied it to the already-loaded schema immediately.  this meant however that we
+		// couldn't consider the filters when doing things like choosing a substitute primary key,
+		// so from version 8 and on we are sent the FILTERS command early and apply them later.
+		if (output_stream.protocol_version <= LAST_FILTERS_AFTER_SNAPSHOT_PROTOCOL_VERSION) {
+			apply_filters(table_filters, database.tables);
+		}
+
+		send_command(output, Commands::FILTERS);
+	}
+
 	void handle_export_snapshot_command() {
 		read_all_arguments(input);
 		send_command(output, Commands::EXPORT_SNAPSHOT, client.export_snapshot());
@@ -141,13 +155,12 @@ struct SyncFromWorker {
 		populate_database_schema();
 	}
 
-	void handle_schema_command() {
-		read_all_arguments(input);
-		send_command(output, Commands::SCHEMA, database);
-	}
-
 	void populate_database_schema() {
 		client.populate_database_schema(database);
+
+		if (!table_filters.empty()) { // optimisation, but also will always be true on protocol 7 and earlier, per above comment
+			apply_filters(table_filters, database.tables);
+		}
 
 		for (Table &table : database.tables) {
 			tables_by_name[table.name] = &table;
@@ -157,14 +170,9 @@ struct SyncFromWorker {
 		}
 	}
 
-	void handle_filters_command() {
-		// newer versions pass the parsed contents of the file from the 'to' endpoint over the connection
-		TableFilters table_filters;
-		read_all_arguments(input, table_filters);
-
-		apply_filters(table_filters, database.tables);
-
-		send_command(output, Commands::FILTERS);
+	void handle_schema_command() {
+		read_all_arguments(input);
+		send_command(output, Commands::SCHEMA, database);
 	}
 
 	void handle_range_command() {
@@ -244,6 +252,7 @@ struct SyncFromWorker {
 	VersionedFDWriteStream output_stream;
 	Packer<VersionedFDWriteStream> output;
 	HashAlgorithm hash_algorithm;
+	TableFilters table_filters;
 	char *status_area;
 	size_t status_size;
 };
