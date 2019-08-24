@@ -49,6 +49,28 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
                    [{"tables" => [noprimarytbl_def(create_suitable_keys: false)]}]
   end
 
+  test_each "selects the first unique key with no nullable columns and no replace expression if there is no primary key" do
+    clear_schema
+    create_noprimarytbl
+    send_handshake_commands(
+      filters: {"noprimarytbl" => {"filter_expressions" => {"version" => "1"}}})
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA,
+                   [{"tables" => [noprimarytbl_def.merge("primary_key_columns" => [3])]}] # note it has looked on and found another suitable key
+  end
+
+  test_each "selects no key if there is no primary key and no unique key with non-nullable columns and no replace expression" do
+    clear_schema
+    create_noprimarytbl
+    send_handshake_commands(
+      filters: {"noprimarytbl" => {"filter_expressions" => {"version" => "1", "non_nullable" => "1"}}})
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA,
+                   [{"tables" => [noprimarytbl_def.merge("primary_key_columns" => [], "primary_key_type" => PrimaryKeyType::NO_AVAILABLE_KEY)]}]
+  end
+
   test_each "shows the default values for columns" do
     clear_schema
     create_defaultstbl
