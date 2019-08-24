@@ -98,6 +98,12 @@ void apply_filter(Table &table, const TableFilter &table_filter) {
 
 		column->filter_expression = filter_expression;
 	}
+
+	for (size_t index : table.primary_key_columns) {
+		if (!table.columns[index].filter_expression.empty()) {
+			throw filter_definition_error("Can't replace values in column '" + table.columns[index].name + "' table '" + table.name + "' because it is used in the primary key");
+		}
+	}
 }
 
 void apply_filters(const TableFilters &table_filters, Tables &tables) {

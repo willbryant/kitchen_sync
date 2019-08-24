@@ -86,6 +86,20 @@ class FilterFromTest < KitchenSync::EndpointTestCase
                    @filtered_rows[3]
   end
 
+  test_each "raises an error if told to replace column values in a primary key column" do
+    create_some_tables
+    execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"
+    @filtered_rows = [[2,   6,       "testx"],
+                      [4,   7,        "foox"],
+                      [5, nil,     "default"],
+                      [8,  18, "longer strx"]]
+
+    send_handshake_commands(filters: {"footbl" => {"filter_expressions" => {"col1" => "col1*2"}}})
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA, [{"tables" => [footbl_def, secondtbl_def], "errors" => ["Can't replace values in column 'col1' table 'footbl' because it is used in the primary key"]}]
+  end
+
   test_each "applies both column filters and row filters if given" do
     create_some_tables
     execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"
