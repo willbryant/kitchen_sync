@@ -1,4 +1,5 @@
 #include "defaults.h"
+#include "protocol_versions.h"
 #include "command.h"
 #include "versioned_stream.h"
 #include "schema.h"
@@ -102,9 +103,6 @@ struct SyncFromWorker {
 	}
 
 	void negotiate_protocol_version() {
-		const int EARLIEST_PROTOCOL_VERSION_SUPPORTED = 7;
-		const int LATEST_PROTOCOL_VERSION_SUPPORTED = 8;
-
 		// all conversations must start with a Commands::PROTOCOL command to establish the language to be used
 		int their_protocol_version;
 		read_expected_command(input, Commands::PROTOCOL, their_protocol_version);
