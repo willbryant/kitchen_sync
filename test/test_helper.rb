@@ -85,10 +85,6 @@ module KitchenSync
     CURRENT_PROTOCOL_VERSION_USED = 8
     LATEST_PROTOCOL_VERSION_SUPPORTED = 8
 
-    def protocol_version_supported
-      LATEST_PROTOCOL_VERSION_SUPPORTED
-    end
-
     undef_method :default_test if instance_methods.include? 'default_test' or
                                   instance_methods.include? :default_test
 
@@ -127,15 +123,15 @@ module KitchenSync
       spawner.send_results(*args)
     end
 
-    def send_handshake_commands(target_minimum_block_size: 1, hash_algorithm: HashAlgorithm::MD5)
-      send_protocol_command
+    def send_handshake_commands(protocol_version: LATEST_PROTOCOL_VERSION_SUPPORTED, target_minimum_block_size: 1, hash_algorithm: HashAlgorithm::MD5)
+      send_protocol_command(protocol_version)
       send_without_snapshot_command
       send_hash_algorithm_command(hash_algorithm)
     end
 
-    def send_protocol_command
-      send_command   Commands::PROTOCOL, [protocol_version_supported]
-      expect_command Commands::PROTOCOL, [protocol_version_supported]
+    def send_protocol_command(protocol_version)
+      send_command   Commands::PROTOCOL, [protocol_version]
+      expect_command Commands::PROTOCOL, [protocol_version]
     end
 
     def send_without_snapshot_command
@@ -148,10 +144,10 @@ module KitchenSync
       expect_command Commands::HASH_ALGORITHM, [hash_algorithm]
     end
 
-    def expect_handshake_commands
+    def expect_handshake_commands(protocol_version_expected: CURRENT_PROTOCOL_VERSION_USED, protocol_version_supported: LATEST_PROTOCOL_VERSION_SUPPORTED)
       # checking how protocol versions are handled is covered in protocol_versions_test; here we just need to get past that to get on to the commands we want to test
-      expect_command Commands::PROTOCOL, [CURRENT_PROTOCOL_VERSION_USED]
-      @protocol_version = [CURRENT_PROTOCOL_VERSION_USED, protocol_version_supported].min
+      expect_command Commands::PROTOCOL, [protocol_version_expected]
+      @protocol_version = [protocol_version_expected, protocol_version_supported].min
       send_command   Commands::PROTOCOL, [@protocol_version]
 
       # since we haven't asked for multiple workers, we'll always get sent the snapshot-less start command
