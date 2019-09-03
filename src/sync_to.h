@@ -69,6 +69,7 @@ struct SyncToWorker {
 	bool prepare() {
 		try {
 			negotiate_protocol_version();
+			negotiate_hash_algorithm();
 			share_snapshot();
 			retrieve_database_schema();
 			compare_schema();
@@ -127,6 +128,14 @@ struct SyncToWorker {
 
 		if (output_stream.protocol_version < EARLIEST_PROTOCOL_VERSION_SUPPORTED || output_stream.protocol_version > LATEST_PROTOCOL_VERSION_SUPPORTED) {
 			throw runtime_error("Sorry, the other end doesn't support a compatible protocol version");
+		}
+	}
+
+	void negotiate_hash_algorithm() {
+		send_command(output, Commands::HASH_ALGORITHM, static_cast<int>(hash_algorithm));
+		read_expected_command(input, Commands::HASH_ALGORITHM, hash_algorithm);
+		if (hash_algorithm != HashAlgorithm::md5 && hash_algorithm != HashAlgorithm::xxh64) {
+			throw runtime_error("Couldn't find a compatible hash algorithm");
 		}
 	}
 

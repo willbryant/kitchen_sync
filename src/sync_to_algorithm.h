@@ -29,17 +29,7 @@ struct SyncToAlgorithm {
 		target_maximum_block_size(worker.target_maximum_block_size) {
 	}
 
-	void negotiate_hash_algorithm() {
-		send_command(output, Commands::HASH_ALGORITHM, static_cast<int>(hash_algorithm));
-		read_expected_command(input, Commands::HASH_ALGORITHM, hash_algorithm);
-		if (hash_algorithm != HashAlgorithm::md5 && hash_algorithm != HashAlgorithm::xxh64) {
-			throw runtime_error("Couldn't find a compatible hash algorithm");
-		}
-	}
-
 	void sync_tables() {
-		negotiate_hash_algorithm();
-
 		while (true) {
 			// grab the next table to work on from the queue, blocking if there's nothing to do right now, quitting if the whole sync is finished
 			shared_ptr<TableJob> table_job = sync_queue.find_table_job();
