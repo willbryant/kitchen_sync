@@ -123,10 +123,11 @@ module KitchenSync
       spawner.send_results(*args)
     end
 
-    def send_handshake_commands(protocol_version: LATEST_PROTOCOL_VERSION_SUPPORTED, target_minimum_block_size: 1, hash_algorithm: HashAlgorithm::MD5)
+    def send_handshake_commands(protocol_version: LATEST_PROTOCOL_VERSION_SUPPORTED, target_minimum_block_size: 1, hash_algorithm: HashAlgorithm::MD5, filters: nil)
       send_protocol_command(protocol_version)
       send_hash_algorithm_command(hash_algorithm)
       send_without_snapshot_command
+      send_filters_command(filters) if filters
     end
 
     def send_protocol_command(protocol_version)
@@ -144,7 +145,12 @@ module KitchenSync
       expect_command Commands::HASH_ALGORITHM, [hash_algorithm]
     end
 
-    def expect_handshake_commands(protocol_version_expected: CURRENT_PROTOCOL_VERSION_USED, protocol_version_supported: LATEST_PROTOCOL_VERSION_SUPPORTED, hash_algorithm: HashAlgorithm::MD5)
+    def send_filters_command(filters)
+      send_command   Commands::FILTERS, [filters]
+      expect_command Commands::FILTERS
+    end
+
+    def expect_handshake_commands(protocol_version_expected: CURRENT_PROTOCOL_VERSION_USED, protocol_version_supported: LATEST_PROTOCOL_VERSION_SUPPORTED, hash_algorithm: HashAlgorithm::MD5, filters: nil, schema:)
       # checking how protocol versions are handled is covered in protocol_versions_test; here we just need to get past that to get on to the commands we want to test
       expect_command Commands::PROTOCOL, [protocol_version_expected]
       @protocol_version = [protocol_version_expected, protocol_version_supported].min
@@ -156,9 +162,14 @@ module KitchenSync
       # since we haven't asked for multiple workers, we'll always get sent the snapshot-less start command
       expect_command Commands::WITHOUT_SNAPSHOT
       send_command   Commands::WITHOUT_SNAPSHOT
-    end
 
-    def expect_sync_start_commands
+      expect_command Commands::SCHEMA
+      send_command   Commands::SCHEMA, [schema]
+
+      if filters
+        expect_command Commands::FILTERS, [filters]
+        send_command   Commands::FILTERS
+      end
     end
 
     def expect_quit_and_close

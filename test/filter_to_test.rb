@@ -25,14 +25,9 @@ class FilterToTest < KitchenSync::EndpointTestCase
     create_some_tables
     execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"
     with_filter_file("footbl: clear \n") do # nonsignificant whitespace at the end should be ignored
-      expect_handshake_commands
-
-      expect_command Commands::SCHEMA
-      send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
-
-      expect_command Commands::FILTERS,
-                     [{"footbl" => {"where_conditions" => "false"}}]
-      send_command   Commands::FILTERS
+      expect_handshake_commands(
+        schema: {"tables" => [footbl_def]},
+        filters: {"footbl" => {"where_conditions" => "false"}})
     end
   end
 
@@ -43,14 +38,9 @@ class FilterToTest < KitchenSync::EndpointTestCase
                       [5, nil,   nil]]
 
     with_filter_file("footbl:\n  only: col1 BETWEEN 4 AND 7") do
-      expect_handshake_commands
-
-      expect_command Commands::SCHEMA
-      send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
-
-      expect_command Commands::FILTERS,
-                     [{"footbl" => {"where_conditions" => "col1 BETWEEN 4 AND 7"}}]
-      send_command   Commands::FILTERS
+      expect_handshake_commands(
+        schema: {"tables" => [footbl_def]},
+        filters: {"footbl" => {"where_conditions" => "col1 BETWEEN 4 AND 7"}})
     end
   end
 
@@ -63,14 +53,9 @@ class FilterToTest < KitchenSync::EndpointTestCase
                       [8,  18, "longer strx"]]
 
     with_filter_file("footbl:\n  replace:\n    another_col: col1 + CHAR_LENGTH(col3)\n    col3: COALESCE(col3 || 'x', 'default')") do
-      expect_handshake_commands
-
-      expect_command Commands::SCHEMA
-      send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
-
-      expect_command Commands::FILTERS,
-                     [{"footbl" => {"filter_expressions" => {"another_col" => "col1 + CHAR_LENGTH(col3)", "col3" => "COALESCE(col3 || 'x', 'default')"}}}]
-      send_command   Commands::FILTERS
+      expect_handshake_commands(
+        schema: {"tables" => [footbl_def]},
+        filters: {"footbl" => {"filter_expressions" => {"another_col" => "col1 + CHAR_LENGTH(col3)", "col3" => "COALESCE(col3 || 'x', 'default')"}}})
     end
   end
 
@@ -81,14 +66,9 @@ class FilterToTest < KitchenSync::EndpointTestCase
                       [5, nil, "default"]]
 
     with_filter_file("footbl:\n  replace:\n    another_col: col1 + CHAR_LENGTH(col3)\n    col3: COALESCE(col3, 'default')\n  only: col1 BETWEEN 4 AND 7") do
-      expect_handshake_commands
-
-      expect_command Commands::SCHEMA
-      send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
-
-      expect_command Commands::FILTERS,
-                     [{"footbl" => {"where_conditions" => "col1 BETWEEN 4 AND 7", "filter_expressions" => {"another_col" => "col1 + CHAR_LENGTH(col3)", "col3" => "COALESCE(col3, 'default')"}}}]
-      send_command   Commands::FILTERS
+      expect_handshake_commands(
+        schema: {"tables" => [footbl_def]},
+        filters: {"footbl" => {"where_conditions" => "col1 BETWEEN 4 AND 7", "filter_expressions" => {"another_col" => "col1 + CHAR_LENGTH(col3)", "col3" => "COALESCE(col3, 'default')"}}})
     end
   end
 end

@@ -57,10 +57,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   test_each "accepts an empty list of tables on an empty database" do
     clear_schema
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => []]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => []})
     expect_quit_and_close
   end
 
@@ -70,10 +67,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_middletbl
     create_secondtbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [footbl_def, middletbl_def, secondtbl_def]})
     expect_command Commands::RANGE, ["footbl"]
     send_command   Commands::RANGE, ["footbl", [], []]
     expect_command Commands::RANGE, ["middletbl"]
@@ -89,9 +83,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_middletbl
     create_secondtbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
+    expect_handshake_commands(schema: {"tables" => [footbl_def, middletbl_def, secondtbl_def]})
     read_command
     assert_equal %w(footbl middletbl secondtbl), connection.tables
   end
@@ -101,9 +93,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_footbl
     create_secondtbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
+    expect_handshake_commands(schema: {"tables" => [footbl_def, middletbl_def, secondtbl_def]})
     read_command
     assert_equal %w(footbl middletbl secondtbl), connection.tables
   end
@@ -113,9 +103,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_footbl
     create_middletbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
+    expect_handshake_commands(schema: {"tables" => [footbl_def, middletbl_def, secondtbl_def]})
     read_command
     assert_equal %w(footbl middletbl secondtbl), connection.tables
   end
@@ -123,9 +111,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
   test_each "adds all missing tables on an empty database" do
     clear_schema
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
+    expect_handshake_commands(schema: {"tables" => [footbl_def, middletbl_def, secondtbl_def]})
     read_command
     assert_equal %w(footbl middletbl secondtbl), connection.tables
   end
@@ -136,9 +122,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_middletbl
     create_secondtbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [middletbl_def, secondtbl_def]]
+    expect_handshake_commands(schema: {"tables" => [middletbl_def, secondtbl_def]})
     read_command
     assert_equal %w(middletbl secondtbl), connection.tables
   end
@@ -149,9 +133,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_middletbl
     create_secondtbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [footbl_def, secondtbl_def]]
+    expect_handshake_commands(schema: {"tables" => [footbl_def, secondtbl_def]})
     read_command
     assert_equal %w(footbl secondtbl), connection.tables
   end
@@ -162,9 +144,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_middletbl
     create_secondtbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def]]
+    expect_handshake_commands(schema: {"tables" => [footbl_def, middletbl_def]})
     read_command
     assert_equal %w(footbl middletbl), connection.tables
   end
@@ -173,9 +153,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     clear_schema
     create_footbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => []]
+    expect_handshake_commands(schema: {"tables" => []})
     read_command
     assert_equal %w(), connection.tables
   end
@@ -185,9 +163,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     clear_schema
     connection.create_enum_column_type # this isn't done by KS itself at the moment
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [misctbl_def]]
+    expect_handshake_commands(schema: {"tables" => [misctbl_def]})
     read_command
     assert_equal %w(misctbl), connection.tables
   end
@@ -199,10 +175,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_middletbl
     create_secondtbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [footbl_def, middletbl_def, secondtbl_def]})
     expect_command Commands::RANGE, ["middletbl"]
     send_command   Commands::RANGE, ["middletbl", [], []]
     expect_command Commands::RANGE, ["secondtbl"]
@@ -216,10 +189,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_footbl
     create_secondtbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [footbl_def, middletbl_def, secondtbl_def]})
     expect_command Commands::RANGE, ["footbl"]
     send_command   Commands::RANGE, ["footbl", [], []]
     expect_command Commands::RANGE, ["secondtbl"]
@@ -233,10 +203,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_footbl
     create_middletbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def, secondtbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [footbl_def, middletbl_def, secondtbl_def]})
     expect_command Commands::RANGE, ["footbl"]
     send_command   Commands::RANGE, ["footbl", [], []]
     expect_command Commands::RANGE, ["middletbl"]
@@ -251,10 +218,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_middletbl
     create_secondtbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [middletbl_def, secondtbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [middletbl_def, secondtbl_def]})
     expect_command Commands::RANGE, ["middletbl"]
     send_command   Commands::RANGE, ["middletbl", [], []]
     expect_command Commands::RANGE, ["secondtbl"]
@@ -269,10 +233,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_middletbl
     create_secondtbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [footbl_def, secondtbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [footbl_def, secondtbl_def]})
     expect_command Commands::RANGE, ["footbl"]
     send_command   Commands::RANGE, ["footbl", [], []]
     expect_command Commands::RANGE, ["secondtbl"]
@@ -287,10 +248,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_middletbl
     create_secondtbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [footbl_def, middletbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [footbl_def, middletbl_def]})
     expect_command Commands::RANGE, ["footbl"]
     send_command   Commands::RANGE, ["footbl", [], []]
     expect_command Commands::RANGE, ["middletbl"]
@@ -304,10 +262,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_noprimarytbl(create_suitable_keys: true)
     create_secondtbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [noprimarytbl_def(create_suitable_keys: true), secondtbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [noprimarytbl_def(create_suitable_keys: true), secondtbl_def]})
     expect_command Commands::RANGE, ["noprimarytbl"]
     send_command   Commands::RANGE, ["noprimarytbl", [], []]
     expect_command Commands::RANGE, ["secondtbl"]
@@ -320,11 +275,8 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_noprimarytbl(create_suitable_keys: false)
     create_secondtbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-
     expect_stderr("Couldn't find a primary or non-nullable unique key on table noprimarytbl") do
-      send_command Commands::SCHEMA, ["tables" => [noprimarytbl_def(create_suitable_keys: false), secondtbl_def]]
+      expect_handshake_commands(schema: {"tables" => [noprimarytbl_def(create_suitable_keys: false), secondtbl_def]})
       read_command rescue nil
     end
   end
@@ -335,10 +287,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_noprimarytbl(create_suitable_keys: false)
     create_secondtbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [noprimarytbl_def(create_suitable_keys: false), secondtbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [noprimarytbl_def(create_suitable_keys: false), secondtbl_def]})
     expect_command Commands::RANGE, ["secondtbl"]
     send_command   Commands::RANGE, ["secondtbl", [], []]
     read_command
@@ -350,10 +299,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_unsupportedtbl
     create_secondtbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [secondtbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [secondtbl_def]})
     expect_command Commands::RANGE, ["secondtbl"]
     send_command   Commands::RANGE, ["secondtbl", [], []]
     read_command
@@ -364,10 +310,8 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_unsupportedtbl
     create_secondtbl
 
-    expect_handshake_commands
     expect_stderr("Don't know how to interpret type of unsupportedtbl.unsupported (#{connection.unsupported_column_type}).  Please check https://github.com/willbryant/kitchen_sync/blob/master/SCHEMA.md.") do
-      expect_command Commands::SCHEMA
-      send_command   Commands::SCHEMA, ["tables" => [unsupportedtbl_def, secondtbl_def]]
+      expect_handshake_commands(schema: {"tables" => [unsupportedtbl_def, secondtbl_def]})
       read_command rescue nil
     end
   end
@@ -376,10 +320,8 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     clear_schema
     create_secondtbl
 
-    expect_handshake_commands
     expect_stderr("Don't know how to interpret type of unsupportedtbl.unsupported (#{connection.unsupported_column_type}).  Please check https://github.com/willbryant/kitchen_sync/blob/master/SCHEMA.md.") do
-      expect_command Commands::SCHEMA
-      send_command   Commands::SCHEMA, ["tables" => [unsupportedtbl_def, secondtbl_def]]
+      expect_handshake_commands(schema: {"tables" => [unsupportedtbl_def, secondtbl_def]})
       read_command rescue nil
     end
   end
@@ -389,10 +331,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_unsupportedtbl
     create_secondtbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [secondtbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [secondtbl_def]})
     expect_command Commands::RANGE, ["secondtbl"]
     send_command   Commands::RANGE, ["secondtbl", [], []]
     read_command
@@ -405,9 +344,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     create_secondtbl
     execute("ALTER TABLE secondtbl DROP COLUMN tri")
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [secondtbl_def]]
+    expect_handshake_commands(schema: {"tables" => [secondtbl_def]})
     read_command
     assert_equal secondtbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("secondtbl")
     assert_match /^bigint/, connection.table_column_types("secondtbl")["tri"]
@@ -421,9 +358,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     insert_footbl_rows
     execute("ALTER TABLE footbl DROP COLUMN another_col")
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
+    expect_handshake_commands(schema: {"tables" => [footbl_def]})
     read_command
     assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_match /^smallint/, connection.table_column_types("footbl")["another_col"]
@@ -444,9 +379,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     insert_footbl_rows
     execute("ALTER TABLE footbl DROP COLUMN col3")
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
+    expect_handshake_commands(schema: {"tables" => [footbl_def]})
     read_command
     assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_match /char.*10/, connection.table_column_types("footbl")["col3"]
@@ -470,9 +403,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     table_def["columns"][1]["nullable"] = false
     table_def["columns"][2]["nullable"] = false
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [table_def]]
+    expect_handshake_commands(schema: {"tables" => [table_def]})
     read_command
     assert_equal table_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_match /^smallint/, connection.table_column_types("footbl")["another_col"]
@@ -499,9 +430,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     table_def["columns"][2]["nullable"] = false
     table_def["keys"] << {"name" => "uniqueidx", "columns" => [2], "unique" => true}
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [table_def]]
+    expect_handshake_commands(schema: {"tables" => [table_def]})
     read_command
     assert_equal table_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_match /char.*10/, connection.table_column_types("footbl")["col3"]
@@ -524,9 +453,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 SQL
     insert_footbl_rows
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
+    expect_handshake_commands(schema: {"tables" => [footbl_def]})
     read_command
     assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_footbl_rows_present
@@ -546,9 +473,7 @@ SQL
 SQL
     insert_footbl_rows
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
+    expect_handshake_commands(schema: {"tables" => [footbl_def]})
     read_command
     assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_footbl_rows_present
@@ -568,9 +493,7 @@ SQL
 SQL
     insert_footbl_rows
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
+    expect_handshake_commands(schema: {"tables" => [footbl_def]})
     read_command
     assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_footbl_rows_present
@@ -597,9 +520,7 @@ SQL
 SQL
     insert_secondtbl_rows
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [secondtbl_def]]
+    expect_handshake_commands(schema: {"tables" => [secondtbl_def]})
     read_command
     assert_equal secondtbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("secondtbl")
     assert_secondtbl_rows_present
@@ -617,9 +538,7 @@ SQL
         PRIMARY KEY(col1, removeme))
 SQL
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
+    expect_handshake_commands(schema: {"tables" => [footbl_def]})
     read_command
     assert_equal footbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_same_keys(footbl_def)
@@ -630,10 +549,8 @@ SQL
     create_footbl
     # postgresql doesn't support BEFORE/AFTER so we do this test by changing the expected schema instead
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
     columns = footbl_def["columns"][1..-1] + footbl_def["columns"][0..0]
-    send_command Commands::SCHEMA, ["tables" => [footbl_def.merge("columns" => columns)]]
+    expect_handshake_commands(schema: {"tables" => [footbl_def.merge("columns" => columns)]})
     read_command
     assert_equal columns.collect {|column| column["name"]}, connection.table_column_names("footbl")
   end
@@ -654,9 +571,7 @@ SQL
 SQL
     insert_secondtbl_rows
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [secondtbl_def]]
+    expect_handshake_commands(schema: {"tables" => [secondtbl_def]})
     read_command
     assert_equal secondtbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("secondtbl")
     assert_equal [[9, 968116383, 'aa', nil],
@@ -682,9 +597,7 @@ SQL
     insert_secondtbl_rows
     added_def = secondtbl_def.merge("keys" => [secondtbl_def["keys"].first.merge("columns" => [3, 0])]) # note these indexes are for columns in the secondtbl_def order, not the above order
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [added_def]]
+    expect_handshake_commands(schema: {"tables" => [added_def]})
     read_command
     assert_equal added_def["columns"].collect {|column| column["name"]}, connection.table_column_names("secondtbl")
     assert_equal [[9, 968116383, 'aa', nil],
@@ -700,9 +613,7 @@ SQL
     execute({"mysql" => "ALTER TABLE footbl MODIFY another_col VARCHAR(11)",
         "postgresql" => "ALTER TABLE footbl ALTER COLUMN another_col TYPE VARCHAR(11)"}[@database_server])
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
+    expect_handshake_commands(schema: {"tables" => [footbl_def]})
     read_command
     assert_match /^smallint/, connection.table_column_types("footbl")["another_col"]
   end
@@ -715,9 +626,7 @@ SQL
         "postgresql" => "ALTER TABLE footbl ALTER COLUMN another_col SET NOT NULL"}[@database_server])
     execute "INSERT INTO footbl (col1, another_col, col3) VALUES (2, 10, 'test'), (4, 404, 'foo'), (5, 404, NULL), (8, -1, 'longer str'), (1001, 0, 'last')"
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
+    expect_handshake_commands(schema: {"tables" => [footbl_def]})
     read_command
     assert_equal({"col1" => false, "another_col" => true, "col3" => true}, connection.table_column_nullability("footbl"))
     assert_equal [[2,     10,       "test"],
@@ -735,9 +644,7 @@ SQL
     table_def["columns"][1]["nullable"] = false
     execute "INSERT INTO footbl (col1, another_col, col3) VALUES (2, 10, 'test'), (4, 404, 'foo'), (5, 404, NULL), (8, -1, 'longer str'), (1001, 0, 'last')"
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [table_def]]
+    expect_handshake_commands(schema: {"tables" => [table_def]})
     read_command
     assert_equal({"col1" => false, "another_col" => false, "col3" => true}, connection.table_column_nullability("footbl"))
     assert_equal [[2,     10,       "test"],
@@ -755,9 +662,7 @@ SQL
     table_def["columns"][1]["nullable"] = false
     execute "INSERT INTO footbl (col1, another_col, col3) VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str'), (1001, 0, 'last')"
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [table_def]]
+    expect_handshake_commands(schema: {"tables" => [table_def]})
     read_command
     assert_equal({"col1" => false, "another_col" => false, "col3" => true}, connection.table_column_nullability("footbl"))
     assert_equal [[2,     10,       "test"],
@@ -775,9 +680,7 @@ SQL
     table_def["columns"].each {|column| column["nullable"] = false}
     execute "INSERT INTO misctbl (pri) VALUES (42)"
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [table_def]]
+    expect_handshake_commands(schema: {"tables" => [table_def]})
     read_command
     assert_equal([false], connection.table_column_nullability("misctbl").values.uniq)
     rows = query("SELECT * FROM misctbl")
@@ -805,9 +708,7 @@ SQL
     table_def["columns"][1]["nullable"] = false
     table_def["keys"] << {"name" => "uniqueidx", "columns" => [1], "unique" => true}
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [table_def]]
+    expect_handshake_commands(schema: {"tables" => [table_def]})
     read_command
     assert_equal table_def["columns"].collect {|column| column["name"]}, connection.table_column_names("footbl")
     assert_equal false, connection.table_column_nullability("footbl")["another_col"]
@@ -821,9 +722,7 @@ SQL
     insert_footbl_rows
     execute("ALTER TABLE footbl ALTER another_col SET DEFAULT 42")
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
+    expect_handshake_commands(schema: {"tables" => [footbl_def]})
     read_command
     assert_equal({"col1" => nil, "another_col" => nil, "col3" => nil}, connection.table_column_defaults("footbl"))
     assert_footbl_rows_present
@@ -835,9 +734,7 @@ SQL
     insert_footbl_rows
     execute("ALTER TABLE footbl ALTER col1 SET DEFAULT 42")
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [footbl_def]]
+    expect_handshake_commands(schema: {"tables" => [footbl_def]})
     read_command
     assert_equal({"col1" => nil, "another_col" => nil, "col3" => nil}, connection.table_column_defaults("footbl"))
     assert_footbl_rows_present
@@ -850,9 +747,7 @@ SQL
     table_def = footbl_def
     table_def["columns"][1]["default_value"] = "42"
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [table_def]]
+    expect_handshake_commands(schema: {"tables" => [table_def]})
     read_command
     assert_equal({"col1" => nil, "another_col" => "42", "col3" => nil}, connection.table_column_defaults("footbl"))
     assert_footbl_rows_present
@@ -866,9 +761,7 @@ SQL
     table_def = footbl_def
     table_def["columns"][1]["default_value"] = "23"
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [table_def]]
+    expect_handshake_commands(schema: {"tables" => [table_def]})
     read_command
     assert_equal({"col1" => nil, "another_col" => "23", "col3" => nil}, connection.table_column_defaults("footbl"))
     assert_footbl_rows_present
@@ -883,9 +776,7 @@ SQL
     table_def["columns"][1]["default_value"] = "23"
     table_def["columns"][1]["nullable"] = false
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [table_def]]
+    expect_handshake_commands(schema: {"tables" => [table_def]})
     read_command
     assert_equal({"col1" => nil, "another_col" => "23", "col3" => nil}, connection.table_column_defaults("footbl"))
     assert_equal [[2,     10,       "test"],
@@ -903,9 +794,7 @@ SQL
     table_def = footbl_def
     table_def["columns"][2]["default_value"] = "foo"
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [table_def]]
+    expect_handshake_commands(schema: {"tables" => [table_def]})
     read_command
     assert_equal({"col1" => nil, "another_col" => nil, "col3" => "foo"}, connection.table_column_defaults("footbl"))
     assert_footbl_rows_present
@@ -915,9 +804,7 @@ SQL
   test_each "creates missing tables with identity/serial/auto_increment primary key columns" do
     clear_schema
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [autotbl_def]]
+    expect_handshake_commands(schema: {"tables" => [autotbl_def]})
     read_command
     execute "INSERT INTO autotbl (payload) VALUES (10), (11)"
     assert_equal [[1, 10], [2, 11]], query("SELECT inc, payload FROM autotbl")
@@ -929,9 +816,7 @@ SQL
     create_secondtbl
     execute "INSERT INTO secondtbl VALUES (2, 2349174, 'xy', 1)"
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [secondtbl_def.merge("primary_key_columns" => [1, 2])]]
+    expect_handshake_commands(schema: {"tables" => [secondtbl_def.merge("primary_key_columns" => [1, 2])]})
     read_command
     assert_equal [1, 2].collect {|index| secondtbl_def["columns"][index]["name"]}, connection.table_key_columns("secondtbl")[connection.table_primary_key_name("secondtbl")]
     assert_equal [], query("SELECT * FROM secondtbl")
@@ -942,9 +827,7 @@ SQL
     create_secondtbl
     execute "INSERT INTO secondtbl VALUES (2, 2349174, 'xy', 1)"
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [secondtbl_def.merge("primary_key_columns" => [2, 1, 3])]]
+    expect_handshake_commands(schema: {"tables" => [secondtbl_def.merge("primary_key_columns" => [2, 1, 3])]})
     read_command
     assert_equal [2, 1, 3].collect {|index| secondtbl_def["columns"][index]["name"]}, connection.table_key_columns("secondtbl")[connection.table_primary_key_name("secondtbl")]
     assert_equal [], query("SELECT * FROM secondtbl")
@@ -955,9 +838,7 @@ SQL
     create_secondtbl
     execute "INSERT INTO secondtbl VALUES (2, 2349174, 'xy', 1)"
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [secondtbl_def.merge("primary_key_columns" => [3, 2, 1])]]
+    expect_handshake_commands(schema: {"tables" => [secondtbl_def.merge("primary_key_columns" => [3, 2, 1])]})
     read_command
     assert_equal [3, 2, 1].collect {|index| secondtbl_def["columns"][index]["name"]}, connection.table_key_columns("secondtbl")[connection.table_primary_key_name("secondtbl")]
     assert_equal [], query("SELECT * FROM secondtbl")
@@ -970,9 +851,7 @@ SQL
     insert_secondtbl_rows
     execute "CREATE INDEX extrakey ON secondtbl (sec, tri)"
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [secondtbl_def]]
+    expect_handshake_commands(schema: {"tables" => [secondtbl_def]})
     read_command
     assert_equal secondtbl_def["keys"].collect {|key| key["name"]}, connection.table_keys("secondtbl")
     assert_secondtbl_rows_present
@@ -983,9 +862,7 @@ SQL
     create_secondtbl
     insert_secondtbl_rows
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [secondtbl_def.merge("keys" => secondtbl_def["keys"] + [secondtbl_def["keys"].first.merge("name" => "missingkey")])]]
+    expect_handshake_commands(schema: {"tables" => [secondtbl_def.merge("keys" => secondtbl_def["keys"] + [secondtbl_def["keys"].first.merge("name" => "missingkey")])]})
     read_command
     assert_equal %w(missingkey) + secondtbl_def["keys"].collect {|key| key["name"]}, connection.table_keys("secondtbl").sort
     assert !connection.table_keys_unique("secondtbl")["missingkey"], "missingkey index should not be unique"
@@ -997,11 +874,9 @@ SQL
     create_secondtbl
     insert_secondtbl_rows
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
     key = secondtbl_def["keys"].first
     assert !connection.table_keys_unique("secondtbl")[key["name"]], "missingkey index should not be unique before test"
-    send_command Commands::SCHEMA, ["tables" => [secondtbl_def.merge("keys" => [key.merge("unique" => true)])]]
+    expect_handshake_commands(schema: {"tables" => [secondtbl_def.merge("keys" => [key.merge("unique" => true)])]})
     read_command
     assert connection.table_keys_unique("secondtbl")[key["name"]], "missingkey index should be unique"
     assert_secondtbl_rows_present
@@ -1012,11 +887,9 @@ SQL
     create_secondtbl
     insert_secondtbl_rows
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
     key = secondtbl_def["keys"].first
     assert_not_equal [secondtbl_def["columns"][3]["name"], secondtbl_def["columns"][1]["name"]], connection.table_key_columns("secondtbl")[key["name"]]
-    send_command Commands::SCHEMA, ["tables" => [secondtbl_def.merge("keys" => [key.merge("columns" => [3, 1])])]]
+    expect_handshake_commands(schema: {"tables" => [secondtbl_def.merge("keys" => [key.merge("columns" => [3, 1])])]})
     read_command
     assert_equal [secondtbl_def["columns"][3]["name"], secondtbl_def["columns"][1]["name"]], connection.table_key_columns("secondtbl")[key["name"]]
     assert_secondtbl_rows_present
@@ -1027,11 +900,9 @@ SQL
     create_noprimarytbl
     insert_noprimarytbl_rows
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
     key = noprimarytbl_def["keys"].last
     assert_not_equal [noprimarytbl_def["columns"][3]["name"], noprimarytbl_def["columns"][1]["name"]], connection.table_key_columns("noprimarytbl")[key["name"]]
-    send_command Commands::SCHEMA, ["tables" => [noprimarytbl_def.merge("keys" => noprimarytbl_def["keys"][0..-2] + [key.merge("columns" => [3, 1])])]]
+    expect_handshake_commands(schema: {"tables" => [noprimarytbl_def.merge("keys" => noprimarytbl_def["keys"][0..-2] + [key.merge("columns" => [3, 1])])]})
     read_command
     assert_equal [noprimarytbl_def["columns"][3]["name"], noprimarytbl_def["columns"][1]["name"]], connection.table_key_columns("noprimarytbl")[key["name"]]
     assert_noprimarytbl_rows_present
@@ -1039,32 +910,26 @@ SQL
 
   test_each "creates tables with explicit primary keys" do
     clear_schema
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
+    expect_handshake_commands(schema: {"tables" => [footbl_def]})
     read_command
     assert_same_keys(footbl_def)
   end
 
   test_each "creates tables without explicit primary keys" do
     clear_schema
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [noprimarytbl_def(create_suitable_keys: true)]]
+    expect_handshake_commands(schema: {"tables" => [noprimarytbl_def(create_suitable_keys: true)]})
     read_command
     assert_same_keys(noprimarytbl_def(create_suitable_keys: true))
   end
 
   test_each "skips schema definitions it doesn't recognise" do
     clear_schema
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
 
     values_of_many_types = [-(2**33), -(2**17), -(2**9), -(2**4), *-16..16, 2**4, 2**9, 2**17, 2**33, 1.0, nil, true, false, "a", "a"*17, "a"*(2**17), ["foo", "bar"], {"foo" => "bar"}]
     table = {"before_table_stuff" => values_of_many_types}.merge(secondtbl_def).merge("after_table_stuff" => values_of_many_types)
     table["columns"][0] = {"before_column_stuff" => values_of_many_types}.merge(table["columns"][0]).merge("after_column_stuff" => values_of_many_types)
     table["keys"][0] = {"before_key_stuff" => values_of_many_types}.merge(table["keys"][0]).merge("after_key_stuff" => values_of_many_types)
-    send_command Commands::SCHEMA, ["before_tables" => values_of_many_types, "tables" => [table], "after_tables" => values_of_many_types]
+    expect_handshake_commands(schema: {"before_tables" => values_of_many_types, "tables" => [table], "after_tables" => values_of_many_types})
     read_command
 
     assert_equal secondtbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("secondtbl")
@@ -1079,9 +944,7 @@ SQL
       clear_schema
 
       tbldef = adapterspecifictbl_def(from_database)
-      expect_handshake_commands
-      expect_command Commands::SCHEMA
-      send_command Commands::SCHEMA, [{"tables" => [tbldef]}]
+      expect_handshake_commands(schema: {"tables" => [tbldef]})
       read_command
 
       assert_equal tbldef["columns"].collect {|column| column["name"]}, connection.table_column_names(tbldef["name"])

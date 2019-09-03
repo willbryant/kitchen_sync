@@ -17,10 +17,7 @@ class ColumnTypesToTest < KitchenSync::EndpointTestCase
              [ 42, false, Date.parse('1900-01-01'), TimeOnlyWrapper.new('00:00:00'), Time.parse('1970-02-03 23:59:59'), HashAsStringWrapper.new(1.25), HashAsStringWrapper.new(0.5), BigDecimal.new('654321.1234'), 'vartext', 'fixedtext', 'c26ae0c4-b071-4058-9044-92042d6740fc', 'sometext', "binary\001test", '{"somearray": [1, 2, 3]}',  "with'quote"]]
     @keys = @rows.collect {|row| [row[0]]}
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [misctbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [misctbl_def]})
     expect_command Commands::RANGE, ["misctbl"]
     send_command   Commands::RANGE, ["misctbl", @keys[0], @keys[-1]]
 

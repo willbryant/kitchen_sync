@@ -13,11 +13,7 @@ class FilterFromTest < KitchenSync::EndpointTestCase
     create_some_tables
     execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"
 
-    send_handshake_commands
-
-    send_command   Commands::FILTERS,
-                   [{"footbl" => {"where_conditions" => "false"}}]
-    expect_command Commands::FILTERS
+    send_handshake_commands(filters: {"footbl" => {"where_conditions" => "false"}})
 
     send_command   Commands::RANGE, ["footbl"]
     expect_command Commands::RANGE,
@@ -30,11 +26,7 @@ class FilterFromTest < KitchenSync::EndpointTestCase
     @filtered_rows = [[4, nil, "foo"],
                       [5, nil,   nil]]
 
-    send_handshake_commands
-
-    send_command   Commands::FILTERS,
-                   [{"footbl" => {"where_conditions" => "col1 BETWEEN 4 AND 7"}}]
-    expect_command Commands::FILTERS
+    send_handshake_commands(filters: {"footbl" => {"where_conditions" => "col1 BETWEEN 4 AND 7"}})
 
     send_command   Commands::RANGE, ["footbl"]
     expect_command Commands::RANGE,
@@ -70,11 +62,7 @@ class FilterFromTest < KitchenSync::EndpointTestCase
                       [5, nil,     "default"],
                       [8,  18, "longer strx"]]
 
-    send_handshake_commands
-
-    send_command   Commands::FILTERS,
-                   [{"footbl" => {"filter_expressions" => {"another_col" => "col1 + CHAR_LENGTH(col3)", "col3" => "COALESCE(col3 || 'x', 'default')"}}}]
-    expect_command Commands::FILTERS
+    send_handshake_commands(filters: {"footbl" => {"filter_expressions" => {"another_col" => "col1 + CHAR_LENGTH(col3)", "col3" => "COALESCE(col3 || 'x', 'default')"}}})
 
     send_command   Commands::HASH, ["footbl", [], [2], 1000]
     expect_command Commands::HASH,
@@ -95,11 +83,7 @@ class FilterFromTest < KitchenSync::EndpointTestCase
     @filtered_rows = [[4,   7,     "foo"],
                       [5, nil, "default"]]
 
-    send_handshake_commands
-
-    send_command   Commands::FILTERS,
-                   [{"footbl" => {"where_conditions" => "col1 BETWEEN 4 AND 7", "filter_expressions" => {"another_col" => "col1 + CHAR_LENGTH(col3)", "col3" => "COALESCE(col3, 'default')"}}}]
-    expect_command Commands::FILTERS
+    send_handshake_commands(filters: {"footbl" => {"where_conditions" => "col1 BETWEEN 4 AND 7", "filter_expressions" => {"another_col" => "col1 + CHAR_LENGTH(col3)", "col3" => "COALESCE(col3, 'default')"}}})
 
     send_command   Commands::HASH, ["footbl", [], [4], 1000]
     expect_command Commands::HASH,

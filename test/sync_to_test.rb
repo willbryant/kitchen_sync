@@ -27,10 +27,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     clear_schema
     create_footbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [footbl_def]})
     expect_command Commands::RANGE, ["footbl"]
     send_command   Commands::RANGE, ["footbl", [], []]
     expect_quit_and_close
@@ -43,10 +40,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     clear_schema
     setup_with_footbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [footbl_def]})
     expect_command Commands::RANGE, ["footbl"]
     send_command   Commands::RANGE, ["footbl", [], []]
     expect_quit_and_close
@@ -63,10 +57,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
              [1000,   0,          nil],
              [1001,   0,       "last"]]
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [footbl_def]})
     expect_command Commands::RANGE, ["footbl"]
     send_command   Commands::RANGE, ["footbl", [2], [1001]]
     expect_command Commands::ROWS,
@@ -83,10 +74,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
   test_each "accepts matching hashes and asked for the hash of the next row(s), doubling the number of rows each time and starting from where the previous range ended" do
     setup_with_footbl
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [footbl_def]})
     expect_command Commands::RANGE, ["footbl"]
     send_command   Commands::RANGE, ["footbl", @keys[0], @keys[8]]
 
@@ -124,10 +112,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     setup_with_footbl
     execute "UPDATE footbl SET col3 = 'different' WHERE col1 = 2 OR col1 = 4"
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [footbl_def]})
     expect_command Commands::RANGE, ["footbl"]
     send_command   Commands::RANGE, ["footbl", @keys[0], @keys[-1]]
     expect_command Commands::HASH, ["footbl", [], @keys[6], 1]
@@ -166,10 +151,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     setup_with_footbl
     execute "UPDATE footbl SET col3 = 'different' WHERE col1 = 301"
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [footbl_def]})
     expect_command Commands::RANGE, ["footbl"]
     send_command   Commands::RANGE, ["footbl", @keys[0], @keys[8]]
 
@@ -217,10 +199,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     @rows << [@rows[-1][0] + 1, nil, "irrelevant"*100] while @rows.size < 100000 # add enough data to make the 'to' end apply the replace statement when it receives the 'replacer' row
     @keys = @rows.collect {|row| [row[0]]}
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [uniquetbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [uniquetbl_def]})
     expect_command Commands::RANGE, ["uniquetbl"]
     send_command   Commands::RANGE, ["uniquetbl", @keys[0], @keys[-1]]
     expect_command Commands::ROWS, ["uniquetbl", [2], @keys[-1]]
@@ -241,10 +220,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
   test_each "handles data after nil elements" do
     clear_schema
     create_footbl
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [footbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [footbl_def]})
     expect_command Commands::RANGE, ["footbl"]
     send_command   Commands::RANGE, ["footbl", [2], [3]]
     expect_command Commands::ROWS, ["footbl", [], [3]]
@@ -268,10 +244,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
              [1, "a"*16*1024]]
     @keys = @rows.collect {|row| [row[0]]}
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [texttbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [texttbl_def]})
     expect_command Commands::RANGE, ["texttbl"]
     send_command   Commands::RANGE, ["texttbl", [0], [1]]
     expect_command Commands::HASH, ["texttbl", [], @keys[0], 1]
@@ -291,10 +264,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     @rows = [[1, "a"*16*1024]]
     @keys = @rows.collect {|row| [row[0]]}
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [texttbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [texttbl_def]})
     expect_command Commands::RANGE, ["texttbl"]
     send_command   Commands::RANGE, ["texttbl", @keys[0], @keys[-1]]
     expect_command Commands::ROWS, ["texttbl", [], @keys[-1]]
@@ -316,10 +286,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
              [1, "a"*80*1024]]
     @keys = @rows.collect {|row| [row[0]]}
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [texttbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [texttbl_def]})
     expect_command Commands::RANGE, ["texttbl"]
     send_command   Commands::RANGE, ["texttbl", [0], [1]]
     expect_command Commands::HASH, ["texttbl", [], @keys[0], 1]
@@ -339,10 +306,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     @rows = [[1, "a"*80*1024]]
     @keys = @rows.collect {|row| [row[0]]}
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [texttbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [texttbl_def]})
     expect_command Commands::RANGE, ["texttbl"]
     send_command   Commands::RANGE, ["texttbl", @keys[0], @keys[-1]]
     expect_command Commands::ROWS, ["texttbl", [], @keys[-1]]
@@ -366,10 +330,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     @rows = [row]
     @keys = @rows.collect {|row| [row[0]]}
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [misctbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [misctbl_def]})
     expect_command Commands::RANGE, ["misctbl"]
     send_command   Commands::RANGE, ["misctbl", @keys[0], @keys[-1]]
     expect_command Commands::ROWS, ["misctbl", [], @keys[-1]]
@@ -390,10 +351,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     @rows[0][-1] = @rows[-1][-1] # reuse this value from the last row
     @rows[-1][-1] = "new value"  # and change it there to something else
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [footbl_def.merge("keys" => [{"name" => "unique_key", "unique" => true, "columns" => [2]}])]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [footbl_def.merge("keys" => [{"name" => "unique_key", "unique" => true, "columns" => [2]}])]})
     expect_command Commands::RANGE, ["footbl"]
     send_command   Commands::RANGE, ["footbl", @keys[0], @keys[-1]]
     expect_command Commands::HASH, ["footbl", [], @keys[6], 1]
@@ -435,10 +393,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     @rows = (0..99).collect {|n| [n + 1, (97 + n % 26).chr*512*1024]}
     @keys = @rows.collect {|row| [row[0]]}
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [texttbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [texttbl_def]})
     expect_command Commands::RANGE, ["texttbl"]
     send_command   Commands::RANGE, ["texttbl", @keys[0], @keys[-1]]
     expect_command Commands::ROWS, ["texttbl", [], @keys[-1]]
@@ -461,10 +416,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
              [  2,   2349174, "xy",   1]]
     @keys = @rows.collect {|row| [row[2], row[1]]}
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [secondtbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [secondtbl_def]})
     expect_command Commands::RANGE, ["secondtbl"]
     send_command   Commands::RANGE, ["secondtbl", @keys[0], @keys[-1]]
     expect_command Commands::ROWS, ["secondtbl", [], @keys[-1]]
@@ -485,10 +437,7 @@ class SyncToTest < KitchenSync::EndpointTestCase
     @rows = (0..99).collect {|n| [n*2 + 5, n]}
     @keys = @rows.collect {|row| [row[0]]}
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [table_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [table_def]})
     expect_command Commands::RANGE, ["autotbl"]
     send_command   Commands::RANGE, ["autotbl", @keys[0], @keys[-1]]
     expect_command Commands::ROWS, ["autotbl", [], @keys[-1]]

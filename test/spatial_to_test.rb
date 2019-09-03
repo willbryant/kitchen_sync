@@ -27,9 +27,7 @@ class SpatialToTest < KitchenSync::EndpointTestCase
   end
 
   test_each "creates spatial tables if they don't exist" do
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [spatialtbl_def]]
+    expect_handshake_commands(schema: {"tables" => [spatialtbl_def]})
     read_command
     assert connection.tables.include?("spatialtbl")
     assert_equal nil, connection.table_srids("spatialtbl")["plainspat"]
@@ -37,19 +35,14 @@ class SpatialToTest < KitchenSync::EndpointTestCase
 
   test_each "creates spatial tables with SRID settings on columns when supported by the database" do
     omit "This database doesn't support SRID settings on columns" unless connection.schema_srid_settings?
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command Commands::SCHEMA, ["tables" => [spatialtbl_def(srid: 4326)]]
+    expect_handshake_commands(schema: {"tables" => [spatialtbl_def(srid: 4326)]})
     read_command
     assert connection.tables.include?("spatialtbl")
     assert_equal "4326", connection.table_srids("spatialtbl")["plainspat"]
   end
 
   test_each "runs on empty spatial tables" do
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [spatialtbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [spatialtbl_def]})
     expect_command Commands::RANGE, ["spatialtbl"]
     send_command   Commands::RANGE, ["spatialtbl", [], []]
     expect_quit_and_close
@@ -62,10 +55,7 @@ class SpatialToTest < KitchenSync::EndpointTestCase
     @rows = [[1, ["010100000000000000000024400000000000003440"].pack("H*"), ["010100000000000000000034400000000000003E40"].pack("H*")],
              [2, ["010700000002000000010200000002000000000000000000F83F000000000000024000000000000009400000000000401040010600000002000000010300000001000000040000000000000000003E40000000000000344000000000008046400000000000004440000000000000244000000000000044400000000000003E400000000000003440010300000001000000050000000000000000002E4000000000000014400000000000004440000000000000244000000000000024400000000000003440000000000000144000000000000024400000000000002E400000000000001440"].pack("H*"), nil]]
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [spatialtbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [spatialtbl_def]})
     expect_command Commands::RANGE, ["spatialtbl"]
     send_command   Commands::RANGE, ["spatialtbl", [1], [2]]
     expect_command Commands::ROWS,
@@ -84,10 +74,7 @@ class SpatialToTest < KitchenSync::EndpointTestCase
     @rows = [[1, ["0101000020E610000000000000000024400000000000003440"].pack("H*"), ["0101000020E610000000000000000034400000000000003E40"].pack("H*")],
              [2, ["0107000020E610000002000000010200000002000000000000000000F83F000000000000024000000000000009400000000000401040010600000002000000010300000001000000040000000000000000003E40000000000000344000000000008046400000000000004440000000000000244000000000000044400000000000003E400000000000003440010300000001000000050000000000000000002E4000000000000014400000000000004440000000000000244000000000000024400000000000003440000000000000144000000000000024400000000000002E400000000000001440"].pack("H*"), nil]]
 
-    expect_handshake_commands
-    expect_command Commands::SCHEMA
-    send_command   Commands::SCHEMA, ["tables" => [spatialtbl_def]]
-    expect_sync_start_commands
+    expect_handshake_commands(schema: {"tables" => [spatialtbl_def]})
     expect_command Commands::RANGE, ["spatialtbl"]
     send_command   Commands::RANGE, ["spatialtbl", [1], [2]]
     expect_command Commands::ROWS,
