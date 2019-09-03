@@ -157,6 +157,7 @@ typedef vector<Table> Tables;
 
 struct Database {
 	Tables tables;
+	vector<string> errors;
 };
 
 #endif

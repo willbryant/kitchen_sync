@@ -121,6 +121,8 @@ struct SyncFromWorker {
 		// so we applied it to the already-loaded schema immediately.  this meant however that we
 		// couldn't consider the filters when doing things like choosing a substitute primary key,
 		// so from version 8 and on we are sent the FILTERS command early and apply them later.
+		// note that if a filter_definition_error occurs for v7, we let it bubble up and error out
+		// immediately, in contrast to v8 which rescues and serializes them.
 		if (output_stream.protocol_version <= LAST_FILTERS_AFTER_SNAPSHOT_PROTOCOL_VERSION) {
 			apply_filters(table_filters, database.tables);
 		}
@@ -159,7 +161,12 @@ struct SyncFromWorker {
 		client.populate_database_schema(database);
 
 		if (!table_filters.empty()) { // optimisation, but also will always be true on protocol 7 and earlier, per above comment
-			apply_filters(table_filters, database.tables);
+			try {
+				apply_filters(table_filters, database.tables);
+			} catch (const filter_definition_error &e) {
+				database.errors.push_back(e.what());
+				return; // bail out with tables_by_name still empty so tests that don't pay attention to the error and terminate can't mess about making other requests and giving confusing output
+			}
 		}
 
 		for (Table &table : database.tables) {

@@ -233,6 +233,14 @@ struct SyncToWorker {
 	}
 
 	void check_tables_usable() {
+		if (!database.errors.empty()) {
+			std::string message;
+			for (const string &e : database.errors) {
+				if (!message.empty()) message += "\n";
+				message += e;
+			}
+			throw runtime_error(message);
+		}
 		for (const Table &table : database.tables) {
 			if (table.primary_key_columns.empty()) {
 				throw runtime_error("Couldn't find a primary or non-nullable unique key on table " + table.name);

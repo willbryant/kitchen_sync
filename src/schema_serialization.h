@@ -143,9 +143,13 @@ void operator << (Packer<OutputStream> &packer, const Table &table) {
 
 template <typename OutputStream>
 void operator << (Packer<OutputStream> &packer, const Database &database) {
-	pack_map_length(packer, 1);
+	pack_map_length(packer, database.errors.empty() ? 1 : 2);
 	packer << string("tables");
 	packer << database.tables;
+	if (!database.errors.empty()) {
+		packer << string("errors");
+		packer << database.errors;
+	}
 }
 
 template <typename InputStream>
@@ -272,6 +276,8 @@ void operator >> (Unpacker<InputStream> &unpacker, Database &database) {
 
 		if (attr_key == "tables") {
 			unpacker >> database.tables;
+		} else if (attr_key == "errors") {
+			unpacker >> database.errors;
 		} else {
 			// ignore anything else, for forward compatibility
 			unpacker.skip();
