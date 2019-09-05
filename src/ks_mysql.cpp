@@ -244,10 +244,10 @@ public:
 
 	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '`'); };
 	string escape_string_value(const string &value);
-	string &append_escaped_generic_value_to(string &result, const string &value);
-	string &append_escaped_spatial_value_to(string &result, const string &value);
-	string &append_escaped_json_value_to(string &result, const string &value);
-	string &append_escaped_column_value_to(string &result, const Column &column, const string &value);
+	string &append_quoted_generic_value_to(string &result, const string &value);
+	string &append_quoted_spatial_value_to(string &result, const string &value);
+	string &append_quoted_json_value_to(string &result, const string &value);
+	string &append_quoted_column_value_to(string &result, const Column &column, const string &value);
 	tuple<string, string> column_type(const Column &column);
 	string column_default(const Table &table, const Column &column);
 	string column_definition(const Table &table, const Column &column);
@@ -464,7 +464,7 @@ string MySQLClient::escape_string_value(const string &value) {
 	return result;
 }
 
-string &MySQLClient::append_escaped_generic_value_to(string &result, const string &value) {
+string &MySQLClient::append_quoted_generic_value_to(string &result, const string &value) {
 	string buffer;
 	buffer.resize(value.size()*2 + 1);
 	size_t result_length = mysql_real_escape_string(&mysql, (char*)buffer.data(), value.c_str(), value.size());
@@ -474,11 +474,11 @@ string &MySQLClient::append_escaped_generic_value_to(string &result, const strin
 	return result;
 }
 
-string &MySQLClient::append_escaped_spatial_value_to(string &result, const string &value) {
-	return append_escaped_generic_value_to(result, ewkb_bin_to_mysql_bin(value));
+string &MySQLClient::append_quoted_spatial_value_to(string &result, const string &value) {
+	return append_quoted_generic_value_to(result, ewkb_bin_to_mysql_bin(value));
 }
 
-string &MySQLClient::append_escaped_json_value_to(string &result, const string &value) {
+string &MySQLClient::append_quoted_json_value_to(string &result, const string &value) {
 	// normally you wouldn't have to do anything special to be able to insert into a JSON field.
 	// but we set the MYSQL_SET_CHARSET_NAME option to "binary" to avoid having to interpret
 	// character sets, and unfortunately they added an explicit check which causes
@@ -488,18 +488,18 @@ string &MySQLClient::append_escaped_json_value_to(string &result, const string &
 	// convert anything.  note that mysql has defined the JSON type as always having encoding
 	// utf8mb4 - it isn't like varchar and text.
 	result += "CONVERT(";
-	append_escaped_generic_value_to(result, value);
+	append_quoted_generic_value_to(result, value);
 	result += " USING utf8mb4)";
 	return result;
 }
 
-string &MySQLClient::append_escaped_column_value_to(string &result, const Column &column, const string &value) {
+string &MySQLClient::append_quoted_column_value_to(string &result, const Column &column, const string &value) {
 	if (column.column_type == ColumnTypes::SPAT) {
-		return append_escaped_spatial_value_to(result, value);
+		return append_quoted_spatial_value_to(result, value);
 	} else if (column.column_type == ColumnTypes::JSON && explicit_json_column_type()) {
-		return append_escaped_json_value_to(result, value);
+		return append_quoted_json_value_to(result, value);
 	} else {
-		return append_escaped_generic_value_to(result, value);
+		return append_quoted_generic_value_to(result, value);
 	}
 }
 
@@ -731,7 +731,7 @@ string MySQLClient::column_default(const Table &table, const Column &column) {
 				column.column_type == ColumnTypes::DECI) {
 				result += column.default_value;
 			} else {
-				append_escaped_column_value_to(result, column, column.default_value);
+				append_quoted_column_value_to(result, column, column.default_value);
 			}
 			return result;
 		}

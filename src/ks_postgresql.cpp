@@ -198,10 +198,10 @@ public:
 	void populate_database_schema(Database &database);
 	void convert_unsupported_database_schema(Database &database);
 	string escape_string_value(const string &value);
-	string &append_escaped_string_value_to(string &result, const string &value);
-	string &append_escaped_bytea_value_to(string &result, const string &value);
-	string &append_escaped_spatial_value_to(string &result, const string &value);
-	string &append_escaped_column_value_to(string &result, const Column &column, const string &value);
+	string &append_quoted_string_value_to(string &result, const string &value);
+	string &append_quoted_bytea_value_to(string &result, const string &value);
+	string &append_quoted_spatial_value_to(string &result, const string &value);
+	string &append_quoted_column_value_to(string &result, const Column &column, const string &value);
 	string column_type(const Column &column);
 	string column_sequence_name(const Table &table, const Column &column);
 	string column_default(const Table &table, const Column &column);
@@ -373,7 +373,7 @@ string PostgreSQLClient::escape_string_value(const string &value) {
 	return result;
 }
 
-string &PostgreSQLClient::append_escaped_string_value_to(string &result, const string &value) {
+string &PostgreSQLClient::append_quoted_string_value_to(string &result, const string &value) {
 	string buffer;
 	buffer.resize(value.size()*2 + 1);
 	size_t result_length = PQescapeStringConn(conn, (char*)buffer.data(), value.c_str(), value.size(), nullptr);
@@ -383,7 +383,7 @@ string &PostgreSQLClient::append_escaped_string_value_to(string &result, const s
 	return result;
 }
 
-string &PostgreSQLClient::append_escaped_bytea_value_to(string &result, const string &value) {
+string &PostgreSQLClient::append_quoted_bytea_value_to(string &result, const string &value) {
 	size_t encoded_length;
 	const unsigned char *encoded = PQescapeByteaConn(conn, (const unsigned char *)value.c_str(), value.size(), &encoded_length);
 	result += '\'';
@@ -393,20 +393,20 @@ string &PostgreSQLClient::append_escaped_bytea_value_to(string &result, const st
 	return result;
 }
 
-string &PostgreSQLClient::append_escaped_spatial_value_to(string &result, const string &value) {
+string &PostgreSQLClient::append_quoted_spatial_value_to(string &result, const string &value) {
 	result.append("ST_GeomFromEWKB(");
-	append_escaped_bytea_value_to(result, value);
+	append_quoted_bytea_value_to(result, value);
 	result.append(")");
 	return result;
 }
 
-string &PostgreSQLClient::append_escaped_column_value_to(string &result, const Column &column, const string &value) {
+string &PostgreSQLClient::append_quoted_column_value_to(string &result, const Column &column, const string &value) {
 	if (column.column_type == ColumnTypes::BLOB) {
-		return append_escaped_bytea_value_to(result, value);
+		return append_quoted_bytea_value_to(result, value);
 	} else if (column.column_type == ColumnTypes::SPAT) {
-		return append_escaped_spatial_value_to(result, value);
+		return append_quoted_spatial_value_to(result, value);
 	} else {
-		return append_escaped_string_value_to(result, value);
+		return append_quoted_string_value_to(result, value);
 	}
 }
 
@@ -626,7 +626,7 @@ string PostgreSQLClient::column_default(const Table &table, const Column &column
 				column.column_type == ColumnTypes::DECI) {
 				result += column.default_value;
 			} else {
-				append_escaped_column_value_to(result, column, column.default_value);
+				append_quoted_column_value_to(result, column, column.default_value);
 			}
 			return result;
 		}

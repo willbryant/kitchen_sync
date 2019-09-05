@@ -213,7 +213,7 @@ struct OverwriteColumnNullValueClauses {
 		update_table_clauses += " = COALESCE(";
 		update_table_clauses += client.quote_identifier(column.name);
 		update_table_clauses += ", ";
-		client.append_escaped_column_value_to(update_table_clauses, column, usable_column_value(column));
+		client.append_quoted_column_value_to(update_table_clauses, column, usable_column_value(column));
 		update_table_clauses += ")";
 	}
 
