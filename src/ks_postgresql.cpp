@@ -11,6 +11,7 @@
 #include "row_printer.h"
 #include "ewkb.h"
 
+#define POSTGRESQL_9_4 90400
 #define POSTGRESQL_10 100000
 
 struct TypeMap {
@@ -208,6 +209,7 @@ public:
 	string key_definition(const Table &table, const Key &key);
 
 	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '"'); };
+	inline bool supports_jsonb_column_type() const { return (server_version >= POSTGRESQL_9_4); }
 	inline bool supports_generated_as_identity() const { return (server_version >= POSTGRESQL_10); }
 
 	size_t execute(const string &sql);
@@ -452,6 +454,7 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 
 			// turn off unsupported flags; we always define flags in such a way that this is a graceful degradation
 			column.flags.mysql_timestamp = column.flags.mysql_on_update_timestamp = false;
+			if (!supports_jsonb_column_type()) column.flags.binary_storage = false;
 			if (!supports_generated_as_identity()) column.flags.identity_generated_always = false;
 		}
 

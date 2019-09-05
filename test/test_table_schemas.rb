@@ -326,7 +326,7 @@ SQL
         CREATE TABLE """postgresql""tbl" (
           pri #{connection.supports_generated_as_identity? ? 'integer GENERATED ALWAYS AS IDENTITY' : 'SERIAL'},
           uu UUID NOT NULL,
-          jsonbfield JSONB,
+          #{"jsonbfield JSONB," if connection.jsonb_column_type?}
           nolengthvaryingfield CHARACTER VARYING,
           noprecisionnumericfield NUMERIC,
           nulldefaultstr VARCHAR(255) DEFAULT NULL,
@@ -374,7 +374,7 @@ SQL
         "columns" => [
           {"name" => "pri",                  "column_type" => ColumnTypes::SINT, "size" =>  4,  "nullable" => false, "sequence" => ""}.merge(connection.supports_generated_as_identity? ? {"identity_generated_always" => true} : {}),
           {"name" => "uu",                   "column_type" => ColumnTypes::UUID,                "nullable" => false},
-          {"name" => "jsonbfield",           "column_type" => ColumnTypes::JSON, "binary_storage" => true},
+          ({"name" => "jsonbfield",           "column_type" => ColumnTypes::JSON, "binary_storage" => true} if connection.jsonb_column_type?),
           {"name" => "nolengthvaryingfield", "column_type" => ColumnTypes::VCHR},
           {"name" => "noprecisionnumericfield", "column_type" => ColumnTypes::DECI},
           {"name" => "nulldefaultstr",       "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => "NULL"}, # note different to mysql, where no default and DEFAULT NULL are the same thing

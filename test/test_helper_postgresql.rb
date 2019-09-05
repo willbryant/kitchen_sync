@@ -190,6 +190,10 @@ class PG::Connection
     'json'
   end
 
+  def jsonb_column_type?
+    server_version >= 90400
+  end
+
   def time_column_type
     'time'
   end

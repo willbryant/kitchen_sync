@@ -139,6 +139,10 @@ class Mysql2::Client
     end
   end
 
+  def jsonb_column_type?
+    false
+  end
+
   def time_column_type
     if supports_fractional_seconds?
       'TIME(6)'
