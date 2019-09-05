@@ -115,6 +115,15 @@ SQL
       "keys" => [] }
   end
 
+  def create_empty_misctbl
+    connection.create_enum_column_type
+    execute(<<-SQL)
+      CREATE TABLE misctbl (
+        pri INT NOT NULL,
+        PRIMARY KEY(pri))
+SQL
+  end
+
   def create_misctbl
     connection.create_enum_column_type
     execute(<<-SQL)

@@ -494,7 +494,9 @@ string &MySQLClient::append_quoted_json_value_to(string &result, const string &v
 }
 
 string &MySQLClient::append_quoted_column_value_to(string &result, const Column &column, const string &value) {
-	if (column.column_type == ColumnTypes::SPAT) {
+	if (!column.values_need_quoting()) {
+		return result += value;
+	} else if (column.column_type == ColumnTypes::SPAT) {
 		return append_quoted_spatial_value_to(result, value);
 	} else if (column.column_type == ColumnTypes::JSON && explicit_json_column_type()) {
 		return append_quoted_json_value_to(result, value);
@@ -724,15 +726,7 @@ string MySQLClient::column_default(const Table &table, const Column &column) {
 
 		case DefaultType::default_value: {
 			string result(" DEFAULT ");
-			if (column.column_type == ColumnTypes::BOOL ||
-				column.column_type == ColumnTypes::SINT ||
-				column.column_type == ColumnTypes::UINT ||
-				column.column_type == ColumnTypes::REAL ||
-				column.column_type == ColumnTypes::DECI) {
-				result += column.default_value;
-			} else {
-				append_quoted_column_value_to(result, column, column.default_value);
-			}
+			append_quoted_column_value_to(result, column, column.default_value);
 			return result;
 		}
 
@@ -763,13 +757,13 @@ string MySQLClient::column_definition(const Table &table, const Column &column) 
 		result += " NULL";
 	}
 
+	if (column.default_type != DefaultType::no_default) {
+		result += column_default(table, column);
+	}
+
 	// used for JSON etc. which need to add stuff after the NOT NULL bit in some cases; see discussion in column_type()
 	if (!extra.empty()) {
 		result += extra;
-	}
-
-	if (column.default_type != DefaultType::no_default) {
-		result += column_default(table, column);
 	}
 
 	if (column.flags.mysql_on_update_timestamp) {

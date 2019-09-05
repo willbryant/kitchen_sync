@@ -401,7 +401,9 @@ string &PostgreSQLClient::append_quoted_spatial_value_to(string &result, const s
 }
 
 string &PostgreSQLClient::append_quoted_column_value_to(string &result, const Column &column, const string &value) {
-	if (column.column_type == ColumnTypes::BLOB) {
+	if (!column.values_need_quoting()) {
+		return result += value;
+	} else if (column.column_type == ColumnTypes::BLOB) {
 		return append_quoted_bytea_value_to(result, value);
 	} else if (column.column_type == ColumnTypes::SPAT) {
 		return append_quoted_spatial_value_to(result, value);
@@ -619,15 +621,7 @@ string PostgreSQLClient::column_default(const Table &table, const Column &column
 
 		case DefaultType::default_value: {
 			string result(" DEFAULT ");
-			if (column.column_type == ColumnTypes::BOOL ||
-				column.column_type == ColumnTypes::SINT ||
-				column.column_type == ColumnTypes::UINT ||
-				column.column_type == ColumnTypes::REAL ||
-				column.column_type == ColumnTypes::DECI) {
-				result += column.default_value;
-			} else {
-				append_quoted_column_value_to(result, column, column.default_value);
-			}
+			append_quoted_column_value_to(result, column, column.default_value);
 			return result;
 		}
 

@@ -92,6 +92,14 @@ struct Column {
 				enumeration_values == other.enumeration_values);
 	}
 	inline bool operator !=(const Column &other) const { return (!(*this == other)); }
+
+	inline bool values_need_quoting() const {
+		return (column_type != ColumnTypes::BOOL &&
+				column_type != ColumnTypes::SINT &&
+				column_type != ColumnTypes::UINT &&
+				column_type != ColumnTypes::REAL &&
+				column_type != ColumnTypes::DECI);
+	}
 };
 
 typedef vector<Column> Columns;

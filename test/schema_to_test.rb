@@ -700,6 +700,19 @@ SQL
     assert_equal "", rows[0][12]
   end
 
+  test_each "adds non-nullable columns to existing tables, for any type of column" do
+    clear_schema
+    create_empty_misctbl
+    table_def = misctbl_def
+    table_def["columns"].each {|column| column["nullable"] = false}
+    execute "INSERT INTO misctbl (pri) VALUES (42)"
+
+    expect_handshake_commands(schema: {"tables" => [table_def]})
+    read_command
+    assert_equal table_def["columns"].size, connection.table_column_names("misctbl").size
+    assert_equal([false], connection.table_column_nullability("misctbl").values.uniq)
+  end
+
   test_each "recreates the table as necessary to make columns not nullable if they have unique keys" do
     clear_schema
     create_footbl

@@ -231,8 +231,10 @@ struct OverwriteColumnNullValueClauses {
 			return "00000000-0000-0000-0000-000000000000";
 		} else if (column.column_type == ColumnTypes::ENUM) {
 			return (column.enumeration_values.empty() ? "" : column.enumeration_values[0]); // should never be empty in reality, but don't segfault
+		} else if (column.column_type == ColumnTypes::BOOL) {
+			return "false";
 		} else {
-			return "0"; // covers bool too - quoted '0' values will be accepted by mysql, but quoted 'false' values wouldn't
+			return "0";
 		}
 	}
 };
@@ -301,7 +303,7 @@ struct DropColumnClauses {
 	}
 };
 
-template <typename DatabaseClient, bool = is_base_of<DatabaseClient, SupportsAddNonNullableColumns>::value>
+template <typename DatabaseClient, bool = is_base_of<SupportsAddNonNullableColumns, DatabaseClient>::value>
 struct AddColumnClauses {
 	static void add_to(string &alter_table_clauses, string &second_round_alter_table_clauses, DatabaseClient &client, Table &table, const Column &column) {
 		if (!alter_table_clauses.empty()) {
