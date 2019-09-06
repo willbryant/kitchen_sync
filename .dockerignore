@@ -1,5 +1,9 @@
-.dockerignore
-.git
-.gitignore
-test/Dockerfile*
-build
+*
+
+!CMakeLists.txt
+!cmake
+!src
+!test/CMakeLists.txt
+!test/*.cpp
+!test/*.rb
+!test/Gemfile*
