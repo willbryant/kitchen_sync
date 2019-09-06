@@ -8,6 +8,10 @@
 
 template <typename OutputStream>
 void operator << (Packer<OutputStream> &packer, const Column &column) {
+	if (packer.stream().protocol_version <= LAST_LEGACY_SCHEMA_FORMAT_VERSION) {
+		legacy_serialize(packer, column);
+		return;
+	}
 	int fields = 2;
 	if (column.size) fields++;
 	if (column.scale) fields++;
