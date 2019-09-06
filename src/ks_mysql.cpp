@@ -255,7 +255,7 @@ public:
 
 	inline bool information_schema_column_default_shows_escaped_expressions() const { return (server_is_mariadb && server_version >= MARIADB_10_2_7); }
 	inline bool supports_srid_settings_on_columns() const { return srid_column_exists; }
-	inline bool supports_fractional_seconds() const { return ((server_is_mariadb && server_version >= MARIADB_10_0_0) || (!server_is_mariadb && server_version >= MYSQL_8_0_0)); } // mariadb 5.3 does support microseconds, but doesn't support all the required functions
+	inline bool supports_fractional_seconds() const { return (server_version >= (server_is_mariadb ? MARIADB_10_0_0 : MYSQL_8_0_0)); } // mariadb 5.3 does support microseconds, but doesn't support all the required functions
 	inline bool supports_check_constraints() const { return check_constraints_table_exists; }
 	inline bool explicit_json_column_type() const { return (!server_is_mariadb && server_version >= MYSQL_5_7_8); }
 
