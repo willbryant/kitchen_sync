@@ -3,6 +3,8 @@
 
 #include "schema.h"
 #include "message_pack/unpack.h"
+#include "protocol_versions.h"
+#include "legacy_schema_serialization.h"
 
 template <typename OutputStream>
 void operator << (Packer<OutputStream> &packer, const Column &column) {
@@ -99,22 +101,22 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	}
 }
 
-template <typename OutputStream>
-void operator << (Packer<OutputStream> &packer, const Key &key) {
-	pack_map_length(packer, 3);
+template <typename VersionedFDWriteStream>
+void operator << (Packer<VersionedFDWriteStream> &packer, const Key &key) {
+	if (packer.stream().protocol_version <= LAST_LEGACY_SCHEMA_FORMAT_VERSION) {
+		legacy_serialize(packer, key);
+		return;
+	}
+	pack_map_length(packer, key.standard() ? 2 : 3);
 	packer << string("name");
 	packer << key.name;
 	switch (key.key_type) {
 		case KeyType::standard_key:
-			// we send the "unique" flag for backwards compatibility with v1.17 and earlier; therefore, there's no point in sending "key_type" as well
-			packer << string("unique");
-			packer << false;
 			break;
 
 		case KeyType::unique_key:
-			// as for KeyType::standard_key
+			packer << string("key_type");
 			packer << string("unique");
-			packer << true;
 			break;
 
 		case KeyType::spatial_key:

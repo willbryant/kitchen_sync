@@ -23,7 +23,8 @@ struct packer_error: public std::runtime_error {
 template <typename Stream>
 class Packer {
 public:
-	inline Packer(Stream &stream): stream(stream) {}
+	inline Packer(Stream &stream): st(stream) {}
+	inline const Stream &stream() { return st; }
 
 	// writes the given value as bytes to the data stream, without byte order conversion or type marshalling
 	template <typename T>
@@ -33,15 +34,15 @@ public:
 
 	// writes the given number of bytes to the data stream, without byte order conversion or type unmarshalling
 	inline void write_bytes(const uint8_t *buf, size_t bytes) {
-		stream.write(buf, bytes);
+		st.write(buf, bytes);
 	}
 
 	inline void flush() {
-		stream.flush();
+		st.flush();
 	}
 
 protected:
-	Stream &stream;
+	Stream &st;
 };
 
 template <typename Stream>

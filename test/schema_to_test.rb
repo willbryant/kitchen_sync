@@ -50,7 +50,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     end
 
     assert_equal table_def["keys"].collect {|key| key["name"]}.sort, connection.table_keys(table_name).sort
-    table_def["keys"].each {|key| assert_equal key["unique"], connection.table_keys_unique(table_name)[key["name"]], "#{key["name"]} index should#{' not' unless key["unique"]} be unique"}
+    table_def["keys"].each {|key| assert_equal key["key_type"] == "unique", connection.table_keys_unique(table_name)[key["name"]], "#{key["name"]} index should#{' not' unless key["unique"]} be unique"}
     table_def["keys"].each {|key| assert_equal key["columns"].collect {|index| table_def["columns"][index]["name"]}, connection.table_key_columns(table_name)[key["name"]]}
   end
 
@@ -428,7 +428,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     execute("ALTER TABLE footbl DROP COLUMN col3")
     table_def = footbl_def
     table_def["columns"][2]["nullable"] = false
-    table_def["keys"] << {"name" => "uniqueidx", "columns" => [2], "unique" => true}
+    table_def["keys"] << {"name" => "uniqueidx", "columns" => [2], "key_type" => "unique"}
 
     expect_handshake_commands(schema: {"tables" => [table_def]})
     read_command
@@ -719,7 +719,7 @@ SQL
     insert_footbl_rows
     table_def = footbl_def
     table_def["columns"][1]["nullable"] = false
-    table_def["keys"] << {"name" => "uniqueidx", "columns" => [1], "unique" => true}
+    table_def["keys"] << {"name" => "uniqueidx", "columns" => [1], "key_type" => "unique"}
 
     expect_handshake_commands(schema: {"tables" => [table_def]})
     read_command
@@ -889,7 +889,7 @@ SQL
 
     key = secondtbl_def["keys"].first
     assert !connection.table_keys_unique("secondtbl")[key["name"]], "missingkey index should not be unique before test"
-    expect_handshake_commands(schema: {"tables" => [secondtbl_def.merge("keys" => [key.merge("unique" => true)])]})
+    expect_handshake_commands(schema: {"tables" => [secondtbl_def.merge("keys" => [key.merge("key_type" => "unique")])]})
     read_command
     assert connection.table_keys_unique("secondtbl")[key["name"]], "missingkey index should be unique"
     assert_secondtbl_rows_present

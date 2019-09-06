@@ -119,6 +119,7 @@ struct Key {
 	inline Key(const string &name, KeyType key_type): name(name), key_type(key_type) {}
 	inline Key(): key_type(KeyType::standard_key) {}
 
+	inline bool standard() const { return (key_type == KeyType::standard_key); }
 	inline bool unique() const { return (key_type == KeyType::unique_key); }
 	inline bool spatial() const { return (key_type == KeyType::spatial_key); }
 

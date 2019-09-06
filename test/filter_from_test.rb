@@ -123,7 +123,8 @@ class FilterFromTest < KitchenSync::EndpointTestCase
   end
 
   test_each "accepts and applies filters given after the schema instead of before, for protocol version 7 and below" do
-    create_some_tables
+    clear_schema
+    create_footbl
     execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"
     @filtered_rows = [[4,   7,     "foo"],
                       [5, nil, "default"]]
@@ -135,7 +136,7 @@ class FilterFromTest < KitchenSync::EndpointTestCase
     expect_command Commands::FILTERS
 
     send_command   Commands::SCHEMA
-    expect_command Commands::SCHEMA, [{"tables" => [footbl_def, secondtbl_def]}]
+    expect_command Commands::SCHEMA, [{"tables" => [footbl_def]}]
 
     send_command   Commands::HASH, ["footbl", [], [4], 1000]
     expect_command Commands::HASH,

@@ -128,4 +128,15 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA,
                    [{"tables" => [unsupportedtbl_def]}]
   end
+
+  test_each "returns schema in legacy format for protocol version 7 and earlier" do
+    clear_schema
+    create_noprimarytbl
+
+    send_handshake_commands(protocol_version: 7)
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA,
+                   [{"tables" => [noprimarytbl_def_v7]}]
+  end
 end

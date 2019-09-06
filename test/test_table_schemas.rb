@@ -51,7 +51,7 @@ SQL
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [2, 1], # note order is that listed in the key, not the index of the column in the table
       "keys" => [
-        {"name" => "secidx", "unique" => false, "columns" => [3]}] }
+        {"name" => "secidx", "columns" => [3]}] }
   end
 
   def create_uniquetbl
@@ -188,6 +188,24 @@ SQL
   end
 
   def noprimarytbl_def(create_suitable_keys: true)
+    { "name" => "noprimarytbl",
+      "columns" => [
+        {"name" => "nullable",     "column_type" => ColumnTypes::SINT, "size" =>   4},
+        {"name" => "version",      "column_type" => ColumnTypes::VCHR, "size" => 255, "nullable" => false},
+        {"name" => "name",         "column_type" => ColumnTypes::VCHR, "size" => 255},
+        {"name" => "non_nullable", "column_type" => ColumnTypes::SINT, "size" =>   4, "nullable" => false}],
+      "primary_key_columns" => (create_suitable_keys ? [1] : []),
+      "primary_key_type" => (create_suitable_keys ? PrimaryKeyType::SUITABLE_UNIQUE_KEY : PrimaryKeyType::NO_AVAILABLE_KEY),
+      "keys" => [ # sorted in uniqueness then alphabetic name order, but otherwise a transcription of the above create index statements
+        ({"name" => "correct_key",          "key_type" => "unique", "columns" => [1]} if create_suitable_keys),
+        {"name" => "ignored_key",          "key_type" => "unique", "columns" => [0, 1]},
+        ({"name" => "non_nullable_key",     "key_type" => "unique", "columns" => [3]} if create_suitable_keys),
+        {"name" => "version_and_name_key", "key_type" => "unique", "columns" => [1, 2]},
+        {"name" => "everything_key",       "columns" => [2, 0, 1, 3]},
+        {"name" => "not_unique_key",       "columns" => [3]} ].compact }
+  end
+
+  def noprimarytbl_def_v7(create_suitable_keys: true)
     { "name" => "noprimarytbl",
       "columns" => [
         {"name" => "nullable",     "column_type" => ColumnTypes::SINT, "size" =>   4},
