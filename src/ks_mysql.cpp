@@ -328,7 +328,7 @@ MySQLClient::MySQLClient(
 	}
 
 	// increase the timeouts so that the connection doesn't get killed while trying to write large rowsets to the client over slow pipes
-	execute("SET SESSION net_read_timeout = CAST(GREATEST(@@net_read_timeout, 600) AS UNSIGNED), net_write_timeout = CAST(GREATEST(@@net_write_timeout, 600) AS UNSIGNED), long_query_time = CAST(GREATEST(@@long_query_time, 600) AS UNSIGNED), sql_mode = 'traditional,pipes_as_concat'");
+	execute("SET SESSION net_read_timeout = CAST(GREATEST(@@net_read_timeout, 600) AS UNSIGNED), net_write_timeout = CAST(GREATEST(@@net_write_timeout, 600) AS UNSIGNED), long_query_time = CAST(GREATEST(@@long_query_time, 600) AS UNSIGNED), sql_mode = 'STRICT_TRANS_TABLES,STRICT_ALL_TABLES,ERROR_FOR_DIVISION_BY_ZERO,PIPES_AS_CONCAT'");
 
 	if (!variables.empty()) {
 		execute("SET " + variables);
