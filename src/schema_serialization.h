@@ -75,7 +75,7 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 			break;
 
 		case DefaultType::default_expression:
-			packer << string("default_function"); // legacy name
+			packer << string("default_expression");
 			packer << column.default_value;
 			break;
 	}
@@ -189,7 +189,10 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 		} else if (attr_key == "default_value") {
 			column.default_type = DefaultType::default_value;
 			unpacker >> column.default_value;
-		} else if (attr_key == "default_function") { // legacy name
+		} else if (attr_key == "default_function") { // legacy name for protocol version 7 and earlier
+			column.default_type = DefaultType::default_expression;
+			unpacker >> column.default_value;
+		} else if (attr_key == "default_expression") {
 			column.default_type = DefaultType::default_expression;
 			unpacker >> column.default_value;
 		} else if (attr_key == "mysql_timestamp") {

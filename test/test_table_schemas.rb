@@ -292,7 +292,7 @@ SQL
         {"name" => "datefield",            "column_type" => ColumnTypes::DATE,                             "default_value" => "2019-04-01"},
         {"name" => "timefield",            "column_type" => ColumnTypes::TIME,                             "default_value" => "12:34:56"}.merge(connection.time_precision),
         {"name" => "datetimefield",        "column_type" => ColumnTypes::DTTM,                             "default_value" => "2019-04-01 12:34:56"}.merge(connection.time_precision),
-        ({"name" => "currentdatetimefield", "column_type" => ColumnTypes::DTTM,                             "default_function" => "CURRENT_TIMESTAMP#{"(6)" if connection.supports_fractional_seconds?}"}.merge(connection.time_precision) if connection.supports_multiple_timestamp_columns?),
+        ({"name" => "currentdatetimefield", "column_type" => ColumnTypes::DTTM,                             "default_expression" => "CURRENT_TIMESTAMP#{"(6)" if connection.supports_fractional_seconds?}"}.merge(connection.time_precision) if connection.supports_multiple_timestamp_columns?),
         {"name" => "floatfield",           "column_type" => ColumnTypes::REAL, "size" =>  4,               "default_value" => "42.625"},
         {"name" => "doublefield",          "column_type" => ColumnTypes::REAL, "size" =>  8,               "default_value" => "0.0625"},
         {"name" => "decimalfield",         "column_type" => ColumnTypes::DECI, "size" =>  9, "scale" => 3, "default_value" => "123456.789"}
@@ -385,10 +385,10 @@ SQL
           ({"name" => "tenthsdatetime",      "column_type" => ColumnTypes::DTTM, "size" => 1} if connection.supports_fractional_seconds?),
           ({"name" => "millisdatetime",      "column_type" => ColumnTypes::DTTM, "size" => 3} if connection.supports_fractional_seconds?),
           ({"name" => "microsdatetime",      "column_type" => ColumnTypes::DTTM, "size" => 6} if connection.supports_fractional_seconds?),
-          {"name" => "timestampboth",        "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true},
-          ({"name" => "timestampcreateonly", "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_function" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true} if connection.supports_multiple_timestamp_columns?),
-          ({"name" => "microstimestampboth", "column_type" => ColumnTypes::DTTM, "size" => 6,  "nullable" => false, "default_function" => "CURRENT_TIMESTAMP(6)", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true} if connection.supports_fractional_seconds?),
-          ({"name" => "mysqlfunctiondefault", "column_type" => ColumnTypes::VCHR, "size" => 255,                     "default_function" => "uuid()"} if connection.mysql_default_expressions?),
+          {"name" => "timestampboth",        "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_expression" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true},
+          ({"name" => "timestampcreateonly", "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_expression" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true} if connection.supports_multiple_timestamp_columns?),
+          ({"name" => "microstimestampboth", "column_type" => ColumnTypes::DTTM, "size" => 6,  "nullable" => false, "default_expression" => "CURRENT_TIMESTAMP(6)", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true} if connection.supports_fractional_seconds?),
+          ({"name" => "mysqlfunctiondefault", "column_type" => ColumnTypes::VCHR, "size" => 255,                     "default_expression" => "uuid()"} if connection.mysql_default_expressions?),
           {"name" => "select",               "column_type" => ColumnTypes::SINT, "size" =>  4},
           {"name" => "`quoted`",             "column_type" => ColumnTypes::SINT, "size" =>  4},
         ].compact,
@@ -404,10 +404,10 @@ SQL
           ({"name" => "jsonbfield",           "column_type" => ColumnTypes::JSON, "binary_storage" => true} if connection.jsonb_column_type?),
           {"name" => "nolengthvaryingfield", "column_type" => ColumnTypes::VCHR},
           {"name" => "noprecisionnumericfield", "column_type" => ColumnTypes::DECI},
-          {"name" => "nulldefaultstr",       "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => "NULL"}, # note different to mysql, where no default and DEFAULT NULL are the same thing
-          ({"name" => "currentdatefield",     "column_type" => ColumnTypes::DATE,                                     "default_function" => CaseInsensitiveString.new("CURRENT_DATE")} if connection.default_expressions?), # only conditional for the benefit of the mysql 5.7 cross-compatibility tests
-          ({"name" => "currentuserdefault",   "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_function" => CaseInsensitiveString.new("CURRENT_USER")} if connection.default_expressions?),
-          ({"name" => "pgfunctiondefault",    "column_type" => ColumnTypes::TEXT,                                     "default_function" => "version()"} if connection.default_expressions?),
+          {"name" => "nulldefaultstr",       "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_expression" => "NULL"}, # note different to mysql, where no default and DEFAULT NULL are the same thing
+          ({"name" => "currentdatefield",     "column_type" => ColumnTypes::DATE,                                     "default_expression" => CaseInsensitiveString.new("CURRENT_DATE")} if connection.default_expressions?), # only conditional for the benefit of the mysql 5.7 cross-compatibility tests
+          ({"name" => "currentuserdefault",   "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_expression" => CaseInsensitiveString.new("CURRENT_USER")} if connection.default_expressions?),
+          ({"name" => "pgfunctiondefault",    "column_type" => ColumnTypes::TEXT,                                     "default_expression" => "version()"} if connection.default_expressions?),
           {"name" => "timewithzone",         "column_type" => ColumnTypes::TIME, "time_zone" => true, "size" => 6},
           {"name" => "timestampwithzone",    "column_type" => ColumnTypes::DTTM, "time_zone" => true, "size" => 6},
           {"name" => "select",               "column_type" => ColumnTypes::SINT, "size" => 4},
