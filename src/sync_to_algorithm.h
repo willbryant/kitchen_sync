@@ -137,6 +137,7 @@ struct SyncToAlgorithm {
 			} else {
 				// nothing left to help with on this table at the moment, look for other tables with work to share
 				lock.unlock(); // don't hold the mutex while doing IO
+				send_idle_command(); // clear the status at the other end so admins aren't confused
 				return;
 			}
 
@@ -393,6 +394,11 @@ struct SyncToAlgorithm {
 				return max<size_t>(our_row_count*target_minimum_block_size/our_size, 1);
 			}
 		}
+	}
+
+	inline void send_idle_command() {
+		send_command(output, Commands::IDLE);
+		read_expected_command(input, Commands::IDLE);
 	}
 
 	Worker &worker;

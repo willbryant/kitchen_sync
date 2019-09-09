@@ -58,6 +58,10 @@ struct SyncFromWorker {
 					handle_rows_command();
 					break;
 
+				case Commands::IDLE:
+					handle_idle_command();
+					break;
+
 				case Commands::EXPORT_SNAPSHOT:
 					handle_export_snapshot_command();
 					break;
@@ -226,6 +230,11 @@ struct SyncFromWorker {
 			if (row_count < BATCH_SIZE) break;
 			prev_key = row_packer.last_key;
 		}
+	}
+
+	void handle_idle_command() {
+		show_status("idle");
+		send_command(output, Commands::IDLE);
 	}
 
 	void handle_hash_algorithm_command() {

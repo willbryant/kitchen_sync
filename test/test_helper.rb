@@ -55,6 +55,7 @@ module Commands
   ROWS = 2
   HASH = 7
   RANGE = 8
+  IDLE = 31;
 
   PROTOCOL = 32
   EXPORT_SNAPSHOT  = 33

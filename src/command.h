@@ -92,6 +92,7 @@ namespace Commands {
 	const verb_t ROWS = 2;
 	const verb_t HASH = 7;
 	const verb_t RANGE = 8;
+	const verb_t IDLE = 31;
 
 	const verb_t PROTOCOL = 32;
 	const verb_t EXPORT_SNAPSHOT  = 33;
