@@ -14,9 +14,11 @@ For each table, Kitchen Sync tries to synchronize:
 Supported data types
 --------------------
 
-In order to support synchronization between different databases, Kitchen Sync parses the database type strings returned by the database server in order to make its own portable interpretation.  At the other end, this standardized representation can be mapped back into a type string that's suitable for the receiving database.  The parsed type definition is also used to figure out the appropriate serialization format for the actual data as it is transmitted between the two ends.
+Kitchen Sync can synchronize data of any type when the database server at the two ends is the same, as long as it uses the same format for input and output of those values.
 
-The downside of doing all this is that only those types that we have set up a mapping for are currently supported, and so far only types that have an exact or "close enough" equivalent on both MySQL and PostgreSQL have been implemented.
+In order to support synchronization between _different_ database servers, Kitchen Sync parses the database type strings returned by the database server in order to make its own portable interpretation.  At the other end, this standardized representation can be mapped back into a type string that's suitable for the receiving database.  The parsed type definition is also used to figure out the appropriate serialization format for the actual data as it is transmitted between the two ends.
+
+This means that we implement portable syncing for any types we know how to convert between different database servers, and pass through the non-portable encoding for everything else.
 
 ### Basic types
 
@@ -104,7 +106,9 @@ The following spatial types are supported, and values are re-encoded for bi-dire
 
 ### Asking for help with unsupported types
 
-If your tables use a type not in the tables above, please use GitHub issues, and check if your issue has already been reported first.  It is helpful if you can describe the use case for the column type you are using as it helps to determine the best equivalent type on the other database.
+Please note that as discussed above, we only need to add specific support for a type when there is actually a type we can usefully map it to on the other database server.
+
+To discuss adding mappings for new types, please use GitHub issues and check if your issue has already been reported first.  Please describe the use case(s) you know of for the column type you are using, as it helps to determine the best equivalent type on the other database.
 
 Schema things currently ignored
 -------------------------------
