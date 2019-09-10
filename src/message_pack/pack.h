@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <set>
 #include <map>
 #include "endian.h"
 #include "type_codes.h"
@@ -252,6 +253,15 @@ void pack_array_length(Packer<Stream> &packer, size_t size) {
 
 template <typename Stream, typename T>
 Packer<Stream> &operator <<(Packer<Stream> &packer, const std::vector<T> &obj) {
+	pack_array_length(packer, obj.size());
+	for (const T &t : obj) {
+		packer << t;
+	}
+	return packer;
+}
+
+template <typename Stream, typename T>
+Packer<Stream> &operator <<(Packer<Stream> &packer, const std::set<T> &obj) {
 	pack_array_length(packer, obj.size());
 	for (const T &t : obj) {
 		packer << t;

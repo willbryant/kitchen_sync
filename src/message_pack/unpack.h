@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <set>
 #include <map>
 #include <typeinfo>
 #include "endian.h"
@@ -305,6 +306,16 @@ Unpacker<Stream> &operator >>(Unpacker<Stream> &unpacker, std::vector<T> &obj) {
 	obj.reserve(array_length);
 	while (array_length--) {
 		obj.push_back(unpacker.template next<T>());
+	}
+	return unpacker;
+}
+
+template <typename Stream, typename T>
+Unpacker<Stream> &operator >>(Unpacker<Stream> &unpacker, std::set<T> &obj) {
+	size_t array_length = unpacker.next_array_length();
+	obj.clear();
+	while (array_length--) {
+		obj.insert(unpacker.template next<T>());
 	}
 	return unpacker;
 }
