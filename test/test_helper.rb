@@ -49,6 +49,25 @@ module ColumnTypes
   ENUM = "ENUM"
 
   UNKN = "UNKNOWN"
+
+  ALL_ACCEPTED = [
+    BLOB,
+    TEXT,
+    VCHR,
+    FCHR,
+    JSON,
+    UUID,
+    BOOL,
+    SINT,
+    UINT,
+    REAL,
+    DECI,
+    DATE,
+    TIME,
+    DTTM,
+    SPAT,
+    ENUM,
+  ]
 end
 
 module Commands
@@ -66,6 +85,7 @@ module Commands
   TARGET_BLOCK_SIZE = 38
   HASH_ALGORITHM = 39
   FILTERS = 40
+  TYPES = 41
   QUIT = 0
 end
 
@@ -124,10 +144,11 @@ module KitchenSync
       spawner.send_results(*args)
     end
 
-    def send_handshake_commands(protocol_version: LATEST_PROTOCOL_VERSION_SUPPORTED, target_minimum_block_size: 1, hash_algorithm: HashAlgorithm::MD5, filters: nil)
+    def send_handshake_commands(protocol_version: LATEST_PROTOCOL_VERSION_SUPPORTED, target_minimum_block_size: 1, hash_algorithm: HashAlgorithm::MD5, filters: nil, accepted_types: ColumnTypes::ALL_ACCEPTED)
       send_protocol_command(protocol_version)
       send_hash_algorithm_command(hash_algorithm)
       send_filters_command(filters) if filters
+      send_types_command(accepted_types) if accepted_types
       send_without_snapshot_command
     end
 
@@ -149,6 +170,11 @@ module KitchenSync
     def send_filters_command(filters)
       send_command   Commands::FILTERS, [filters]
       expect_command Commands::FILTERS
+    end
+
+    def send_types_command(accepted_types)
+      send_command   Commands::TYPES, [accepted_types]
+      expect_command Commands::TYPES
     end
 
     def expect_handshake_commands(protocol_version_expected: CURRENT_PROTOCOL_VERSION_USED, protocol_version_supported: LATEST_PROTOCOL_VERSION_SUPPORTED, hash_algorithm: HashAlgorithm::MD5, filters: nil, schema:)

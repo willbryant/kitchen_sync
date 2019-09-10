@@ -194,9 +194,12 @@ public:
 	void start_write_transaction();
 	void commit_transaction();
 	void rollback_transaction();
+
 	void populate_types();
-	void populate_database_schema(Database &database);
+	ColumnTypeList supported_types();
+	void populate_database_schema(Database &database, const ColumnTypeList &accepted_types);
 	void convert_unsupported_database_schema(Database &database);
+
 	string escape_string_value(const string &value);
 	string &append_quoted_string_value_to(string &result, const string &value);
 	string &append_quoted_bytea_value_to(string &result, const string &value);
@@ -662,8 +665,29 @@ string PostgreSQLClient::key_definition(const Table &table, const Key &key) {
 	return result;
 }
 
+inline ColumnTypeList PostgreSQLClient::supported_types() {
+	return ColumnTypeList{
+		ColumnTypes::BLOB,
+		ColumnTypes::TEXT,
+		ColumnTypes::VCHR,
+		ColumnTypes::FCHR,
+		ColumnTypes::JSON,
+		ColumnTypes::UUID,
+		ColumnTypes::BOOL,
+		ColumnTypes::SINT,
+		ColumnTypes::UINT,
+		ColumnTypes::REAL,
+		ColumnTypes::DECI,
+		ColumnTypes::DATE,
+		ColumnTypes::TIME,
+		ColumnTypes::DTTM,
+		ColumnTypes::SPAT,
+		ColumnTypes::ENUM,
+	};
+}
+
 struct PostgreSQLColumnLister {
-	inline PostgreSQLColumnLister(Table &table, TypeMap &type_map): table(table), type_map(type_map) {}
+	inline PostgreSQLColumnLister(Table &table, TypeMap &type_map, const ColumnTypeList &accepted_types): table(table), type_map(type_map), accepted_types(accepted_types) {}
 
 	inline void operator()(PostgreSQLRow &row) {
 		Column column;
@@ -823,6 +847,16 @@ struct PostgreSQLColumnLister {
 		} else {
 			// not supported, but leave it till sync_to's check_tables_usable to complain about it so that it can be ignored
 			column.column_type = ColumnTypes::UNKN;
+		}
+
+		// degrade to UNKN if the type we want isn't supported by the version at the other end
+		if (!accepted_types.count(column.column_type)) {
+			column.column_type = ColumnTypes::UNKN;
+			column.size = column.scale = 0;
+		}
+
+		// send the raw database-specific type for unknown or unsupported types
+		if (column.column_type == ColumnTypes::UNKN) {
 			column.db_type_def = db_type;
 		}
 
@@ -861,6 +895,7 @@ struct PostgreSQLColumnLister {
 
 	Table &table;
 	TypeMap &type_map;
+	const ColumnTypeList &accepted_types;
 };
 
 struct PostgreSQLPrimaryKeyLister {
@@ -900,12 +935,12 @@ struct PostgreSQLKeyLister {
 };
 
 struct PostgreSQLTableLister {
-	PostgreSQLTableLister(PostgreSQLClient &client, Database &database, TypeMap &type_map): client(client), database(database), type_map(type_map) {}
+	PostgreSQLTableLister(PostgreSQLClient &client, Database &database, TypeMap &type_map, const ColumnTypeList &accepted_types): client(client), database(database), type_map(type_map), accepted_types(accepted_types) {}
 
 	void operator()(PostgreSQLRow &row) {
 		Table table(row.string_at(0));
 
-		PostgreSQLColumnLister column_lister(table, type_map);
+		PostgreSQLColumnLister column_lister(table, type_map, accepted_types);
 		client.query(
 			"SELECT attname, format_type(atttypid, atttypmod), attnotnull, atthasdef, pg_get_expr(adbin, adrelid), " + attidentity_column() + " AS attidentity "
 			  "FROM pg_attribute "
@@ -958,6 +993,7 @@ struct PostgreSQLTableLister {
 	PostgreSQLClient &client;
 	Database &database;
 	TypeMap &type_map;
+	const ColumnTypeList &accepted_types;
 };
 
 struct PostgreSQLTypeMapCollector {
@@ -1012,8 +1048,8 @@ void PostgreSQLClient::populate_types() {
 		enum_values_collector);
 }
 
-void PostgreSQLClient::populate_database_schema(Database &database) {
-	PostgreSQLTableLister table_lister(*this, database, type_map);
+void PostgreSQLClient::populate_database_schema(Database &database, const ColumnTypeList &accepted_types) {
+	PostgreSQLTableLister table_lister(*this, database, type_map, accepted_types);
 	query(
 		"SELECT pg_class.relname "
 		  "FROM pg_class, pg_namespace "

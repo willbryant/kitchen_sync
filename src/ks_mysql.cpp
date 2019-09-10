@@ -239,7 +239,9 @@ public:
 	void start_write_transaction();
 	void commit_transaction();
 	void rollback_transaction();
-	void populate_database_schema(Database &database);
+
+	ColumnTypeList supported_types();
+	void populate_database_schema(Database &database, const ColumnTypeList &accepted_types);
 	void convert_unsupported_database_schema(Database &database);
 
 	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '`'); };
@@ -800,8 +802,29 @@ string MySQLClient::key_definition(const Table &table, const Key &key) {
 	return result;
 }
 
+inline ColumnTypeList MySQLClient::supported_types() {
+	return ColumnTypeList{
+		ColumnTypes::BLOB,
+		ColumnTypes::TEXT,
+		ColumnTypes::VCHR,
+		ColumnTypes::FCHR,
+		ColumnTypes::JSON,
+		ColumnTypes::UUID,
+		ColumnTypes::BOOL,
+		ColumnTypes::SINT,
+		ColumnTypes::UINT,
+		ColumnTypes::REAL,
+		ColumnTypes::DECI,
+		ColumnTypes::DATE,
+		ColumnTypes::TIME,
+		ColumnTypes::DTTM,
+		ColumnTypes::SPAT,
+		ColumnTypes::ENUM,
+	};
+}
+
 struct MySQLColumnLister {
-	inline MySQLColumnLister(Table &table, bool information_schema_column_default_shows_escaped_expressions): table(table), information_schema_column_default_shows_escaped_expressions(information_schema_column_default_shows_escaped_expressions) {}
+	inline MySQLColumnLister(Table &table, const ColumnTypeList &accepted_types, bool information_schema_column_default_shows_escaped_expressions): table(table), accepted_types(accepted_types), information_schema_column_default_shows_escaped_expressions(information_schema_column_default_shows_escaped_expressions) {}
 
 	inline void operator()(MySQLRow &row) {
 		Column column;
@@ -975,6 +998,16 @@ struct MySQLColumnLister {
 		} else {
 			// not supported, but leave it till sync_to's check_tables_usable to complain about it so that it can be ignored
 			column.column_type = ColumnTypes::UNKN;
+		}
+
+		// degrade to UNKN if the type we want isn't supported by the version at the other end
+		if (!accepted_types.count(column.column_type)) {
+			column.column_type = ColumnTypes::UNKN;
+			column.size = column.scale = 0;
+		}
+
+		// send the raw database-specific type for unknown or unsupported types
+		if (column.column_type == ColumnTypes::UNKN) {
 			column.db_type_def = db_type;
 		}
 
@@ -1033,6 +1066,7 @@ struct MySQLColumnLister {
 	}
 
 	Table &table;
+	const ColumnTypeList &accepted_types;
 	bool information_schema_column_default_shows_escaped_expressions;
 };
 
@@ -1069,12 +1103,12 @@ struct MySQLKeyLister {
 };
 
 struct MySQLTableLister {
-	inline MySQLTableLister(MySQLClient &client, Database &database): client(client), database(database) {}
+	inline MySQLTableLister(MySQLClient &client, Database &database, const ColumnTypeList &accepted_types): client(client), database(database), accepted_types(accepted_types) {}
 
 	inline void operator()(MySQLRow &row) {
 		Table table(row.string_at(0));
 
-		MySQLColumnLister column_lister(table, client.information_schema_column_default_shows_escaped_expressions());
+		MySQLColumnLister column_lister(table, accepted_types, client.information_schema_column_default_shows_escaped_expressions());
 		client.query("SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, " + srid_column() + " AS SRS_ID, COLUMN_COMMENT, " + json_check_constraint_expression() + " AS JSON_CHECK_CONSTRAINT FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = SCHEMA() AND TABLE_NAME = '" + client.escape_string_value(table.name) + "' ORDER BY ORDINAL_POSITION", column_lister);
 
 		MySQLKeyLister key_lister(table);
@@ -1099,10 +1133,11 @@ struct MySQLTableLister {
 private:
 	MySQLClient &client;
 	Database &database;
+	const ColumnTypeList &accepted_types;
 };
 
-void MySQLClient::populate_database_schema(Database &database) {
-	MySQLTableLister table_lister(*this, database);
+void MySQLClient::populate_database_schema(Database &database, const ColumnTypeList &accepted_types) {
+	MySQLTableLister table_lister(*this, database, accepted_types);
 	query(
 		"SELECT table_name FROM information_schema.tables WHERE table_schema = schema() AND table_type = \"BASE TABLE\" ORDER BY data_length DESC, table_name ASC",
 		table_lister,

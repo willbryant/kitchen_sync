@@ -17,6 +17,7 @@ class SnapshotFromTest < KitchenSync::EndpointTestCase
     create_footbl # arbitrary, just something to show the schema was loaded successfully
 
     send_protocol_command(LATEST_PROTOCOL_VERSION_SUPPORTED)
+    send_types_command(ColumnTypes::ALL_ACCEPTED)
     send_command   Commands::WITHOUT_SNAPSHOT
     expect_command Commands::WITHOUT_SNAPSHOT
     send_schema_command
@@ -27,7 +28,8 @@ class SnapshotFromTest < KitchenSync::EndpointTestCase
     create_footbl # arbitrary, just something to show the schema was loaded successfully
 
     send_protocol_command(LATEST_PROTOCOL_VERSION_SUPPORTED)
-    send_command   Commands::EXPORT_SNAPSHOT
+    send_types_command(ColumnTypes::ALL_ACCEPTED)
+    send_command Commands::EXPORT_SNAPSHOT
     command, args = read_command
     assert_equal Commands::EXPORT_SNAPSHOT, command
     assert_equal 1, args.length
@@ -38,6 +40,8 @@ class SnapshotFromTest < KitchenSync::EndpointTestCase
     begin
       extra_spawner.send_command Commands::PROTOCOL, [LATEST_PROTOCOL_VERSION_SUPPORTED]
       assert_equal [Commands::PROTOCOL, [LATEST_PROTOCOL_VERSION_SUPPORTED]], extra_spawner.read_command
+      extra_spawner.send_command Commands::TYPES, [ColumnTypes::ALL_ACCEPTED]
+      assert_equal [Commands::TYPES], extra_spawner.read_command
       extra_spawner.send_command Commands::IMPORT_SNAPSHOT, [snapshot]
       assert_equal [Commands::IMPORT_SNAPSHOT], extra_spawner.read_command
     

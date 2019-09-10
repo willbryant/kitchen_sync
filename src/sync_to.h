@@ -192,7 +192,7 @@ struct SyncToWorker {
 		if (leader) {
 			// get our schema
 			Database to_database;
-			client.populate_database_schema(to_database);
+			client.populate_database_schema(to_database, client.supported_types());
 			restrict_tables(to_database.tables);
 
 			// check they match, and if not, figure out what DDL we would need to run to fix the 'to' end's schema

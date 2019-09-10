@@ -77,4 +77,22 @@ void legacy_serialize(Packer<VersionedFDWriteStream> &packer, const Key &key) {
 	packer << key.columns;
 }
 
+inline ColumnTypeList legacy_supported_types() {
+	return ColumnTypeList{
+		ColumnTypes::BLOB,
+		ColumnTypes::TEXT,
+		ColumnTypes::VCHR,
+		ColumnTypes::FCHR,
+		ColumnTypes::UUID,
+		ColumnTypes::BOOL,
+		ColumnTypes::SINT,
+		ColumnTypes::UINT,
+		ColumnTypes::REAL,
+		ColumnTypes::DECI,
+		ColumnTypes::DATE,
+		ColumnTypes::TIME,
+		ColumnTypes::DTTM,
+	};
+}
+
 #endif

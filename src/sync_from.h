@@ -94,6 +94,10 @@ struct SyncFromWorker {
 					handle_filters_command();
 					break;
 
+				case Commands::TYPES:
+					handle_types_command();
+					break;
+
 				case Commands::QUIT:
 					read_all_arguments(input);
 					return;
@@ -134,6 +138,11 @@ struct SyncFromWorker {
 		send_command(output, Commands::FILTERS);
 	}
 
+	void handle_types_command() {
+		read_all_arguments(input, accepted_types);
+		send_command(output, Commands::TYPES);
+	}
+
 	void handle_export_snapshot_command() {
 		read_all_arguments(input);
 		send_command(output, Commands::EXPORT_SNAPSHOT, client.export_snapshot());
@@ -162,9 +171,12 @@ struct SyncFromWorker {
 	}
 
 	void populate_database_schema() {
-		client.populate_database_schema(database);
+		if (output_stream.protocol_version <= LAST_LEGACY_SCHEMA_FORMAT_VERSION) {
+			accepted_types = legacy_supported_types();
+		}
+		client.populate_database_schema(database, accepted_types);
 
-		if (!table_filters.empty()) { // optimisation, but also will always be true on protocol 7 and earlier, per above comment
+		if (!table_filters.empty()) { // optimisation, but also will always skip for protocol 7 and earlier, per above comment
 			try {
 				apply_filters(table_filters, database.tables);
 			} catch (const filter_definition_error &e) {
@@ -269,6 +281,7 @@ struct SyncFromWorker {
 	Packer<VersionedFDWriteStream> output;
 	HashAlgorithm hash_algorithm;
 	TableFilters table_filters;
+	ColumnTypeList accepted_types;
 	char *status_area;
 	size_t status_size;
 };

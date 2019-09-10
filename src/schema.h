@@ -5,12 +5,14 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 #include "message_pack/packed_value.h"
 
 using namespace std;
 
 typedef vector<size_t> ColumnIndices;
 typedef vector<PackedValue> ColumnValues;
+typedef set<string> ColumnTypeList;
 
 namespace ColumnTypes {
 	const string BLOB = "BLOB";
