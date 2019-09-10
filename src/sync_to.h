@@ -71,6 +71,7 @@ struct SyncToWorker {
 			negotiate_protocol_version();
 			negotiate_hash_algorithm();
 			if (output_stream.protocol_version > LAST_FILTERS_AFTER_SNAPSHOT_PROTOCOL_VERSION) send_filters(); // send early so they can be factored into substitute PK decisions
+			negotiate_types();
 			share_snapshot();
 			retrieve_database_schema();
 			compare_schema();
@@ -271,6 +272,13 @@ struct SyncToWorker {
 		if (!table_filters.empty()) {
 			send_command(output, Commands::FILTERS, table_filters);
 			read_expected_command(input, Commands::FILTERS);
+		}
+	}
+
+	void negotiate_types() {
+		if (output_stream.protocol_version > LAST_LEGACY_SCHEMA_FORMAT_VERSION) {
+			send_command(output, Commands::TYPES, client.supported_types());
+			read_expected_command(input, Commands::TYPES);
 		}
 	}
 

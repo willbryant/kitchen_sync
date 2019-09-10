@@ -191,6 +191,11 @@ module KitchenSync
         send_command   Commands::FILTERS
       end
 
+      if @protocol_version > 7
+        assert_equal   Commands::TYPES, read_command.first
+        send_command   Commands::TYPES
+      end
+
       # since we haven't asked for multiple workers, we'll always get sent the snapshot-less start command
       expect_command Commands::WITHOUT_SNAPSHOT
       send_command   Commands::WITHOUT_SNAPSHOT
