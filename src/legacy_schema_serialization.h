@@ -1,6 +1,11 @@
 #ifndef LEGACY_SCHEMA_SERIALIZATION
 #define LEGACY_SCHEMA_SERIALIZATION
 
+// generally we don't fork the code to extend the protocol for a new version, we just add fields
+// and keep the existing ones with the existing semantics.  in protocol version 8 we've done a
+// cleanup of legacy quirks, so the separate code below is frozen in to preserve the output for
+// protocol version 7 (last used by KS version 1.17) and earlier.
+
 template <typename OutputStream>
 void legacy_serialize(Packer<OutputStream> &packer, const Column &column) {
 	int fields = 2;
