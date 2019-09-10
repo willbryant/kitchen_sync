@@ -713,6 +713,14 @@ tuple<string, string> MySQLClient::column_type(const Column &column) {
 		string result("ENUM" + values_list(*this, column.enumeration_values));
 		return make_tuple(result, "");
 
+	} else if (column.column_type == ColumnTypes::UNKN) {
+		// fall back to the raw type string given by the other end, which is really only likely to
+		// work if the other end is the same type of database server (and maybe even a compatible
+		// version). this also implies we don't know anything about parsing/formatting values for
+		// this column type, so it'll only work if the database accepts exactly the same input as
+		// it gives in output.
+		return make_tuple(column.db_type_def, "");
+
 	} else {
 		throw runtime_error("Don't know how to express column type of " + column.name + " (" + column.column_type + ")");
 	}

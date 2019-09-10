@@ -73,8 +73,6 @@ struct Column {
 	string type_restriction;
 	string reference_system;
 	vector<string> enumeration_values;
-
-	// serialized but not compared; used only for passing along unknown column types so you get an intelligible error, and non-portable
 	string db_type_def;
 
 	// the following member isn't serialized currently (could be, but not required):
@@ -91,7 +89,8 @@ struct Column {
 				flags == other.flags &&
 				type_restriction == other.type_restriction &&
 				reference_system == other.reference_system &&
-				enumeration_values == other.enumeration_values);
+				enumeration_values == other.enumeration_values &&
+				db_type_def == db_type_def);
 	}
 	inline bool operator !=(const Column &other) const { return (!(*this == other)); }
 

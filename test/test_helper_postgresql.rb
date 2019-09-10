@@ -261,6 +261,14 @@ class PG::Connection
   end
 
   def unsupported_column_type
-    'tsvector'
+    'text[]'
+  end
+
+  def unsupported_column_value
+    "{isn't,\"a scalar\"}"
+  end
+
+  def unsupported_column_value_returned
+    ["isn't", "a scalar"]
   end
 end
