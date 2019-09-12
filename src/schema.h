@@ -7,33 +7,13 @@
 #include <map>
 #include <set>
 #include "message_pack/packed_value.h"
+#include "column_types.h"
 
 using namespace std;
 
 typedef vector<size_t> ColumnIndices;
 typedef vector<PackedValue> ColumnValues;
 typedef set<string> ColumnTypeList;
-
-namespace ColumnTypes {
-	const string BLOB = "BLOB";
-	const string TEXT = "TEXT";
-	const string VCHR = "VARCHAR";
-	const string FCHR = "CHAR";
-	const string JSON = "JSON";
-	const string UUID = "UUID";
-	const string BOOL = "BOOL";
-	const string SINT = "INT";
-	const string UINT = "INT UNSIGNED";
-	const string REAL = "REAL";
-	const string DECI = "DECIMAL";
-	const string DATE = "DATE";
-	const string TIME = "TIME";
-	const string DTTM = "DATETIME";
-	const string SPAT = "SPATIAL";
-	const string ENUM = "ENUM";
-
-	const string UNKN = "UNKNOWN";
-}
 
 enum class DefaultType {
 	// these flags are serialized by name not value, so the values here can be changed if required
