@@ -8,4 +8,9 @@ struct VersionedFDWriteStream: FDWriteStream {
 	int protocol_version;
 };
 
+struct VersionedFDReadStream: FDReadStream {
+	VersionedFDReadStream(int fd): FDReadStream(fd), protocol_version(0) {}
+	int protocol_version;
+};
+
 #endif

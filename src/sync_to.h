@@ -124,8 +124,10 @@ struct SyncToWorker {
 		send_command(output, Commands::PROTOCOL, LATEST_PROTOCOL_VERSION_SUPPORTED);
 
 		// read the response to the protocol_version command that the output thread sends when it starts
-		// this is currently unused, but the command's semantics need to be in place for it to be useful in the future...
+		// we make that version available on the stream objects themselves for the benefit of higher-level
+		// serialization functions; the msgpack code itself doesn't have anything to do with versioning
 		read_expected_command(input, Commands::PROTOCOL, output_stream.protocol_version);
+		input_stream.protocol_version = output_stream.protocol_version;
 
 		if (output_stream.protocol_version < EARLIEST_PROTOCOL_VERSION_SUPPORTED || output_stream.protocol_version > LATEST_PROTOCOL_VERSION_SUPPORTED) {
 			throw runtime_error("Sorry, the other end doesn't support a compatible protocol version");
@@ -325,8 +327,8 @@ struct SyncToWorker {
 	bool leader;
 	int worker_number;
 	VersionedFDWriteStream output_stream;
-	FDReadStream input_stream;
-	Unpacker<FDReadStream> input;
+	VersionedFDReadStream input_stream;
+	Unpacker<VersionedFDReadStream> input;
 	Packer<VersionedFDWriteStream> output;
 	DatabaseClient client;
 	

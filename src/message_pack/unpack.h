@@ -23,7 +23,8 @@ struct unpacker_error: public std::runtime_error {
 template <typename Stream>
 class Unpacker {
 public:
-	inline Unpacker(Stream &stream): stream(stream) {}
+	inline Unpacker(Stream &stream): st(stream) {}
+	inline const Stream &stream() { return st; }
 
 	// reads the next value of the selected type from the data stream, detecting the encoding format and converting
 	// to the type, applying byte order conversion if necessary.
@@ -85,7 +86,7 @@ public:
 
 	// reads the given number of bytes from the data stream, without byte order conversion or type unmarshalling
 	inline void read_bytes(uint8_t *buf, size_t bytes) {
-		stream.read(buf, bytes);
+		st.read(buf, bytes);
 	}
 
 	// skips the next element in the stream, irrespective of type
@@ -100,16 +101,16 @@ public:
 			// single-byte encoding; nothing further to do
 
 		} else if (leader >= MSGPACK_FIXRAW_MIN && leader <= MSGPACK_FIXRAW_MAX) {
-			stream.skip(leader & 31);
+			st.skip(leader & 31);
 
 		} else if (leader == MSGPACK_RAW8 || leader == MSGPACK_BIN8) {
-			stream.skip(read_bytes<uint8_t>());
+			st.skip(read_bytes<uint8_t>());
 
 		} else if (leader == MSGPACK_RAW16 || leader == MSGPACK_BIN16) {
-			stream.skip(ntohs(read_bytes<uint16_t>()));
+			st.skip(ntohs(read_bytes<uint16_t>()));
 
 		} else if (leader == MSGPACK_RAW32 || leader == MSGPACK_BIN32) {
-			stream.skip(ntohl(read_bytes<uint32_t>()));
+			st.skip(ntohl(read_bytes<uint32_t>()));
 
 		} else if (leader >= MSGPACK_FIXARRAY_MIN && leader <= MSGPACK_FIXARRAY_MAX) {
 			size_t n = (leader & 15);
@@ -185,7 +186,7 @@ public:
 	}
 
 protected:
-	Stream &stream;
+	Stream &st;
 };
 
 template <typename Stream, typename T>

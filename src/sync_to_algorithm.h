@@ -404,7 +404,7 @@ struct SyncToAlgorithm {
 	Worker &worker;
 	DatabaseClient &client;
 	SyncQueue<DatabaseClient> &sync_queue;
-	Unpacker<FDReadStream> &input;
+	Unpacker<VersionedFDReadStream> &input;
 	Packer<VersionedFDWriteStream> &output;
 	HashAlgorithm hash_algorithm;
 	size_t target_minimum_block_size;
