@@ -931,15 +931,15 @@ struct MySQLColumnLister {
 
 		} else if (db_type == "tinytext") {
 			column.column_type = ColumnTypes::TEXT;
-			column.size = 1;
+			column.size = 255;
 
 		} else if (db_type == "text") {
 			column.column_type = ColumnTypes::TEXT;
-			column.size = 2;
+			column.size = 65535;
 
 		} else if (db_type == "mediumtext") {
 			column.column_type = ColumnTypes::TEXT;
-			column.size = 3;
+			column.size = 16777215;
 
 		} else if (db_type == "longtext") {
 			if ((!row.null_at(6) && row.string_at(6).substr(0, 4) == "JSON") || (!row.null_at(7) && row.int_at(7))) { // 6 is the comment and 7 the check constraint; the check constraint is the canonical way to handle JSON in mariadb, but we also support using the comment for the sake of older versions (mariadb 10.1 and below, mysql 5.5)
@@ -953,18 +953,18 @@ struct MySQLColumnLister {
 
 		} else if (db_type == "tinyblob") {
 			column.column_type = ColumnTypes::BLOB;
-			column.size = 1;
+			column.size = 255;
 
 		} else if (db_type == "blob") {
 			column.column_type = ColumnTypes::BLOB;
-			column.size = 2;
+			column.size = 65535;
 
 		} else if (db_type == "mediumblob") {
 			column.column_type = ColumnTypes::BLOB;
-			column.size = 3;
+			column.size = 16777215;
 
 		} else if (db_type == "longblob") {
-			column.column_type = ColumnTypes::BLOB; // no specific size for compatibility, but 4 in current mysql
+			column.column_type = ColumnTypes::BLOB; // leave size 0 to mean max to match other dbs, for compatibility, but the longblob limit is 4294967295 in current mysql
 
 		} else if (db_type == "date") {
 			column.column_type = ColumnTypes::DATE;

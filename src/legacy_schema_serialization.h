@@ -24,7 +24,20 @@ void legacy_serialize(Packer<OutputStream> &packer, const Column &column) {
 	packer << column.column_type;
 	if (column.size) {
 		packer << string("size");
-		packer << column.size;
+		if (column.column_type == ColumnTypes::BLOB || column.column_type == ColumnTypes::TEXT) {
+			// we used to use the size in bytes, which worked for the types like tinyblob/mediumblob etc, but not for varbinary(n); now we just store the maximum length
+			if (column.size < 256) {
+				packer << 1;
+			} else if (column.size < 65536) {
+				packer << 2;
+			} else if (column.size < 16777216) {
+				packer << 3;
+			} else {
+				packer << 0; // note this was used to mean max
+			}
+		} else {
+			packer << column.size;
+		}
 	}
 	if (column.scale) {
 		packer << string("scale");
@@ -96,6 +109,22 @@ void legacy_deserialize(Unpacker<InputStream> &unpacker, Column &column) {
 			unpacker >> column.column_type;
 		} else if (attr_key == "size") {
 			unpacker >> column.size;
+			if (column.column_type == ColumnTypes::BLOB || column.column_type == ColumnTypes::TEXT) {
+				// as above, we used to use the size in bytes, which worked for the types like tinyblob/mediumblob etc, but not for varbinary(n); now we just store the maximum length
+				switch (column.size) {
+					case 1:
+						column.size = 255;
+						break;
+
+					case 2:
+						column.size = 65535;
+						break;
+
+					case 3:
+						column.size = 16777215;
+						break;
+				}
+			}
 		} else if (attr_key == "scale") {
 			unpacker >> column.scale;
 		} else if (attr_key == "nullable") {
