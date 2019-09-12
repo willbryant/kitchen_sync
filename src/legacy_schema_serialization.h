@@ -82,6 +82,48 @@ void legacy_serialize(Packer<VersionedFDWriteStream> &packer, const Key &key) {
 	packer << key.columns;
 }
 
+template <typename InputStream>
+void legacy_deserialize(Unpacker<InputStream> &unpacker, Column &column) {
+	size_t map_length = unpacker.next_map_length(); // checks type
+
+	while (map_length--) {
+		string attr_key = unpacker.template next<string>();
+
+		// note we don't need to support fields or flags not present in v1.17, which was the last version to use protocol version 7
+		if (attr_key == "name") {
+			unpacker >> column.name;
+		} else if (attr_key == "column_type") {
+			unpacker >> column.column_type;
+		} else if (attr_key == "size") {
+			unpacker >> column.size;
+		} else if (attr_key == "scale") {
+			unpacker >> column.scale;
+		} else if (attr_key == "nullable") {
+			unpacker >> column.nullable;
+		} else if (attr_key == "db_type_def") {
+			unpacker >> column.db_type_def;
+		} else if (attr_key == "sequence") {
+			column.default_type = DefaultType::sequence;
+			unpacker >> column.default_value; // currently unused, but allowed for forward compatibility
+		} else if (attr_key == "default_value") {
+			column.default_type = DefaultType::default_value;
+			unpacker >> column.default_value;
+		} else if (attr_key == "default_function") {
+			column.default_type = DefaultType::default_expression;
+			unpacker >> column.default_value;
+		} else if (attr_key == "mysql_timestamp") {
+			unpacker >> column.flags.mysql_timestamp;
+		} else if (attr_key == "mysql_on_update_timestamp") {
+			unpacker >> column.flags.mysql_on_update_timestamp;
+		} else if (attr_key == "time_zone") {
+			unpacker >> column.flags.time_zone;
+		} else {
+			// ignore anything else, for forward compatibility
+			unpacker.skip();
+		}
+	}
+}
+
 inline ColumnTypeList legacy_supported_types() {
 	return ColumnTypeList{
 		ColumnTypes::BLOB,

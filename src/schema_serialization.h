@@ -12,6 +12,7 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 		legacy_serialize(packer, column);
 		return;
 	}
+
 	int fields = 2;
 	if (column.size) fields++;
 	if (column.scale) fields++;
@@ -111,6 +112,7 @@ void operator << (Packer<VersionedFDWriteStream> &packer, const Key &key) {
 		legacy_serialize(packer, key);
 		return;
 	}
+
 	pack_map_length(packer, key.standard() ? 2 : 3);
 	packer << string("name");
 	packer << key.name;
@@ -160,6 +162,11 @@ void operator << (Packer<OutputStream> &packer, const Database &database) {
 
 template <typename InputStream>
 void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
+	if (unpacker.stream().protocol_version <= LAST_LEGACY_SCHEMA_FORMAT_VERSION) {
+		legacy_deserialize(unpacker, column);
+		return;
+	}
+
 	size_t map_length = unpacker.next_map_length(); // checks type
 
 	while (map_length--) {
