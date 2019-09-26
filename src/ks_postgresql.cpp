@@ -440,12 +440,6 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 				column.size = 0;
 			}
 
-			if (column.column_type == ColumnTypes::DTTM || column.column_type == ColumnTypes::TIME) {
-				// postgresql only supports microsecond precision on time columns; enforce this on the definitions on
-				// incoming column definitions so the schema compares equal and we don't attempt pointless alters.
-				column.size = 6;
-			}
-
 			if (column.column_type == ColumnTypes::ENUM && column.type_restriction.empty()) {
 				// postgresql requires that you create a material type for each enumeration, whereas mysql just lists the
 				// possible values on the column itself.  we don't currently implement creation/maintainance of these custom
@@ -541,18 +535,32 @@ string PostgreSQLClient::column_type(const Column &column) {
 		return "date";
 
 	} else if (column.column_type == ColumnTypes::TIME) {
-		if (column.flags.time_zone) {
-			return "time with time zone";
-		} else {
-			return "time without time zone";
+		string result("time");
+		if (column.size != 6) {
+			result += '(';
+			result += to_string(column.size);
+			result += ')';
 		}
+		if (column.flags.time_zone) {
+			result += " with time zone";
+		} else {
+			result += " without time zone";
+		}
+		return result;
 
 	} else if (column.column_type == ColumnTypes::DTTM) {
-		if (column.flags.time_zone) {
-			return "timestamp with time zone";
-		} else {
-			return "timestamp without time zone";
+		string result("timestamp");
+		if (column.size != 6) {
+			result += '(';
+			result += to_string(column.size);
+			result += ')';
 		}
+		if (column.flags.time_zone) {
+			result += " with time zone";
+		} else {
+			result += " without time zone";
+		}
+		return result;
 
 	} else if (column.column_type == ColumnTypes::SPAT) {
 		// note that we have made the assumption that all the mysql geometry types should be mapped to
@@ -594,6 +602,14 @@ string PostgreSQLClient::column_type(const Column &column) {
 			throw runtime_error("The enumerated type named " + column.type_restriction + " has possible values " + values_list(*this, type_map.enum_type_values[column.type_restriction]) + " but should have possible values " + values_list(*this, column.enumeration_values) + " for column " + column.name + ", please alter the type");
 		}
 		return column.type_restriction;
+
+	} else if (column.column_type == ColumnTypes::UNKN) {
+		// fall back to the raw type string given by the other end, which is really only likely to
+		// work if the other end is the same type of database server (and maybe even a compatible
+		// version). this also implies we don't know anything about parsing/formatting values for
+		// this column type, so it'll only work if the database accepts exactly the same input as
+		// it gives in output.
+		return column.db_type_def;
 
 	} else {
 		throw runtime_error("Don't know how to express column type of " + column.name + " (" + column.column_type + ")");

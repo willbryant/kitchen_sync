@@ -116,7 +116,7 @@ struct SyncFromWorker {
 		read_expected_command(input, Commands::PROTOCOL, their_protocol_version);
 
 		// the usable protocol is the highest out of those supported by the two ends, unless lower than the minimum in which case no version is usable
-		output_stream.protocol_version = max(EARLIEST_PROTOCOL_VERSION_SUPPORTED, min(LATEST_PROTOCOL_VERSION_SUPPORTED, their_protocol_version));
+		input_stream.protocol_version = output_stream.protocol_version = max(EARLIEST_PROTOCOL_VERSION_SUPPORTED, min(LATEST_PROTOCOL_VERSION_SUPPORTED, their_protocol_version));
 
 		// tell the other end what version was selected
 		send_command(output, Commands::PROTOCOL, output_stream.protocol_version);
@@ -275,8 +275,8 @@ struct SyncFromWorker {
 	DatabaseClient client;
 	Database database;
 	map<string, Table*> tables_by_name;
-	FDReadStream input_stream;
-	Unpacker<FDReadStream> input;
+	VersionedFDReadStream input_stream;
+	Unpacker<VersionedFDReadStream> input;
 	VersionedFDWriteStream output_stream;
 	Packer<VersionedFDWriteStream> output;
 	HashAlgorithm hash_algorithm;

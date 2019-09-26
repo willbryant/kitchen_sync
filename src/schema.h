@@ -7,33 +7,13 @@
 #include <map>
 #include <set>
 #include "message_pack/packed_value.h"
+#include "column_types.h"
 
 using namespace std;
 
 typedef vector<size_t> ColumnIndices;
 typedef vector<PackedValue> ColumnValues;
 typedef set<string> ColumnTypeList;
-
-namespace ColumnTypes {
-	const string BLOB = "BLOB";
-	const string TEXT = "TEXT";
-	const string VCHR = "VARCHAR";
-	const string FCHR = "CHAR";
-	const string JSON = "JSON";
-	const string UUID = "UUID";
-	const string BOOL = "BOOL";
-	const string SINT = "INT";
-	const string UINT = "INT UNSIGNED";
-	const string REAL = "REAL";
-	const string DECI = "DECIMAL";
-	const string DATE = "DATE";
-	const string TIME = "TIME";
-	const string DTTM = "DATETIME";
-	const string SPAT = "SPATIAL";
-	const string ENUM = "ENUM";
-
-	const string UNKN = "UNKNOWN";
-}
 
 enum class DefaultType {
 	// these flags are serialized by name not value, so the values here can be changed if required
@@ -73,8 +53,6 @@ struct Column {
 	string type_restriction;
 	string reference_system;
 	vector<string> enumeration_values;
-
-	// serialized but not compared; used only for passing along unknown column types so you get an intelligible error, and non-portable
 	string db_type_def;
 
 	// the following member isn't serialized currently (could be, but not required):
@@ -91,7 +69,8 @@ struct Column {
 				flags == other.flags &&
 				type_restriction == other.type_restriction &&
 				reference_system == other.reference_system &&
-				enumeration_values == other.enumeration_values);
+				enumeration_values == other.enumeration_values &&
+				db_type_def == db_type_def);
 	}
 	inline bool operator !=(const Column &other) const { return (!(*this == other)); }
 

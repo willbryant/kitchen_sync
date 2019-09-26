@@ -305,25 +305,27 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     read_command
   end
 
-  test_each "complains if there's a non-ignored table that has on unsupported column type at both ends" do
+  test_each "doesn't complain or recreate the table if table that has an unsupported column type if the database type is exactly the same at both ends" do
     clear_schema
     create_unsupportedtbl
     create_secondtbl
+    execute "INSERT INTO unsupportedtbl (pri, unsupported) VALUES (10, '#{connection.escape connection.unsupported_column_value}')"
 
-    expect_stderr("Don't know how to interpret type of unsupportedtbl.unsupported (#{connection.unsupported_column_type}).  Please check https://github.com/willbryant/kitchen_sync/blob/master/SCHEMA.md.") do
-      expect_handshake_commands(schema: {"tables" => [unsupportedtbl_def, secondtbl_def]})
-      read_command rescue nil
-    end
+    expect_handshake_commands(schema: {"tables" => [unsupportedtbl_def]})
+    expect_command Commands::RANGE, ["unsupportedtbl"]
+    send_command   Commands::RANGE, ["unsupportedtbl", [10], [10]]
+    read_command
+    assert_equal connection.unsupported_column_type, connection.table_column_types("unsupportedtbl")["unsupported"]
+    assert_equal [[10, connection.unsupported_column_value_returned]],
+                 query("SELECT * FROM unsupportedtbl")
   end
 
-  test_each "complains if there's a non-ignored table that has on unsupported column type at the from end" do
+  test_each "adds missing tables that have unsupported column types at the from end" do
     clear_schema
-    create_secondtbl
 
-    expect_stderr("Don't know how to interpret type of unsupportedtbl.unsupported (#{connection.unsupported_column_type}).  Please check https://github.com/willbryant/kitchen_sync/blob/master/SCHEMA.md.") do
-      expect_handshake_commands(schema: {"tables" => [unsupportedtbl_def, secondtbl_def]})
-      read_command rescue nil
-    end
+    expect_handshake_commands(schema: {"tables" => [unsupportedtbl_def]})
+    read_command
+    assert_equal connection.unsupported_column_type, connection.table_column_types("unsupportedtbl")["unsupported"]
   end
 
   test_each "drops non-ignored tables that have on unsupported column type that exist only at the to end" do

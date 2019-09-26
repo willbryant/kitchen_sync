@@ -204,4 +204,12 @@ class Mysql2::Client
   def unsupported_column_type
     'bit(8)'
   end
+
+  def unsupported_column_value
+    "A" # you can use the nicer b'...' syntax, but it just comes back as raw binary data like below anyway, so it doesn't really matter
+  end
+
+  def unsupported_column_value_returned
+    "A"
+  end
 end
