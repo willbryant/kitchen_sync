@@ -1,24 +1,48 @@
 require 'pg'
+require 'forwardable'
 
-ENDPOINT_DATABASES["postgresql"] = {
-  :connect => lambda { |host, port, name, username, password|
+class PostgreSQLAdapter
+  def host
+    ENV["POSTGRESQL_DATABASE_HOST"]     || ENV["ENDPOINT_DATABASE_HOST"]     || ""
+  end
+
+  def port
+    ENV["POSTGRESQL_DATABASE_PORT"]     || ENV["ENDPOINT_DATABASE_PORT"]     || ""
+  end
+
+  def name
+    ENV["POSTGRESQL_DATABASE_NAME"]     || ENV["ENDPOINT_DATABASE_NAME"]     || "ks_test"
+  end
+
+  def username
+    ENV["POSTGRESQL_DATABASE_USERNAME"] || ENV["ENDPOINT_DATABASE_USERNAME"] || ""
+  end
+
+  def password
+    ENV["POSTGRESQL_DATABASE_PASSWORD"] || ENV["ENDPOINT_DATABASE_PASSWORD"] || ""
+  end
+
+  def initialize
     PG::BasicTypeRegistry.alias_type(0, 'time', 'text')
     PG::BasicTypeRegistry.alias_type(0, 'uuid', 'text')
     PG::BasicTypeRegistry.alias_type(0, 'json', 'text') # disable the default conversion of JSON fields to Ruby hashes, as we treat them as strings in KS, so it would make the tests awkward to write if they came back as hashes
-    PG.connect(
+    @connection = PG.connect(
       host,
       port,
       nil,
       nil,
       name,
       username,
-      password).tap {|conn| conn.type_map_for_results = PG::BasicTypeMapForResults.new(conn)}
-  }
-}
+      password
+    )
+    @connection.type_map_for_results = PG::BasicTypeMapForResults.new(@connection)
+  end
 
-class PG::Connection
+  extend Forwardable
+  def_delegators :@connection, :query, :server_version, :escape
+
   def execute(sql)
-    async_exec(sql)
+    @connection.async_exec(sql)
   end
 
   def tables
@@ -131,7 +155,7 @@ class PG::Connection
   end
 
   def quote_ident(name)
-    self.class.quote_ident(name)
+    PG::Connection.quote_ident(name)
   end
 
   def zero_time_value
@@ -272,3 +296,5 @@ class PG::Connection
     ["isn't", "a scalar"]
   end
 end
+
+ENDPOINT_ADAPTERS["postgresql"] = PostgreSQLAdapter

@@ -1,20 +1,43 @@
 require 'mysql2'
-
-ENDPOINT_DATABASES["mysql"] = {
-  :connect => lambda { |host, port, name, username, password| Mysql2::Client.new(
-    :host     => host,
-    :port     => port.to_i,
-    :database => name,
-    :username => username,
-    :password => password,
-    :cast_booleans => true)
-  }
-}
+require 'forwardable'
 
 class Mysql2::Client
-  def execute(sql)
-    query(sql)
+end
+
+class MysqlAdapter
+  def host
+    ENV["MYSQL_DATABASE_HOST"]     || ENV["ENDPOINT_DATABASE_HOST"]     || ""
   end
+
+  def port
+    ENV["MYSQL_DATABASE_PORT"]     || ENV["ENDPOINT_DATABASE_PORT"]     || ""
+  end
+
+  def name
+    ENV["MYSQL_DATABASE_NAME"]     || ENV["ENDPOINT_DATABASE_NAME"]     || "ks_test"
+  end
+
+  def username
+    ENV["MYSQL_DATABASE_USERNAME"] || ENV["ENDPOINT_DATABASE_USERNAME"] || ""
+  end
+
+  def password
+    ENV["MYSQL_DATABASE_PASSWORD"] || ENV["ENDPOINT_DATABASE_PASSWORD"] || ""
+  end
+
+  def initialize
+    @connection = Mysql2::Client.new(
+      :host          => host,
+      :port          => port.to_i,
+      :database      => name,
+      :username      => username,
+      :password      => password,
+      :cast_booleans => true)
+  end
+
+  extend Forwardable
+  def_delegators :@connection, :query, :escape
+  alias_method :execute, :query
 
   def server_version
     @server_version ||= query("SHOW VARIABLES LIKE 'version'").first["Value"]
@@ -213,3 +236,5 @@ class Mysql2::Client
     "A"
   end
 end
+
+ENDPOINT_ADAPTERS["mysql"] = MysqlAdapter

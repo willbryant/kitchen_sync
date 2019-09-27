@@ -954,7 +954,7 @@ SQL
     assert_same_keys(secondtbl_def)
   end
 
-  ENDPOINT_DATABASES.keys.each do |from_database|
+  ENDPOINT_ADAPTERS.keys.each do |from_database|
     test_each "can run the table creation code for adapter-specific columns from #{from_database}" do
       clear_schema
 

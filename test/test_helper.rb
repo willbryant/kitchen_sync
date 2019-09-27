@@ -8,7 +8,7 @@ require 'msgpack'
 require 'openssl'
 require 'ruby-xxhash'
 
-ENDPOINT_DATABASES = {}
+ENDPOINT_ADAPTERS = {}
 require File.expand_path(File.join(File.dirname(__FILE__), 'test_helper_postgresql')) if ENV['ENDPOINT_DATABASES'].nil? || ENV['ENDPOINT_DATABASES'].include?('postgresql')
 require File.expand_path(File.join(File.dirname(__FILE__), 'test_helper_mysql'))      if ENV['ENDPOINT_DATABASES'].nil? || ENV['ENDPOINT_DATABASES'].include?('mysql')
 
@@ -223,37 +223,17 @@ module KitchenSync
       "ks_#{@database_server}"
     end
 
-    def database_host
-      ENV["#{@database_server.upcase}_DATABASE_HOST"]     || ENV["ENDPOINT_DATABASE_HOST"]     || ""
-    end
-
-    def database_port
-      ENV["#{@database_server.upcase}_DATABASE_PORT"]     || ENV["ENDPOINT_DATABASE_PORT"]     || ""
-    end
-
-    def database_name
-      ENV["#{@database_server.upcase}_DATABASE_NAME"]     || ENV["ENDPOINT_DATABASE_NAME"]     || "ks_test"
-    end
-
-    def database_username
-      ENV["#{@database_server.upcase}_DATABASE_USERNAME"] || ENV["ENDPOINT_DATABASE_USERNAME"] || ""
-    end
-
-    def database_password
-      ENV["#{@database_server.upcase}_DATABASE_PASSWORD"] || ENV["ENDPOINT_DATABASE_PASSWORD"] || ""
-    end
-
     def program_args
       @program_args ||= [ from_or_to.to_s ]
     end
 
     def program_env
       @program_env ||= {
-        "ENDPOINT_DATABASE_HOST" => database_host,
-        "ENDPOINT_DATABASE_PORT" => database_port,
-        "ENDPOINT_DATABASE_NAME" => database_name,
-        "ENDPOINT_DATABASE_USERNAME" => database_username,
-        "ENDPOINT_DATABASE_PASSWORD" => database_password,
+        "ENDPOINT_DATABASE_HOST"     => connection.host,
+        "ENDPOINT_DATABASE_PORT"     => connection.port,
+        "ENDPOINT_DATABASE_NAME"     => connection.name,
+        "ENDPOINT_DATABASE_USERNAME" => connection.username,
+        "ENDPOINT_DATABASE_PASSWORD" => connection.password,
 
         # we force the block size down to 1 so we can test out our algorithms row-by-row, but real runs would use a bigger size
         "ENDPOINT_TARGET_MINIMUM_BLOCK_SIZE" => "1",
@@ -261,7 +241,7 @@ module KitchenSync
     end
 
     def connection
-      @connection ||= @database_settings[:connect].call(database_host, database_port, database_name, database_username, database_password)
+      @connection ||= @adapter_class.new
     end
 
     def execute(sql)
@@ -295,11 +275,11 @@ module KitchenSync
     end
 
     def self.test_each(description, only: nil, &block)
-      ENDPOINT_DATABASES.each do |database_server, settings|
+      ENDPOINT_ADAPTERS.each do |database_server, adapter_class|
         next if only && only.to_s != database_server
         define_method("test #{description} for #{database_server}".gsub(/\W+/,'_').to_sym) do
           @database_server = database_server
-          @database_settings = settings
+          @adapter_class = adapter_class
           begin
             skip "pending" unless block
             before if respond_to?(:before)
