@@ -5,7 +5,7 @@
 bool primary_key_subdividable(const Table &table) {
 	if (table.primary_key_columns.size() != 1) return false;
 	const Column &column(table.columns[table.primary_key_columns[0]]);
-	return (column.column_type == ColumnTypes::SINT || column.column_type == ColumnTypes::UINT || column.column_type == ColumnTypes::UUID);
+	return (column.column_type == ColumnType::uuid || (column.column_type >= ColumnType::integer_min && column.column_type <= ColumnType::integer_max));
 }
 
 template <typename T>
@@ -80,14 +80,30 @@ inline ColumnValues subdivide_uuid_range(const ColumnValues &prev_key, const Col
 ColumnValues subdivide_primary_key_range(const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
 	const Column &column(table.columns[table.primary_key_columns[0]]);
 
-	if (column.column_type == ColumnTypes::SINT) {
-		return subdivide_integer_range<int64_t>(prev_key, last_key);
-	} else if (column.column_type == ColumnTypes::UINT) {
-		return subdivide_integer_range<uint64_t>(prev_key, last_key);
-	} else if (column.column_type == ColumnTypes::UUID) {
-		return subdivide_uuid_range(prev_key, last_key);
-	} else {
-		// don't know how to subdivide this key type
-		return prev_key;
+	switch (column.column_type) {
+		case ColumnType::sint_8b:
+		case ColumnType::sint_16b:
+		case ColumnType::sint_24b:
+		case ColumnType::sint_32b:
+			return subdivide_integer_range<int32_t>(prev_key, last_key);
+
+		case ColumnType::sint_64b:
+			return subdivide_integer_range<int64_t>(prev_key, last_key);
+
+		case ColumnType::uint_8b:
+		case ColumnType::uint_16b:
+		case ColumnType::uint_24b:
+		case ColumnType::uint_32b:
+			return subdivide_integer_range<uint32_t>(prev_key, last_key);
+
+		case ColumnType::uint_64b:
+			return subdivide_integer_range<uint64_t>(prev_key, last_key);
+
+		case ColumnType::uuid:
+			return subdivide_uuid_range(prev_key, last_key);
+
+		default:
+			// don't know how to subdivide this key type
+			return prev_key;
 	}
 }

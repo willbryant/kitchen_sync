@@ -91,15 +91,33 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
                    [{"tables" => [autotbl_def]}]
   end
 
-  test_each "returns the appropriate representation of adapter-specific column definitions" do
-    clear_schema
-    create_adapterspecifictbl
+  ENDPOINT_ADAPTERS.each do |to_database_server, adapter_class|
+    test_each "returns the appropriate representation of adapter-specific column definitions for use by #{to_database_server}" do
+      that_adapter = adapter_class.new
+      clear_schema
+      create_adapterspecifictbl
 
-    send_handshake_commands
+      send_handshake_commands(accepted_types: that_adapter.supported_column_types)
 
-    send_command   Commands::SCHEMA
-    expect_command Commands::SCHEMA,
-                   [{"tables" => [adapterspecifictbl_def]}]
+      send_command   Commands::SCHEMA
+      expect_command Commands::SCHEMA,
+                     [{"tables" => [adapterspecifictbl_def(compatible_with: that_adapter)]}]
+    end
+
+    test_each "reports database-specific column types, using the 'unknown' type if #{to_database_server} is not the same database server" do
+      that_adapter = adapter_class.new
+      clear_schema
+      create_unsupportedtbl
+
+      send_handshake_commands(accepted_types: that_adapter.supported_column_types)
+
+      table_def = unsupportedtbl_def
+      table_def["columns"][-1]["column_type"] = ColumnType::UNKNOWN if to_database_server != @database_server
+
+      send_command   Commands::SCHEMA
+      expect_command Commands::SCHEMA,
+                     [{"tables" => [table_def]}]
+    end
   end
 
   test_each "ignores views" do
@@ -116,17 +134,6 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
     send_command   Commands::ROWS, [footbl_def["name"], [], []]
     expect_command Commands::ROWS,
                    [footbl_def["name"], [], []]
-  end
-
-  test_each "reports unsupported column types" do
-    clear_schema
-    create_unsupportedtbl
-
-    send_handshake_commands
-
-    send_command   Commands::SCHEMA
-    expect_command Commands::SCHEMA,
-                   [{"tables" => [unsupportedtbl_def]}]
   end
 
   test_each "returns schema in legacy format for protocol version 7 and earlier, without an explicit TYPES command" do

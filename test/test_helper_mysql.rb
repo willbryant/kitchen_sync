@@ -99,13 +99,9 @@ class MysqlAdapter
     server_version !~ /^5\.5/
   end
 
-  def mysql_default_expressions?
+  def default_expressions?
     # mysql 8.0+ or mariadb 10.2+ (note mariadb skipped 6 through 9)
     server_version !~ /^5\./ && server_version !~ /^10\.0.*MariaDB/ && server_version !~ /^10\.1.*MariaDB/
-  end
-
-  def default_expressions?
-    mysql_default_expressions?
   end
 
   def spatial_axis_order_depends_on_srs?
@@ -123,11 +119,6 @@ class MysqlAdapter
     server_version !~ /^5\./ && server_version !~ /MariaDB/
   end
 
-  def explicit_json_column_type?
-    # supported by mysql 5.7.8+, not by mysql 5.x or mariadb
-    server_version !~ /^5\.5/ && server_version !~ /MariaDB/
-  end
-
   def supports_fractional_seconds?
     # supported by mysql 8+ or any version of mariadb, but since mariadb 5.x doesn't support precision arguments
     # to functions like CURRENT_TIMESTAMP, we only support fractional precision on non-5.x versions of either
@@ -142,6 +133,10 @@ class MysqlAdapter
     'INT NOT NULL AUTO_INCREMENT'
   end
 
+  def uuid_column_type?
+    false
+  end
+
   def uuid_column_type
     "CHAR(36) COMMENT 'UUID'"
   end
@@ -154,16 +149,26 @@ class MysqlAdapter
     'LONGBLOB'
   end
 
-  def json_column_type(column_name)
-    if explicit_json_column_type?
-      "JSON"
-    else
-      "LONGTEXT COMMENT 'JSON' CHECK (json_valid(#{column_name}))"
-    end
+  def explicit_json_column_type?
+    # supported by mysql 5.7.8+, not by mysql 5.x or mariadb
+    server_version !~ /^5\.5/ && server_version !~ /MariaDB/
+  end
+
+  def json_column_type?
+    # supported by mysql 5.7+ (explicit type), and mariadb 10.2+ (using check constraints)
+    server_version !~ /^5\.5/ && server_version !~ /^10\.0.*MariaDB/ && server_version !~ /^10\.1.*MariaDB/
   end
 
   def jsonb_column_type?
     false
+  end
+
+  def json_column_type(column_name)
+    if explicit_json_column_type?
+      "JSON"
+    else
+      "LONGTEXT CHECK (json_valid(#{column_name}))"
+    end
   end
 
   def time_column_type
@@ -190,6 +195,10 @@ class MysqlAdapter
     end
   end
 
+  def time_zone_types?
+    false
+  end
+
   def real_column_type
     'FLOAT'
   end
@@ -201,7 +210,7 @@ class MysqlAdapter
     "ENUM('red', 'green', 'blue', 'with''quote')"
   end
 
-  def enum_column_type_restriction
+  def enum_column_subtype
     # mysql doesn't name the specific enumeration types
     {}
   end
@@ -224,7 +233,11 @@ class MysqlAdapter
     []
   end
 
-  def unsupported_column_type
+  def unsupported_column_type_name
+    ColumnType::MYSQL_SPECIFIC
+  end
+
+  def unsupported_sql_type
     'bit(8)'
   end
 
@@ -234,6 +247,96 @@ class MysqlAdapter
 
   def unsupported_column_value_returned
     "A"
+  end
+
+  def create_adapterspecifictbl
+    execute(<<-SQL)
+      CREATE TABLE ```mysql``tbl` (
+        pri INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        tiny2 TINYINT(2) UNSIGNED DEFAULT 99,
+        nulldefaultstr VARCHAR(255) DEFAULT NULL,
+        secondstime TIME,
+        #{"tenthstime TIME(1)," if supports_fractional_seconds?}
+        #{"millistime TIME(3)," if supports_fractional_seconds?}
+        #{"microstime TIME(6)," if supports_fractional_seconds?}
+        secondsdatetime DATETIME,
+        #{"tenthsdatetime DATETIME(1)," if supports_fractional_seconds?}
+        #{"millisdatetime DATETIME(3)," if supports_fractional_seconds?}
+        #{"microsdatetime DATETIME(6)," if supports_fractional_seconds?}
+        timestampboth TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        #{"timestampcreateonly TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," if supports_multiple_timestamp_columns?}
+        #{"microstimestampboth TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)," if supports_fractional_seconds?}
+        #{"mysqlfunctiondefault VARCHAR(255) DEFAULT (uuid())," if default_expressions?}
+        `select` INT,
+        ```quoted``` INT,
+        PRIMARY KEY(pri))
+SQL
+  end
+
+  def adapterspecifictbl_def(compatible_with: self)
+    { "name"    => "`mysql`tbl",
+      "columns" => [
+        {"name" => "pri",                   "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::UINT_32BIT : ColumnType::SINT_32BIT, "nullable" => false, "sequence" => ""},
+        {"name" => "tiny2",                 "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::UINT_8BIT : ColumnType::SINT_16BIT, "default_value" => "99"}, # note we've lost the (nonportable) display width (2) - size tells us the size of the integers, not the display width
+        {"name" => "nulldefaultstr",        "column_type" => ColumnType::TEXT_VARCHAR, "size" => 255},
+        {"name" => "secondstime",           "column_type" => ColumnType::TIME},
+        ({"name" => "tenthstime",           "column_type" => ColumnType::TIME, "size" => 1} if supports_fractional_seconds?),
+        ({"name" => "millistime",           "column_type" => ColumnType::TIME, "size" => 3} if supports_fractional_seconds?),
+        ({"name" => "microstime",           "column_type" => ColumnType::TIME, "size" => 6} if supports_fractional_seconds?),
+        {"name" => "secondsdatetime",       "column_type" => ColumnType::DATETIME},
+        ({"name" => "tenthsdatetime",       "column_type" => ColumnType::DATETIME, "size" => 1} if supports_fractional_seconds?),
+        ({"name" => "millisdatetime",       "column_type" => ColumnType::DATETIME, "size" => 3} if supports_fractional_seconds?),
+        ({"name" => "microsdatetime",       "column_type" => ColumnType::DATETIME, "size" => 6} if supports_fractional_seconds?),
+        {"name" => "timestampboth",         "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::DATETIME_MYSQLTIMESTAMP : ColumnType::DATETIME,               "nullable" => false, "default_expression" => "CURRENT_TIMESTAMP", "auto_update_timestamp" => true},
+        ({"name" => "timestampcreateonly",  "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::DATETIME_MYSQLTIMESTAMP : ColumnType::DATETIME,               "nullable" => false, "default_expression" => "CURRENT_TIMESTAMP"} if supports_multiple_timestamp_columns?),
+        ({"name" => "microstimestampboth",  "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::DATETIME_MYSQLTIMESTAMP : ColumnType::DATETIME, "size" => 6,  "nullable" => false, "default_expression" => "CURRENT_TIMESTAMP(6)", "auto_update_timestamp" => true} if supports_fractional_seconds?),
+        ({"name" => "mysqlfunctiondefault", "column_type" => ColumnType::TEXT_VARCHAR, "size" => 255,                                "default_expression" => "uuid()"} if default_expressions?),
+        {"name" => "select",                "column_type" => ColumnType::SINT_32BIT},
+        {"name" => "`quoted`",              "column_type" => ColumnType::SINT_32BIT},
+      ].compact,
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
+      "primary_key_columns" => [0],
+      "keys" => [] }
+  end
+
+  def adapterspecifictbl_row
+    { "tiny2" => 12,
+      "timestampboth" => "2019-07-03 00:00:01" }.merge(
+      supports_fractional_seconds? ? { "microstimestampboth" => "2019-07-03 01:02:03.123456" } : {})
+  end
+
+  def supported_column_types
+    Set.new([
+      ColumnType::UNKNOWN,
+      ColumnType::MYSQL_SPECIFIC,
+      ColumnType::BINARY,
+      ColumnType::TEXT,
+      ColumnType::TEXT_VARCHAR,
+      ColumnType::TEXT_FIXED,
+      ColumnType::BOOLEAN,
+      ColumnType::SINT_8BIT,
+      ColumnType::SINT_16BIT,
+      ColumnType::SINT_24BIT,
+      ColumnType::SINT_32BIT,
+      ColumnType::SINT_64BIT,
+      ColumnType::UINT_8BIT,
+      ColumnType::UINT_16BIT,
+      ColumnType::UINT_24BIT,
+      ColumnType::UINT_32BIT,
+      ColumnType::UINT_64BIT,
+      ColumnType::FLOAT_64BIT,
+      ColumnType::FLOAT_32BIT,
+      ColumnType::DECIMAL,
+      ColumnType::DATE,
+      ColumnType::TIME,
+      ColumnType::DATETIME,
+      ColumnType::DATETIME_MYSQLTIMESTAMP,
+      ColumnType::SPATIAL,
+      ColumnType::ENUMERATION,
+    ]).tap do |results|
+      results << ColumnType::JSON if json_column_type?
+      results << ColumnType::SPATIAL_GEOGRAPHY if schema_srid_settings?
+    end
   end
 end
 

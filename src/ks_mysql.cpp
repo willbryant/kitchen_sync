@@ -260,6 +260,7 @@ public:
 	inline bool supports_fractional_seconds() const { return (server_version >= (server_is_mariadb ? MARIADB_10_0_0 : MYSQL_8_0_0)); } // mariadb 5.3 does support microseconds, but doesn't support all the required functions
 	inline bool supports_check_constraints() const { return check_constraints_table_exists; }
 	inline bool explicit_json_column_type() const { return (!server_is_mariadb && server_version >= MYSQL_5_7_8); }
+	inline bool supports_json_column_type() const { return (explicit_json_column_type() || supports_check_constraints()); }
 
 	size_t execute(const string &sql);
 	string select_one(const string &sql);
@@ -498,9 +499,9 @@ string &MySQLClient::append_quoted_json_value_to(string &result, const string &v
 string &MySQLClient::append_quoted_column_value_to(string &result, const Column &column, const string &value) {
 	if (!column.values_need_quoting()) {
 		return result += value;
-	} else if (column.column_type == ColumnTypes::SPAT) {
+	} else if (column.column_type == ColumnType::spatial) {
 		return append_quoted_spatial_value_to(result, value);
-	} else if (column.column_type == ColumnTypes::JSON && explicit_json_column_type()) {
+	} else if (column.column_type == ColumnType::json && explicit_json_column_type()) {
 		return append_quoted_json_value_to(result, value);
 	} else {
 		return append_quoted_generic_value_to(result, value);
@@ -514,7 +515,7 @@ void MySQLClient::convert_unsupported_database_schema(Database &database) {
 			// up to an implementation-defined precision and scale limit; mysql doesn't, and silently converts
 			// `numeric` to `numeric(10, 0)`.  lacking any better knowledge, we follow their lead and do the same
 			// conversion here, just so that the schema matcher sees that the column definition is already the same.
-			if (column.column_type == ColumnTypes::DECI && !column.size && !column.scale) {
+			if (column.column_type == ColumnType::decimal && !column.size && !column.scale) {
 				column.size = 10;
 			}
 
@@ -527,14 +528,14 @@ void MySQLClient::convert_unsupported_database_schema(Database &database) {
 			// they'll need to make their source schema standards-conformant by specifying a length or create the
 			// destination schema with a suitable index themselves - no worse than any other case in which they use
 			// prefix indexes.
-			if (column.column_type == ColumnTypes::VCHR && !column.size) {
-				column.column_type = ColumnTypes::TEXT;
+			if (column.column_type == ColumnType::text_varchar && !column.size) {
+				column.column_type = ColumnType::text;
 			}
 
 			// mariadb, mysql 8.0.0+, and postgresql all support fractional seconds, but earlier mysql versions don't.
 			// we strip that information here so the schema compares equal and we don't attempt pointless alters.
 			if (!supports_fractional_seconds() && column.size &&
-				(column.column_type == ColumnTypes::DTTM || column.column_type == ColumnTypes::TIME)) {
+				(column.column_type == ColumnType::datetime || column.column_type == ColumnType::time)) {
 				column.size = 0;
 			}
 
@@ -543,186 +544,140 @@ void MySQLClient::convert_unsupported_database_schema(Database &database) {
 			// and convert it here so that the schema matcher also sees them as the same thing.
 			if (column.default_type == DefaultType::default_expression && column.default_value == "NULL") {
 				column.default_type = DefaultType::no_default;
-				column.default_value = "";
+				column.default_value.clear();
+			}
+
+			// postgresql allows you to set an SRID for the geometry type, even though it doesn't do anything.  mysql
+			// doesn't have separate geometry and geography types, so anything with an SRID is equivalent to geography.
+			if (column.column_type == ColumnType::spatial && !column.reference_system.empty()) {
+				column.reference_system.clear();
 			}
 
 			// mysql doesn't use named types for enumerations, but postgresql does; mask out any enumeration names we
 			// receive so that the tables compare equal in the schema matcher.
-			if (column.column_type == ColumnTypes::ENUM && !column.type_restriction.empty()) {
-				column.type_restriction.clear();
+			if (column.column_type == ColumnType::enumeration && !column.subtype.empty()) {
+				column.subtype.clear();
 			}
 
 			// turn off unsupported flags; we always define flags in such a way that this is a graceful degradation
-			column.flags.time_zone = column.flags.simple_geometry = column.flags.binary_storage = column.flags.identity_generated_always = false;
+			column.flags.identity_generated_always = false;
 		}
 	}
 }
 
+map<ColumnType, string> SimpleColumnTypes{
+	{ColumnType::text_varchar,            "varchar"},
+	{ColumnType::text_fixed,              "char"},
+	{ColumnType::boolean,                 "tinyint(1)"},
+	{ColumnType::sint_8b,                 "tinyint"},
+	{ColumnType::sint_16b,                "smallint"},
+	{ColumnType::sint_24b,                "mediumint"},
+	{ColumnType::sint_32b,                "int"},
+	{ColumnType::sint_64b,                "bigint"},
+	{ColumnType::uint_8b,                 "tinyint unsigned"},
+	{ColumnType::uint_16b,                "smallint unsigned"},
+	{ColumnType::uint_24b,                "mediumint unsigned"},
+	{ColumnType::uint_32b,                "int unsigned"},
+	{ColumnType::uint_64b,                "bigint unsigned"},
+	{ColumnType::float_64b,               "double"},
+	{ColumnType::float_32b,               "float"},
+	{ColumnType::decimal,                 "decimal"},
+	{ColumnType::date,                    "date"},
+	{ColumnType::time,                    "time"},
+	{ColumnType::datetime,                "datetime"},
+	{ColumnType::datetime_mysqltimestamp, "timestamp"},
+};
+
+string column_type_suffix(const Column &column, size_t default_size = 0) {
+	string result;
+	if (column.size != default_size) {
+		result += '(';
+		result += to_string(column.size);
+		if (column.scale) {
+			result += ',';
+			result += to_string(column.scale);
+		}
+		result += ')';
+	}
+	return result;
+}
+
 tuple<string, string> MySQLClient::column_type(const Column &column) {
-	if (column.column_type == ColumnTypes::BLOB) {
-		switch (column.size) {
-			case 1:
+	auto simple_type = SimpleColumnTypes.find(column.column_type);
+	if (simple_type != SimpleColumnTypes.cend()) {
+		return make_tuple(simple_type->second + column_type_suffix(column), "");
+	}
+
+	switch (column.column_type) {
+		case ColumnType::binary:
+			if (column.size < 256) {
 				return make_tuple("tinyblob", "");
-
-			case 2:
+			} else if (column.size < 65536) {
 				return make_tuple("blob", "");
-
-			case 3:
+			} else if (column.size < 16777216) {
 				return make_tuple("mediumblob", "");
-
-			default:
+			} else {
 				return make_tuple("longblob", "");
-		}
+			}
 
-	} else if (column.column_type == ColumnTypes::TEXT) {
-		switch (column.size) {
-			case 1:
+		case ColumnType::text:
+			if (column.size < 256) {
 				return make_tuple("tinytext", "");
-
-			case 2:
+			} else if (column.size < 65536) {
 				return make_tuple("text", "");
-
-			case 3:
+			} else if (column.size < 16777216) {
 				return make_tuple("mediumtext", "");
-
-			default:
+			} else {
 				return make_tuple("longtext", "");
-		}
+			}
 
-	} else if (column.column_type == ColumnTypes::VCHR) {
-		string result("varchar(");
-		result += to_string(column.size);
-		result += ')';
-		return make_tuple(result, "");
+		case ColumnType::json:
+			// mysql has a proper json type (5.7.8+), but mariadb doesn't, instead they aliased json to longtext (10.2.7+)
+			// and later added a json_valid check constraint (10.4.3+) when asking for the json column type.  we do this
+			// ourselves so that we can get the same behavior when running our tests against earlier versions.  note that
+			// check constraints themselves were only added in mariadb 10.2 (and mysql 8, but we don't need them there
+			// since mysql 8 has the actual column type), but earlier versions accepted the syntax (and ignored them).
+			// part 2 is in the column_definition() function because we need to put the NOT NULL bit in first.
+			if (explicit_json_column_type()) {
+				return make_tuple("json", "");
+			} else {
+				return make_tuple("longtext", " CHECK (json_valid(" + quote_identifier(column.name) + "))");
+			}
 
-	} else if (column.column_type == ColumnTypes::FCHR) {
-		string result("char(");
-		result += to_string(column.size);
-		result += ")";
-		return make_tuple(result, "");
+		case ColumnType::spatial:
+			// as discussed in convert_unsupported_schema(), mysql doesn't have separate geometry & geography types, but
+			// we use SPATIAL for columns without an SRS
+			return make_tuple(column.subtype.empty() ? string("geometry") : column.subtype, "");
 
-	} else if (column.column_type == ColumnTypes::UUID) {
-		// mysql and mariadb still don't have a proper UUID type (may come in mariadb 10.5), so we convert UUIDs
-		// to the equivalent strings. this is obviously not the only choice - packed binary columns would be more
-		// efficient - but we'd need to know about the application specifics to make any other choice (eg. for
-		// binary, have the bytes been swapped using the option for timestamp UUIDs?).  we somewhat arbitrarily
-		// use char - we could use varchar, since char is more old-fashioned, but since UUIDs are all the same
-		// length char seems more logical.
-		return make_tuple("char(36)", " COMMENT 'UUID'");
+		case ColumnType::spatial_geography: {
+			string result(column.subtype.empty() ? string("geometry") : column.subtype);
 
-	} else if (column.column_type == ColumnTypes::JSON) {
-		// mysql has a proper json type (5.7.8+), but mariadb doesn't, instead they aliased json to longtext (10.2.7+)
-		// and later added a json_valid check constraint (10.4.3+) when asking for the json column type.  we do this
-		// ourselves so that we can get the same behavior when running our tests against earlier versions.  note that
-		// check constraints themselves were only added in mariadb 10.2 (and mysql 8, but we don't need them there
-		// since mysql 8 has the actual column type), but earlier versions accepted the syntax (and ignored them).
-		// part 2 is in the column_definition() function because we need to put the NOT NULL bit in first.  (we also
-		// support using a column comment as a marker on older versions which don't support check constraints.)
-		if (explicit_json_column_type()) {
-			return make_tuple("json", "");
-		} else if (supports_check_constraints()) {
-			return make_tuple("longtext", " CHECK (json_valid(" + quote_identifier(column.name) + "))");
-		} else {
-			return make_tuple("longtext", " COMMENT 'JSON'");
-		}
-
-	} else if (column.column_type == ColumnTypes::BOOL) {
-		return make_tuple("tinyint(1)", "");
-
-	} else if (column.column_type == ColumnTypes::SINT || column.column_type == ColumnTypes::UINT) {
-		string result;
-
-		switch (column.size) {
-			case 1:
-				result = "tinyint";
-				break;
-
-			case 2:
-				result = "smallint";
-				break;
-
-			case 3:
-				result = "mediumint";
-				break;
-
-			case 4:
-				result = "int";
-				break;
-
-			default:
-				result = "bigint";
-		}
-
-		if (column.column_type == ColumnTypes::UINT) {
-			result += " unsigned";
-		}
-
-		return make_tuple(result, "");
-
-	} else if (column.column_type == ColumnTypes::REAL) {
-		return make_tuple(column.size == 4 ? "float" : "double", "");
-
-	} else if (column.column_type == ColumnTypes::DECI) {
-		string result("decimal(");
-		result += to_string(column.size);
-		result += ',';
-		result += to_string(column.scale);
-		result += ')';
-		return make_tuple(result, "");
-
-	} else if (column.column_type == ColumnTypes::DATE) {
-		return make_tuple("date", "");
-
-	} else if (column.column_type == ColumnTypes::TIME) {
-		string result("time");
-		if (column.size) {
-			result += '(';
-			result += to_string(column.size);
-			result += ')';
-		}
-		return make_tuple(result, "");
-
-	} else if (column.column_type == ColumnTypes::DTTM) {
-		string result;
-		if (column.flags.mysql_timestamp) {
-			result = "timestamp";
-		} else {
-			result = "datetime";
-		}
-		if (column.size) {
-			result += '(';
-			result += to_string(column.size);
-			result += ')';
-		}
-		return make_tuple(result, "");
-
-	} else if (column.column_type == ColumnTypes::SPAT) {
-		string result(column.type_restriction.empty() ? string("geometry") : column.type_restriction);
-
-		if (!column.reference_system.empty() && supports_srid_settings_on_columns()) {
 			// nb. mysql outputs this after options like 'NOT NULL', but it accepts it here too; it also
 			// outputs it using the special backwards-compatible /*! syntax, which we don't use since we
 			// need the version detection code for the information_schema query anyway.
 			result += " SRID ";
 			result += column.reference_system;
+
+			return make_tuple(result, "");
 		}
 
-		return make_tuple(result, "");
+		case ColumnType::enumeration:
+			return make_tuple("ENUM" + values_list(*this, column.enumeration_values), "");
 
-	} else if (column.column_type == ColumnTypes::ENUM) {
-		string result("ENUM" + values_list(*this, column.enumeration_values));
-		return make_tuple(result, "");
+		case ColumnType::mysql_specific:
+			// as long as the versions are compatible, this should 'just work'
+			return make_tuple(column.subtype, "");
 
-	} else if (column.column_type == ColumnTypes::UNKN) {
-		// fall back to the raw type string given by the other end, which is really only likely to
-		// work if the other end is the same type of database server (and maybe even a compatible
-		// version). this also implies we don't know anything about parsing/formatting values for
-		// this column type, so it'll only work if the database accepts exactly the same input as
-		// it gives in output.
-		return make_tuple(column.db_type_def, "");
+		case ColumnType::unknown:
+			// fall back to the raw type string given by the other end, which is really only likely to
+			// work if the other end is the same type of database server (and maybe even a compatible
+			// version). this also implies we don't know anything about parsing/formatting values for
+			// this column type, so it'll only work if the database accepts exactly the same input as
+			// it gives in output.
+			return make_tuple(column.subtype, "");
 
-	} else {
-		throw runtime_error("Don't know how to express column type of " + column.name + " (" + column.column_type + ")");
+		default:
+			throw runtime_error("Don't know how to express column type of " + column.name + " (" + to_string(static_cast<int>(column.column_type)) + ")");
 	}
 }
 
@@ -763,7 +718,7 @@ string MySQLClient::column_definition(const Table &table, const Column &column) 
 
 	if (!column.nullable) {
 		result += " NOT NULL";
-	} else if (column.flags.mysql_timestamp) {
+	} else if (column.column_type == ColumnType::datetime_mysqltimestamp) {
 		result += " NULL";
 	}
 
@@ -776,7 +731,7 @@ string MySQLClient::column_definition(const Table &table, const Column &column) 
 		result += extra;
 	}
 
-	if (column.flags.mysql_on_update_timestamp) {
+	if (column.flags.auto_update_timestamp) {
 		if (column.size) {
 			result += " ON UPDATE CURRENT_TIMESTAMP(" + to_string(column.size) + ")"; // mysql 8 insists on the precision being explicitly specified
 		} else {
@@ -811,24 +766,24 @@ string MySQLClient::key_definition(const Table &table, const Key &key) {
 }
 
 inline ColumnTypeList MySQLClient::supported_types() {
-	return ColumnTypeList{
-		ColumnTypes::BLOB,
-		ColumnTypes::TEXT,
-		ColumnTypes::VCHR,
-		ColumnTypes::FCHR,
-		ColumnTypes::JSON,
-		ColumnTypes::UUID,
-		ColumnTypes::BOOL,
-		ColumnTypes::SINT,
-		ColumnTypes::UINT,
-		ColumnTypes::REAL,
-		ColumnTypes::DECI,
-		ColumnTypes::DATE,
-		ColumnTypes::TIME,
-		ColumnTypes::DTTM,
-		ColumnTypes::SPAT,
-		ColumnTypes::ENUM,
+	ColumnTypeList result{
+		ColumnType::binary,
+		ColumnType::text,
+		ColumnType::spatial,
+		ColumnType::enumeration,
+		ColumnType::mysql_specific,
+		ColumnType::unknown,
 	};
+	for (const auto &it: SimpleColumnTypes) {
+		result.insert(it.first);
+	}
+	if (supports_json_column_type()) {
+		result.insert(ColumnType::json);
+	}
+	if (supports_srid_settings_on_columns()) {
+		result.insert(ColumnType::spatial_geography);
+	}
+	return result;
 }
 
 struct MySQLColumnLister {
@@ -842,6 +797,7 @@ struct MySQLColumnLister {
 		column.nullable = (row.string_at(2) == "YES");
 		bool unsign(db_type.length() > 8 && db_type.substr(db_type.length() - 8, 8) == "unsigned");
 		string extra(row.string_at(4));
+		string comment(row.string_at(6));
 
 		if (!row.null_at(3)) {
 			column.default_type = DefaultType::default_value;
@@ -880,104 +836,120 @@ struct MySQLColumnLister {
 					throw runtime_error("Invalid default value for boolean column " + table.name + "." + column.name + ": " + column.default_value + " (we assume tinyint(1) is used for booleans)");
 				}
 			}
-			column.column_type = ColumnTypes::BOOL;
+			column.column_type = ColumnType::boolean;
 
 		} else if (db_type.substr(0, 8) == "tinyint(") {
-			column.column_type = unsign ? ColumnTypes::UINT : ColumnTypes::SINT;
-			column.size = 1;
+			// select the equivalent-width signed type if unsigned types aren't supported by the other
+			// end (and rely on runtime checks that there's no values that overflow).  select 16-bit
+			// types if 8-bit types aren't supported by the other end.
+			if (unsign) {
+				column.column_type = select_supported_type(ColumnType::uint_8b, ColumnType::sint_8b, ColumnType::sint_16b);
+			} else {
+				column.column_type = select_supported_type(ColumnType::sint_8b, ColumnType::sint_16b);
+			}
 
 		} else if (db_type.substr(0, 9) == "smallint(") {
-			column.column_type = unsign ? ColumnTypes::UINT : ColumnTypes::SINT;
-			column.size = 2;
+			if (unsign) {
+				column.column_type = select_supported_type(ColumnType::uint_16b, ColumnType::sint_16b);
+			} else {
+				column.column_type = ColumnType::sint_16b;
+			}
 
 		} else if (db_type.substr(0, 10) == "mediumint(") {
-			column.column_type = unsign ? ColumnTypes::UINT : ColumnTypes::SINT;
-			column.size = 3;
+			// select 32-bit types if 24-bit types aren't supported by the other end.
+			if (unsign) {
+				column.column_type = select_supported_type(ColumnType::uint_24b, ColumnType::sint_24b, ColumnType::sint_32b);
+			} else {
+				column.column_type = select_supported_type(ColumnType::sint_24b, ColumnType::sint_32b);
+			}
 
 		} else if (db_type.substr(0, 4) == "int(") {
-			column.column_type = unsign ? ColumnTypes::UINT : ColumnTypes::SINT;
-			column.size = 4;
+			if (unsign) {
+				column.column_type = select_supported_type(ColumnType::uint_32b, ColumnType::sint_32b);
+			} else {
+				column.column_type = ColumnType::sint_32b;
+			}
 
 		} else if (db_type.substr(0, 7) == "bigint(") {
-			column.column_type = unsign ? ColumnTypes::UINT : ColumnTypes::SINT;
-			column.size = 8;
+			if (unsign) {
+				column.column_type = select_supported_type(ColumnType::uint_64b, ColumnType::sint_64b);
+			} else {
+				column.column_type = ColumnType::sint_64b;
+			}
 
 		} else if (db_type.substr(0, 8) == "decimal(") {
-			column.column_type = ColumnTypes::DECI;
+			column.column_type = ColumnType::decimal;
 			column.size = extract_column_length(db_type);
 			column.scale = extract_column_scale(db_type);
 
 		} else if (db_type == "float") {
-			column.column_type = ColumnTypes::REAL;
-			column.size = 4;
+			column.column_type = ColumnType::float_32b;
 
 		} else if (db_type == "double") {
-			column.column_type = ColumnTypes::REAL;
-			column.size = 8;
-
-		} else if (db_type.substr(0, 8) == "varchar(") {
-			column.column_type = ColumnTypes::VCHR;
-			column.size = extract_column_length(db_type);
-
-		} else if (db_type.substr(0, 5) == "char(") {
-			size_t length = extract_column_length(db_type);
-			if (length == 36 && !row.null_at(6) && row.string_at(6).substr(0, 4) == "UUID") {
-				column.column_type = ColumnTypes::UUID;
-			} else {
-				while (column.default_type != DefaultType::no_default && column.default_value.length() < length) column.default_value += ' ';
-				column.column_type = ColumnTypes::FCHR;
-				column.size = length;
-			}
-
-		} else if (db_type == "tinytext") {
-			column.column_type = ColumnTypes::TEXT;
-			column.size = 255;
-
-		} else if (db_type == "text") {
-			column.column_type = ColumnTypes::TEXT;
-			column.size = 65535;
-
-		} else if (db_type == "mediumtext") {
-			column.column_type = ColumnTypes::TEXT;
-			column.size = 16777215;
-
-		} else if (db_type == "longtext") {
-			if ((!row.null_at(6) && row.string_at(6).substr(0, 4) == "JSON") || (!row.null_at(7) && row.int_at(7))) { // 6 is the comment and 7 the check constraint; the check constraint is the canonical way to handle JSON in mariadb, but we also support using the comment for the sake of older versions (mariadb 10.1 and below, mysql 5.5)
-				column.column_type = ColumnTypes::JSON;
-			} else {
-				column.column_type = ColumnTypes::TEXT; // no specific size for compatibility, but 4 in current mysql
-			}
-
-		} else if (db_type == "json") {
-			column.column_type = ColumnTypes::JSON;
+			column.column_type = ColumnType::float_64b;
 
 		} else if (db_type == "tinyblob") {
-			column.column_type = ColumnTypes::BLOB;
+			column.column_type = ColumnType::binary;
 			column.size = 255;
 
 		} else if (db_type == "blob") {
-			column.column_type = ColumnTypes::BLOB;
+			column.column_type = ColumnType::binary;
 			column.size = 65535;
 
 		} else if (db_type == "mediumblob") {
-			column.column_type = ColumnTypes::BLOB;
+			column.column_type = ColumnType::binary;
 			column.size = 16777215;
 
 		} else if (db_type == "longblob") {
-			column.column_type = ColumnTypes::BLOB; // leave size 0 to mean max to match other dbs, for compatibility, but the longblob limit is 4294967295 in current mysql
+			column.column_type = ColumnType::binary; // leave size 0 to mean max to match other dbs, for compatibility, but the longblob limit is 4294967295
+
+		} else if (db_type == "tinytext") {
+			column.column_type = ColumnType::text;
+			column.size = 255;
+
+		} else if (db_type == "text") {
+			column.column_type = ColumnType::text;
+			column.size = 65535;
+
+		} else if (db_type == "mediumtext") {
+			column.column_type = ColumnType::text;
+			column.size = 16777215;
+
+		} else if (db_type == "longtext") {
+			if (!row.null_at(7) && row.int_at(7)) { // column 7 the check constraint; the check constraint is the canonical way to handle JSON in mariadb, whereas mysql 8+ has the explicit column type
+				column.column_type = ColumnType::json;
+			} else {
+				column.column_type = ColumnType::text; // leave size 0 to mean max to match other dbs, for compatibility, but the longtext limit is 4294967295
+			}
+
+		} else if (db_type.substr(0, 8) == "varchar(") {
+			column.column_type = ColumnType::text_varchar;
+			column.size = extract_column_length(db_type);
+
+		} else if (db_type.substr(0, 5) == "char(") {
+			column.column_type = ColumnType::text_fixed;
+			column.size = extract_column_length(db_type);
+			while (column.default_type != DefaultType::no_default && column.default_value.length() < column.size) column.default_value += ' ';
+
+		} else if (db_type == "json") {
+			column.column_type = ColumnType::json;
 
 		} else if (db_type == "date") {
-			column.column_type = ColumnTypes::DATE;
+			column.column_type = ColumnType::date;
 
 		} else if (db_type == "time" || db_type.substr(0, 5) == "time(") {
 			if (column.default_type == DefaultType::default_value) {
 				column.default_value = time_value_after_trimming_fractional_zeros(column.default_value);
 			}
-			column.column_type = ColumnTypes::TIME;
+			column.column_type = ColumnType::time;
 			column.size = extract_time_precision(db_type);
 
 		} else if (db_type == "datetime" || db_type.substr(0, 9) ==  "datetime(" || db_type == "timestamp" || db_type.substr(0, 10) == "timestamp(") {
-			if (db_type == "timestamp" || db_type.substr(0, 10) == "timestamp(") column.flags.mysql_timestamp = true;
+			if (db_type == "timestamp" || db_type.substr(0, 10) == "timestamp(") {
+				column.column_type = select_supported_type(ColumnType::datetime_mysqltimestamp, ColumnType::datetime);
+			} else {
+				column.column_type = ColumnType::datetime;
+			}
 			if (column.default_value == "CURRENT_TIMESTAMP" || column.default_value == "CURRENT_TIMESTAMP()" || column.default_value == "current_timestamp()") {
 				column.default_type = DefaultType::default_expression;
 				column.default_value = "CURRENT_TIMESTAMP"; // normalize
@@ -986,37 +958,43 @@ struct MySQLColumnLister {
 				column.default_value.replace(0, 17, "CURRENT_TIMESTAMP"); // normalize case
 			}
 			if (extra.find("on update CURRENT_TIMESTAMP") != string::npos || extra.find("on update current_timestamp(") != string::npos) {
-				column.flags.mysql_on_update_timestamp = true;
+				column.flags.auto_update_timestamp = true;
 			}
 			if (column.default_type == DefaultType::default_value) {
 				column.default_value = datetime_value_after_trimming_fractional_zeros(column.default_value);
 			}
-			column.column_type = ColumnTypes::DTTM;
 			column.size = extract_time_precision(db_type);
 
 		} else if (db_type == "geometry" || db_type == "point" || db_type == "linestring" || db_type == "polygon" || db_type == "geometrycollection" || db_type == "multipoint" || db_type == "multilinestring" || db_type == "multipolygon") {
-			if (db_type != "geometry") column.type_restriction = db_type;
-			if (!row.null_at(5)) column.reference_system = row.string_at(5);
-			column.column_type = ColumnTypes::SPAT;
+			if (db_type != "geometry") column.subtype = db_type;
+
+			// mysql doesn't have separate geometry & geography types like postgresql, but for compatibility with it
+			// we use SPATIAL_GEOGRAPHY for columns with an SRS and SPATIAL for those without
+			if (!row.null_at(5)) {
+				column.reference_system = row.string_at(5);
+				column.column_type = ColumnType::spatial_geography;
+			} else {
+				column.column_type = ColumnType::spatial;
+			}
 
 		} else if (db_type.substr(0, 5) == "enum(" && db_type.length() > 6 && db_type[db_type.length() - 1] == ')') {
-			column.column_type = ColumnTypes::ENUM;
+			column.column_type = ColumnType::enumeration;
 			column.enumeration_values = parse_bracketed_list(db_type, 4);
 
 		} else {
 			// not supported, but leave it till sync_to's check_tables_usable to complain about it so that it can be ignored
-			column.column_type = ColumnTypes::UNKN;
+			column.column_type = ColumnType::mysql_specific;
 		}
 
-		// degrade to UNKN if the type we want isn't supported by the version at the other end
+		// degrade to 'unknown' if the type we want isn't supported by the version at the other end
 		if (!accepted_types.count(column.column_type)) {
-			column.column_type = ColumnTypes::UNKN;
+			column.column_type = ColumnType::unknown;
 			column.size = column.scale = 0;
 		}
 
 		// send the raw database-specific type for unknown or unsupported types
-		if (column.column_type == ColumnTypes::UNKN) {
-			column.db_type_def = db_type;
+		if (column.column_type == ColumnType::mysql_specific || column.column_type == ColumnType::unknown) {
+			column.subtype = db_type;
 		}
 
 		table.columns.push_back(column);
@@ -1071,6 +1049,13 @@ struct MySQLColumnLister {
 		} else {
 			return 0;
 		}
+	}
+
+	inline ColumnType select_supported_type(ColumnType type1, ColumnType type2, ColumnType type3 = ColumnType::mysql_specific) {
+		if (accepted_types.count(type1)) return type1;
+		if (accepted_types.count(type2)) return type2;
+		if (accepted_types.count(type3)) return type3;
+		return ColumnType::mysql_specific;
 	}
 
 	Table &table;

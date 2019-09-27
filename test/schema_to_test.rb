@@ -315,7 +315,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_command Commands::RANGE, ["unsupportedtbl"]
     send_command   Commands::RANGE, ["unsupportedtbl", [10], [10]]
     read_command
-    assert_equal connection.unsupported_column_type, connection.table_column_types("unsupportedtbl")["unsupported"]
+    assert_equal connection.unsupported_sql_type, connection.table_column_types("unsupportedtbl")["unsupported"]
     assert_equal [[10, connection.unsupported_column_value_returned]],
                  query("SELECT * FROM unsupportedtbl")
   end
@@ -325,7 +325,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
     expect_handshake_commands(schema: {"tables" => [unsupportedtbl_def]})
     read_command
-    assert_equal connection.unsupported_column_type, connection.table_column_types("unsupportedtbl")["unsupported"]
+    assert_equal connection.unsupported_sql_type, connection.table_column_types("unsupportedtbl")["unsupported"]
   end
 
   test_each "drops non-ignored tables that have on unsupported column type that exist only at the to end" do
@@ -697,7 +697,7 @@ SQL
     assert_equal 0, BigDecimal(rows[0][7].to_s) # return type not consistent between ruby clients
     assert_equal "", rows[0][8]
     assert_equal "", rows[0][9].strip # padding not consistent between ruby clients
-    assert_equal "00000000-0000-0000-0000-000000000000", rows[0][10]
+    assert_equal connection.uuid_column_type? ? "00000000-0000-0000-0000-000000000000" : "", rows[0][10]
     assert_equal "", rows[0][11]
     assert_equal "", rows[0][12]
   end
@@ -952,17 +952,5 @@ SQL
     assert_equal true, connection.table_column_nullability("secondtbl")["tri"]
     assert_equal nil, connection.table_column_defaults("secondtbl")["tri"]
     assert_same_keys(secondtbl_def)
-  end
-
-  ENDPOINT_ADAPTERS.keys.each do |from_database|
-    test_each "can run the table creation code for adapter-specific columns from #{from_database}" do
-      clear_schema
-
-      tbldef = adapterspecifictbl_def(from_database)
-      expect_handshake_commands(schema: {"tables" => [tbldef]})
-      read_command
-
-      assert_equal tbldef["columns"].collect {|column| column["name"]}, connection.table_column_names(tbldef["name"])
-    end
   end
 end

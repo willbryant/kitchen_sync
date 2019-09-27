@@ -178,14 +178,6 @@ class PostgreSQLAdapter
     true
   end
 
-  def default_expressions?
-    true
-  end
-
-  def mysql_default_expressions?
-    false # obviously
-  end
-
   def supports_generated_as_identity?
     server_version >= 100000
   end
@@ -196,6 +188,10 @@ class PostgreSQLAdapter
     else
       'SERIAL'
     end
+  end
+
+  def uuid_column_type?
+    true
   end
 
   def uuid_column_type
@@ -210,12 +206,16 @@ class PostgreSQLAdapter
     'bytea'
   end
 
-  def json_column_type(fieldname)
-    'json'
+  def json_column_type?
+    true
   end
 
   def jsonb_column_type?
     server_version >= 90400
+  end
+
+  def json_column_type(fieldname)
+    'json'
   end
 
   def time_column_type
@@ -231,7 +231,11 @@ class PostgreSQLAdapter
   end
 
   def supports_fractional_seconds?
-    true # hardcoded to microsecond precision, though
+    true
+  end
+
+  def time_zone_types?
+    true
   end
 
   def real_column_type
@@ -247,8 +251,8 @@ class PostgreSQLAdapter
     'our_enum_t'
   end
 
-  def enum_column_type_restriction
-    {'type_restriction' => enum_column_type}
+  def enum_column_subtype
+    {'subtype' => enum_column_type}
   end
 
   def install_spatial_support
@@ -273,18 +277,22 @@ class PostgreSQLAdapter
       # created by postgis in the public schema, and a PITA to move anywhere else
       { "name" => "spatial_ref_sys",
         "columns" => [
-          {"name" => "srid",      "column_type" => "INT",     "size" => 4, "nullable" => false},
-          {"name" => "auth_name", "column_type" => "VARCHAR", "size" => 256},
-          {"name" => "auth_srid", "column_type" => "INT",     "size" => 4},
-          {"name" => "srtext",    "column_type" => "VARCHAR", "size" => 2048},
-          {"name" => "proj4text", "column_type" => "VARCHAR", "size" => 2048}],
+          {"name" => "srid",      "column_type" => ColumnType::SINT_32BIT, "nullable" => false},
+          {"name" => "auth_name", "column_type" => ColumnType::TEXT_VARCHAR, "size" => 256},
+          {"name" => "auth_srid", "column_type" => ColumnType::SINT_32BIT},
+          {"name" => "srtext",    "column_type" => ColumnType::TEXT_VARCHAR, "size" => 2048},
+          {"name" => "proj4text", "column_type" => ColumnType::TEXT_VARCHAR, "size" => 2048}],
         "primary_key_type" => 1,
         "primary_key_columns" => [0],
         "keys" => [] },
     ]
   end
 
-  def unsupported_column_type
+  def unsupported_column_type_name
+    ColumnType::POSTGRESQL_SPECIFIC
+  end
+
+  def unsupported_sql_type
     'text[]'
   end
 
@@ -294,6 +302,86 @@ class PostgreSQLAdapter
 
   def unsupported_column_value_returned
     ["isn't", "a scalar"]
+  end
+
+  def create_adapterspecifictbl
+    execute(<<-SQL)
+      CREATE TABLE """postgresql""tbl" (
+        pri #{supports_generated_as_identity? ? 'integer GENERATED ALWAYS AS IDENTITY' : 'SERIAL'},
+        uuidfield uuid,
+        jsonfield json,
+        jsonbfield #{jsonb_column_type? ? "jsonb" : "json"},
+        nolengthvaryingfield CHARACTER VARYING,
+        noprecisionnumericfield NUMERIC,
+        nulldefaultstr VARCHAR(255) DEFAULT NULL,
+        currentdatefield DATE DEFAULT CURRENT_DATE,
+        currentuserdefault VARCHAR(255) DEFAULT current_user,
+        pgfunctiondefault TEXT DEFAULT version(),
+        timewithzone time with time zone,
+        timestampwithzone timestamp with time zone,
+        "select" INT,
+        "\"\"quoted\"\"" INT,
+        PRIMARY KEY(pri))
+SQL
+  end
+
+  def adapterspecifictbl_def(compatible_with: self)
+    { "name"    => "\"postgresql\"tbl",
+      "columns" => [
+        {"name" => "pri",                     "column_type" => ColumnType::SINT_32BIT, "nullable" => false, "sequence" => ""}.merge(supports_generated_as_identity? ? {"identity_generated_always" => true} : {}),
+        {"name" => "uuidfield"}.merge(compatible_with.uuid_column_type? ? {"column_type" => ColumnType::UUID} : {"column_type" => ColumnType::TEXT_FIXED, "size" => 36}),
+        {"name" => "jsonfield",               "column_type" => compatible_with.json_column_type? ? ColumnType::JSON : ColumnType::TEXT},
+        {"name" => "jsonbfield",              "column_type" => compatible_with.jsonb_column_type? ? ColumnType::JSON_BINARY : (compatible_with.json_column_type? ? ColumnType::JSON : ColumnType::TEXT)},
+        {"name" => "nolengthvaryingfield",    "column_type" => ColumnType::TEXT_VARCHAR},
+        {"name" => "noprecisionnumericfield", "column_type" => ColumnType::DECIMAL},
+        {"name" => "nulldefaultstr",          "column_type" => ColumnType::TEXT_VARCHAR, "size" => 255, "default_expression" => "NULL"}, # note different to mysql, where no default and DEFAULT NULL are the same thing
+        {"name" => "currentdatefield",        "column_type" => ColumnType::DATE,                        "default_expression" => CaseInsensitiveString.new("CURRENT_DATE")},
+        {"name" => "currentuserdefault",      "column_type" => ColumnType::TEXT_VARCHAR, "size" => 255, "default_expression" => CaseInsensitiveString.new("CURRENT_USER")},
+        {"name" => "pgfunctiondefault",       "column_type" => ColumnType::TEXT,                        "default_expression" => "version()"},
+        {"name" => "timewithzone",            "column_type" => compatible_with.time_zone_types? ? ColumnType::TIME_TZ     : ColumnType::TIME,     "size" => 6},
+        {"name" => "timestampwithzone",       "column_type" => compatible_with.time_zone_types? ? ColumnType::DATETIME_TZ : ColumnType::DATETIME, "size" => 6},
+        {"name" => "select",                  "column_type" => ColumnType::SINT_32BIT},
+        {"name" => "\"quoted\"",              "column_type" => ColumnType::SINT_32BIT},
+      ].compact,
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
+      "primary_key_columns" => [0],
+      "keys" => [] }
+  end
+
+  def adapterspecifictbl_row
+    { "uuidfield" => "3d190b75-dbb1-4d34-a41e-d590c1c8a895",
+      "nolengthvaryingfield" => "test data",
+      "noprecisionnumericfield" => "1234567890.0987654321" }
+  end
+
+  def supported_column_types
+    Set.new([
+      ColumnType::UNKNOWN,
+      ColumnType::POSTGRESQL_SPECIFIC,
+      ColumnType::BINARY,
+      ColumnType::TEXT,
+      ColumnType::TEXT_VARCHAR,
+      ColumnType::TEXT_FIXED,
+      ColumnType::JSON,
+      ColumnType::UUID,
+      ColumnType::BOOLEAN,
+      ColumnType::SINT_16BIT,
+      ColumnType::SINT_32BIT,
+      ColumnType::SINT_64BIT,
+      ColumnType::FLOAT_64BIT,
+      ColumnType::FLOAT_32BIT,
+      ColumnType::DECIMAL,
+      ColumnType::DATE,
+      ColumnType::TIME,
+      ColumnType::TIME_TZ,
+      ColumnType::DATETIME,
+      ColumnType::DATETIME_TZ,
+      ColumnType::SPATIAL,
+      ColumnType::SPATIAL_GEOGRAPHY,
+      ColumnType::ENUMERATION,
+    ]).tap do |results|
+      results << ColumnType::JSON_BINARY if jsonb_column_type?
+    end
   end
 end
 

@@ -136,7 +136,7 @@ class FilterFromTest < KitchenSync::EndpointTestCase
     expect_command Commands::FILTERS
 
     send_command   Commands::SCHEMA
-    expect_command Commands::SCHEMA, [{"tables" => [footbl_def]}]
+    expect_command Commands::SCHEMA, [{"tables" => [footbl_def_v7]}]
 
     send_command   Commands::HASH, ["footbl", [], [4], 1000]
     expect_command Commands::HASH,

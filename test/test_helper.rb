@@ -30,12 +30,11 @@ class NilClass
   end
 end
 
-module ColumnTypes
+module LegacyColumnType
   BLOB = "BLOB"
   TEXT = "TEXT"
   VCHR = "VARCHAR"
   FCHR = "CHAR"
-  JSON = "JSON"
   UUID = "UUID"
   BOOL = "BOOL"
   SINT = "INT"
@@ -45,29 +44,43 @@ module ColumnTypes
   DATE = "DATE"
   TIME = "TIME"
   DTTM = "DATETIME"
-  SPAT = "SPATIAL"
   ENUM = "ENUM"
+end
 
-  UNKN = "UNKNOWN"
-
-  ALL_ACCEPTED = [
-    BLOB,
-    TEXT,
-    VCHR,
-    FCHR,
-    JSON,
-    UUID,
-    BOOL,
-    SINT,
-    UINT,
-    REAL,
-    DECI,
-    DATE,
-    TIME,
-    DTTM,
-    SPAT,
-    ENUM,
-  ]
+module ColumnType
+  UNKNOWN = "unknown"
+  MYSQL_SPECIFIC = "mysql_specific"
+  POSTGRESQL_SPECIFIC = "postgresql_specific"
+  BINARY = "binary"
+  TEXT = "text"
+  TEXT_VARCHAR = "text.varchar"
+  TEXT_FIXED = "text.fixed"
+  JSON = "json"
+  JSON_BINARY = "json.binary"
+  UUID = "uuid"
+  BOOLEAN = "boolean"
+  SINT_8BIT = "integer.8bit"
+  SINT_16BIT = "integer.16bit"
+  SINT_24BIT = "integer.24bit"
+  SINT_32BIT = "integer"
+  SINT_64BIT = "integer.64bit"
+  UINT_8BIT = "integer.unsigned.8bit"
+  UINT_16BIT = "integer.unsigned.16bit"
+  UINT_24BIT = "integer.unsigned.24bit"
+  UINT_32BIT = "integer.unsigned"
+  UINT_64BIT = "integer.unsigned.64bit"
+  FLOAT_64BIT = "float"
+  FLOAT_32BIT = "float.32bit"
+  DECIMAL = "decimal"
+  DATE = "date"
+  TIME = "time"
+  TIME_TZ = "time.tz"
+  DATETIME = "datetime"
+  DATETIME_TZ = "datetime.tz"
+  DATETIME_MYSQLTIMESTAMP = "datetime.mysqltimestamp"
+  SPATIAL = "spatial"
+  SPATIAL_GEOGRAPHY = "spatial.geography"
+  ENUMERATION = "enum"
 end
 
 module Commands
@@ -144,7 +157,7 @@ module KitchenSync
       spawner.send_results(*args)
     end
 
-    def send_handshake_commands(protocol_version: LATEST_PROTOCOL_VERSION_SUPPORTED, target_minimum_block_size: 1, hash_algorithm: HashAlgorithm::MD5, filters: nil, accepted_types: ColumnTypes::ALL_ACCEPTED)
+    def send_handshake_commands(protocol_version: LATEST_PROTOCOL_VERSION_SUPPORTED, target_minimum_block_size: 1, hash_algorithm: HashAlgorithm::MD5, filters: nil, accepted_types: connection.supported_column_types)
       send_protocol_command(protocol_version)
       send_hash_algorithm_command(hash_algorithm)
       send_filters_command(filters) if filters
@@ -192,7 +205,7 @@ module KitchenSync
       end
 
       if @protocol_version > 7
-        assert_equal   Commands::TYPES, read_command.first
+        expect_command Commands::TYPES, [connection.supported_column_types]
         send_command   Commands::TYPES
       end
 
@@ -277,7 +290,7 @@ module KitchenSync
     def self.test_each(description, only: nil, &block)
       ENDPOINT_ADAPTERS.each do |database_server, adapter_class|
         next if only && only.to_s != database_server
-        define_method("test #{description} for #{database_server}".gsub(/\W+/,'_').to_sym) do
+        define_method("test #{database_server} #{description}".gsub(/\W+/,'_').to_sym) do
           @database_server = database_server
           @adapter_class = adapter_class
           begin

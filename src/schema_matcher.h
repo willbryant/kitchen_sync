@@ -218,23 +218,37 @@ struct OverwriteColumnNullValueClauses {
 	}
 
 	static string usable_column_value(const Column &column) {
-		if (column.column_type == ColumnTypes::BLOB || column.column_type == ColumnTypes::TEXT ||
-			column.column_type == ColumnTypes::VCHR || column.column_type == ColumnTypes::FCHR) {
-			return "";
-		} else if (column.column_type == ColumnTypes::DATE) {
-			return "2000-01-01";
-		} else if (column.column_type == ColumnTypes::TIME) {
-			return "00:00:00";
-		} else if (column.column_type == ColumnTypes::DTTM) {
-			return "2000-01-01 00:00:00";
-		} else if (column.column_type == ColumnTypes::UUID) {
-			return "00000000-0000-0000-0000-000000000000";
-		} else if (column.column_type == ColumnTypes::ENUM) {
-			return (column.enumeration_values.empty() ? "" : column.enumeration_values[0]); // should never be empty in reality, but don't segfault
-		} else if (column.column_type == ColumnTypes::BOOL) {
-			return "false";
-		} else {
-			return "0";
+		switch (column.column_type) {
+			case ColumnType::binary:
+			case ColumnType::text:
+			case ColumnType::text_varchar:
+			case ColumnType::text_fixed:
+				return "";
+
+			case ColumnType::date:
+				return "2000-01-01";
+
+			case ColumnType::time:
+				return "00:00:00";
+
+			case ColumnType::datetime:
+				return "2000-01-01 00:00:00";
+
+			case ColumnType::uuid:
+				return "00000000-0000-0000-0000-000000000000";
+
+			case ColumnType::enumeration:
+				if (column.enumeration_values.empty()) { // should never be empty in reality, but don't segfault
+					return "";
+				} else {
+					return column.enumeration_values[0];
+				}
+
+			case ColumnType::boolean:
+				return "false";
+
+			default:
+				return "0";
 		}
 	}
 };

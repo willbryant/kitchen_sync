@@ -139,7 +139,12 @@ struct SyncFromWorker {
 	}
 
 	void handle_types_command() {
-		read_all_arguments(input, accepted_types);
+		set<string> accepted_type_names;
+		read_all_arguments(input, accepted_type_names);
+		for (const string &name: accepted_type_names) {
+			auto it = ColumnTypesByName.find(name);
+			if (it != ColumnTypesByName.cend()) accepted_types.insert(it->second);
+		}
 		send_command(output, Commands::TYPES);
 	}
 
@@ -172,7 +177,7 @@ struct SyncFromWorker {
 
 	void populate_database_schema() {
 		if (output_stream.protocol_version <= LAST_LEGACY_SCHEMA_FORMAT_VERSION) {
-			accepted_types = legacy_supported_types();
+			accepted_types = LegacySupportedColumnTypes;
 		}
 		client.populate_database_schema(database, accepted_types);
 

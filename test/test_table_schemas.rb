@@ -19,9 +19,20 @@ SQL
   def footbl_def
     { "name"    => "footbl",
       "columns" => [
-        {"name" => "col1",        "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false},
-        {"name" => "another_col", "column_type" => ColumnTypes::SINT, "size" =>  2},
-        {"name" => "col3",        "column_type" => ColumnTypes::VCHR, "size" => 10}],
+        {"name" => "col1",        "column_type" => ColumnType::SINT_32BIT, "nullable" => false},
+        {"name" => "another_col", "column_type" => ColumnType::SINT_16BIT},
+        {"name" => "col3",        "column_type" => ColumnType::TEXT_VARCHAR, "size" => 10}],
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
+      "primary_key_columns" => [0],
+      "keys" => [] }
+  end
+
+  def footbl_def_v7
+    { "name"    => "footbl",
+      "columns" => [
+        {"name" => "col1",        "column_type" => LegacyColumnType::SINT, "size" => 4, "nullable" => false},
+        {"name" => "another_col", "column_type" => LegacyColumnType::SINT, "size" => 2},
+        {"name" => "col3",        "column_type" => LegacyColumnType::VCHR, "size" => 10}],
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
       "keys" => [] }
@@ -44,10 +55,10 @@ SQL
   def secondtbl_def
     { "name"    => "secondtbl",
       "columns" => [
-        {"name" => "tri",  "column_type" => ColumnTypes::SINT, "size" => 8},
-        {"name" => "pri1", "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
-        {"name" => "pri2", "column_type" => ColumnTypes::FCHR, "size" => 2, "nullable" => false},
-        {"name" => "sec",  "column_type" => ColumnTypes::SINT, "size" => 4}],
+        {"name" => "tri",  "column_type" => ColumnType::SINT_64BIT},
+        {"name" => "pri1", "column_type" => ColumnType::SINT_32BIT,              "nullable" => false},
+        {"name" => "pri2", "column_type" => ColumnType::TEXT_FIXED, "size" => 2, "nullable" => false},
+        {"name" => "sec",  "column_type" => ColumnType::SINT_32BIT}],
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [2, 1], # note order is that listed in the key, not the index of the column in the table
       "keys" => [
@@ -70,9 +81,9 @@ SQL
   def uniquetbl_def
     { "name"    => "uniquetbl",
       "columns" => [
-        {"name" => "pri", "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
-        {"name" => "sec", "column_type" => ColumnTypes::SINT, "size" => 4},
-        {"name" => "col3", "column_type" => ColumnTypes::VCHR, "size" => 1000}],
+        {"name" => "pri",  "column_type" => ColumnType::SINT_32BIT, "nullable" => false},
+        {"name" => "sec",  "column_type" => ColumnType::SINT_32BIT},
+        {"name" => "col3", "column_type" => ColumnType::TEXT_VARCHAR, "size" => 1000}],
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0], # note order is that listed in the key, not the index of the column in the table
       "keys" => [
@@ -90,7 +101,7 @@ SQL
   def middletbl_def
     { "name"    => "middletbl",
       "columns" => [
-        {"name" => "pri", "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false}],
+        {"name" => "pri", "column_type" => ColumnType::SINT_32BIT, "nullable" => false}],
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
       "keys" => [] }
@@ -108,8 +119,8 @@ SQL
   def texttbl_def
     { "name"    => "texttbl",
       "columns" => [
-        {"name" => "pri",       "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
-        {"name" => "textfield", "column_type" => ColumnTypes::TEXT}],
+        {"name" => "pri",       "column_type" => ColumnType::SINT_32BIT, "nullable" => false},
+        {"name" => "textfield", "column_type" => ColumnType::TEXT}],
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
       "keys" => [] }
@@ -150,21 +161,21 @@ SQL
   def misctbl_def
     { "name"    => "misctbl",
       "columns" => [
-        {"name" => "pri",           "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
-        {"name" => "boolfield",     "column_type" => ColumnTypes::BOOL},
-        {"name" => "datefield",     "column_type" => ColumnTypes::DATE}, 
-        {"name" => "timefield",     "column_type" => ColumnTypes::TIME}.merge(connection.time_precision),
-        {"name" => "datetimefield", "column_type" => ColumnTypes::DTTM}.merge(connection.time_precision),
-        {"name" => "floatfield",    "column_type" => ColumnTypes::REAL, "size" => 4},
-        {"name" => "doublefield",   "column_type" => ColumnTypes::REAL, "size" => 8},
-        {"name" => "decimalfield",  "column_type" => ColumnTypes::DECI, "size" => 10, "scale" => 4},
-        {"name" => "vchrfield",     "column_type" => ColumnTypes::VCHR, "size" => 9},
-        {"name" => "fchrfield",     "column_type" => ColumnTypes::FCHR, "size" => 9},
-        {"name" => "uuidfield",     "column_type" => ColumnTypes::UUID},
-        {"name" => "textfield",     "column_type" => ColumnTypes::TEXT},
-        {"name" => "blobfield",     "column_type" => ColumnTypes::BLOB},
-        {"name" => "jsonfield",     "column_type" => ColumnTypes::JSON},
-        {"name" => "enumfield",     "column_type" => ColumnTypes::ENUM, "enumeration_values" => ["red", "green", "blue", "with'quote"]}.merge(connection.enum_column_type_restriction),
+        {"name" => "pri",           "column_type" => ColumnType::SINT_32BIT, "nullable" => false},
+        {"name" => "boolfield",     "column_type" => ColumnType::BOOLEAN},
+        {"name" => "datefield",     "column_type" => ColumnType::DATE},
+        {"name" => "timefield",     "column_type" => ColumnType::TIME}.merge(connection.time_precision),
+        {"name" => "datetimefield", "column_type" => ColumnType::DATETIME}.merge(connection.time_precision),
+        {"name" => "floatfield",    "column_type" => ColumnType::FLOAT_32BIT},
+        {"name" => "doublefield",   "column_type" => ColumnType::FLOAT_64BIT},
+        {"name" => "decimalfield",  "column_type" => ColumnType::DECIMAL, "size" => 10, "scale" => 4},
+        {"name" => "vchrfield",     "column_type" => ColumnType::TEXT_VARCHAR, "size" => 9},
+        {"name" => "fchrfield",     "column_type" => ColumnType::TEXT_FIXED, "size" => 9},
+        {"name" => "uuidfield"}.merge(connection.uuid_column_type? ? {"column_type" => ColumnType::UUID} : {"column_type" => ColumnType::TEXT_FIXED, "size" => 36}),
+        {"name" => "textfield",     "column_type" => ColumnType::TEXT},
+        {"name" => "blobfield",     "column_type" => ColumnType::BINARY},
+        {"name" => "jsonfield",     "column_type" => connection.json_column_type? ? ColumnType::JSON : ColumnType::TEXT},
+        {"name" => "enumfield",     "column_type" => ColumnType::ENUMERATION, "enumeration_values" => ["red", "green", "blue", "with'quote"]}.merge(connection.enum_column_subtype),
       ],
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
@@ -190,10 +201,10 @@ SQL
   def noprimarytbl_def(create_suitable_keys: true)
     { "name" => "noprimarytbl",
       "columns" => [
-        {"name" => "nullable",     "column_type" => ColumnTypes::SINT, "size" =>   4},
-        {"name" => "version",      "column_type" => ColumnTypes::VCHR, "size" => 255, "nullable" => false},
-        {"name" => "name",         "column_type" => ColumnTypes::VCHR, "size" => 255},
-        {"name" => "non_nullable", "column_type" => ColumnTypes::SINT, "size" =>   4, "nullable" => false}],
+        {"name" => "nullable",     "column_type" => ColumnType::SINT_32BIT},
+        {"name" => "version",      "column_type" => ColumnType::TEXT_VARCHAR, "size" => 255, "nullable" => false},
+        {"name" => "name",         "column_type" => ColumnType::TEXT_VARCHAR, "size" => 255},
+        {"name" => "non_nullable", "column_type" => ColumnType::SINT_32BIT, "nullable" => false}],
       "primary_key_columns" => (create_suitable_keys ? [1] : []),
       "primary_key_type" => (create_suitable_keys ? PrimaryKeyType::SUITABLE_UNIQUE_KEY : PrimaryKeyType::NO_AVAILABLE_KEY),
       "keys" => [ # sorted in uniqueness then alphabetic name order, but otherwise a transcription of the above create index statements
@@ -201,17 +212,18 @@ SQL
         {"name" => "ignored_key",          "key_type" => "unique", "columns" => [0, 1]},
         ({"name" => "non_nullable_key",     "key_type" => "unique", "columns" => [3]} if create_suitable_keys),
         {"name" => "version_and_name_key", "key_type" => "unique", "columns" => [1, 2]},
-        {"name" => "everything_key",       "columns" => [2, 0, 1, 3]},
-        {"name" => "not_unique_key",       "columns" => [3]} ].compact }
+        {"name" => "everything_key",                               "columns" => [2, 0, 1, 3]},
+        {"name" => "not_unique_key",                               "columns" => [3]}
+      ].compact }
   end
 
   def noprimarytbl_def_v7(create_suitable_keys: true)
     { "name" => "noprimarytbl",
       "columns" => [
-        {"name" => "nullable",     "column_type" => ColumnTypes::SINT, "size" =>   4},
-        {"name" => "version",      "column_type" => ColumnTypes::VCHR, "size" => 255, "nullable" => false},
-        {"name" => "name",         "column_type" => ColumnTypes::VCHR, "size" => 255},
-        {"name" => "non_nullable", "column_type" => ColumnTypes::SINT, "size" =>   4, "nullable" => false}],
+        {"name" => "nullable",     "column_type" => LegacyColumnType::SINT, "size" =>   4},
+        {"name" => "version",      "column_type" => LegacyColumnType::VCHR, "size" => 255, "nullable" => false},
+        {"name" => "name",         "column_type" => LegacyColumnType::VCHR, "size" => 255},
+        {"name" => "non_nullable", "column_type" => LegacyColumnType::SINT, "size" =>   4, "nullable" => false}],
       "primary_key_columns" => (create_suitable_keys ? [1] : []),
       "primary_key_type" => (create_suitable_keys ? PrimaryKeyType::SUITABLE_UNIQUE_KEY : PrimaryKeyType::NO_AVAILABLE_KEY),
       "keys" => [ # sorted in uniqueness then alphabetic name order, but otherwise a transcription of the above create index statements
@@ -220,7 +232,8 @@ SQL
         ({"name" => "non_nullable_key",     "unique" => true,  "columns" => [3]} if create_suitable_keys),
         {"name" => "version_and_name_key", "unique" => true,  "columns" => [1, 2]},
         {"name" => "everything_key",       "unique" => false, "columns" => [2, 0, 1, 3]},
-        {"name" => "not_unique_key",       "unique" => false, "columns" => [3]} ].compact }
+        {"name" => "not_unique_key",       "unique" => false, "columns" => [3]}
+      ].compact }
   end
 
   def create_some_tables
@@ -280,22 +293,22 @@ SQL
   def defaultstbl_def
     { "name"    => "defaultstbl",
       "columns" => [
-        {"name" => "pri",                  "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false},
-        {"name" => "varcharfield",         "column_type" => ColumnTypes::VCHR, "size" => 32,               "default_value" => "test \\ with ' escaping©"},
-        {"name" => "emptydefaultstr",      "column_type" => ColumnTypes::VCHR, "size" => 255, "default_value" => ""},
-        {"name" => "spacedefaultstr",      "column_type" => ColumnTypes::VCHR, "size" => 255, "default_value" => " "},
-        {"name" => "zerodefaultstr",       "column_type" => ColumnTypes::VCHR, "size" => 255, "default_value" => "0"},
-        {"name" => "nodefaultstr",         "column_type" => ColumnTypes::VCHR, "size" => 255},
-        {"name" => "charfield",            "column_type" => ColumnTypes::FCHR, "size" =>  5,               "default_value" => "test "},
-        {"name" => "falseboolfield",       "column_type" => ColumnTypes::BOOL,                             "default_value" => "false"},
-        {"name" => "trueboolfield",        "column_type" => ColumnTypes::BOOL,                             "default_value" => "true"},
-        {"name" => "datefield",            "column_type" => ColumnTypes::DATE,                             "default_value" => "2019-04-01"},
-        {"name" => "timefield",            "column_type" => ColumnTypes::TIME,                             "default_value" => "12:34:56"}.merge(connection.time_precision),
-        {"name" => "datetimefield",        "column_type" => ColumnTypes::DTTM,                             "default_value" => "2019-04-01 12:34:56"}.merge(connection.time_precision),
-        ({"name" => "currentdatetimefield", "column_type" => ColumnTypes::DTTM,                             "default_expression" => "CURRENT_TIMESTAMP#{"(6)" if connection.supports_fractional_seconds?}"}.merge(connection.time_precision) if connection.supports_multiple_timestamp_columns?),
-        {"name" => "floatfield",           "column_type" => ColumnTypes::REAL, "size" =>  4,               "default_value" => "42.625"},
-        {"name" => "doublefield",          "column_type" => ColumnTypes::REAL, "size" =>  8,               "default_value" => "0.0625"},
-        {"name" => "decimalfield",         "column_type" => ColumnTypes::DECI, "size" =>  9, "scale" => 3, "default_value" => "123456.789"}
+        {"name" => "pri",                   "column_type" => ColumnType::SINT_32BIT, "nullable" => false},
+        {"name" => "varcharfield",          "column_type" => ColumnType::TEXT_VARCHAR, "size" => 32,         "default_value" => "test \\ with ' escaping©"},
+        {"name" => "emptydefaultstr",       "column_type" => ColumnType::TEXT_VARCHAR, "size" => 255,        "default_value" => ""},
+        {"name" => "spacedefaultstr",       "column_type" => ColumnType::TEXT_VARCHAR, "size" => 255,        "default_value" => " "},
+        {"name" => "zerodefaultstr",        "column_type" => ColumnType::TEXT_VARCHAR, "size" => 255,        "default_value" => "0"},
+        {"name" => "nodefaultstr",          "column_type" => ColumnType::TEXT_VARCHAR, "size" => 255},
+        {"name" => "charfield",             "column_type" => ColumnType::TEXT_FIXED,   "size" => 5,          "default_value" => "test "},
+        {"name" => "falseboolfield",        "column_type" => ColumnType::BOOLEAN,                            "default_value" => "false"},
+        {"name" => "trueboolfield",         "column_type" => ColumnType::BOOLEAN,                            "default_value" => "true"},
+        {"name" => "datefield",             "column_type" => ColumnType::DATE,                               "default_value" => "2019-04-01"},
+        {"name" => "timefield",             "column_type" => ColumnType::TIME,                               "default_value" => "12:34:56"}.merge(connection.time_precision),
+        {"name" => "datetimefield",         "column_type" => ColumnType::DATETIME,                           "default_value" => "2019-04-01 12:34:56"}.merge(connection.time_precision),
+        ({"name" => "currentdatetimefield", "column_type" => ColumnType::DATETIME, "default_expression" => "CURRENT_TIMESTAMP#{"(6)" if connection.supports_fractional_seconds?}"}.merge(connection.time_precision) if connection.supports_multiple_timestamp_columns?),
+        {"name" => "floatfield",            "column_type" => ColumnType::FLOAT_32BIT,                        "default_value" => "42.625"},
+        {"name" => "doublefield",           "column_type" => ColumnType::FLOAT_64BIT,                        "default_value" => "0.0625"},
+        {"name" => "decimalfield",          "column_type" => ColumnType::DECIMAL, "size" => 9, "scale" => 3, "default_value" => "123456.789"}
       ].compact,
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
@@ -314,123 +327,23 @@ SQL
   def autotbl_def
     { "name"    => "autotbl",
       "columns" => [
-        {"name" => "inc",     "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false, "sequence" => ""},
-        {"name" => "payload", "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false}],
+        {"name" => "inc",     "column_type" => ColumnType::SINT_32BIT, "nullable" => false, "sequence" => ""},
+        {"name" => "payload", "column_type" => ColumnType::SINT_32BIT, "nullable" => false}],
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
       "keys" => [] }
   end
 
-  def create_adapterspecifictbl(database_server = @database_server)
-    case database_server
-    when 'mysql'
-      execute(<<-SQL)
-        CREATE TABLE ```mysql``tbl` (
-          pri INT UNSIGNED NOT NULL AUTO_INCREMENT,
-          tiny2 TINYINT(2) UNSIGNED DEFAULT 99,
-          nulldefaultstr VARCHAR(255) DEFAULT NULL,
-          secondstime TIME,
-          #{"tenthstime TIME(1)," if connection.supports_fractional_seconds?}
-          #{"millistime TIME(3)," if connection.supports_fractional_seconds?}
-          #{"microstime TIME(6)," if connection.supports_fractional_seconds?}
-          secondsdatetime DATETIME,
-          #{"tenthsdatetime DATETIME(1)," if connection.supports_fractional_seconds?}
-          #{"millisdatetime DATETIME(3)," if connection.supports_fractional_seconds?}
-          #{"microsdatetime DATETIME(6)," if connection.supports_fractional_seconds?}
-          timestampboth TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          #{"timestampcreateonly TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," if connection.supports_multiple_timestamp_columns?}
-          #{"microstimestampboth TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)," if connection.supports_fractional_seconds?}
-          #{"mysqlfunctiondefault VARCHAR(255) DEFAULT (uuid())," if connection.mysql_default_expressions?}
-          `select` INT,
-          ```quoted``` INT,
-          PRIMARY KEY(pri))
-SQL
-
-    when 'postgresql'
-      # note default_expressions? is always true for postgresql itself, but some columns here are conditional for the benefit of the
-      # mysql 5.7 cross-compatibility tests; these still run for the mysql 8/mariadb cross-compatibility tests
-      execute(<<-SQL)
-        CREATE TABLE """postgresql""tbl" (
-          pri #{connection.supports_generated_as_identity? ? 'integer GENERATED ALWAYS AS IDENTITY' : 'SERIAL'},
-          uu UUID NOT NULL,
-          #{"jsonbfield JSONB," if connection.jsonb_column_type?}
-          nolengthvaryingfield CHARACTER VARYING,
-          noprecisionnumericfield NUMERIC,
-          nulldefaultstr VARCHAR(255) DEFAULT NULL,
-          #{"currentdatefield DATE DEFAULT CURRENT_DATE," if connection.default_expressions?}
-          #{"currentuserdefault VARCHAR(255) DEFAULT current_user," if connection.default_expressions?}
-          #{"pgfunctiondefault TEXT DEFAULT version()," if connection.default_expressions?}
-          timewithzone time with time zone,
-          timestampwithzone timestamp with time zone,
-          "select" INT,
-          "\"\"quoted\"\"" INT,
-          PRIMARY KEY(pri))
-SQL
-    end
+  def create_adapterspecifictbl
+    connection.create_adapterspecifictbl
   end
 
-  def adapterspecifictbl_def(database_server = @database_server)
-    case database_server
-    when 'mysql'
-      { "name"    => "`mysql`tbl",
-        "columns" => [
-          {"name" => "pri",                  "column_type" => ColumnTypes::UINT, "size" =>  4, "nullable" => false, "sequence" => ""},
-          {"name" => "tiny2",                "column_type" => ColumnTypes::UINT, "size" =>  1, "default_value" => "99"}, # note we've lost the (nonportable) display width (2) - size tells us the size of the integers, not the display width
-          {"name" => "nulldefaultstr",       "column_type" => ColumnTypes::VCHR, "size" => 255},
-          {"name" => "secondstime",          "column_type" => ColumnTypes::TIME},
-          ({"name" => "tenthstime",          "column_type" => ColumnTypes::TIME, "size" => 1} if connection.supports_fractional_seconds?),
-          ({"name" => "millistime",          "column_type" => ColumnTypes::TIME, "size" => 3} if connection.supports_fractional_seconds?),
-          ({"name" => "microstime",          "column_type" => ColumnTypes::TIME, "size" => 6} if connection.supports_fractional_seconds?),
-          {"name" => "secondsdatetime",      "column_type" => ColumnTypes::DTTM},
-          ({"name" => "tenthsdatetime",      "column_type" => ColumnTypes::DTTM, "size" => 1} if connection.supports_fractional_seconds?),
-          ({"name" => "millisdatetime",      "column_type" => ColumnTypes::DTTM, "size" => 3} if connection.supports_fractional_seconds?),
-          ({"name" => "microsdatetime",      "column_type" => ColumnTypes::DTTM, "size" => 6} if connection.supports_fractional_seconds?),
-          {"name" => "timestampboth",        "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_expression" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true},
-          ({"name" => "timestampcreateonly", "column_type" => ColumnTypes::DTTM,               "nullable" => false, "default_expression" => "CURRENT_TIMESTAMP", "mysql_timestamp" => true} if connection.supports_multiple_timestamp_columns?),
-          ({"name" => "microstimestampboth", "column_type" => ColumnTypes::DTTM, "size" => 6,  "nullable" => false, "default_expression" => "CURRENT_TIMESTAMP(6)", "mysql_timestamp" => true, "mysql_on_update_timestamp" => true} if connection.supports_fractional_seconds?),
-          ({"name" => "mysqlfunctiondefault", "column_type" => ColumnTypes::VCHR, "size" => 255,                     "default_expression" => "uuid()"} if connection.mysql_default_expressions?),
-          {"name" => "select",               "column_type" => ColumnTypes::SINT, "size" =>  4},
-          {"name" => "`quoted`",             "column_type" => ColumnTypes::SINT, "size" =>  4},
-        ].compact,
-        "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
-        "primary_key_columns" => [0],
-        "keys" => [] }
-
-    when 'postgresql'
-      { "name"    => "\"postgresql\"tbl",
-        "columns" => [
-          {"name" => "pri",                  "column_type" => ColumnTypes::SINT, "size" =>  4,  "nullable" => false, "sequence" => ""}.merge(connection.supports_generated_as_identity? ? {"identity_generated_always" => true} : {}),
-          {"name" => "uu",                   "column_type" => ColumnTypes::UUID,                "nullable" => false},
-          ({"name" => "jsonbfield",           "column_type" => ColumnTypes::JSON, "binary_storage" => true} if connection.jsonb_column_type?),
-          {"name" => "nolengthvaryingfield", "column_type" => ColumnTypes::VCHR},
-          {"name" => "noprecisionnumericfield", "column_type" => ColumnTypes::DECI},
-          {"name" => "nulldefaultstr",       "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_expression" => "NULL"}, # note different to mysql, where no default and DEFAULT NULL are the same thing
-          ({"name" => "currentdatefield",     "column_type" => ColumnTypes::DATE,                                     "default_expression" => CaseInsensitiveString.new("CURRENT_DATE")} if connection.default_expressions?), # only conditional for the benefit of the mysql 5.7 cross-compatibility tests
-          ({"name" => "currentuserdefault",   "column_type" => ColumnTypes::VCHR, "size" => 255,                      "default_expression" => CaseInsensitiveString.new("CURRENT_USER")} if connection.default_expressions?),
-          ({"name" => "pgfunctiondefault",    "column_type" => ColumnTypes::TEXT,                                     "default_expression" => "version()"} if connection.default_expressions?),
-          {"name" => "timewithzone",         "column_type" => ColumnTypes::TIME, "time_zone" => true, "size" => 6},
-          {"name" => "timestampwithzone",    "column_type" => ColumnTypes::DTTM, "time_zone" => true, "size" => 6},
-          {"name" => "select",               "column_type" => ColumnTypes::SINT, "size" => 4},
-          {"name" => "\"quoted\"",           "column_type" => ColumnTypes::SINT, "size" =>  4},
-        ].compact,
-        "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
-        "primary_key_columns" => [0],
-        "keys" => [] }
-    end
+  def adapterspecifictbl_def(*args)
+    connection.adapterspecifictbl_def(*args)
   end
 
-  def adapterspecifictbl_row(database_server = @database_server)
-    case database_server
-    when 'mysql'
-      { "tiny2" => 12,
-        "timestampboth" => "2019-07-03 00:00:01" }.merge(
-        connection.supports_fractional_seconds? ? { "microstimestampboth" => "2019-07-03 01:02:03.123456" } : {})
-
-    when 'postgresql'
-      { "uu" => "3d190b75-dbb1-4d34-a41e-d590c1c8a895",
-        "nolengthvaryingfield" => "test data",
-        "noprecisionnumericfield" => "1234567890.0987654321" }
-    end
+  def adapterspecifictbl_row
+    connection.adapterspecifictbl_row
   end
 
   def create_spatialtbl(srid: nil)
@@ -451,9 +364,9 @@ SQL
   def spatialtbl_def(srid: nil)
     { "name"    => "spatialtbl",
       "columns" => add_srid_to([
-        {"name" => "id",                   "column_type" => ColumnTypes::SINT, "size" =>  4, "nullable" => false},
-        {"name" => "plainspat",            "column_type" => ColumnTypes::SPAT,               "nullable" => false},
-        {"name" => "pointspat",            "column_type" => ColumnTypes::SPAT,                                   "type_restriction" => "point"},
+        {"name" => "id",        "column_type" => ColumnType::SINT_32BIT, "nullable" => false},
+        {"name" => "plainspat", "column_type" => ColumnType::SPATIAL,    "nullable" => false},
+        {"name" => "pointspat", "column_type" => ColumnType::SPATIAL, "subtype" => "point"},
       ].compact, srid),
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
@@ -464,14 +377,19 @@ SQL
 
   def add_srid_to(columns, srid)
     return columns unless srid
-    columns.each {|column| column["reference_system"] = srid.to_s if column["column_type"] == ColumnTypes::SPAT}
+    columns.each do |column|
+      if column["column_type"] == ColumnType::SPATIAL
+        column["column_type"] = ColumnType::SPATIAL_GEOGRAPHY
+        column["reference_system"] = srid.to_s
+      end
+    end
   end
 
   def create_unsupportedtbl
     execute(<<-SQL)
       CREATE TABLE unsupportedtbl (
         pri INT NOT NULL,
-        unsupported #{connection.unsupported_column_type},
+        unsupported #{connection.unsupported_sql_type},
         PRIMARY KEY(pri))
 SQL
   end
@@ -479,8 +397,8 @@ SQL
   def unsupportedtbl_def
     { "name"    => "unsupportedtbl",
       "columns" => [
-        {"name" => "pri",         "column_type" => ColumnTypes::SINT, "size" => 4, "nullable" => false},
-        {"name" => "unsupported", "column_type" => ColumnTypes::UNKN, "db_type_def" => connection.unsupported_column_type}],
+        {"name" => "pri",         "column_type" => ColumnType::SINT_32BIT, "nullable" => false},
+        {"name" => "unsupported", "column_type" => connection.unsupported_column_type_name, "subtype" => connection.unsupported_sql_type}],
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
       "keys" => [] }

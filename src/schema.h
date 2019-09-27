@@ -13,7 +13,7 @@ using namespace std;
 
 typedef vector<size_t> ColumnIndices;
 typedef vector<PackedValue> ColumnValues;
-typedef set<string> ColumnTypeList;
+typedef set<ColumnType> ColumnTypeList;
 
 enum class DefaultType {
 	// these flags are serialized by name not value, so the values here can be changed if required
@@ -24,19 +24,11 @@ enum class DefaultType {
 };
 
 struct ColumnFlags {
-	bool mysql_timestamp = false;
-	bool mysql_on_update_timestamp = false;
-	bool time_zone = false;
-	bool simple_geometry = false;
-	bool binary_storage = false;
+	bool auto_update_timestamp = false;
 	bool identity_generated_always = false;
 
 	inline bool operator ==(const ColumnFlags &other) const {
-		return (mysql_timestamp == other.mysql_timestamp &&
-				mysql_on_update_timestamp == other.mysql_on_update_timestamp &&
-				time_zone == other.time_zone &&
-				simple_geometry == other.simple_geometry &&
-				binary_storage == other.binary_storage &&
+		return (auto_update_timestamp == other.auto_update_timestamp &&
 				identity_generated_always == other.identity_generated_always);
 	}
 };
@@ -44,16 +36,15 @@ struct ColumnFlags {
 struct Column {
 	string name;
 	bool nullable = true; // so we only serialize if changed to false
-	string column_type;
+	ColumnType column_type = ColumnType::unknown;
 	size_t size = 0;
 	size_t scale = 0;
 	DefaultType default_type = DefaultType::no_default;
 	string default_value;
 	ColumnFlags flags;
-	string type_restriction;
+	string subtype;
 	string reference_system;
 	vector<string> enumeration_values;
-	string db_type_def;
 
 	// the following member isn't serialized currently (could be, but not required):
 	string filter_expression;
@@ -67,19 +58,14 @@ struct Column {
 				default_type == other.default_type &&
 				default_value == other.default_value &&
 				flags == other.flags &&
-				type_restriction == other.type_restriction &&
+				subtype == other.subtype &&
 				reference_system == other.reference_system &&
-				enumeration_values == other.enumeration_values &&
-				db_type_def == db_type_def);
+				enumeration_values == other.enumeration_values);
 	}
 	inline bool operator !=(const Column &other) const { return (!(*this == other)); }
 
 	inline bool values_need_quoting() const {
-		return (column_type != ColumnTypes::BOOL &&
-				column_type != ColumnTypes::SINT &&
-				column_type != ColumnTypes::UINT &&
-				column_type != ColumnTypes::REAL &&
-				column_type != ColumnTypes::DECI);
+		return (column_type < ColumnType::non_quoted_literals_min || column_type > ColumnType::non_quoted_literals_max);
 	}
 };
 

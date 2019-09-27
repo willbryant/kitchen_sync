@@ -32,6 +32,20 @@ class BigDecimal
   end
 end
 
+class Set
+  def to_msgpack(*args)
+    to_a.to_msgpack(*args)
+  end
+
+  def ==(other)
+    if other.is_a?(Array)
+      other.sort == to_a.sort
+    else
+      super
+    end
+  end
+end
+
 # we don't currently use the actual msgpack float types etc. in the real program's database-value encoders,
 # but unfortunately we can't override the ruby msgpack gem's Float#to_msgpack as it's provided by a C extension
 class HashAsStringWrapper

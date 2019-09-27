@@ -6,38 +6,218 @@
 // cleanup of legacy quirks, so the separate code below is frozen in to preserve the output for
 // protocol version 7 (last used by KS version 1.17) and earlier.
 
+namespace LegacyColumnType {
+	const string BLOB = "BLOB";
+	const string TEXT = "TEXT";
+	const string VCHR = "VARCHAR";
+	const string FCHR = "CHAR";
+	const string UUID = "UUID";
+	const string BOOL = "BOOL";
+	const string SINT = "INT";
+	const string UINT = "INT UNSIGNED";
+	const string REAL = "REAL";
+	const string DECI = "DECIMAL";
+	const string DATE = "DATE";
+	const string TIME = "TIME";
+	const string DTTM = "DATETIME";
+	const string UNKN = "UNKNOWN";
+}
+
+const ColumnTypeList LegacySupportedColumnTypes{
+	ColumnType::binary,
+	ColumnType::text,
+	ColumnType::text_varchar,
+	ColumnType::text_fixed,
+	ColumnType::uuid,
+	ColumnType::boolean,
+	ColumnType::sint_8b,
+	ColumnType::sint_16b,
+	ColumnType::sint_24b,
+	ColumnType::sint_32b,
+	ColumnType::sint_64b,
+	ColumnType::uint_8b,
+	ColumnType::uint_16b,
+	ColumnType::uint_24b,
+	ColumnType::uint_32b,
+	ColumnType::uint_64b,
+	ColumnType::float_64b,
+	ColumnType::float_32b,
+	ColumnType::decimal,
+	ColumnType::date,
+	ColumnType::time,
+	ColumnType::time_tz,
+	ColumnType::datetime,
+	ColumnType::datetime_tz,
+	ColumnType::datetime_mysqltimestamp, // even though mysql-specific and represented using a non-specific type, we serialized the flag in the legacy protocol, so it's effectively always a distinct case for our code
+};
+
 template <typename OutputStream>
 void legacy_serialize(Packer<OutputStream> &packer, const Column &column) {
+	string legacy_type = LegacyColumnType::UNKN;
+	size_t legacy_size = column.size;
+	string legacy_flag;
+
+	switch (column.column_type) {
+		case ColumnType::binary:
+			legacy_type = LegacyColumnType::BLOB;
+			// we used to use the size in bytes, which worked for the types like tinyblob/mediumblob etc, but not for varbinary(n); now we just store the maximum length
+			if (column.size < 256) {
+				legacy_size = 1;
+			} else if (column.size < 65536) {
+				legacy_size = 2;
+			} else if (column.size < 16777216) {
+				legacy_size = 3;
+			} else {
+				legacy_size = 0; // note this was used to mean max
+			}
+			break;
+
+		case ColumnType::text:
+			legacy_type = LegacyColumnType::TEXT;
+			// as for BLOB
+			if (column.size < 256) {
+				legacy_size = 1;
+			} else if (column.size < 65536) {
+				legacy_size = 2;
+			} else if (column.size < 16777216) {
+				legacy_size = 3;
+			} else {
+				legacy_size = 0; // note this was used to mean max
+			}
+			break;
+
+		case ColumnType::text_varchar:
+			legacy_type = LegacyColumnType::VCHR;
+			break;
+
+		case ColumnType::text_fixed:
+			legacy_type = LegacyColumnType::FCHR;
+			break;
+
+		case ColumnType::uuid:
+			legacy_type = LegacyColumnType::UUID;
+			break;
+
+		case ColumnType::boolean:
+			legacy_type = LegacyColumnType::BOOL;
+			break;
+
+		case ColumnType::sint_8b:
+			legacy_type = LegacyColumnType::SINT;
+			legacy_size = 1;
+			break;
+
+		case ColumnType::sint_16b:
+			legacy_type = LegacyColumnType::SINT;
+			legacy_size = 2;
+			break;
+
+		case ColumnType::sint_24b:
+			legacy_type = LegacyColumnType::SINT;
+			legacy_size = 3;
+			break;
+
+		case ColumnType::sint_32b:
+			legacy_type = LegacyColumnType::SINT;
+			legacy_size = 4;
+			break;
+
+		case ColumnType::sint_64b:
+			legacy_type = LegacyColumnType::SINT;
+			legacy_size = 8;
+			break;
+
+		case ColumnType::uint_8b:
+			legacy_type = LegacyColumnType::UINT;
+			legacy_size = 1;
+			break;
+
+		case ColumnType::uint_16b:
+			legacy_type = LegacyColumnType::UINT;
+			legacy_size = 2;
+			break;
+
+		case ColumnType::uint_24b:
+			legacy_type = LegacyColumnType::UINT;
+			legacy_size = 3;
+			break;
+
+		case ColumnType::uint_32b:
+			legacy_type = LegacyColumnType::UINT;
+			legacy_size = 4;
+			break;
+
+		case ColumnType::uint_64b:
+			legacy_type = LegacyColumnType::UINT;
+			legacy_size = 8;
+			break;
+
+		case ColumnType::float_64b:
+			legacy_type = LegacyColumnType::REAL;
+			legacy_size = 8;
+			break;
+
+		case ColumnType::float_32b:
+			legacy_type = LegacyColumnType::REAL;
+			legacy_size = 4;
+			break;
+
+		case ColumnType::decimal:
+			legacy_type = LegacyColumnType::DECI;
+			break;
+
+		case ColumnType::date:
+			legacy_type = LegacyColumnType::DATE;
+			break;
+
+		case ColumnType::time:
+			legacy_type = LegacyColumnType::TIME;
+			break;
+
+		case ColumnType::time_tz:
+			legacy_type = LegacyColumnType::TIME;
+			legacy_flag = "time_zone";
+			break;
+
+		case ColumnType::datetime:
+			legacy_type = LegacyColumnType::DTTM;
+			break;
+
+		case ColumnType::datetime_tz:
+			legacy_type = LegacyColumnType::DTTM;
+			legacy_flag = "time_zone";
+			break;
+
+		case ColumnType::datetime_mysqltimestamp: // even though mysql-specific, we would always serialize the flag above, so it's effectively always a distinct type
+			legacy_type = LegacyColumnType::DTTM;
+			legacy_flag = "mysql_timestamp";
+			break;
+
+		case ColumnType::unknown:
+			legacy_type = LegacyColumnType::UNKN;
+			break;
+
+		default:
+			// shouldn't happen since we use the LegacyColumnTypes above as the "negotiated" type list when using the legacy protocol
+			throw runtime_error("Can't serialize type " + to_string(static_cast<int>(column.column_type)) + " using legacy protocol");
+	}
+
 	int fields = 2;
-	if (column.size) fields++;
+	if (legacy_size) fields++;
 	if (column.scale) fields++;
 	if (!column.nullable) fields++;
-	if (!column.db_type_def.empty()) fields++;
+	if (!column.subtype.empty()) fields++;
 	if (column.default_type != DefaultType::no_default) fields++;
-	if (column.flags.mysql_timestamp) fields++;
-	if (column.flags.mysql_on_update_timestamp) fields++;
-	if (column.flags.time_zone) fields++;
+	if (column.flags.auto_update_timestamp) fields++;
+	if (!legacy_flag.empty()) fields++;
 	pack_map_length(packer, fields);
 	packer << string("name");
 	packer << column.name;
 	packer << string("column_type");
-	packer << column.column_type;
-	if (column.size) {
+	packer << legacy_type;
+	if (legacy_size) {
 		packer << string("size");
-		if (column.column_type == ColumnTypes::BLOB || column.column_type == ColumnTypes::TEXT) {
-			// we used to use the size in bytes, which worked for the types like tinyblob/mediumblob etc, but not for varbinary(n); now we just store the maximum length
-			if (column.size < 256) {
-				packer << 1;
-			} else if (column.size < 65536) {
-				packer << 2;
-			} else if (column.size < 16777216) {
-				packer << 3;
-			} else {
-				packer << 0; // note this was used to mean max
-			}
-		} else {
-			packer << column.size;
-		}
+		packer << legacy_size;
 	}
 	if (column.scale) {
 		packer << string("scale");
@@ -47,9 +227,9 @@ void legacy_serialize(Packer<OutputStream> &packer, const Column &column) {
 		packer << string("nullable");
 		packer << column.nullable;
 	}
-	if (!column.db_type_def.empty()) {
+	if (!column.subtype.empty()) {
 		packer << string("db_type_def");
-		packer << column.db_type_def;
+		packer << column.subtype;
 	}
 	switch (column.default_type) {
 		case DefaultType::no_default:
@@ -70,16 +250,12 @@ void legacy_serialize(Packer<OutputStream> &packer, const Column &column) {
 			packer << column.default_value;
 			break;
 	}
-	if (column.flags.mysql_timestamp) {
-		packer << string("mysql_timestamp");
+	if (!legacy_flag.empty()) {
+		packer << legacy_flag;
 		packer << true;
 	}
-	if (column.flags.mysql_on_update_timestamp) {
+	if (column.flags.auto_update_timestamp) {
 		packer << string("mysql_on_update_timestamp");
-		packer << true;
-	}
-	if (column.flags.time_zone) {
-		packer << string("time_zone");
 		packer << true;
 	}
 }
@@ -106,31 +282,133 @@ void legacy_deserialize(Unpacker<InputStream> &unpacker, Column &column) {
 		if (attr_key == "name") {
 			unpacker >> column.name;
 		} else if (attr_key == "column_type") {
-			unpacker >> column.column_type;
+			string legacy_type;
+			unpacker >> legacy_type;
+			if (legacy_type == LegacyColumnType::BLOB) {
+				column.column_type = ColumnType::binary;
+			} else if (legacy_type == LegacyColumnType::TEXT) {
+				column.column_type = ColumnType::text;
+			} else if (legacy_type == LegacyColumnType::VCHR) {
+				column.column_type = ColumnType::text_varchar;
+			} else if (legacy_type == LegacyColumnType::FCHR) {
+				column.column_type = ColumnType::text_fixed;
+			} else if (legacy_type == LegacyColumnType::UUID) {
+				column.column_type = ColumnType::uuid;
+			} else if (legacy_type == LegacyColumnType::BOOL) {
+				column.column_type = ColumnType::boolean;
+			} else if (legacy_type == LegacyColumnType::SINT) {
+				column.column_type = ColumnType::sint_32b; // modified by size below
+			} else if (legacy_type == LegacyColumnType::UINT) {
+				column.column_type = ColumnType::uint_32b; // modified by size below
+			} else if (legacy_type == LegacyColumnType::REAL) {
+				column.column_type = ColumnType::float_64b;
+			} else if (legacy_type == LegacyColumnType::DECI) {
+				column.column_type = ColumnType::decimal;
+			} else if (legacy_type == LegacyColumnType::DATE) {
+				column.column_type = ColumnType::date;
+			} else if (legacy_type == LegacyColumnType::TIME) {
+				column.column_type = ColumnType::time;
+			} else if (legacy_type == LegacyColumnType::DTTM) {
+				column.column_type = ColumnType::datetime;
+			} else if (legacy_type == LegacyColumnType::UNKN) {
+				column.column_type = ColumnType::unknown;
+			} else {
+				throw runtime_error("Unexpected legacy column type: " + legacy_type);
+			}
 		} else if (attr_key == "size") {
 			unpacker >> column.size;
-			if (column.column_type == ColumnTypes::BLOB || column.column_type == ColumnTypes::TEXT) {
-				// as above, we used to use the size in bytes, which worked for the types like tinyblob/mediumblob etc, but not for varbinary(n); now we just store the maximum length
-				switch (column.size) {
-					case 1:
-						column.size = 255;
-						break;
+			switch (column.column_type) {
+				case ColumnType::binary:
+				case ColumnType::text:
+					// as above, we used to use the size in bytes, which worked for the types like tinyblob/mediumblob etc, but not for varbinary(n); now we just store the maximum length
+					switch (column.size) {
+						case 0:
+							// leave as 0 (meaning max)
+							break;
 
-					case 2:
-						column.size = 65535;
-						break;
+						case 1:
+							column.size = 255;
+							break;
 
-					case 3:
-						column.size = 16777215;
-						break;
-				}
+						case 2:
+							column.size = 65535;
+							break;
+
+						case 3:
+							column.size = 16777215;
+							break;
+
+						default:
+							throw runtime_error("Unexpected legacy TEXT/BLOB size: " + to_string(column.size));
+					}
+					break;
+
+				case ColumnType::sint_32b:
+					switch (column.size) {
+						case 1:
+							column.column_type = ColumnType::sint_8b;
+							break;
+
+						case 2:
+							column.column_type = ColumnType::sint_16b;
+							break;
+
+						case 3:
+							column.column_type = ColumnType::sint_24b;
+							break;
+
+						case 4:
+							// leave as SINT_32BIT
+							break;
+
+						case 8:
+							column.column_type = ColumnType::sint_64b;
+							break;
+
+						default:
+							throw runtime_error("Unexpected legacy SINT size: " + to_string(column.size));
+					}
+					column.size = 0;
+					break;
+
+				case ColumnType::uint_32b:
+					switch (column.size) {
+						case 1:
+							column.column_type = ColumnType::uint_8b;
+							break;
+
+						case 2:
+							column.column_type = ColumnType::uint_16b;
+							break;
+
+						case 3:
+							column.column_type = ColumnType::uint_24b;
+							break;
+
+						case 4:
+							// leave as UINT_32BIT
+							break;
+
+						case 8:
+							column.column_type = ColumnType::uint_64b;
+							break;
+
+						default:
+							throw runtime_error("Unexpected legacy UINT size: " + to_string(column.size));
+					}
+					column.size = 0;
+					break;
+
+				default:
+					// otherwise leave as is
+					break;
 			}
 		} else if (attr_key == "scale") {
 			unpacker >> column.scale;
 		} else if (attr_key == "nullable") {
 			unpacker >> column.nullable;
 		} else if (attr_key == "db_type_def") {
-			unpacker >> column.db_type_def;
+			unpacker >> column.subtype;
 		} else if (attr_key == "sequence") {
 			column.default_type = DefaultType::sequence;
 			unpacker >> column.default_value; // currently unused, but allowed for forward compatibility
@@ -141,34 +419,21 @@ void legacy_deserialize(Unpacker<InputStream> &unpacker, Column &column) {
 			column.default_type = DefaultType::default_expression;
 			unpacker >> column.default_value;
 		} else if (attr_key == "mysql_timestamp") {
-			unpacker >> column.flags.mysql_timestamp;
+			if (unpacker.template next<bool>()) {
+				if (column.column_type == ColumnType::datetime) column.column_type = ColumnType::datetime_mysqltimestamp;
+			}
 		} else if (attr_key == "mysql_on_update_timestamp") {
-			unpacker >> column.flags.mysql_on_update_timestamp;
+			unpacker >> column.flags.auto_update_timestamp;
 		} else if (attr_key == "time_zone") {
-			unpacker >> column.flags.time_zone;
+			if (unpacker.template next<bool>()) {
+				if (column.column_type == ColumnType::time) column.column_type = ColumnType::time_tz;
+				if (column.column_type == ColumnType::datetime) column.column_type = ColumnType::datetime_tz;
+			}
 		} else {
 			// ignore anything else, for forward compatibility
 			unpacker.skip();
 		}
 	}
-}
-
-inline ColumnTypeList legacy_supported_types() {
-	return ColumnTypeList{
-		ColumnTypes::BLOB,
-		ColumnTypes::TEXT,
-		ColumnTypes::VCHR,
-		ColumnTypes::FCHR,
-		ColumnTypes::UUID,
-		ColumnTypes::BOOL,
-		ColumnTypes::SINT,
-		ColumnTypes::UINT,
-		ColumnTypes::REAL,
-		ColumnTypes::DECI,
-		ColumnTypes::DATE,
-		ColumnTypes::TIME,
-		ColumnTypes::DTTM,
-	};
 }
 
 #endif

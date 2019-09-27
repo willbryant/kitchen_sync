@@ -406,9 +406,9 @@ string &PostgreSQLClient::append_quoted_spatial_value_to(string &result, const s
 string &PostgreSQLClient::append_quoted_column_value_to(string &result, const Column &column, const string &value) {
 	if (!column.values_need_quoting()) {
 		return result += value;
-	} else if (column.column_type == ColumnTypes::BLOB) {
+	} else if (column.column_type == ColumnType::binary) {
 		return append_quoted_bytea_value_to(result, value);
-	} else if (column.column_type == ColumnTypes::SPAT) {
+	} else if (column.column_type == ColumnType::spatial) {
 		return append_quoted_spatial_value_to(result, value);
 	} else {
 		return append_quoted_string_value_to(result, value);
@@ -418,42 +418,37 @@ string &PostgreSQLClient::append_quoted_column_value_to(string &result, const Co
 void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 	for (Table &table : database.tables) {
 		for (Column &column : table.columns) {
-			if (column.column_type == ColumnTypes::UINT) {
-				// postgresql doesn't support unsigned columns; to make migration from databases that do
-				// easier, we don't reject unsigned columns, we just convert them to the signed equivalent
-				// and rely on it raising if we try to insert an invalid value
-				column.column_type = ColumnTypes::SINT;
+			// the modern type system negotiates compatible integer types, so we never get given types
+			// that postgresql won't support.  we have to support converting legacy schemas here though.
+			// postgresql doesn't support unsigned columns; to make migration from databases that do
+			// easier, we don't reject unsigned columns, we just convert them to the signed equivalent
+			// and rely on it raising if we try to insert an invalid value.  postgresql also doesn't
+			// have 8 or 24 bit types, so we upgrade those to 16 bit.
+			if (column.column_type == ColumnType::sint_8b || column.column_type == ColumnType::uint_8b || column.column_type == ColumnType::uint_16b) {
+				column.column_type = ColumnType::sint_16b;
+			}
+			if (column.column_type == ColumnType::sint_24b || column.column_type == ColumnType::uint_24b || column.column_type == ColumnType::uint_32b) {
+				column.column_type = ColumnType::sint_32b;
 			}
 
-			if (column.column_type == ColumnTypes::SINT && column.size == 1) {
-				// not used by postgresql; smallint is the nearest equivalent
-				column.size = 2;
-			}
-
-			if (column.column_type == ColumnTypes::SINT && column.size == 3) {
-				// not used by postgresql; integer is the nearest equivalent
-				column.size = 4;
-			}
-
-			if (column.column_type == ColumnTypes::TEXT || column.column_type == ColumnTypes::BLOB) {
+			if (column.column_type == ColumnType::text || column.column_type == ColumnType::binary) {
 				// postgresql doesn't have different sized TEXT/BLOB columns, they're all equivalent to mysql's biggest type
 				column.size = 0;
 			}
 
-			if (column.column_type == ColumnTypes::ENUM && column.type_restriction.empty()) {
+			if (column.column_type == ColumnType::enumeration && column.subtype.empty()) {
 				// postgresql requires that you create a material type for each enumeration, whereas mysql just lists the
 				// possible values on the column itself.  we don't currently implement creation/maintainance of these custom
 				// types ourselves - users need to do that - but we need to find the name of the type they've (hopefully) created.
-				for (auto it = type_map.enum_type_values.begin(); it != type_map.enum_type_values.end() && column.type_restriction.empty(); ++it) {
+				for (auto it = type_map.enum_type_values.begin(); it != type_map.enum_type_values.end() && column.subtype.empty(); ++it) {
 					if (it->second == column.enumeration_values) {
-						column.type_restriction = it->first;
+						column.subtype = it->first;
 					}
 				}
 			}
 
 			// turn off unsupported flags; we always define flags in such a way that this is a graceful degradation
-			column.flags.mysql_timestamp = column.flags.mysql_on_update_timestamp = false;
-			if (!supports_jsonb_column_type()) column.flags.binary_storage = false;
+			column.flags.auto_update_timestamp = false;
 			if (!supports_generated_as_identity()) column.flags.identity_generated_always = false;
 		}
 
@@ -466,153 +461,113 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 	}
 }
 
-string PostgreSQLClient::column_type(const Column &column) {
-	if (column.column_type == ColumnTypes::BLOB) {
-		return "bytea";
+map<ColumnType, string> SimpleColumnTypes{
+	{ColumnType::binary,       "bytea"},
+	{ColumnType::text,         "text"},
+	{ColumnType::text_varchar, "character varying"},
+	{ColumnType::text_fixed,   "character"},
+	{ColumnType::json,         "json"},
+	{ColumnType::json_binary,  "jsonb"},
+	{ColumnType::uuid,         "uuid"},
+	{ColumnType::boolean,      "boolean"},
+	{ColumnType::sint_16b,     "smallint"},
+	{ColumnType::sint_32b,     "integer"},
+	{ColumnType::sint_64b,     "bigint"},
+	{ColumnType::float_64b,    "double precision"},
+	{ColumnType::float_32b,    "real"},
+	{ColumnType::decimal,      "numeric"},
+	{ColumnType::date,         "date"},
+};
 
-	} else if (column.column_type == ColumnTypes::TEXT) {
-		return "text";
-
-	} else if (column.column_type == ColumnTypes::VCHR) {
-		string result("character varying");
-		if (column.size > 0) {
-			result += '(';
-			result += to_string(column.size);
-			result += ')';
-		}
-		return result;
-
-	} else if (column.column_type == ColumnTypes::FCHR) {
-		string result("character(");
+string column_type_suffix(const Column &column, size_t default_size = 0) {
+	string result;
+	if (column.size != default_size) {
+		result += '(';
 		result += to_string(column.size);
-		result += ')';
-		return result;
-
-	} else if (column.column_type == ColumnTypes::JSON) {
-		if (column.flags.binary_storage) {
-			return "jsonb";
-		} else {
-			return "json";
-		}
-
-	} else if (column.column_type == ColumnTypes::UUID) {
-		return "uuid";
-
-	} else if (column.column_type == ColumnTypes::BOOL) {
-		return "boolean";
-
-	} else if (column.column_type == ColumnTypes::SINT) {
-		switch (column.size) {
-			case 2:
-				return "smallint";
-
-			case 4:
-				return "integer";
-
-			case 8:
-				return "bigint";
-
-			default:
-				throw runtime_error("Don't know how to create integer column " + column.name + " of size " + to_string(column.size));
-		}
-
-	} else if (column.column_type == ColumnTypes::REAL) {
-		return (column.size == 4 ? "real" : "double precision");
-
-	} else if (column.column_type == ColumnTypes::DECI) {
-		if (column.size) {
-			string result("numeric(");
-			result += to_string(column.size);
+		if (column.scale) {
 			result += ',';
 			result += to_string(column.scale);
-			result += ')';
+		}
+		result += ')';
+	}
+	return result;
+}
+
+string PostgreSQLClient::column_type(const Column &column) {
+	auto simple_type = SimpleColumnTypes.find(column.column_type);
+	if (simple_type != SimpleColumnTypes.cend()) {
+		return simple_type->second + column_type_suffix(column);
+	}
+
+	switch (column.column_type) {
+		case ColumnType::time:
+			return "time" + column_type_suffix(column, 6) + " without time zone";
+
+		case ColumnType::time_tz:
+			return "time" + column_type_suffix(column, 6) + " with time zone";
+
+		case ColumnType::datetime:
+			return "timestamp" + column_type_suffix(column, 6) + " without time zone";
+
+		case ColumnType::datetime_tz:
+			return "timestamp" + column_type_suffix(column, 6) + " with time zone";
+
+		case ColumnType::spatial:
+		case ColumnType::spatial_geography: {
+			// note that we have made the assumption that all the mysql geometry types should be mapped to
+			// PostGIS objects, rather than to the built-in geometric types such as POINT, because
+			// postgresql's built-in geometric types don't support spatial reference systems (SRIDs), don't
+			// have any equivalent to the multi* types, the built-in POLYGON type doesn't support 'holes' (as
+			// created using the two-argument form on mysql), etc.
+			// this still leaves us with a choice between geometry and geography; the difference is that
+			// geography does calculations on spheroids whereas geometry calculates using simple planes.
+			// geography defaults to SRID 4326 (and until recently, only supported 4326) and will even use
+			// that default if you specify 0.  geometry allows you to specify any SRID and remembers it, but
+			// always calculates is as if using SRID 0, so there's no real benefit to doing so.  we've added
+			// separate types for the two postgresql types to allow us to round-trip the schema accurately.
+			string result(column.column_type == ColumnType::spatial_geography ? "geography" : "geometry");
+			if (!column.reference_system.empty()) {
+				result += '(';
+				result += (column.subtype.empty() ? string("geometry") : column.subtype);
+				result += ',';
+				result += column.reference_system;
+				result += ')';
+			} else if (!column.subtype.empty()) {
+				result += '(';
+				result += column.subtype;
+				result += ')';
+			}
 			return result;
-		} else {
-			return "numeric";
 		}
 
-	} else if (column.column_type == ColumnTypes::DATE) {
-		return "date";
+		case ColumnType::enumeration:
+			// a named ENUM type (presumably from another postgresql instance); we don't create/maintain
+			// these types ourselves currently, they need to exist already.
+			if (column.subtype.empty()) {
+				throw runtime_error("Can't find an enumerated type with possible values " + values_list(*this, column.enumeration_values) + " for column " + column.name + ", please create one using CREATE TYPE");
+			}
+			if (!type_map.enum_type_values.count(column.subtype)) {
+				throw runtime_error("Need an enumerated type named " + column.subtype + " with possible values " + values_list(*this, column.enumeration_values) + " for column " + column.name + ", please create one using CREATE TYPE");
+			}
+			if (type_map.enum_type_values[column.subtype] != column.enumeration_values) {
+				throw runtime_error("The enumerated type named " + column.subtype + " has possible values " + values_list(*this, type_map.enum_type_values[column.subtype]) + " but should have possible values " + values_list(*this, column.enumeration_values) + " for column " + column.name + ", please alter the type");
+			}
+			return column.subtype;
 
-	} else if (column.column_type == ColumnTypes::TIME) {
-		string result("time");
-		if (column.size != 6) {
-			result += '(';
-			result += to_string(column.size);
-			result += ')';
-		}
-		if (column.flags.time_zone) {
-			result += " with time zone";
-		} else {
-			result += " without time zone";
-		}
-		return result;
+		case ColumnType::postgresql_specific:
+			// as long as the versions are compatible, this should 'just work'
+			return column.subtype;
 
-	} else if (column.column_type == ColumnTypes::DTTM) {
-		string result("timestamp");
-		if (column.size != 6) {
-			result += '(';
-			result += to_string(column.size);
-			result += ')';
-		}
-		if (column.flags.time_zone) {
-			result += " with time zone";
-		} else {
-			result += " without time zone";
-		}
-		return result;
+		case ColumnType::unknown:
+			// fall back to the raw type string given by the other end, which is really only likely to
+			// work if the other end is the same type of database server (and maybe even a compatible
+			// version). this also implies we don't know anything about parsing/formatting values for
+			// this column type, so it'll only work if the database accepts exactly the same input as
+			// it gives in output.
+			return column.subtype;
 
-	} else if (column.column_type == ColumnTypes::SPAT) {
-		// note that we have made the assumption that all the mysql geometry types should be mapped to
-		// PostGIS objects, rather than to the built-in geometric types such as POINT, because
-		// postgresql's built-in geometric types don't support spatial reference systems (SRIDs), don't
-		// have any equivalent to the multi* types, the built-in POLYGON type doesn't support 'holes' (as
-		// created using the two-argument form on mysql), etc.
-		// this still leaves us with a choice between geometry and geography; the difference is that
-		// geography does calculations on spheroids whereas geometry calculates using simple planes.
-		// geography defaults to SRID 4326 (and until recently, only supported 4326) and will even use
-		// that default if you specify 0.  geometry allows you to specify any SRID and remembers it, but
-		// always calculates is as if using SRID 0, so there's no real benefit to doing so.  so we have
-		// made the assumption that generally SRID set => want the geography type, when coming from other
-		// databases, but we've added a simple_geometry flag so we can round-trip geometry with an SRID.
-		string result(column.reference_system.empty() || column.flags.simple_geometry ? "geometry" : "geography");
-		if (!column.reference_system.empty()) {
-			result += '(';
-			result += (column.type_restriction.empty() ? string("geometry") : column.type_restriction);
-			result += ',';
-			result += column.reference_system;
-			result += ')';
-		} else if (!column.type_restriction.empty()) {
-			result += '(';
-			result += column.type_restriction;
-			result += ')';
-		}
-		return result;
-
-	} else if (column.column_type == ColumnTypes::ENUM) {
-		// a named ENUM type (presumably from another postgresql instance); we don't create/maintain
-		// these types ourselves currently, they need to exist already.
-		if (column.type_restriction.empty()) {
-			throw runtime_error("Can't find an enumerated type with possible values " + values_list(*this, column.enumeration_values) + " for column " + column.name + ", please create one using CREATE TYPE");
-		}
-		if (!type_map.enum_type_values.count(column.type_restriction)) {
-			throw runtime_error("Need an enumerated type named " + column.type_restriction + " with possible values " + values_list(*this, column.enumeration_values) + " for column " + column.name + ", please create one using CREATE TYPE");
-		}
-		if (type_map.enum_type_values[column.type_restriction] != column.enumeration_values) {
-			throw runtime_error("The enumerated type named " + column.type_restriction + " has possible values " + values_list(*this, type_map.enum_type_values[column.type_restriction]) + " but should have possible values " + values_list(*this, column.enumeration_values) + " for column " + column.name + ", please alter the type");
-		}
-		return column.type_restriction;
-
-	} else if (column.column_type == ColumnTypes::UNKN) {
-		// fall back to the raw type string given by the other end, which is really only likely to
-		// work if the other end is the same type of database server (and maybe even a compatible
-		// version). this also implies we don't know anything about parsing/formatting values for
-		// this column type, so it'll only work if the database accepts exactly the same input as
-		// it gives in output.
-		return column.db_type_def;
-
-	} else {
-		throw runtime_error("Don't know how to express column type of " + column.name + " (" + column.column_type + ")");
+		default:
+			throw runtime_error("Don't know how to express column type of " + column.name + " (" + to_string(static_cast<int>(column.column_type)) + ")");
 	}
 }
 
@@ -682,24 +637,24 @@ string PostgreSQLClient::key_definition(const Table &table, const Key &key) {
 }
 
 inline ColumnTypeList PostgreSQLClient::supported_types() {
-	return ColumnTypeList{
-		ColumnTypes::BLOB,
-		ColumnTypes::TEXT,
-		ColumnTypes::VCHR,
-		ColumnTypes::FCHR,
-		ColumnTypes::JSON,
-		ColumnTypes::UUID,
-		ColumnTypes::BOOL,
-		ColumnTypes::SINT,
-		ColumnTypes::UINT,
-		ColumnTypes::REAL,
-		ColumnTypes::DECI,
-		ColumnTypes::DATE,
-		ColumnTypes::TIME,
-		ColumnTypes::DTTM,
-		ColumnTypes::SPAT,
-		ColumnTypes::ENUM,
+	ColumnTypeList result{
+		ColumnType::time,
+		ColumnType::time_tz,
+		ColumnType::datetime,
+		ColumnType::datetime_tz,
+		ColumnType::spatial, // TODO: detect postgis support
+		ColumnType::spatial_geography,
+		ColumnType::enumeration,
+		ColumnType::postgresql_specific,
+		ColumnType::unknown,
 	};
+	for (const auto &it: SimpleColumnTypes) {
+		result.insert(it.first);
+	}
+	if (!supports_jsonb_column_type()) {
+		result.erase(ColumnType::json_binary); // in SimpleColumnTypes, but only supported by some versions
+	}
+	return result;
 }
 
 struct PostgreSQLColumnLister {
@@ -761,119 +716,111 @@ struct PostgreSQLColumnLister {
 		}
 
 		if (db_type == "boolean") {
-			column.column_type = ColumnTypes::BOOL;
+			column.column_type = ColumnType::boolean;
 
 		} else if (db_type == "smallint") {
-			column.column_type = ColumnTypes::SINT;
-			column.size = 2;
+			column.column_type = ColumnType::sint_16b;
 
 		} else if (db_type == "integer") {
-			column.column_type = ColumnTypes::SINT;
-			column.size = 4;
+			column.column_type = ColumnType::sint_32b;
 
 		} else if (db_type == "bigint") {
-			column.column_type = ColumnTypes::SINT;
-			column.size = 8;
+			column.column_type = ColumnType::sint_64b;
 
 		} else if (db_type == "real") {
-			column.column_type = ColumnTypes::REAL;
-			column.size = 4;
+			column.column_type = ColumnType::float_32b;
 
 		} else if (db_type == "double precision") {
-			column.column_type = ColumnTypes::REAL;
-			column.size = 8;
+			column.column_type = ColumnType::float_64b;
 
 		} else if (db_type.substr(0, 8) == "numeric(") {
-			column.column_type = ColumnTypes::DECI;
+			column.column_type = ColumnType::decimal;
 			column.size = extract_column_length(db_type);
 			column.scale = extract_column_scale(db_type);
 
 		} else if (db_type.substr(0, 7) == "numeric") {
-			column.column_type = ColumnTypes::DECI;
+			column.column_type = ColumnType::decimal;
+
+		} else if (db_type == "bytea") {
+			column.column_type = ColumnType::binary;
 
 		} else if (db_type.substr(0, 18) == "character varying(") {
-			column.column_type = ColumnTypes::VCHR;
+			column.column_type = ColumnType::text_varchar;
 			column.size = extract_column_length(db_type);
 
 		} else if (db_type.substr(0, 18) == "character varying") {
-			column.column_type = ColumnTypes::VCHR; /* no length limit */
+			column.column_type = ColumnType::text_varchar; /* no length limit */
 
 		} else if (db_type.substr(0, 10) == "character(") {
-			column.column_type = ColumnTypes::FCHR;
+			column.column_type = ColumnType::text_fixed;
 			column.size = extract_column_length(db_type);
 
 		} else if (db_type == "text") {
-			column.column_type = ColumnTypes::TEXT;
-
-		} else if (db_type == "bytea") {
-			column.column_type = ColumnTypes::BLOB;
+			column.column_type = ColumnType::text;
 
 		} else if (db_type == "json") {
-			column.column_type = ColumnTypes::JSON;
+			column.column_type = select_supported_type(ColumnType::json, ColumnType::text);
 
 		} else if (db_type == "jsonb") {
-			column.column_type = ColumnTypes::JSON;
-			column.flags.binary_storage = true;
+			column.column_type = select_supported_type(ColumnType::json_binary, ColumnType::json, ColumnType::text);
 
 		} else if (db_type == "uuid") {
-			column.column_type = ColumnTypes::UUID;
+			column.column_type = select_supported_type(ColumnType::uuid, ColumnType::text_fixed);
+			if (column.column_type == ColumnType::text_fixed) column.size = 36;
 
 		} else if (db_type == "date") {
-			column.column_type = ColumnTypes::DATE;
+			column.column_type = ColumnType::date;
 
 		} else if (db_type == "time without time zone") {
-			column.column_type = ColumnTypes::TIME;
+			column.column_type = ColumnType::time;
 			column.size = 6; /* microsecond precision */
 
 		} else if (db_type == "time with time zone") {
-			column.column_type = ColumnTypes::TIME;
-			column.flags.time_zone = true;
+			column.column_type = select_supported_type(ColumnType::time_tz, ColumnType::time);
 			column.size = 6; /* microsecond precision */
 
 		} else if (db_type == "timestamp without time zone") {
-			column.column_type = ColumnTypes::DTTM;
+			column.column_type = ColumnType::datetime;
 			column.size = 6; /* microsecond precision */
 
 		} else if (db_type == "timestamp with time zone") {
-			column.column_type = ColumnTypes::DTTM;
-			column.flags.time_zone = true;
+			column.column_type = select_supported_type(ColumnType::datetime_tz, ColumnType::datetime);
 			column.size = 6; /* microsecond precision */
 
 		} else if (db_type == "geometry") {
-			column.column_type = ColumnTypes::SPAT;
+			column.column_type = ColumnType::spatial;
 
 		} else if (db_type == "geography") {
-			column.column_type = ColumnTypes::SPAT;
+			column.column_type = ColumnType::spatial_geography;
 			column.reference_system = "4326"; // this default SRID is baked into PostGIS (and was the only SRID supported for the geography type in early version)
 
 		} else if (db_type.substr(0, 9) == "geometry(") {
-			tie(column.type_restriction, column.reference_system) = extract_spatial_type_restriction_and_reference_system(db_type.substr(9, db_type.length() - 10));
-			if (!column.reference_system.empty()) column.flags.simple_geometry = true; // as discussed in column_type, we mainly expect SRIDs to be used with the geography type, but use this flag to turn the column back into a geometry type for this case
-			column.column_type = ColumnTypes::SPAT;
+			tie(column.subtype, column.reference_system) = extract_spatial_subtype_and_reference_system(db_type.substr(9, db_type.length() - 10));
+			column.column_type = ColumnType::spatial;
 
 		} else if (db_type.substr(0, 10) == "geography(") {
-			tie(column.type_restriction, column.reference_system) = extract_spatial_type_restriction_and_reference_system(db_type.substr(10, db_type.length() - 11));
-			column.column_type = ColumnTypes::SPAT;
+			tie(column.subtype, column.reference_system) = extract_spatial_subtype_and_reference_system(db_type.substr(10, db_type.length() - 11));
+			column.column_type = ColumnType::spatial_geography;
 
 		} else if (type_map.enum_type_values.count(db_type)) {
-			column.column_type = ColumnTypes::ENUM;
-			column.type_restriction = db_type;
+			column.column_type = ColumnType::enumeration;
+			column.subtype = db_type;
 			column.enumeration_values = type_map.enum_type_values[db_type];
 
 		} else {
 			// not supported, but leave it till sync_to's check_tables_usable to complain about it so that it can be ignored
-			column.column_type = ColumnTypes::UNKN;
+			column.column_type = ColumnType::postgresql_specific;
 		}
 
-		// degrade to UNKN if the type we want isn't supported by the version at the other end
+		// degrade to 'unknown' if the type we want isn't supported by the version at the other end
 		if (!accepted_types.count(column.column_type)) {
-			column.column_type = ColumnTypes::UNKN;
+			column.column_type = ColumnType::unknown;
 			column.size = column.scale = 0;
 		}
 
 		// send the raw database-specific type for unknown or unsupported types
-		if (column.column_type == ColumnTypes::UNKN) {
-			column.db_type_def = db_type;
+		if (column.column_type == ColumnType::postgresql_specific || column.column_type == ColumnType::unknown) {
+			column.subtype = db_type;
 		}
 
 		table.columns.push_back(column);
@@ -894,19 +841,26 @@ struct PostgreSQLColumnLister {
 		return result;
 	}
 
-	inline tuple<string, string> extract_spatial_type_restriction_and_reference_system(string type_restriction) {
-		transform(type_restriction.begin(), type_restriction.end(), type_restriction.begin(), [](unsigned char c){ return tolower(c); });
+	inline tuple<string, string> extract_spatial_subtype_and_reference_system(string subtype) {
+		transform(subtype.begin(), subtype.end(), subtype.begin(), [](unsigned char c){ return tolower(c); });
 
-		size_t comma_pos = type_restriction.find(',');
+		size_t comma_pos = subtype.find(',');
 		if (comma_pos == string::npos) {
-			return make_tuple(type_restriction, "");
+			return make_tuple(subtype, "");
 		}
 
-		string reference_system(type_restriction.substr(comma_pos + 1));
-		type_restriction.resize(comma_pos);
-		if (type_restriction == "geometry") type_restriction.clear(); // normalize; note that it still says "geometry" for geography types
+		string reference_system(subtype.substr(comma_pos + 1));
+		subtype.resize(comma_pos);
+		if (subtype == "geometry") subtype.clear(); // normalize; note that it still says "geometry" for geography types
 
-		return make_tuple(type_restriction, reference_system);
+		return make_tuple(subtype, reference_system);
+	}
+
+	inline ColumnType select_supported_type(ColumnType type1, ColumnType type2, ColumnType type3 = ColumnType::postgresql_specific) {
+		if (accepted_types.count(type1)) return type1;
+		if (accepted_types.count(type2)) return type2;
+		if (accepted_types.count(type3)) return type3;
+		return ColumnType::postgresql_specific;
 	}
 
 	Table &table;

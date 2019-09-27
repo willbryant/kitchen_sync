@@ -17,22 +17,17 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	if (column.size) fields++;
 	if (column.scale) fields++;
 	if (!column.nullable) fields++;
-	if (!column.type_restriction.empty()) fields++;
+	if (!column.subtype.empty()) fields++;
 	if (!column.reference_system.empty()) fields++;
 	if (!column.enumeration_values.empty()) fields++;
-	if (!column.db_type_def.empty()) fields++;
 	if (column.default_type != DefaultType::no_default) fields++;
-	if (column.flags.mysql_timestamp) fields++;
-	if (column.flags.mysql_on_update_timestamp) fields++;
-	if (column.flags.time_zone) fields++;
-	if (column.flags.simple_geometry) fields++;
-	if (column.flags.binary_storage) fields++;
+	if (column.flags.auto_update_timestamp) fields++;
 	if (column.flags.identity_generated_always) fields++;
 	pack_map_length(packer, fields);
 	packer << string("name");
 	packer << column.name;
 	packer << string("column_type");
-	packer << column.column_type;
+	packer << ColumnTypeNames.at(column.column_type);
 	if (column.size) {
 		packer << string("size");
 		packer << column.size;
@@ -45,9 +40,9 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 		packer << string("nullable");
 		packer << column.nullable;
 	}
-	if (!column.type_restriction.empty()) {
-		packer << string("type_restriction");
-		packer << column.type_restriction;
+	if (!column.subtype.empty()) {
+		packer << string("subtype");
+		packer << column.subtype;
 	}
 	if (!column.reference_system.empty()) {
 		packer << string("reference_system");
@@ -56,10 +51,6 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	if (!column.enumeration_values.empty()) {
 		packer << string("enumeration_values");
 		packer << column.enumeration_values;
-	}
-	if (!column.db_type_def.empty()) {
-		packer << string("db_type_def");
-		packer << column.db_type_def;
 	}
 	switch (column.default_type) {
 		case DefaultType::no_default:
@@ -80,24 +71,8 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 			packer << column.default_value;
 			break;
 	}
-	if (column.flags.mysql_timestamp) {
-		packer << string("mysql_timestamp");
-		packer << true;
-	}
-	if (column.flags.mysql_on_update_timestamp) {
-		packer << string("mysql_on_update_timestamp");
-		packer << true;
-	}
-	if (column.flags.time_zone) {
-		packer << string("time_zone");
-		packer << true;
-	}
-	if (column.flags.simple_geometry) {
-		packer << string("simple_geometry");
-		packer << true;
-	}
-	if (column.flags.binary_storage) {
-		packer << string("binary_storage");
+	if (column.flags.auto_update_timestamp) {
+		packer << string("auto_update_timestamp");
 		packer << true;
 	}
 	if (column.flags.identity_generated_always) {
@@ -175,21 +150,19 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 		if (attr_key == "name") {
 			unpacker >> column.name;
 		} else if (attr_key == "column_type") {
-			unpacker >> column.column_type;
+			column.column_type = ColumnTypesByName.at(unpacker.template next<string>()); // non-present entries shouldn't get hit since we negotiate supported types
 		} else if (attr_key == "size") {
 			unpacker >> column.size;
 		} else if (attr_key == "scale") {
 			unpacker >> column.scale;
 		} else if (attr_key == "nullable") {
 			unpacker >> column.nullable;
-		} else if (attr_key == "type_restriction") {
-			unpacker >> column.type_restriction;
+		} else if (attr_key == "subtype") {
+			unpacker >> column.subtype;
 		} else if (attr_key == "reference_system") {
 			unpacker >> column.reference_system;
 		} else if (attr_key == "enumeration_values") {
 			unpacker >> column.enumeration_values;
-		} else if (attr_key == "db_type_def") {
-			unpacker >> column.db_type_def;
 		} else if (attr_key == "sequence") {
 			column.default_type = DefaultType::sequence;
 			unpacker >> column.default_value; // currently unused, but allowed for forward compatibility
@@ -202,16 +175,8 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 		} else if (attr_key == "default_expression") {
 			column.default_type = DefaultType::default_expression;
 			unpacker >> column.default_value;
-		} else if (attr_key == "mysql_timestamp") {
-			unpacker >> column.flags.mysql_timestamp;
-		} else if (attr_key == "mysql_on_update_timestamp") {
-			unpacker >> column.flags.mysql_on_update_timestamp;
-		} else if (attr_key == "time_zone") {
-			unpacker >> column.flags.time_zone;
-		} else if (attr_key == "simple_geometry") {
-			unpacker >> column.flags.simple_geometry;
-		} else if (attr_key == "binary_storage") {
-			unpacker >> column.flags.binary_storage;
+		} else if (attr_key == "auto_update_timestamp") {
+			unpacker >> column.flags.auto_update_timestamp;
 		} else if (attr_key == "identity_generated_always") {
 			unpacker >> column.flags.identity_generated_always;
 		} else {

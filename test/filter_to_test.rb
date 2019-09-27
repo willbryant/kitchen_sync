@@ -81,7 +81,7 @@ class FilterToTest < KitchenSync::EndpointTestCase
     with_filter_file("footbl:\n  replace:\n    another_col: col1 + CHAR_LENGTH(col3)\n    col3: COALESCE(col3, 'default')\n  only: col1 BETWEEN 4 AND 7") do
       expect_handshake_commands(
         protocol_version_supported: 7,
-        schema: {"tables" => [footbl_def]})
+        schema: {"tables" => [footbl_def_v7]})
 
       expect_command Commands::FILTERS,
                      [{"footbl" => {"where_conditions" => "col1 BETWEEN 4 AND 7", "filter_expressions" => {"another_col" => "col1 + CHAR_LENGTH(col3)", "col3" => "COALESCE(col3, 'default')"}}}]

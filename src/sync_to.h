@@ -274,7 +274,12 @@ struct SyncToWorker {
 
 	void negotiate_types() {
 		if (output_stream.protocol_version > LAST_LEGACY_SCHEMA_FORMAT_VERSION) {
-			send_command(output, Commands::TYPES, client.supported_types());
+			vector<string> accepted_type_names;
+			for (ColumnType type: client.supported_types()) {
+				accepted_type_names.push_back(ColumnTypeNames.at(type));
+			}
+
+			send_command(output, Commands::TYPES, accepted_type_names);
 			read_expected_command(input, Commands::TYPES);
 		}
 	}
