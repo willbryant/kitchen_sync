@@ -566,6 +566,8 @@ void MySQLClient::convert_unsupported_database_schema(Database &database) {
 }
 
 map<ColumnType, string> SimpleColumnTypes{
+	{ColumnType::binary_varbinary,        "varbinary"},
+	{ColumnType::binary_fixed,            "binary"},
 	{ColumnType::text_varchar,            "varchar"},
 	{ColumnType::text_fixed,              "char"},
 	{ColumnType::boolean,                 "tinyint(1)"},
@@ -902,6 +904,14 @@ struct MySQLColumnLister {
 
 		} else if (db_type == "longblob") {
 			column.column_type = ColumnType::binary; // leave size 0 to mean max to match other dbs, for compatibility, but the longblob limit is 4294967295
+
+		} else if (db_type.substr(0, 10) == "varbinary(") {
+			column.column_type = select_supported_type(ColumnType::binary_varbinary, ColumnType::binary);
+			column.size = extract_column_length(db_type);
+
+		} else if (db_type.substr(0, 7) == "binary(") {
+			column.column_type = select_supported_type(ColumnType::binary_fixed, ColumnType::binary);
+			column.size = extract_column_length(db_type);
 
 		} else if (db_type == "tinytext") {
 			column.column_type = ColumnType::text;

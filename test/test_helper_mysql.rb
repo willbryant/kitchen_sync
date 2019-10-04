@@ -267,6 +267,8 @@ class MysqlAdapter
         #{"timestampcreateonly TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," if supports_multiple_timestamp_columns?}
         #{"microstimestampboth TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)," if supports_fractional_seconds?}
         #{"mysqlfunctiondefault VARCHAR(255) DEFAULT (uuid())," if default_expressions?}
+        varbinary3 VARBINARY(3),
+        fixedbinary3 BINARY(3),
         `select` INT,
         ```quoted``` INT,
         PRIMARY KEY(pri))
@@ -291,6 +293,8 @@ SQL
         ({"name" => "timestampcreateonly",  "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::DATETIME_MYSQLTIMESTAMP : ColumnType::DATETIME,               "nullable" => false, "default_expression" => "CURRENT_TIMESTAMP"} if supports_multiple_timestamp_columns?),
         ({"name" => "microstimestampboth",  "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::DATETIME_MYSQLTIMESTAMP : ColumnType::DATETIME, "size" => 6,  "nullable" => false, "default_expression" => "CURRENT_TIMESTAMP(6)", "auto_update_timestamp" => true} if supports_fractional_seconds?),
         ({"name" => "mysqlfunctiondefault", "column_type" => ColumnType::TEXT_VARCHAR, "size" => 255,                                "default_expression" => "uuid()"} if default_expressions?),
+        {"name" => "varbinary3",            "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::BINARY_VARBINARY : ColumnType::BINARY, "size" => 3},
+        {"name" => "fixedbinary3",          "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::BINARY_FIXED     : ColumnType::BINARY, "size" => 3},
         {"name" => "select",                "column_type" => ColumnType::SINT_32BIT},
         {"name" => "`quoted`",              "column_type" => ColumnType::SINT_32BIT},
       ].compact,
@@ -300,8 +304,12 @@ SQL
   end
 
   def adapterspecifictbl_row
-    { "tiny2" => 12,
-      "timestampboth" => "2019-07-03 00:00:01" }.merge(
+    {
+      "tiny2" => 12,
+      "timestampboth" => "2019-07-03 00:00:01",
+      "varbinary3" => "\xff\x00".force_encoding("ASCII-8BIT"),
+      "fixedbinary3" => "\xff\x00\x01".force_encoding("ASCII-8BIT"),
+    }.merge(
       supports_fractional_seconds? ? { "microstimestampboth" => "2019-07-03 01:02:03.123456" } : {})
   end
 
@@ -310,6 +318,8 @@ SQL
       ColumnType::UNKNOWN,
       ColumnType::MYSQL_SPECIFIC,
       ColumnType::BINARY,
+      ColumnType::BINARY_VARBINARY,
+      ColumnType::BINARY_FIXED,
       ColumnType::TEXT,
       ColumnType::TEXT_VARCHAR,
       ColumnType::TEXT_FIXED,

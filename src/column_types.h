@@ -15,6 +15,8 @@ enum class ColumnType {
 	postgresql_specific     = 0x00000002,
 
 	binary                  = 0x00000100,
+	binary_varbinary        = 0x00000101,
+	binary_fixed            = 0x00000102,
 	text                    = 0x00000200,
 	text_varchar            = 0x00000201,
 	text_fixed              = 0x00000202,
@@ -58,6 +60,8 @@ const map<ColumnType, string> ColumnTypeNames{
 	{ColumnType::postgresql_specific, "postgresql_specific"},
 
 	{ColumnType::binary, "binary"},
+	{ColumnType::binary_varbinary, "binary.varbinary"},
+	{ColumnType::binary_fixed, "binary.fixed"},
 	{ColumnType::text, "text"},
 	{ColumnType::text_varchar, "text.varchar"},
 	{ColumnType::text_fixed, "text.fixed"},
@@ -96,6 +100,8 @@ const map<string, ColumnType> ColumnTypesByName{
 	{"postgresql_specific", ColumnType::postgresql_specific},
 
 	{"binary", ColumnType::binary},
+	{"binary.varbinary", ColumnType::binary_varbinary},
+	{"binary.fixed", ColumnType::binary_fixed},
 	{"text", ColumnType::text},
 	{"text.varchar", ColumnType::text_varchar},
 	{"text.fixed", ColumnType::text_fixed},

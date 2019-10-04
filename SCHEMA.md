@@ -54,6 +54,8 @@ The following MySQL-specific types are supported and mapped to the PostgreSQL eq
 | `TINYBLOB` | `bytea` | Type promotion, PostgreSQL conversion supports all values |
 | `BLOB` | `bytea` | Type promotion, PostgreSQL conversion supports all values |
 | `MEDIUMBLOB` | `bytea` | Type promotion, PostgreSQL conversion supports all values |
+| `VARBINARY(n)` | `bytea` | Type promotion, PostgreSQL conversion supports all values |
+| `BINARY(n)` | `bytea` | Type promotion, PostgreSQL conversion supports all values |
 | `TINYTEXT` | `text` | Type promotion, PostgreSQL conversion supports all values |
 | `TEXT` | `text` | Type promotion, PostgreSQL conversion supports all values |
 | `MEDIUMTEXT` | `text` | Type promotion, PostgreSQL conversion supports all values |

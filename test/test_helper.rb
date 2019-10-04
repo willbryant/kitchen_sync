@@ -52,6 +52,8 @@ module ColumnType
   MYSQL_SPECIFIC = "mysql_specific"
   POSTGRESQL_SPECIFIC = "postgresql_specific"
   BINARY = "binary"
+  BINARY_VARBINARY = "binary.varbinary"
+  BINARY_FIXED = "binary.fixed"
   TEXT = "text"
   TEXT_VARCHAR = "text.varchar"
   TEXT_FIXED = "text.fixed"
