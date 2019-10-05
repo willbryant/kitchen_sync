@@ -449,4 +449,29 @@ class SyncToTest < KitchenSync::EndpointTestCase
     assert_equal @rows,
                  query("SELECT * FROM autotbl ORDER by inc")
   end
+
+  test_each "skips auto-generated columns" do
+    omit "Database doesn't support auto-generated columns" unless connection.supports_generated_columns?
+    clear_schema
+    create_generatedtbl
+    execute "INSERT INTO generatedtbl (pri, fore, back) VALUES (1, 10, 100)" # insert the first row but not the second
+
+    @rows = [[1, 10, 100],
+             [2, 20, 200]]
+    @keys = @rows.collect {|row| [row[0]]}
+
+    expect_handshake_commands(schema: {"tables" => [generatedtbl_def]})
+    expect_command Commands::RANGE, ["generatedtbl"]
+    send_command   Commands::RANGE, ["generatedtbl", @keys[0], @keys[-1]]
+    expect_command Commands::ROWS, ["generatedtbl", @keys[0], @keys[-1]]
+    send_results   Commands::ROWS,
+                   ["generatedtbl", @keys[0], @keys[-1]],
+                   @rows[1]
+    expect_command Commands::HASH, ["generatedtbl",       [], @keys[0], 1]
+    send_command   Commands::HASH, ["generatedtbl",       [], @keys[0], 1, 1, hash_of(@rows[0..0])]
+    expect_quit_and_close
+
+    assert_equal connection.supports_virtual_generated_columns? ? [[1, 10, 22, 30, 100], [2, 20, 42, 60, 200]] : [[1, 10, 22, 100], [2, 20, 42, 200]],
+      query("SELECT * FROM generatedtbl ORDER BY pri")
+  end
 end

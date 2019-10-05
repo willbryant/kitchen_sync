@@ -249,6 +249,9 @@ void legacy_serialize(Packer<OutputStream> &packer, const Column &column) {
 			packer << string("default_function");
 			packer << column.default_value;
 			break;
+
+		default:
+			throw runtime_error("Default type " + to_string(static_cast<int>(column.default_type)) + " not supported by legacy protocol");
 	}
 	if (!legacy_flag.empty()) {
 		packer << legacy_flag;

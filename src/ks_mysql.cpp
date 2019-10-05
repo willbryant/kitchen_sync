@@ -256,11 +256,13 @@ public:
 	string key_definition(const Table &table, const Key &key);
 
 	inline bool information_schema_column_default_shows_escaped_expressions() const { return (server_is_mariadb && server_version >= MARIADB_10_2_7); }
+	inline bool information_schema_brackets_generated_column_expressions() const { return server_is_mariadb; }
 	inline bool supports_srid_settings_on_columns() const { return srid_column_exists; }
 	inline bool supports_fractional_seconds() const { return (server_version >= (server_is_mariadb ? MARIADB_10_0_0 : MYSQL_8_0_0)); } // mariadb 5.3 does support microseconds, but doesn't support all the required functions
 	inline bool supports_check_constraints() const { return check_constraints_table_exists; }
 	inline bool explicit_json_column_type() const { return (!server_is_mariadb && server_version >= MYSQL_5_7_8); }
 	inline bool supports_json_column_type() const { return (explicit_json_column_type() || supports_check_constraints()); }
+	inline bool supports_generated_columns() const { return generation_expression_column_exists; }
 
 	size_t execute(const string &sql);
 	string select_one(const string &sql);
@@ -297,6 +299,7 @@ private:
 	bool server_is_mariadb;
 	bool check_constraints_table_exists;
 	bool srid_column_exists;
+	bool generation_expression_column_exists;
 	unsigned long server_version;
 
 	// forbid copying
@@ -343,6 +346,7 @@ MySQLClient::MySQLClient(
 	// mysql doesn't represent the INFORMATION_SCHEMA tables themselves in INFORMATION_SCHEMA, so we have to use the old-style schema info SHOW statements and can't use COUNT(*) etc.
 	check_constraints_table_exists = !select_all("SHOW TABLES FROM INFORMATION_SCHEMA LIKE 'CHECK_CONSTRAINTS'").empty();
 	srid_column_exists = !select_all("SHOW COLUMNS FROM INFORMATION_SCHEMA.COLUMNS LIKE 'SRS_ID'").empty();
+	generation_expression_column_exists = !select_all("SHOW COLUMNS FROM INFORMATION_SCHEMA.COLUMNS LIKE 'GENERATION_EXPRESSION'").empty();
 }
 
 MySQLClient::~MySQLClient() {
@@ -704,6 +708,12 @@ string MySQLClient::column_default(const Table &table, const Column &column) {
 				return " DEFAULT (" + column.default_value + ")"; // mysql requires brackets around the expression; mariadb accepts and ignores them
 			}
 
+		case DefaultType::generated_always_virtual:
+			return " GENERATED ALWAYS AS (" + column.default_value + ") VIRTUAL"; // again, mysql requires brackets around the expression; mariadb accepts and ignores them
+
+		case DefaultType::generated_always_stored:
+			return " GENERATED ALWAYS AS (" + column.default_value + ") STORED"; // as above
+
 		default:
 			throw runtime_error("Don't know how to express default of " + column.name + " (" + to_string((int)column.default_type) + ")");
 	}
@@ -789,7 +799,7 @@ inline ColumnTypeList MySQLClient::supported_types() {
 }
 
 struct MySQLColumnLister {
-	inline MySQLColumnLister(Table &table, const ColumnTypeList &accepted_types, bool information_schema_column_default_shows_escaped_expressions): table(table), accepted_types(accepted_types), information_schema_column_default_shows_escaped_expressions(information_schema_column_default_shows_escaped_expressions) {}
+	inline MySQLColumnLister(MySQLClient &client, Table &table, const ColumnTypeList &accepted_types): client(client), table(table), accepted_types(accepted_types) {}
 
 	inline void operator()(MySQLRow &row) {
 		Column column;
@@ -799,13 +809,22 @@ struct MySQLColumnLister {
 		column.nullable = (row.string_at(2) == "YES");
 		bool unsign(db_type.length() > 8 && db_type.substr(db_type.length() - 8, 8) == "unsigned");
 		string extra(row.string_at(4));
-		string comment(row.string_at(6));
+		string generation_expression(row.string_at(5));
+		string comment(row.string_at(7));
 
-		if (!row.null_at(3)) {
+		if (extra.find("VIRTUAL GENERATED") != string::npos) {
+			column.default_type = DefaultType::generated_always_virtual;
+			column.default_value = (client.information_schema_brackets_generated_column_expressions() ? '(' + generation_expression + ')' : generation_expression); // mariadb uses fewer brackets than mysql & postgresql; normalize purely to make tests easier
+
+		} else if (extra.find("STORED GENERATED") != string::npos) {
+			column.default_type = DefaultType::generated_always_stored;
+			column.default_value = (client.information_schema_brackets_generated_column_expressions() ? '(' + generation_expression + ')' : generation_expression); // as above
+
+		} else if (!row.null_at(3)) {
 			column.default_type = DefaultType::default_value;
 			column.default_value = row.string_at(3);
 
-			if (information_schema_column_default_shows_escaped_expressions) {
+			if (client.information_schema_column_default_shows_escaped_expressions()) {
 				// mariadb 10.2.7 and above always represent the default value as an expression, which we want to turn back into a plain value if it is one (for compatibility)
 				if (column.default_value == "NULL") {
 					column.default_type = DefaultType::no_default;
@@ -926,7 +945,7 @@ struct MySQLColumnLister {
 			column.size = 16777215;
 
 		} else if (db_type == "longtext") {
-			if (!row.null_at(7) && row.int_at(7)) { // column 7 the check constraint; the check constraint is the canonical way to handle JSON in mariadb, whereas mysql 8+ has the explicit column type
+			if (!row.null_at(8) && row.int_at(8)) { // column 8 is the JSON check constraint; the check constraint is the canonical way to handle JSON in mariadb, whereas mysql 8+ has the explicit column type
 				column.column_type = ColumnType::json;
 			} else {
 				column.column_type = ColumnType::text; // leave size 0 to mean max to match other dbs, for compatibility, but the longtext limit is 4294967295
@@ -980,8 +999,8 @@ struct MySQLColumnLister {
 
 			// mysql doesn't have separate geometry & geography types like postgresql, but for compatibility with it
 			// we use SPATIAL_GEOGRAPHY for columns with an SRS and SPATIAL for those without
-			if (!row.null_at(5)) {
-				column.reference_system = row.string_at(5);
+			if (!row.null_at(6)) {
+				column.reference_system = row.string_at(6);
 				column.column_type = ColumnType::spatial_geography;
 			} else {
 				column.column_type = ColumnType::spatial;
@@ -1068,9 +1087,9 @@ struct MySQLColumnLister {
 		return ColumnType::mysql_specific;
 	}
 
+	MySQLClient &client;
 	Table &table;
 	const ColumnTypeList &accepted_types;
-	bool information_schema_column_default_shows_escaped_expressions;
 };
 
 struct MySQLKeyLister {
@@ -1111,8 +1130,8 @@ struct MySQLTableLister {
 	inline void operator()(MySQLRow &row) {
 		Table table(row.string_at(0));
 
-		MySQLColumnLister column_lister(table, accepted_types, client.information_schema_column_default_shows_escaped_expressions());
-		client.query("SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, " + srid_column() + " AS SRS_ID, COLUMN_COMMENT, " + json_check_constraint_expression() + " AS JSON_CHECK_CONSTRAINT FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = SCHEMA() AND TABLE_NAME = '" + client.escape_string_value(table.name) + "' ORDER BY ORDINAL_POSITION", column_lister);
+		MySQLColumnLister column_lister(client, table, accepted_types);
+		client.query("SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, " + generation_expression_column() + ", " + srid_column() + ", COLUMN_COMMENT, " + json_check_constraint_expression() + " AS JSON_CHECK_CONSTRAINT FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = SCHEMA() AND TABLE_NAME = '" + client.escape_string_value(table.name) + "' ORDER BY ORDINAL_POSITION", column_lister);
 
 		MySQLKeyLister key_lister(table);
 		client.query("SHOW KEYS FROM " + client.quote_identifier(table.name), key_lister);
@@ -1122,7 +1141,11 @@ struct MySQLTableLister {
 	}
 
 	inline string srid_column() {
-		return (client.supports_srid_settings_on_columns() ? "SRS_ID" : "NULL");
+		return (client.supports_srid_settings_on_columns() ? "SRS_ID" : "NULL AS SRS_ID");
+	}
+
+	inline string generation_expression_column() {
+		return (client.supports_generated_columns() ? "GENERATION_EXPRESSION" : "NULL AS GENERATION_EXPRESSION");
 	}
 
 	inline string json_check_constraint_expression() {

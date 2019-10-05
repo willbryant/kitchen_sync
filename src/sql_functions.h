@@ -37,6 +37,19 @@ string column_orders_list(DatabaseClient &client, const Table &table, const stri
 }
 
 template <typename DatabaseClient>
+string columns_list(DatabaseClient &client, const Columns &columns, bool include_generated_columns = false) {
+	string result;
+
+	for (Columns::const_iterator column = columns.begin(); column != columns.end(); ++column) {
+		if (column->generated_always() && !include_generated_columns) continue; // normally no need to look at generated columns, which by definition are just calculated from the other columns
+		if (column != columns.begin()) result += ", ";
+		result += client.quote_identifier(column->name);
+	}
+
+	return result;
+}
+
+template <typename DatabaseClient>
 string columns_list(DatabaseClient &client, const Columns &columns, const ColumnIndices &column_indices) {
 	string result;
 
@@ -134,9 +147,10 @@ inline string where_sql(DatabaseClient &client, const Table &table, const Column
 }
 
 template <typename DatabaseClient>
-string select_columns_sql(DatabaseClient &client, const Table &table) {
+string select_columns_sql(DatabaseClient &client, const Table &table, bool include_generated_columns = false) {
 	string result;
 	for (Columns::const_iterator column = table.columns.begin(); column != table.columns.end(); ++column) {
+		if (column->generated_always() && !include_generated_columns) continue; // normally no need to look at generated columns, which by definition are just calculated from the other columns
 		if (column != table.columns.begin()) result += ", ";
 		if (!column->filter_expression.empty()) {
 			result += column->filter_expression;

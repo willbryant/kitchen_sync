@@ -937,6 +937,32 @@ SQL
     assert_same_keys(noprimarytbl_def(create_suitable_keys: true))
   end
 
+  test_each "creates auto-generated columns" do
+    omit "Database doesn't support auto-generated columns" unless connection.supports_generated_columns?
+    clear_schema
+    expect_handshake_commands(schema: {"tables" => [generatedtbl_def]})
+    read_command
+    assert_equal generatedtbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("generatedtbl")
+    execute "INSERT INTO generatedtbl (pri, fore, back) VALUES (1, 10, 100)"
+    assert_equal connection.supports_virtual_generated_columns? ? [[1, 10, 22, 30, 100]] : [[1, 10, 22, 100]],
+      query("SELECT * FROM generatedtbl ORDER BY pri")
+  end
+
+  test_each "redefines auto-generated columns with different expressions" do
+    omit "Database doesn't support auto-generated columns" unless connection.supports_generated_columns?
+    clear_schema
+    create_generatedtbl
+    table_def = generatedtbl_def
+    table_def["columns"][2]["generated_always_virtual"] = "(fore * 999)"
+
+    expect_handshake_commands(schema: {"tables" => [table_def]})
+    read_command
+    assert_equal generatedtbl_def["columns"].collect {|column| column["name"]}, connection.table_column_names("generatedtbl")
+    execute "INSERT INTO generatedtbl (pri, fore, back) VALUES (1, 10, 100)"
+    assert_equal connection.supports_virtual_generated_columns? ? [[1, 10, 9990, 30, 100]] : [[1, 10, 9990, 100]],
+      query("SELECT * FROM generatedtbl ORDER BY pri")
+  end
+
   test_each "skips schema definitions it doesn't recognise" do
     clear_schema
 

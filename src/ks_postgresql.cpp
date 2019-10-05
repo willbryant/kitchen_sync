@@ -13,6 +13,7 @@
 
 #define POSTGRESQL_9_4 90400
 #define POSTGRESQL_10 100000
+#define POSTGRESQL_12 120000
 
 struct TypeMap {
 	set<Oid> spatial;
@@ -214,6 +215,7 @@ public:
 	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '"'); };
 	inline bool supports_jsonb_column_type() const { return (server_version >= POSTGRESQL_9_4); }
 	inline bool supports_generated_as_identity() const { return (server_version >= POSTGRESQL_10); }
+	inline bool supports_generated_columns() const { return (server_version >= POSTGRESQL_12); }
 
 	size_t execute(const string &sql);
 	string select_one(const string &sql);
@@ -450,6 +452,7 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 			// turn off unsupported flags; we always define flags in such a way that this is a graceful degradation
 			column.flags.auto_update_timestamp = false;
 			if (!supports_generated_as_identity()) column.flags.identity_generated_always = false;
+			if (column.default_type == DefaultType::generated_always_virtual) column.default_type = DefaultType::generated_always_stored; // support for VIRTUAL generated columns was yanked from postgresql 12 as it wasn't ready
 		}
 
 		for (Key &key : table.keys) {
@@ -602,6 +605,9 @@ string PostgreSQLClient::column_default(const Table &table, const Column &column
 		case DefaultType::default_expression:
 			return " DEFAULT " + column.default_value; // the only expression accepted prior to support for arbitrary expressions
 
+		case DefaultType::generated_always_stored:
+			return " GENERATED ALWAYS AS (" + column.default_value + ") STORED";
+
 		default:
 			throw runtime_error("Don't know how to express default of " + column.name + " (" + to_string((int)column.default_type) + ")");
 	}
@@ -671,6 +677,11 @@ struct PostgreSQLColumnLister {
 			// attidentity set (will be 'a' for 'always' and 'd' for 'by default')
 			column.default_type = DefaultType::sequence;
 			if (row.string_at(5) == "a") column.flags.identity_generated_always = true;
+
+		} else if (!row.null_at(6) && row.string_at(6) == "s") {
+			// attgenerated set ('s' for 'stored', virtual not supported yet)
+			column.default_type = DefaultType::generated_always_stored;
+			column.default_value = row.string_at(4);
 
 		} else if (row.string_at(3) == "t") {
 			column.default_type = DefaultType::default_value;
@@ -912,7 +923,7 @@ struct PostgreSQLTableLister {
 
 		PostgreSQLColumnLister column_lister(table, type_map, accepted_types);
 		client.query(
-			"SELECT attname, format_type(atttypid, atttypmod), attnotnull, atthasdef, pg_get_expr(adbin, adrelid), " + attidentity_column() + " AS attidentity "
+			"SELECT attname, format_type(atttypid, atttypmod), attnotnull, atthasdef, pg_get_expr(adbin, adrelid), " + attidentity_column() + " AS attidentity, " + attgenerated_column() + " AS attgenerated "
 			  "FROM pg_attribute "
 			  "JOIN pg_class ON attrelid = pg_class.oid "
 			  "JOIN pg_type ON atttypid = pg_type.oid "
@@ -958,6 +969,10 @@ struct PostgreSQLTableLister {
 
 	inline string attidentity_column() {
 		return (client.supports_generated_as_identity() ? "attidentity" : "NULL");
+	}
+
+	inline string attgenerated_column() {
+		return (client.supports_generated_columns() ? "attgenerated" : "NULL");
 	}
 
 	PostgreSQLClient &client;

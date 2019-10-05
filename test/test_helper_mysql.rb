@@ -129,6 +129,25 @@ class MysqlAdapter
     false
   end
 
+  def supports_generated_columns?
+    # in fact, generated columns are supported by mysql 5.7+, and mariadb 5.2+, which covers all the versions we test against.
+    # however, mariadb 5.2 through 10.1 don't show the generation expressions in SHOW COLUMNS or INFORMATION_SCHEMA.COLUMNS,
+    # so we don't actually support them in KS because although we could create such columns we couldn't extract the schema
+    # back again.  (they do show in SHOW CREATE TABLE, but we don't parse that, and it isn't worth the effort of converting
+    # all of our schema loading code to parse SHOW CREATE TABLE for the sake of old mariadb versions.)  in addition, older
+    # versions of mariadb only support VIRTUAL generated columns (interestingly, the reverse of postgresql, which currently
+    # only supports STORED generated columns).
+    server_version !~ /^5\./ && server_version !~ /^10\.0.*MariaDB/ && server_version !~ /^10\.1.*MariaDB/
+  end
+
+  def supports_virtual_generated_columns?
+    true
+  end
+
+  def quote_ident_for_generation_expression(name)
+    quote_ident name
+  end
+
   def sequence_column_type
     'INT NOT NULL AUTO_INCREMENT'
   end

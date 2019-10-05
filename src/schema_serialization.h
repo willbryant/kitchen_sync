@@ -70,6 +70,16 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 			packer << string("default_expression");
 			packer << column.default_value;
 			break;
+
+		case DefaultType::generated_always_virtual:
+			packer << string("generated_always_virtual");
+			packer << column.default_value;
+			break;
+
+		case DefaultType::generated_always_stored:
+			packer << string("generated_always_stored");
+			packer << column.default_value;
+			break;
 	}
 	if (column.flags.auto_update_timestamp) {
 		packer << string("auto_update_timestamp");
@@ -174,6 +184,12 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 			unpacker >> column.default_value;
 		} else if (attr_key == "default_expression") {
 			column.default_type = DefaultType::default_expression;
+			unpacker >> column.default_value;
+		} else if (attr_key == "generated_always_virtual") {
+			column.default_type = DefaultType::generated_always_virtual;
+			unpacker >> column.default_value;
+		} else if (attr_key == "generated_always_stored") {
+			column.default_type = DefaultType::generated_always_stored;
 			unpacker >> column.default_value;
 		} else if (attr_key == "auto_update_timestamp") {
 			unpacker >> column.flags.auto_update_timestamp;

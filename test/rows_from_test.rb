@@ -218,4 +218,19 @@ class RowsFromTest < KitchenSync::EndpointTestCase
                    ["noprimarytbl", ["a2349174"], ["b968116383"]],
                    [nil, "b968116383", 'aa', 9]
   end
+
+  test_each "skips auto-generated columns" do
+    omit "Database doesn't support auto-generated columns" unless connection.supports_generated_columns?
+    clear_schema
+    create_generatedtbl
+    execute "INSERT INTO generatedtbl (pri, fore, back) VALUES (1, 10, 100), (2, 20, 200)"
+    @rows = [[1, 10, 100],
+             [2, 20, 200]]
+    send_handshake_commands
+
+    send_command   Commands::ROWS, ["generatedtbl", [], []]
+    expect_command Commands::ROWS,
+                   ["generatedtbl", [], []],
+                   *@rows
+  end
 end

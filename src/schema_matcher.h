@@ -491,7 +491,7 @@ struct SchemaMatcher {
 					AlterColumnNullabilityClauses<DatabaseClient>::add_to(alter_table_clauses, client, to_table, *from_column, *to_column);
 				}
 				if ((from_column->default_type != to_column->default_type || from_column->default_value != to_column->default_value) &&
-					(from_column->default_type != DefaultType::sequence)) {
+					(from_column->default_type != DefaultType::sequence && from_column->default_type != DefaultType::generated_always_virtual && from_column->default_type != DefaultType::generated_always_stored)) {
 					AlterColumnDefaultClauses<DatabaseClient>::add_to(alter_table_clauses, client, to_table, *from_column, *to_column);
 				}
 				++column_index;

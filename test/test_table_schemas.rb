@@ -334,6 +334,32 @@ SQL
       "keys" => [] }
   end
 
+  def create_generatedtbl
+    execute(<<-SQL)
+      CREATE TABLE generatedtbl (
+        pri INT,
+        fore INT,
+        stor INT GENERATED ALWAYS AS ((fore+1)*2) STORED,
+        #{"virt INT GENERATED ALWAYS AS (fore*3) VIRTUAL," if connection.supports_virtual_generated_columns?}
+        back INT,
+        PRIMARY KEY(pri))
+SQL
+  end
+
+  def generatedtbl_def
+    { "name"    => "generatedtbl",
+      "columns" => [
+        {"name" => "pri",  "column_type" => ColumnType::SINT_32BIT, "nullable" => false},
+        {"name" => "fore", "column_type" => ColumnType::SINT_32BIT},
+        {"name" => "stor", "column_type" => ColumnType::SINT_32BIT, "generated_always_stored" => "((#{connection.quote_ident_for_generation_expression 'fore'} + 1) * 2)"},
+        ({"name" => "virt", "column_type" => ColumnType::SINT_32BIT, "generated_always_virtual" => "(#{connection.quote_ident_for_generation_expression 'fore'} * 3)"} if connection.supports_virtual_generated_columns?),
+        {"name" => "back", "column_type" => ColumnType::SINT_32BIT},
+      ].compact,
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
+      "primary_key_columns" => [0],
+      "keys" => [] }
+  end
+
   def create_adapterspecifictbl
     connection.create_adapterspecifictbl
   end

@@ -106,6 +106,20 @@ class HashFromTest < KitchenSync::EndpointTestCase
     expect_command Commands::HASH, ["noprimarytbl", @keys[0], @keys[1], 1000, 1, hash_of(@rows[1..1])]
   end
 
+  test_each "skips auto-generated columns" do
+    omit "Database doesn't support auto-generated columns" unless connection.supports_generated_columns?
+    clear_schema
+    create_generatedtbl
+    execute "INSERT INTO generatedtbl (pri, fore, back) VALUES (1, 10, 100), (2, 20, 200)"
+    @rows = [[1, 10, 100],
+             [2, 20, 200]]
+    @keys = @rows.collect {|row| [row[0]]}
+    send_handshake_commands
+
+    send_command   Commands::HASH, ["generatedtbl", [], [], 1000]
+    expect_command Commands::HASH, ["generatedtbl", [], [], 1000, 2, hash_of(@rows)]
+  end
+
   test_each "optionally supports xxHash64 hashes" do
     setup_with_footbl(target_minimum_block_size: 1, hash_algorithm: HashAlgorithm::XXH64)
 

@@ -25,12 +25,9 @@ struct RowReplacer;
 
 template <typename DatabaseClient, bool = is_base_of<SupportsReplace, DatabaseClient>::value>
 struct RowReplacerBuilder {
-	static const char *insert_sql_base() {
-		return "INSERT INTO ";
-	}
-
-	static const char *values_base(const DatabaseClient &client) {
-		return (client.supports_generated_as_identity() ? " OVERRIDING SYSTEM VALUE VALUES\n(" : " VALUES\n(");
+	static string insert_sql_base(DatabaseClient &client, const Table &table) {
+		return "INSERT INTO " + client.quote_identifier(table.name) + " (" + columns_list(client, table.columns) +
+			(client.supports_generated_as_identity() ? ") OVERRIDING SYSTEM VALUE VALUES\n(" : ") VALUES\n(");
 	}
 
 	static void construct_clearers(RowReplacer<DatabaseClient> &row_replacer) {
@@ -48,12 +45,8 @@ struct RowReplacerBuilder {
 
 template <typename DatabaseClient>
 struct RowReplacerBuilder<DatabaseClient, true> {
-	static const char *insert_sql_base() {
-		return "REPLACE INTO ";
-	}
-
-	static const char *values_base(const DatabaseClient &client) {
-		return " VALUES\n(";
+	static string insert_sql_base(DatabaseClient &client, const Table &table) {
+		return "REPLACE INTO " + client.quote_identifier(table.name) + " (" + columns_list(client, table.columns) + ") VALUES\n(";
 	}
 
 	static void construct_clearers(RowReplacer<DatabaseClient> &row_replacer) {
@@ -68,7 +61,7 @@ struct RowReplacer {
 	RowReplacer(DatabaseClient &client, const Table &table, bool commit_often, ProgressCallback progress_callback):
 		client(client),
 		table(table),
-		insert_sql(RowReplacerBuilder<DatabaseClient>::insert_sql_base() + client.quote_identifier(table.name) + RowReplacerBuilder<DatabaseClient>::values_base(client), ")"),
+		insert_sql(RowReplacerBuilder<DatabaseClient>::insert_sql_base(client, table), ")"),
 		commit_often(commit_often),
 		progress_callback(progress_callback),
 		rows_changed(0) {

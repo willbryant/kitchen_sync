@@ -91,6 +91,17 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
                    [{"tables" => [autotbl_def]}]
   end
 
+  test_each "describes auto-generated columns" do
+    omit "Database doesn't support auto-generated columns" unless connection.supports_generated_columns?
+    clear_schema
+    create_generatedtbl
+    send_handshake_commands
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA,
+                   [{"tables" => [generatedtbl_def]}]
+  end
+
   ENDPOINT_ADAPTERS.each do |to_database_server, adapter_class|
     test_each "returns the appropriate representation of adapter-specific column definitions for use by #{to_database_server}" do
       that_adapter = adapter_class.new

@@ -158,6 +158,11 @@ class PostgreSQLAdapter
     PG::Connection.quote_ident(name)
   end
 
+  def quote_ident_for_generation_expression(name)
+    # postgresql doesn't quote these all the time, unlike mysql
+    name
+  end
+
   def zero_time_value
     "00:00:00"
   end
@@ -180,6 +185,14 @@ class PostgreSQLAdapter
 
   def supports_generated_as_identity?
     server_version >= 100000
+  end
+
+  def supports_generated_columns?
+    server_version >= 120000
+  end
+
+  def supports_virtual_generated_columns?
+    false
   end
 
   def sequence_column_type
