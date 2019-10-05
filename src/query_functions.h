@@ -6,7 +6,7 @@
 
 template <typename DatabaseClient>
 size_t count_rows(DatabaseClient &client, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
-	return atoi(select_one(count_rows_sql(client, table, prev_key, last_key)).c_str());
+	return atoi(client.select_one(count_rows_sql(client, table, prev_key, last_key)).c_str());
 }
 
 template <typename DatabaseClient>
