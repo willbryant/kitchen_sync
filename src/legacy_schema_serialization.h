@@ -30,18 +30,18 @@ const ColumnTypeList LegacySupportedColumnTypes{
 	ColumnType::text_fixed,
 	ColumnType::uuid,
 	ColumnType::boolean,
-	ColumnType::sint_8b,
-	ColumnType::sint_16b,
-	ColumnType::sint_24b,
-	ColumnType::sint_32b,
-	ColumnType::sint_64b,
-	ColumnType::uint_8b,
-	ColumnType::uint_16b,
-	ColumnType::uint_24b,
-	ColumnType::uint_32b,
-	ColumnType::uint_64b,
-	ColumnType::float_64b,
-	ColumnType::float_32b,
+	ColumnType::sint_8bit,
+	ColumnType::sint_16bit,
+	ColumnType::sint_24bit,
+	ColumnType::sint_32bit,
+	ColumnType::sint_64bit,
+	ColumnType::uint_8bit,
+	ColumnType::uint_16bit,
+	ColumnType::uint_24bit,
+	ColumnType::uint_32bit,
+	ColumnType::uint_64bit,
+	ColumnType::float_64bit,
+	ColumnType::float_32bit,
 	ColumnType::decimal,
 	ColumnType::date,
 	ColumnType::time,
@@ -102,62 +102,62 @@ void legacy_serialize(Packer<OutputStream> &packer, const Column &column) {
 			legacy_type = LegacyColumnType::BOOL;
 			break;
 
-		case ColumnType::sint_8b:
+		case ColumnType::sint_8bit:
 			legacy_type = LegacyColumnType::SINT;
 			legacy_size = 1;
 			break;
 
-		case ColumnType::sint_16b:
+		case ColumnType::sint_16bit:
 			legacy_type = LegacyColumnType::SINT;
 			legacy_size = 2;
 			break;
 
-		case ColumnType::sint_24b:
+		case ColumnType::sint_24bit:
 			legacy_type = LegacyColumnType::SINT;
 			legacy_size = 3;
 			break;
 
-		case ColumnType::sint_32b:
+		case ColumnType::sint_32bit:
 			legacy_type = LegacyColumnType::SINT;
 			legacy_size = 4;
 			break;
 
-		case ColumnType::sint_64b:
+		case ColumnType::sint_64bit:
 			legacy_type = LegacyColumnType::SINT;
 			legacy_size = 8;
 			break;
 
-		case ColumnType::uint_8b:
+		case ColumnType::uint_8bit:
 			legacy_type = LegacyColumnType::UINT;
 			legacy_size = 1;
 			break;
 
-		case ColumnType::uint_16b:
+		case ColumnType::uint_16bit:
 			legacy_type = LegacyColumnType::UINT;
 			legacy_size = 2;
 			break;
 
-		case ColumnType::uint_24b:
+		case ColumnType::uint_24bit:
 			legacy_type = LegacyColumnType::UINT;
 			legacy_size = 3;
 			break;
 
-		case ColumnType::uint_32b:
+		case ColumnType::uint_32bit:
 			legacy_type = LegacyColumnType::UINT;
 			legacy_size = 4;
 			break;
 
-		case ColumnType::uint_64b:
+		case ColumnType::uint_64bit:
 			legacy_type = LegacyColumnType::UINT;
 			legacy_size = 8;
 			break;
 
-		case ColumnType::float_64b:
+		case ColumnType::float_64bit:
 			legacy_type = LegacyColumnType::REAL;
 			legacy_size = 8;
 			break;
 
-		case ColumnType::float_32b:
+		case ColumnType::float_32bit:
 			legacy_type = LegacyColumnType::REAL;
 			legacy_size = 4;
 			break;
@@ -300,11 +300,11 @@ void legacy_deserialize(Unpacker<InputStream> &unpacker, Column &column) {
 			} else if (legacy_type == LegacyColumnType::BOOL) {
 				column.column_type = ColumnType::boolean;
 			} else if (legacy_type == LegacyColumnType::SINT) {
-				column.column_type = ColumnType::sint_32b; // modified by size below
+				column.column_type = ColumnType::sint_32bit; // modified by size below
 			} else if (legacy_type == LegacyColumnType::UINT) {
-				column.column_type = ColumnType::uint_32b; // modified by size below
+				column.column_type = ColumnType::uint_32bit; // modified by size below
 			} else if (legacy_type == LegacyColumnType::REAL) {
-				column.column_type = ColumnType::float_64b;
+				column.column_type = ColumnType::float_64bit;
 			} else if (legacy_type == LegacyColumnType::DECI) {
 				column.column_type = ColumnType::decimal;
 			} else if (legacy_type == LegacyColumnType::DATE) {
@@ -346,18 +346,18 @@ void legacy_deserialize(Unpacker<InputStream> &unpacker, Column &column) {
 					}
 					break;
 
-				case ColumnType::sint_32b:
+				case ColumnType::sint_32bit:
 					switch (column.size) {
 						case 1:
-							column.column_type = ColumnType::sint_8b;
+							column.column_type = ColumnType::sint_8bit;
 							break;
 
 						case 2:
-							column.column_type = ColumnType::sint_16b;
+							column.column_type = ColumnType::sint_16bit;
 							break;
 
 						case 3:
-							column.column_type = ColumnType::sint_24b;
+							column.column_type = ColumnType::sint_24bit;
 							break;
 
 						case 4:
@@ -365,7 +365,7 @@ void legacy_deserialize(Unpacker<InputStream> &unpacker, Column &column) {
 							break;
 
 						case 8:
-							column.column_type = ColumnType::sint_64b;
+							column.column_type = ColumnType::sint_64bit;
 							break;
 
 						default:
@@ -374,18 +374,18 @@ void legacy_deserialize(Unpacker<InputStream> &unpacker, Column &column) {
 					column.size = 0;
 					break;
 
-				case ColumnType::uint_32b:
+				case ColumnType::uint_32bit:
 					switch (column.size) {
 						case 1:
-							column.column_type = ColumnType::uint_8b;
+							column.column_type = ColumnType::uint_8bit;
 							break;
 
 						case 2:
-							column.column_type = ColumnType::uint_16b;
+							column.column_type = ColumnType::uint_16bit;
 							break;
 
 						case 3:
-							column.column_type = ColumnType::uint_24b;
+							column.column_type = ColumnType::uint_24bit;
 							break;
 
 						case 4:
@@ -393,7 +393,7 @@ void legacy_deserialize(Unpacker<InputStream> &unpacker, Column &column) {
 							break;
 
 						case 8:
-							column.column_type = ColumnType::uint_64b;
+							column.column_type = ColumnType::uint_64bit;
 							break;
 
 						default:

@@ -426,11 +426,11 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 			// easier, we don't reject unsigned columns, we just convert them to the signed equivalent
 			// and rely on it raising if we try to insert an invalid value.  postgresql also doesn't
 			// have 8 or 24 bit types, so we upgrade those to 16 bit.
-			if (column.column_type == ColumnType::sint_8b || column.column_type == ColumnType::uint_8b || column.column_type == ColumnType::uint_16b) {
-				column.column_type = ColumnType::sint_16b;
+			if (column.column_type == ColumnType::sint_8bit || column.column_type == ColumnType::uint_8bit || column.column_type == ColumnType::uint_16bit) {
+				column.column_type = ColumnType::sint_16bit;
 			}
-			if (column.column_type == ColumnType::sint_24b || column.column_type == ColumnType::uint_24b || column.column_type == ColumnType::uint_32b) {
-				column.column_type = ColumnType::sint_32b;
+			if (column.column_type == ColumnType::sint_24bit || column.column_type == ColumnType::uint_24bit || column.column_type == ColumnType::uint_32bit) {
+				column.column_type = ColumnType::sint_32bit;
 			}
 
 			if (column.column_type == ColumnType::text || column.column_type == ColumnType::binary) {
@@ -473,11 +473,11 @@ map<ColumnType, string> SimpleColumnTypes{
 	{ColumnType::json_binary,  "jsonb"},
 	{ColumnType::uuid,         "uuid"},
 	{ColumnType::boolean,      "boolean"},
-	{ColumnType::sint_16b,     "smallint"},
-	{ColumnType::sint_32b,     "integer"},
-	{ColumnType::sint_64b,     "bigint"},
-	{ColumnType::float_64b,    "double precision"},
-	{ColumnType::float_32b,    "real"},
+	{ColumnType::sint_16bit,   "smallint"},
+	{ColumnType::sint_32bit,   "integer"},
+	{ColumnType::sint_64bit,   "bigint"},
+	{ColumnType::float_64bit,  "double precision"},
+	{ColumnType::float_32bit,  "real"},
 	{ColumnType::decimal,      "numeric"},
 	{ColumnType::date,         "date"},
 };
@@ -730,19 +730,19 @@ struct PostgreSQLColumnLister {
 			column.column_type = ColumnType::boolean;
 
 		} else if (db_type == "smallint") {
-			column.column_type = ColumnType::sint_16b;
+			column.column_type = ColumnType::sint_16bit;
 
 		} else if (db_type == "integer") {
-			column.column_type = ColumnType::sint_32b;
+			column.column_type = ColumnType::sint_32bit;
 
 		} else if (db_type == "bigint") {
-			column.column_type = ColumnType::sint_64b;
+			column.column_type = ColumnType::sint_64bit;
 
 		} else if (db_type == "real") {
-			column.column_type = ColumnType::float_32b;
+			column.column_type = ColumnType::float_32bit;
 
 		} else if (db_type == "double precision") {
-			column.column_type = ColumnType::float_64b;
+			column.column_type = ColumnType::float_64bit;
 
 		} else if (db_type.substr(0, 8) == "numeric(") {
 			column.column_type = ColumnType::decimal;

@@ -575,18 +575,18 @@ map<ColumnType, string> SimpleColumnTypes{
 	{ColumnType::text_varchar,            "varchar"},
 	{ColumnType::text_fixed,              "char"},
 	{ColumnType::boolean,                 "tinyint(1)"},
-	{ColumnType::sint_8b,                 "tinyint"},
-	{ColumnType::sint_16b,                "smallint"},
-	{ColumnType::sint_24b,                "mediumint"},
-	{ColumnType::sint_32b,                "int"},
-	{ColumnType::sint_64b,                "bigint"},
-	{ColumnType::uint_8b,                 "tinyint unsigned"},
-	{ColumnType::uint_16b,                "smallint unsigned"},
-	{ColumnType::uint_24b,                "mediumint unsigned"},
-	{ColumnType::uint_32b,                "int unsigned"},
-	{ColumnType::uint_64b,                "bigint unsigned"},
-	{ColumnType::float_64b,               "double"},
-	{ColumnType::float_32b,               "float"},
+	{ColumnType::sint_8bit,               "tinyint"},
+	{ColumnType::sint_16bit,              "smallint"},
+	{ColumnType::sint_24bit,              "mediumint"},
+	{ColumnType::sint_32bit,              "int"},
+	{ColumnType::sint_64bit,              "bigint"},
+	{ColumnType::uint_8bit,               "tinyint unsigned"},
+	{ColumnType::uint_16bit,              "smallint unsigned"},
+	{ColumnType::uint_24bit,              "mediumint unsigned"},
+	{ColumnType::uint_32bit,              "int unsigned"},
+	{ColumnType::uint_64bit,              "bigint unsigned"},
+	{ColumnType::float_64bit,             "double"},
+	{ColumnType::float_32bit,             "float"},
 	{ColumnType::decimal,                 "decimal"},
 	{ColumnType::date,                    "date"},
 	{ColumnType::time,                    "time"},
@@ -864,38 +864,38 @@ struct MySQLColumnLister {
 			// end (and rely on runtime checks that there's no values that overflow).  select 16-bit
 			// types if 8-bit types aren't supported by the other end.
 			if (unsign) {
-				column.column_type = select_supported_type(ColumnType::uint_8b, ColumnType::sint_8b, ColumnType::sint_16b);
+				column.column_type = select_supported_type(ColumnType::uint_8bit, ColumnType::sint_8bit, ColumnType::sint_16bit);
 			} else {
-				column.column_type = select_supported_type(ColumnType::sint_8b, ColumnType::sint_16b);
+				column.column_type = select_supported_type(ColumnType::sint_8bit, ColumnType::sint_16bit);
 			}
 
 		} else if (db_type.substr(0, 9) == "smallint(") {
 			if (unsign) {
-				column.column_type = select_supported_type(ColumnType::uint_16b, ColumnType::sint_16b);
+				column.column_type = select_supported_type(ColumnType::uint_16bit, ColumnType::sint_16bit);
 			} else {
-				column.column_type = ColumnType::sint_16b;
+				column.column_type = ColumnType::sint_16bit;
 			}
 
 		} else if (db_type.substr(0, 10) == "mediumint(") {
 			// select 32-bit types if 24-bit types aren't supported by the other end.
 			if (unsign) {
-				column.column_type = select_supported_type(ColumnType::uint_24b, ColumnType::sint_24b, ColumnType::sint_32b);
+				column.column_type = select_supported_type(ColumnType::uint_24bit, ColumnType::sint_24bit, ColumnType::sint_32bit);
 			} else {
-				column.column_type = select_supported_type(ColumnType::sint_24b, ColumnType::sint_32b);
+				column.column_type = select_supported_type(ColumnType::sint_24bit, ColumnType::sint_32bit);
 			}
 
 		} else if (db_type.substr(0, 4) == "int(") {
 			if (unsign) {
-				column.column_type = select_supported_type(ColumnType::uint_32b, ColumnType::sint_32b);
+				column.column_type = select_supported_type(ColumnType::uint_32bit, ColumnType::sint_32bit);
 			} else {
-				column.column_type = ColumnType::sint_32b;
+				column.column_type = ColumnType::sint_32bit;
 			}
 
 		} else if (db_type.substr(0, 7) == "bigint(") {
 			if (unsign) {
-				column.column_type = select_supported_type(ColumnType::uint_64b, ColumnType::sint_64b);
+				column.column_type = select_supported_type(ColumnType::uint_64bit, ColumnType::sint_64bit);
 			} else {
-				column.column_type = ColumnType::sint_64b;
+				column.column_type = ColumnType::sint_64bit;
 			}
 
 		} else if (db_type.substr(0, 8) == "decimal(") {
@@ -904,10 +904,10 @@ struct MySQLColumnLister {
 			column.scale = extract_column_scale(db_type);
 
 		} else if (db_type == "float") {
-			column.column_type = ColumnType::float_32b;
+			column.column_type = ColumnType::float_32bit;
 
 		} else if (db_type == "double") {
-			column.column_type = ColumnType::float_64b;
+			column.column_type = ColumnType::float_64bit;
 
 		} else if (db_type == "tinyblob") {
 			column.column_type = ColumnType::binary;

@@ -81,22 +81,22 @@ ColumnValues subdivide_primary_key_range(const Table &table, const ColumnValues 
 	const Column &column(table.columns[table.primary_key_columns[0]]);
 
 	switch (column.column_type) {
-		case ColumnType::sint_8b:
-		case ColumnType::sint_16b:
-		case ColumnType::sint_24b:
-		case ColumnType::sint_32b:
+		case ColumnType::sint_8bit:
+		case ColumnType::sint_16bit:
+		case ColumnType::sint_24bit:
+		case ColumnType::sint_32bit:
 			return subdivide_integer_range<int32_t>(prev_key, last_key);
 
-		case ColumnType::sint_64b:
+		case ColumnType::sint_64bit:
 			return subdivide_integer_range<int64_t>(prev_key, last_key);
 
-		case ColumnType::uint_8b:
-		case ColumnType::uint_16b:
-		case ColumnType::uint_24b:
-		case ColumnType::uint_32b:
+		case ColumnType::uint_8bit:
+		case ColumnType::uint_16bit:
+		case ColumnType::uint_24bit:
+		case ColumnType::uint_32bit:
 			return subdivide_integer_range<uint32_t>(prev_key, last_key);
 
-		case ColumnType::uint_64b:
+		case ColumnType::uint_64bit:
 			return subdivide_integer_range<uint64_t>(prev_key, last_key);
 
 		case ColumnType::uuid:
