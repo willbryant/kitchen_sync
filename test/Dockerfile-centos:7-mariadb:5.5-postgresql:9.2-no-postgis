@@ -6,8 +6,8 @@ FROM centos:7
 # we have to install Ruby from SCL because Centos 7 comes with an ancient version of Ruby 2.0 which segfaults in the mysql2 gem
 RUN yum update -y && \
 	yum clean all && \
-	yum install -y centos-release-scl scl-utils && \
-	yum install -y gcc gcc-c++ make cmake openssl-devel \
+	yum install -y epel-release centos-release-scl scl-utils && \
+	yum install -y gcc gcc-c++ make cmake3 openssl-devel \
 		postgresql-server postgresql-devel mariadb-server mariadb-devel \
 		git rh-ruby25-ruby-devel
 
@@ -25,7 +25,7 @@ ADD test/CMakeLists.txt test/*.cpp /tmp/test/
 
 WORKDIR /tmp/build
 ENV SKIP_POSTGIS=1
-RUN cmake .. && make
+RUN cmake3 .. && make
 
 ADD test /tmp/test
 RUN echo 'creating postgresql database' && \
@@ -38,7 +38,7 @@ RUN echo 'creating postgresql database' && \
 		su postgres -c 'createuser --superuser root' && \
 	echo 'creating mysql database' && \
 		chown mysql:mysql /var/lib/mysql && \
-		/usr/bin/mysql_install_db --user=mysql && \
+		/usr/bin/mysql_install_db --force --user=mysql && \
 	echo 'starting mysql' && \
 		echo -e '[mysql]\nmax_allowed_packet=256M\n[mysqld]\nmax_allowed_packet=256M' >>/etc/my.cnf && \
 		(/usr/bin/mysqld_safe --skip-grant-tables &) && \
