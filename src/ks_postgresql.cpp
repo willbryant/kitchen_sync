@@ -648,14 +648,16 @@ inline ColumnTypeList PostgreSQLClient::supported_types() {
 		ColumnType::time_tz,
 		ColumnType::datetime,
 		ColumnType::datetime_tz,
-		ColumnType::spatial, // TODO: detect postgis support
-		ColumnType::spatial_geography,
 		ColumnType::enumeration,
 		ColumnType::postgresql_specific,
 		ColumnType::unknown,
 	};
 	for (const auto &it: SimpleColumnTypes) {
 		result.insert(it.first);
+	}
+	if (!type_map.spatial.empty()) {
+		result.insert(ColumnType::spatial);
+		result.insert(ColumnType::spatial_geography);
 	}
 	if (!supports_jsonb_column_type()) {
 		result.erase(ColumnType::json_binary); // in SimpleColumnTypes, but only supported by some versions

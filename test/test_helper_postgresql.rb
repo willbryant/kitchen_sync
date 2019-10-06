@@ -270,11 +270,17 @@ class PostgreSQLAdapter
 
   def install_spatial_support
     raise Test::Unit::OmittedError.new("Skipping test that requires PostGIS") if ENV['SKIP_POSTGIS']
+    @spatial_support = true
     execute "CREATE EXTENSION postgis"
   end
 
   def uninstall_spatial_support
+    @spatial_support = false
     execute "DROP EXTENSION IF EXISTS postgis"
+  end
+
+  def spatial_support?
+    @spatial_support
   end
 
   def create_spatial_index(index_name, table_name, *columns)
@@ -389,11 +395,11 @@ SQL
       ColumnType::TIME_TZ,
       ColumnType::DATETIME,
       ColumnType::DATETIME_TZ,
-      ColumnType::SPATIAL,
-      ColumnType::SPATIAL_GEOGRAPHY,
       ColumnType::ENUMERATION,
     ]).tap do |results|
       results << ColumnType::JSON_BINARY if jsonb_column_type?
+      results << ColumnType::SPATIAL if spatial_support?
+      results << ColumnType::SPATIAL_GEOGRAPHY if spatial_support?
     end
   end
 end
