@@ -52,7 +52,7 @@ template <typename DatabaseClient>
 struct CreateTableSequencesStatements <DatabaseClient, true> {
 	static void add_to(Statements &statements, DatabaseClient &client, const Table &table) {
 		for (const Column &column : table.columns) {
-			if (column.default_type == DefaultType::sequence && !client.supports_generated_as_identity()) {
+			if (column.default_type == DefaultType::generated_by_sequence) {
 				string result("DROP SEQUENCE IF EXISTS ");
 				result += client.quote_identifier(client.column_sequence_name(table, column));
 				statements.push_back(result);
@@ -76,7 +76,7 @@ template <typename DatabaseClient>
 struct OwnTableSequencesStatements <DatabaseClient, true> {
 	static void add_to(Statements &statements, DatabaseClient &client, const Table &table) {
 		for (const Column &column : table.columns) {
-			if (column.default_type == DefaultType::sequence && !client.supports_generated_as_identity()) {
+			if (column.default_type == DefaultType::generated_by_sequence) {
 				string result("ALTER SEQUENCE ");
 				result += client.quote_identifier(client.column_sequence_name(table, column));
 				result += " OWNED BY ";
@@ -491,7 +491,7 @@ struct SchemaMatcher {
 					AlterColumnNullabilityClauses<DatabaseClient>::add_to(alter_table_clauses, client, to_table, *from_column, *to_column);
 				}
 				if ((from_column->default_type != to_column->default_type || from_column->default_value != to_column->default_value) &&
-					(from_column->default_type != DefaultType::sequence && from_column->default_type != DefaultType::generated_always_virtual && from_column->default_type != DefaultType::generated_always_stored)) {
+					(from_column->default_type == DefaultType::no_default || from_column->default_type == DefaultType::default_value || from_column->default_type == DefaultType::default_expression)) {
 					AlterColumnDefaultClauses<DatabaseClient>::add_to(alter_table_clauses, client, to_table, *from_column, *to_column);
 				}
 				++column_index;

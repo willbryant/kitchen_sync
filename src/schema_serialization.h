@@ -22,7 +22,6 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	if (!column.enumeration_values.empty()) fields++;
 	if (column.default_type != DefaultType::no_default) fields++;
 	if (column.flags.auto_update_timestamp) fields++;
-	if (column.flags.identity_generated_always) fields++;
 	pack_map_length(packer, fields);
 	packer << string("name");
 	packer << column.name;
@@ -56,14 +55,24 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 		case DefaultType::no_default:
 			break;
 
-		case DefaultType::sequence:
-			packer << string("sequence");
-			packer << column.default_value; // currently unused, but allowed for forward compatibility
-			break;
-
 		case DefaultType::default_value:
 			packer << string("default_value");
 			packer << column.default_value;
+			break;
+
+		case DefaultType::generated_by_sequence:
+			packer << string("generated_by_sequence");
+			packer << column.default_value; // currently unused, but allowed for forward compatibility
+			break;
+
+		case DefaultType::generated_by_default_as_identity:
+			packer << string("generated_by_default_as_identity");
+			packer << column.default_value; // currently unused, but allowed for forward compatibility
+			break;
+
+		case DefaultType::generated_always_as_identity:
+			packer << string("generated_always_as_identity");
+			packer << column.default_value; // currently unused, but allowed for forward compatibility
 			break;
 
 		case DefaultType::default_expression:
@@ -83,10 +92,6 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	}
 	if (column.flags.auto_update_timestamp) {
 		packer << string("auto_update_timestamp");
-		packer << true;
-	}
-	if (column.flags.identity_generated_always) {
-		packer << string("identity_generated_always");
 		packer << true;
 	}
 }
@@ -173,9 +178,6 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 			unpacker >> column.reference_system;
 		} else if (attr_key == "enumeration_values") {
 			unpacker >> column.enumeration_values;
-		} else if (attr_key == "sequence") {
-			column.default_type = DefaultType::sequence;
-			unpacker >> column.default_value; // currently unused, but allowed for forward compatibility
 		} else if (attr_key == "default_value") {
 			column.default_type = DefaultType::default_value;
 			unpacker >> column.default_value;
@@ -185,6 +187,15 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 		} else if (attr_key == "default_expression") {
 			column.default_type = DefaultType::default_expression;
 			unpacker >> column.default_value;
+		} else if (attr_key == "generated_by_sequence") {
+			column.default_type = DefaultType::generated_by_sequence;
+			unpacker >> column.default_value; // currently unused, but allowed for forward compatibility
+		} else if (attr_key == "generated_by_default_as_identity") {
+			column.default_type = DefaultType::generated_by_default_as_identity;
+			unpacker >> column.default_value; // currently unused, but allowed for forward compatibility
+		} else if (attr_key == "generated_always_as_identity") {
+			column.default_type = DefaultType::generated_always_as_identity;
+			unpacker >> column.default_value; // currently unused, but allowed for forward compatibility
 		} else if (attr_key == "generated_always_virtual") {
 			column.default_type = DefaultType::generated_always_virtual;
 			unpacker >> column.default_value;
@@ -193,8 +204,6 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 			unpacker >> column.default_value;
 		} else if (attr_key == "auto_update_timestamp") {
 			unpacker >> column.flags.auto_update_timestamp;
-		} else if (attr_key == "identity_generated_always") {
-			unpacker >> column.flags.identity_generated_always;
 		} else {
 			// ignore anything else, for forward compatibility
 			unpacker.skip();

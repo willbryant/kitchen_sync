@@ -148,7 +148,11 @@ class MysqlAdapter
     quote_ident name
   end
 
-  def sequence_column_type
+  def identity_default_type
+    "generated_by_default_as_identity"
+  end
+
+  def identity_column_type
     'INT NOT NULL AUTO_INCREMENT'
   end
 
@@ -297,7 +301,7 @@ SQL
   def adapterspecifictbl_def(compatible_with: self)
     { "name"    => "`mysql`tbl",
       "columns" => [
-        {"name" => "pri",                   "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::UINT_32BIT : ColumnType::SINT_32BIT, "nullable" => false, "sequence" => ""},
+        {"name" => "pri",                   "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::UINT_32BIT : ColumnType::SINT_32BIT, "nullable" => false, identity_default_type => ""},
         {"name" => "tiny2",                 "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::UINT_8BIT : ColumnType::SINT_16BIT, "default_value" => "99"}, # note we've lost the (nonportable) display width (2) - size tells us the size of the integers, not the display width
         {"name" => "nulldefaultstr",        "column_type" => ColumnType::TEXT_VARCHAR, "size" => 255},
         {"name" => "secondstime",           "column_type" => ColumnType::TIME},

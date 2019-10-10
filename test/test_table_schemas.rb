@@ -318,7 +318,7 @@ SQL
   def create_autotbl
     execute(<<-SQL)
       CREATE TABLE autotbl (
-        inc #{connection.sequence_column_type},
+        inc #{connection.identity_column_type},
         payload INT NOT NULL,
         PRIMARY KEY(inc))
 SQL
@@ -327,7 +327,7 @@ SQL
   def autotbl_def
     { "name"    => "autotbl",
       "columns" => [
-        {"name" => "inc",     "column_type" => ColumnType::SINT_32BIT, "nullable" => false, "sequence" => ""},
+        {"name" => "inc",     "column_type" => ColumnType::SINT_32BIT, "nullable" => false, connection.identity_default_type => ""},
         {"name" => "payload", "column_type" => ColumnType::SINT_32BIT, "nullable" => false}],
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],

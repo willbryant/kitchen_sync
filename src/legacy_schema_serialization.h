@@ -235,17 +235,21 @@ void legacy_serialize(Packer<OutputStream> &packer, const Column &column) {
 		case DefaultType::no_default:
 			break;
 
-		case DefaultType::sequence:
-			packer << string("sequence");
-			packer << column.default_value; // currently unused, but allowed for forward compatibility
-			break;
-
 		case DefaultType::default_value:
 			packer << string("default_value");
 			packer << column.default_value;
 			break;
 
+		case DefaultType::generated_by_sequence:
+		case DefaultType::generated_by_default_as_identity:
+		case DefaultType::generated_always_as_identity:
+			packer << string("sequence");
+			packer << column.default_value; // never populated or used, but had been provided for forward compatibility
+			break;
+
 		case DefaultType::default_expression:
+		case DefaultType::generated_always_virtual:
+		case DefaultType::generated_always_stored:
 			packer << string("default_function");
 			packer << column.default_value;
 			break;
@@ -413,8 +417,8 @@ void legacy_deserialize(Unpacker<InputStream> &unpacker, Column &column) {
 		} else if (attr_key == "db_type_def") {
 			unpacker >> column.subtype;
 		} else if (attr_key == "sequence") {
-			column.default_type = DefaultType::sequence;
-			unpacker >> column.default_value; // currently unused, but allowed for forward compatibility
+			column.default_type = DefaultType::generated_by_sequence; // debateable which we should use here, but that's the only PostgreSQL identity type that was supported by versions of KS that used the legacy schema serialization format
+			unpacker.skip(); // value was never used
 		} else if (attr_key == "default_value") {
 			column.default_type = DefaultType::default_value;
 			unpacker >> column.default_value;
