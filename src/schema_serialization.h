@@ -21,7 +21,7 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 	if (!column.reference_system.empty()) fields++;
 	if (!column.enumeration_values.empty()) fields++;
 	if (column.default_type != DefaultType::no_default) fields++;
-	if (column.flags.auto_update_timestamp) fields++;
+	if (column.auto_update_type != AutoUpdateType::no_auto_update) fields++;
 	pack_map_length(packer, fields);
 	packer << string("name");
 	packer << column.name;
@@ -90,9 +90,14 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 			packer << column.default_value;
 			break;
 	}
-	if (column.flags.auto_update_timestamp) {
-		packer << string("auto_update_timestamp");
-		packer << true;
+	switch (column.auto_update_type) {
+		case AutoUpdateType::no_auto_update:
+			break;
+
+		case AutoUpdateType::current_timestamp:
+			packer << string("auto_update");
+			packer << string("current_timestamp");
+			break;
 	}
 }
 
@@ -202,8 +207,10 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 		} else if (attr_key == "generated_always_stored") {
 			column.default_type = DefaultType::generated_always_stored;
 			unpacker >> column.default_value;
-		} else if (attr_key == "auto_update_timestamp") {
-			unpacker >> column.flags.auto_update_timestamp;
+		} else if (attr_key == "auto_update") {
+			string value;
+			unpacker >> value;
+			column.auto_update_type = (value == "current_timestamp" ? AutoUpdateType::current_timestamp : AutoUpdateType::no_auto_update);
 		} else {
 			// ignore anything else, for forward compatibility
 			unpacker.skip();

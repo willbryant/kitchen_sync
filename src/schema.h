@@ -16,7 +16,7 @@ typedef vector<PackedValue> ColumnValues;
 typedef set<ColumnType> ColumnTypeList;
 
 enum class DefaultType {
-	// these flags are serialized by name not value, so the values here can be changed if required
+	// serialized by name not value, so the values here can be changed if required
 	no_default = 0,
 	default_value = 1,
 
@@ -29,12 +29,9 @@ enum class DefaultType {
 	generated_always_stored = 129,
 };
 
-struct ColumnFlags {
-	bool auto_update_timestamp = false;
-
-	inline bool operator ==(const ColumnFlags &other) const {
-		return (auto_update_timestamp == other.auto_update_timestamp);
-	}
+enum class AutoUpdateType {
+	no_auto_update,
+	current_timestamp,
 };
 
 struct Column {
@@ -45,7 +42,7 @@ struct Column {
 	size_t scale = 0;
 	DefaultType default_type = DefaultType::no_default;
 	string default_value;
-	ColumnFlags flags;
+	AutoUpdateType auto_update_type = AutoUpdateType::no_auto_update;
 	string subtype;
 	string reference_system;
 	vector<string> enumeration_values;
@@ -61,7 +58,7 @@ struct Column {
 				scale == other.scale &&
 				default_type == other.default_type &&
 				default_value == other.default_value &&
-				flags == other.flags &&
+				auto_update_type == other.auto_update_type &&
 				subtype == other.subtype &&
 				reference_system == other.reference_system &&
 				enumeration_values == other.enumeration_values);

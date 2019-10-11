@@ -208,7 +208,7 @@ void legacy_serialize(Packer<OutputStream> &packer, const Column &column) {
 	if (!column.nullable) fields++;
 	if (!column.subtype.empty()) fields++;
 	if (column.default_type != DefaultType::no_default) fields++;
-	if (column.flags.auto_update_timestamp) fields++;
+	if (column.auto_update_type == AutoUpdateType::current_timestamp) fields++;
 	if (!legacy_flag.empty()) fields++;
 	pack_map_length(packer, fields);
 	packer << string("name");
@@ -261,7 +261,7 @@ void legacy_serialize(Packer<OutputStream> &packer, const Column &column) {
 		packer << legacy_flag;
 		packer << true;
 	}
-	if (column.flags.auto_update_timestamp) {
+	if (column.auto_update_type == AutoUpdateType::current_timestamp) {
 		packer << string("mysql_on_update_timestamp");
 		packer << true;
 	}
@@ -430,7 +430,9 @@ void legacy_deserialize(Unpacker<InputStream> &unpacker, Column &column) {
 				if (column.column_type == ColumnType::datetime) column.column_type = ColumnType::datetime_mysqltimestamp;
 			}
 		} else if (attr_key == "mysql_on_update_timestamp") {
-			unpacker >> column.flags.auto_update_timestamp;
+			if (unpacker.template next<bool>()) {
+				column.auto_update_type = AutoUpdateType::current_timestamp;
+			}
 		} else if (attr_key == "time_zone") {
 			if (unpacker.template next<bool>()) {
 				if (column.column_type == ColumnType::time) column.column_type = ColumnType::time_tz;

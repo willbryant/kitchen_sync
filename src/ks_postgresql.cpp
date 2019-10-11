@@ -449,9 +449,6 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 				}
 			}
 
-			// turn off unsupported flags; we always define flags in such a way that this is a graceful degradation
-			column.flags.auto_update_timestamp = false;
-
 			// support for the new standard SQL GENERATED ... AS IDENTITY syntax was added in postgresql 10, downgrade to sequences for earlier versions
 			if (!supports_generated_as_identity() && (column.default_type == DefaultType::generated_by_default_as_identity || column.default_type == DefaultType::generated_always_as_identity)) {
 				column.default_type = DefaultType::generated_by_sequence;
@@ -460,6 +457,12 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 			// support for VIRTUAL generated columns was yanked from postgresql 12 as it wasn't ready
 			if (column.default_type == DefaultType::generated_always_virtual) {
 				column.default_type = DefaultType::generated_always_stored;
+			}
+
+			// postgresql doesn't have an equivalent to mysql's 'ON UPDATE CURRENT_TIMESTAMP', which is itself not considered current;
+			// you'd have to create a trigger to get the same effect on postgresql, which is outside of scope for KS
+			if (column.auto_update_type != AutoUpdateType::no_auto_update) {
+				column.auto_update_type = AutoUpdateType::no_auto_update;
 			}
 		}
 

@@ -748,7 +748,7 @@ string MySQLClient::column_definition(const Table &table, const Column &column) 
 		result += extra;
 	}
 
-	if (column.flags.auto_update_timestamp) {
+	if (column.auto_update_type == AutoUpdateType::current_timestamp) {
 		if (column.size) {
 			result += " ON UPDATE CURRENT_TIMESTAMP(" + to_string(column.size) + ")"; // mysql 8 insists on the precision being explicitly specified
 		} else {
@@ -992,7 +992,7 @@ struct MySQLColumnLister {
 				column.default_value.replace(0, 17, "CURRENT_TIMESTAMP"); // normalize case
 			}
 			if (extra.find("on update CURRENT_TIMESTAMP") != string::npos || extra.find("on update current_timestamp(") != string::npos) {
-				column.flags.auto_update_timestamp = true;
+				column.auto_update_type = AutoUpdateType::current_timestamp;
 			}
 			if (column.default_type == DefaultType::default_value) {
 				column.default_value = datetime_value_after_trimming_fractional_zeros(column.default_value);
