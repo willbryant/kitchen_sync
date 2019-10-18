@@ -10,7 +10,7 @@
 
 struct Options {
 	inline Options(): workers(1), verbose(0), progress(false), snapshot(true), alter(false), structure_only(false),
-    commit_level(CommitLevel::success), hash_algorithm(DEFAULT_HASH_ALGORITHM) {}
+    commit_level(CommitLevel::often), hash_algorithm(DEFAULT_HASH_ALGORITHM) {}
 
 	void help() {
 		cerr <<
@@ -71,15 +71,13 @@ struct Options {
 			"                             after that point won't be a problem anyway).\n"
 			"\n"
 			"  --commit                   When to commit the write transactions.  May be:\n"
-			"                               'never' (roll back after syncing);\n"
-			"                               'success' (commit if all workers complete normally);\n"
-			"                               'tables' (commit after finishing each table); or\n"
 			"                               'often' (periodically commit work in progress)\n"
-			"                             The default is 'success'.  'never' is only useful\n"
-			"                             for benchmarking and testing.  'often' is best if\n"
-			"                             you are happy to run Kitchen Sync again if it fails\n"
-			"                             because incomplete runs may leave you with invalid\n"
-			"                             data (including constraint violations).\n"
+			"                               'success' (commit if all workers complete normally);\n"
+			"                               'never' (roll back all changes, for dummy/test runs);\n"
+			"                             The default is 'often', in order to minimize\n"
+			"                             locking/rollback/vacuum problems, but incomplete\n"
+			"                             runs may leave you with invalid data (including\n"
+			"                             constraint violations) - so you should run again.\n"
 			"\n"
 			"  --alter                    Alter the database schema if it doesn't match.\n"
 			"                             (If not given, the schema will still be checked,\n"
@@ -201,8 +199,6 @@ struct Options {
 							commit_level = CommitLevel::never;
 						} else if (!strcmp(optarg, "success")) {
 							commit_level = CommitLevel::success;
-						} else if (!strcmp(optarg, "tables")) {
-							commit_level = CommitLevel::tables;
 						} else if (!strcmp(optarg, "often")) {
 							commit_level = CommitLevel::often;
 						} else {

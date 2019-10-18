@@ -4,7 +4,7 @@
 enum CommitLevel {
 	never = 0,
 	success = 1,
-	tables = 3,
+	// some other historic values used to be in between here
 	often = 4,
 };
 

@@ -65,11 +65,6 @@ struct SyncToAlgorithm {
 			if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << ' ';
 			cout << "finished " << table_job->table.name << " in " << (table_job->time_finished - table_job->time_started) << "s using " << table_job->hash_commands << " hash commands and " << table_job->rows_commands << " rows commands changing " << rows_changed << " rows" << endl << flush;
 		}
-
-		if (worker.commit_level >= CommitLevel::tables) {
-			worker.commit();
-			client.start_write_transaction();
-		}
 	}
 
 	inline void sync_table(const shared_ptr<TableJob> &table_job) {

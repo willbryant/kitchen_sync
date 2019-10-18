@@ -308,7 +308,7 @@ struct SyncToWorker {
 
 		client.commit_transaction();
 
-		if (verbose && commit_level < CommitLevel::tables) {
+		if (verbose && commit_level == CommitLevel::success) {
 			time_t now = time(nullptr);
 			unique_lock<mutex> lock(sync_queue.mutex);
 			cout << "committed in " << (now - started) << "s" << endl << flush;
