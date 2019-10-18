@@ -113,10 +113,10 @@ struct SyncToWorker {
 				cerr << "Error in the 'to' worker: " << e.what() << endl;
 			}
 
-			// optionally, try to commit the changes we've made, but ignore any errors, and don't bother outputting timings
-			if (commit_level == CommitLevel::often) {
-				try { client.commit_transaction(); } catch (...) {}
-			}
+			// try to roll back any changes we've made, but ignore any errors, and don't bother outputting timings
+			// obviously the database server would rollback anyway when the connection dies, but waiting for the
+			// rollback to complete gives a better chance of avoiding locking drama if the user re-runs
+			try { client.rollback_transaction(); } catch (...) {}
 		}
 	}
 
