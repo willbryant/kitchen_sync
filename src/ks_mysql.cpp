@@ -229,7 +229,7 @@ public:
 		const string &variables);
 	~MySQLClient();
 
-	void disable_referential_integrity();
+	void disable_referential_integrity(bool leader);
 	void enable_referential_integrity();
 	string export_snapshot();
 	void import_snapshot(const string &snapshot);
@@ -455,7 +455,7 @@ void MySQLClient::unhold_snapshot() {
 	execute("UNLOCK TABLES");
 }
 
-void MySQLClient::disable_referential_integrity() {
+void MySQLClient::disable_referential_integrity(bool leader) {
 	execute("SET foreign_key_checks = 0");
 	execute("SET unique_checks = 0");
 }

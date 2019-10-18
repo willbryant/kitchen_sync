@@ -94,7 +94,7 @@ struct SyncToWorker {
 			enqueue_tables();
 
 			client.start_write_transaction();
-			client.disable_referential_integrity();
+			client.disable_referential_integrity(leader);
 
 			SyncToAlgorithm<SyncToWorker<DatabaseClient>, DatabaseClient> sync_to_protocol(*this);
 			sync_to_protocol.sync_tables();
