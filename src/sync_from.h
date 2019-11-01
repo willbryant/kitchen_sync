@@ -251,6 +251,7 @@ struct SyncFromWorker {
 
 	void handle_idle_command() {
 		show_status("idle");
+		read_all_arguments(input);
 		send_command(output, Commands::IDLE);
 	}
 

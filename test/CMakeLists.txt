@@ -6,6 +6,7 @@ add_test(unit_tests          ks_unit_tests)
 #   cmake .. && CTEST_OUTPUT_ON_FAILURE=1 make test
 add_test(prepare_for_test        env BUNDLE_GEMFILE=../../test/Gemfile bundle install --quiet)
 add_test(protocol_version_test   env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/protocol_version_test.rb)
+add_test(idle_from_test          env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/idle_from_test.rb)
 add_test(snapshot_from_test      env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/snapshot_from_test.rb)
 add_test(schema_from_test        env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/schema_from_test.rb)
 add_test(schema_to_test          env BUNDLE_GEMFILE=../../test/Gemfile bundle exec ruby ../../test/schema_to_test.rb)
