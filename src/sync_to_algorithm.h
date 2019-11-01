@@ -221,7 +221,7 @@ struct SyncToAlgorithm {
 		string _table_name;
 		ColumnValues their_first_key, their_last_key;
 		read_all_arguments(input, _table_name, their_first_key, their_last_key);
-		if (worker.verbose > 1) cout << timestamp() << " -> range " << table_job->table.name << ' ' << values_list(client, table_job->table, their_first_key) << ' ' << values_list(client, table_job->table, their_last_key) << endl;
+		if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << " -> range " << table_job->table.name << ' ' << values_list(client, table_job->table, their_first_key) << ' ' << values_list(client, table_job->table, their_last_key) << endl;
 
 		if (their_first_key.empty()) {
 			client.execute("DELETE FROM " + client.quote_identifier(table_job->table.name));
