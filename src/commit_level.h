@@ -4,7 +4,6 @@
 enum CommitLevel {
 	never = 0,
 	success = 1,
-	always = 2,
 	tables = 3,
 	often = 4,
 };

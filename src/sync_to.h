@@ -114,7 +114,7 @@ struct SyncToWorker {
 			}
 
 			// optionally, try to commit the changes we've made, but ignore any errors, and don't bother outputting timings
-			if (commit_level == CommitLevel::always || commit_level == CommitLevel::often) {
+			if (commit_level == CommitLevel::often) {
 				try { client.commit_transaction(); } catch (...) {}
 			}
 		}
