@@ -101,7 +101,6 @@ struct SyncToWorker {
 
 			wait_for_finish();
 
-			client.enable_referential_integrity();
 			if (commit_level >= CommitLevel::success) {
 				commit();
 			} else {

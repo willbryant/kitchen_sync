@@ -230,7 +230,6 @@ public:
 	~MySQLClient();
 
 	void disable_referential_integrity(bool leader);
-	void enable_referential_integrity();
 	string export_snapshot();
 	void import_snapshot(const string &snapshot);
 	void unhold_snapshot();
@@ -458,11 +457,6 @@ void MySQLClient::unhold_snapshot() {
 void MySQLClient::disable_referential_integrity(bool leader) {
 	execute("SET foreign_key_checks = 0");
 	execute("SET unique_checks = 0");
-}
-
-void MySQLClient::enable_referential_integrity() {
-	execute("SET unique_checks = 1");
-	execute("SET foreign_key_checks = 1");
 }
 
 string MySQLClient::escape_string_value(const string &value) {

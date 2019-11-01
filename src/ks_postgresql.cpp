@@ -188,7 +188,6 @@ public:
 
 	bool foreign_key_constraints_present();
 	void disable_referential_integrity(bool leader);
-	void enable_referential_integrity();
 	string export_snapshot();
 	void import_snapshot(const string &snapshot);
 	void unhold_snapshot();
@@ -374,10 +373,6 @@ void PostgreSQLClient::disable_referential_integrity(bool leader) {
 	} else if (leader && foreign_key_constraints_present()) {
 		cerr << "Warning: can't disable foreign key constraint triggers without superuser privileges.  You may experience foreign key violation errors or locking problems if the database has foreign key constraints." << endl;
 	}
-}
-
-void PostgreSQLClient::enable_referential_integrity() {
-	// no point changing session_replication_role retrospectively as that won't do anything.
 }
 
 string PostgreSQLClient::escape_string_value(const string &value) {
