@@ -20,6 +20,8 @@ struct RowRangeApplier {
 		curr_key(prev_key),
 		last_key(last_key),
 		approx_buffered_bytes(0) {
+		// RowInserter below can be used without keys if we completely clear and reload the table, but RowRangeApplier can't do anything useful
+		if (table.primary_key_columns.empty()) throw runtime_error("Can't stream and detect differences without a primary key");
 	}
 
 	template <typename InputStream>

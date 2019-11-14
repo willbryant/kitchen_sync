@@ -244,8 +244,10 @@ struct SyncToWorker {
 			throw runtime_error(message);
 		}
 		for (const Table &table : database.tables) {
-			if (table.primary_key_columns.empty()) {
-				throw runtime_error("Couldn't find a primary or non-nullable unique key on table " + table.name);
+			if (table.primary_key_type == PrimaryKeyType::explicit_primary_key && table.primary_key_columns.empty()) {
+				// only possible if the 'from' end is running v1.13 and earlier; after that we added support for no_available_key
+				// (we can't just ignore this situation for v1.13 and earlier because their code couldn't successfully query without a PK)
+				throw runtime_error("Couldn't find a primary or non-nullable unique key on table " + table.name + "; please upgrade Kitchen Sync at the 'from' end");
 			}
 		}
 	}

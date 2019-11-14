@@ -48,11 +48,18 @@ struct SyncToAlgorithm {
 			cout << "starting " << table_job->table.name << endl << flush;
 		}
 
-		// start by scoping out the table
-		if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << " <- range " << table_job->table.name << endl;
-		send_command(output, Commands::RANGE, table_job->table.name);
-		if (input.next<verb_t>() != Commands::RANGE) throw command_error("Didn't receive response to RANGE command");
-		handle_range_response(table_job, row_replacer);
+		if (table_job->table.primary_key_type != PrimaryKeyType::no_available_key) {
+			// start by scoping out the table
+			if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << " <- range " << table_job->table.name << endl;
+			send_command(output, Commands::RANGE, table_job->table.name);
+			if (input.next<verb_t>() != Commands::RANGE) throw command_error("Didn't receive response to RANGE command");
+			handle_range_response(table_job, row_replacer);
+		} else {
+			// if the table has no usable keys, all we can do is retrieve and apply the rows
+			if (worker.verbose) cout << "Clearing and reloading " << table_job->table.name << ", can't efficiently detect differences because it has no primary key and no other suitable keys." << endl;
+			row_replacer.clear_range(ColumnValues(), ColumnValues());
+			request_rows_without_pipelining(table_job, row_replacer, KeyRange());
+		}
 	}
 
 	void finish_sync_table(const shared_ptr<TableJob> &table_job, size_t rows_changed) {

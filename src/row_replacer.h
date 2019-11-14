@@ -142,6 +142,11 @@ struct RowReplacer {
 		}
 	}
 
+	void clear_range(const ColumnValues &prev_key, const ColumnValues &last_key) {
+		apply();
+		rows_changed += client.execute("DELETE FROM " + client.quote_identifier(table.name) + where_sql(client, table, prev_key, last_key));
+	}
+
 	DatabaseClient &client;
 	const Table &table;
 	BaseSQL insert_sql;

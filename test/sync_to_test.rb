@@ -429,6 +429,24 @@ class SyncToTest < KitchenSync::EndpointTestCase
                  query("SELECT * FROM secondtbl ORDER BY pri2, pri1")
   end
 
+  test_each "retrieves and reloads the whole table if there's no unique key with only non-nullable columns" do
+    clear_schema
+    create_noprimarytbl(create_suitable_keys: false)
+    @rows = [[nil, "b968116383", 'aa', 9],
+             [2,     "a2349174", 'xy', 1]]
+
+    expect_handshake_commands(schema: {"tables" => [noprimarytbl_def(create_suitable_keys: false)]})
+    # note there's no RANGE step here, since with no PK there's nothing specific to find the range of
+    expect_command Commands::ROWS, ["noprimarytbl", [], []]
+    send_command   Commands::ROWS,
+                   ["noprimarytbl", [], []],
+                   *@rows
+    expect_quit_and_close
+
+    assert_equal @rows,
+                 query("SELECT * FROM noprimarytbl ORDER BY name")
+  end
+
   test_each "retains the given values identity/serial/auto_increment primary key columns even if the database supports (and the table uses) GENERATED ALWAYS" do
     clear_schema
     table_def = autotbl_def
