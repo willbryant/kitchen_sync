@@ -104,6 +104,7 @@ enum class PrimaryKeyType {
 	no_available_key = 0,
 	explicit_primary_key = 1,
 	suitable_unique_key = 2,
+	entire_row_as_key = 3,
 };
 
 struct Table {
@@ -123,6 +124,9 @@ struct Table {
 	inline bool operator ==(const Table &other) const { return (name == other.name && columns == other.columns && same_primary_key_as(other) && keys == other.keys); }
 	inline bool operator !=(const Table &other) const { return (!(*this == other)); }
 	size_t index_of_column(const string &name) const;
+
+	inline bool enforceable_primary_key() const { return (primary_key_type == PrimaryKeyType::explicit_primary_key || primary_key_type == PrimaryKeyType::suitable_unique_key); }
+	inline bool group_and_count_entire_row() const { return (primary_key_type == PrimaryKeyType::entire_row_as_key); }
 
 protected:
 	inline bool same_primary_key_as(const Table &other) const {

@@ -236,6 +236,29 @@ SQL
       ].compact }
   end
 
+  def create_noprimaryjointbl(create_keys: true)
+    execute(<<-SQL)
+      CREATE TABLE noprimaryjointbl (
+        table1_id INT NOT NULL,
+        table2_id INT NOT NULL)
+SQL
+    execute "CREATE INDEX index_by_table1_id ON noprimaryjointbl (table1_id)" if create_keys
+    execute "CREATE INDEX index_by_table2_id ON noprimaryjointbl (table2_id, table1_id)" if create_keys
+  end
+
+  def noprimaryjointbl_def(create_keys: true)
+    { "name" => "noprimaryjointbl",
+      "columns" => [
+        {"name" => "table1_id", "column_type" => ColumnType::SINT_32BIT, "nullable" => false},
+        {"name" => "table2_id", "column_type" => ColumnType::SINT_32BIT, "nullable" => false},
+        ({"name" => "created_at", "column_type" => ColumnType::DATETIME, "nullable" => false} if create_keys == :partial)].compact,
+      "primary_key_columns" => create_keys ? [1, 0] : [], # if index_by_table2_id exists, it will be chosen, and it happens to have the reverse order
+      "primary_key_type" => PrimaryKeyType::ENTIRE_ROW_AS_KEY,
+      "keys" => create_keys ? [
+        {"name" => "index_by_table1_id", "columns" => [0]},
+        {"name" => "index_by_table2_id", "columns" => [1, 0]}] : [] }
+  end
+
   def create_some_tables
     clear_schema
     create_footbl

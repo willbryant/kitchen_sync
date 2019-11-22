@@ -113,6 +113,7 @@ module PrimaryKeyType
   NO_AVAILABLE_KEY = 0
   EXPLICIT_PRIMARY_KEY = 1
   SUITABLE_UNIQUE_KEY = 2
+  ENTIRE_ROW_AS_KEY = 3
 end
 
 module KitchenSync

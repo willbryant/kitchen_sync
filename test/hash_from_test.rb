@@ -120,6 +120,35 @@ class HashFromTest < KitchenSync::EndpointTestCase
     expect_command Commands::HASH, ["generatedtbl", [], [], 1000, 2, hash_of(@rows)]
   end
 
+  test_each "uses the chosen column order and adds a row count if the table has no real primary key or suitable unique key but has only non-nullable columns and a useful index" do
+    clear_schema
+    create_noprimaryjointbl(create_keys: true)
+    execute "INSERT INTO noprimaryjointbl (table1_id, table2_id) VALUES (1, 100), (1, 101), (2, 101), (3, 9), (3, 10), (3, 10), (3, 11)"
+    @rows = [[3, 9, 1], # sorted earlier than the rows with lower table1_id as the (table2_id, table1_d) index will get used
+             [3, 10, 2],
+             [3, 11, 1],
+             [1, 100, 1],
+             [1, 101, 1],
+             [2, 101, 1]]
+    @keys = @rows.collect {|row| [row[1], row[0]]}
+    send_handshake_commands
+
+    send_command   Commands::HASH, ["noprimaryjointbl",       [], @keys[0], 1000]
+    expect_command Commands::HASH, ["noprimaryjointbl",       [], @keys[0], 1000, 1, hash_of(@rows[0..0])]
+
+    send_command   Commands::HASH, ["noprimaryjointbl",       [], @keys[1], 1000]
+    expect_command Commands::HASH, ["noprimaryjointbl",       [], @keys[1], 1000, 2, hash_of(@rows[0..1])] # note row count is 2 when in fact there were 3 underlying database rows
+
+    send_command   Commands::HASH, ["noprimaryjointbl",       [], @keys[-1], 2]
+    expect_command Commands::HASH, ["noprimaryjointbl",       [], @keys[-1], 2, 2, hash_of(@rows[0..1])] # note includes the third input row even though the row limit was set to 2
+
+    send_command   Commands::HASH, ["noprimaryjointbl",       [], @keys[-1], 3]
+    expect_command Commands::HASH, ["noprimaryjointbl",       [], @keys[-1], 3, 3, hash_of(@rows[0..2])]
+
+    send_command   Commands::HASH, ["noprimaryjointbl", @keys[0], @keys[1], 1000]
+    expect_command Commands::HASH, ["noprimaryjointbl", @keys[0], @keys[1], 1000, 1, hash_of(@rows[1..1])]
+  end
+
   test_each "optionally supports xxHash64 hashes" do
     setup_with_footbl(target_minimum_block_size: 1, hash_algorithm: HashAlgorithm::XXH64)
 

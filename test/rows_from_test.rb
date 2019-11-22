@@ -233,4 +233,28 @@ class RowsFromTest < KitchenSync::EndpointTestCase
                    ["generatedtbl", [], []],
                    *@rows
   end
+
+  test_each "uses the chosen column order and adds a row count if the table has no real primary key or suitable unique key but has only non-nullable columns and a useful index" do
+    clear_schema
+    create_noprimaryjointbl(create_keys: true)
+    execute "INSERT INTO noprimaryjointbl (table1_id, table2_id) VALUES (1, 100), (1, 101), (2, 101), (3, 9), (3, 10), (3, 10), (3, 11)"
+    send_handshake_commands
+
+    send_command   Commands::ROWS, ["noprimaryjointbl", [], []]
+    expect_command Commands::ROWS,
+                   ["noprimaryjointbl", [], []],
+                   [3, 9, 1], # sorted earlier than the rows with lower table1_id as the (table2_id, table1_d) index will get used
+                   [3, 10, 2],
+                   [3, 11, 1],
+                   [1, 100, 1],
+                   [1, 101, 1],
+                   [2, 101, 1]
+
+    send_command   Commands::ROWS, ["noprimaryjointbl", [9, 3], [100, 1]]
+    expect_command Commands::ROWS,
+                   ["noprimaryjointbl", [9, 3], [100, 1]],
+                   [3, 10, 2],
+                   [3, 11, 1],
+                   [1, 100, 1]
+  end
 end

@@ -474,4 +474,105 @@ class SyncToTest < KitchenSync::EndpointTestCase
     assert_equal connection.supports_virtual_generated_columns? ? [[1, 10, 22, 30, 100], [2, 20, 42, 60, 200]] : [[1, 10, 22, 100], [2, 20, 42, 200]],
       query("SELECT * FROM generatedtbl ORDER BY pri")
   end
+
+  test_each "takes the last column as the row count and inserts duplicate rows when required if the table has no real primary key or suitable unique key but has only non-nullable columns and a useful index" do
+    clear_schema
+    create_noprimaryjointbl(create_keys: true)
+
+    @rows = [[3, 9, 1], # sorted earlier than the rows with lower table1_id as the (table2_id, table1_d) index will get used
+             [3, 10, 2],
+             [3, 11, 1],
+             [1, 100, 1],
+             [1, 101, 1],
+             [2, 101, 1]]
+    @raw_rows = [[3, 9],
+                 [3, 10],
+                 [3, 10],
+                 [3, 11],
+                 [1, 100],
+                 [1, 101],
+                 [2, 101]]
+    @keys = @rows.collect {|row| [row[1], row[0]]}
+
+    expect_handshake_commands(schema: {"tables" => [noprimaryjointbl_def]})
+    expect_command Commands::RANGE, ["noprimaryjointbl"]
+    send_command   Commands::RANGE, ["noprimaryjointbl", @keys[0], @keys[-1]]
+    expect_command Commands::ROWS, ["noprimaryjointbl", [], @keys[-1]]
+    send_results   Commands::ROWS,
+                   ["noprimaryjointbl", [], @keys[-1]],
+                   *@rows
+    expect_quit_and_close
+
+    assert_equal @raw_rows,
+                 query("SELECT * FROM noprimaryjointbl ORDER BY table2_id, table1_id")
+  end
+
+  test_each "increases the number of duplicate rows if the given row count is higher than the current row count" do
+    clear_schema
+    create_noprimaryjointbl(create_keys: true)
+    execute "INSERT INTO noprimaryjointbl (table1_id, table2_id) VALUES (1, 100), (1, 101), (2, 101), (3, 9), (3, 10), (3, 10), (3, 11)"
+
+    @rows = [[3, 9, 1], # sorted earlier than the rows with lower table1_id as the (table2_id, table1_d) index will get used
+             [3, 10, 3], # *3 this time
+             [3, 11, 1]]
+    @raw_rows = [[3, 9],
+                 [3, 10],
+                 [3, 10],
+                 [3, 10],
+                 [3, 11]]
+    @keys = @rows.collect {|row| [row[1], row[0]]}
+
+    expect_handshake_commands(schema: {"tables" => [noprimaryjointbl_def]})
+    expect_command Commands::RANGE, ["noprimaryjointbl"]
+    send_command   Commands::RANGE, ["noprimaryjointbl", @keys[0], @keys[-1]]
+    expect_command Commands::HASH, ["noprimaryjointbl", [], @keys[-1], 1]
+    send_command   Commands::HASH, ["noprimaryjointbl", [], @keys[-1], 1, 1, hash_of(@rows[0..0])]
+    expect_command Commands::HASH, ["noprimaryjointbl", @keys[0], @keys[-1], 2]
+    send_command   Commands::HASH, ["noprimaryjointbl", @keys[0], @keys[-1], 2, 2, hash_of(@rows[1..2])]
+    expect_command Commands::HASH, ["noprimaryjointbl", @keys[0], @keys[-1], 1]
+    send_command   Commands::HASH, ["noprimaryjointbl", @keys[0], @keys[-1], 1, 1, hash_of(@rows[1..1])]
+    expect_command Commands::ROWS, ["noprimaryjointbl", @keys[0], @keys[1]]
+    send_command   Commands::ROWS, ["noprimaryjointbl", @keys[0], @keys[1]],
+                                   @rows[1]
+    expect_command Commands::HASH, ["noprimaryjointbl", @keys[1], @keys[-1], 1]
+    send_command   Commands::HASH, ["noprimaryjointbl", @keys[1], @keys[-1], 1, 1, hash_of(@rows[2..2])]
+    expect_quit_and_close
+
+    assert_equal @raw_rows,
+                 query("SELECT * FROM noprimaryjointbl ORDER BY table2_id, table1_id")
+  end
+
+  test_each "decreases the number of duplicate rows if the given row count is higher than the current row count" do
+    clear_schema
+    create_noprimaryjointbl(create_keys: true)
+    execute "INSERT INTO noprimaryjointbl (table1_id, table2_id) VALUES (1, 100), (1, 101), (2, 101), (3, 9), (3, 10), (3, 10), (3, 10), (3, 11)"
+
+    @rows = [[3, 9, 1], # sorted earlier than the rows with lower table1_id as the (table2_id, table1_d) index will get used
+             [3, 10, 2],
+             [3, 11, 1]]
+    @raw_rows = [[3, 9],
+                 [3, 10],
+                 [3, 10],
+                 [3, 11]]
+    @keys = @rows.collect {|row| [row[1], row[0]]}
+
+    expect_handshake_commands(schema: {"tables" => [noprimaryjointbl_def]})
+    expect_command Commands::RANGE, ["noprimaryjointbl"]
+    send_command   Commands::RANGE, ["noprimaryjointbl", @keys[0], @keys[-1]]
+    expect_command Commands::HASH, ["noprimaryjointbl", [], @keys[-1], 1]
+    send_command   Commands::HASH, ["noprimaryjointbl", [], @keys[-1], 1, 1, hash_of(@rows[0..0])]
+    expect_command Commands::HASH, ["noprimaryjointbl", @keys[0], @keys[-1], 2]
+    send_command   Commands::HASH, ["noprimaryjointbl", @keys[0], @keys[-1], 2, 2, hash_of(@rows[1..2])]
+    expect_command Commands::HASH, ["noprimaryjointbl", @keys[0], @keys[-1], 1]
+    send_command   Commands::HASH, ["noprimaryjointbl", @keys[0], @keys[-1], 1, 1, hash_of(@rows[1..1])]
+    expect_command Commands::ROWS, ["noprimaryjointbl", @keys[0], @keys[1]]
+    send_command   Commands::ROWS, ["noprimaryjointbl", @keys[0], @keys[1]],
+                                   @rows[1]
+    expect_command Commands::HASH, ["noprimaryjointbl", @keys[1], @keys[-1], 1]
+    send_command   Commands::HASH, ["noprimaryjointbl", @keys[1], @keys[-1], 1, 1, hash_of(@rows[2..2])]
+    expect_quit_and_close
+
+    assert_equal @raw_rows,
+                 query("SELECT * FROM noprimaryjointbl ORDER BY table2_id, table1_id")
+  end
 end

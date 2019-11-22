@@ -8,13 +8,27 @@
 #include "unique_key_clearer.h"
 
 template <typename DatabaseClient>
-void append_row_tuple(DatabaseClient &client, const Columns &columns, BaseSQL &sql, const PackedRow &row) {
+void append_row_tuple(DatabaseClient &client, const Columns &columns, BaseSQL &sql, const PackedRow &row, size_t columns_to_ignore = 0) {
 	if (sql.have_content()) sql += "),\n(";
-	for (size_t n = 0; n < row.size(); n++) {
+	for (size_t n = 0; n < row.size() - columns_to_ignore; n++) {
 		if (n > 0) {
 			sql += ',';
 		}
 		sql_encode_and_append_packed_value_to(sql.curr, client, columns[n], row[n]);
+	}
+}
+
+template <typename DatabaseClient>
+void append_row_tuples(DatabaseClient &client, const Columns &columns, BaseSQL &sql, const PackedRow &row) {
+	// retrieve_rows_sql adds an extra COUNT(*) column on to the end of the SELECT statements in the entire_row_as_key case
+	PackedValueReadStream stream(row.back());
+	Unpacker<PackedValueReadStream> unpacker(stream);
+
+	size_t count_to_insert = unpacker.next<size_t>();
+	if (!count_to_insert) throw range_error("Saw a zero row count!");
+
+	while (count_to_insert--) {
+		append_row_tuple(client, columns, sql, row, 1);
 	}
 }
 
@@ -46,12 +60,14 @@ struct RowReplacerBuilder {
 template <typename DatabaseClient>
 struct RowReplacerBuilder<DatabaseClient, true> {
 	static string insert_sql_base(DatabaseClient &client, const Table &table) {
-		return "REPLACE INTO " + client.quote_identifier(table.name) + " (" + columns_list(client, table.columns) + ") VALUES\n(";
+		return (table.enforceable_primary_key() ? "REPLACE INTO " : "INSERT INTO ") +
+			client.quote_identifier(table.name) + " (" + columns_list(client, table.columns) + ") VALUES\n(";
 	}
 
 	static void construct_clearers(RowReplacer<DatabaseClient> &row_replacer) {
-		// databases that support the REPLACE statement will clear any conflicting rows automatically
-		row_replacer.replace_clearers_start = row_replacer.unique_key_clearers.end();
+		// databases that support the REPLACE statement will clear any conflicting rows automatically; however, in the
+		// entire_row_as_key case, there's no primary key to cause a conflict, so we need to DELETE explicitly then.
+		row_replacer.replace_clearers_start = row_replacer.table.enforceable_primary_key() ? row_replacer.unique_key_clearers.end() : row_replacer.unique_key_clearers.begin();
 		row_replacer.insert_clearers_start = row_replacer.unique_key_clearers.end();
 	}
 };
@@ -78,7 +94,11 @@ struct RowReplacer {
 		}
 
 		// we can then batch up a big INSERT statement
-		append_row_tuple(client, table.columns, insert_sql, row);
+		if (table.group_and_count_entire_row()) {
+			append_row_tuples(client, table.columns, insert_sql, row);
+		} else {
+			append_row_tuple(client, table.columns, insert_sql, row);
+		}
 
 		rows_changed++;
 	}
@@ -90,7 +110,11 @@ struct RowReplacer {
 			unique_key_clearer->row(row);
 		}
 
-		append_row_tuple(client, table.columns, insert_sql, row);
+		if (table.group_and_count_entire_row()) {
+			append_row_tuples(client, table.columns, insert_sql, row);
+		} else {
+			append_row_tuple(client, table.columns, insert_sql, row);
+		}
 
 		rows_changed++;
 	}

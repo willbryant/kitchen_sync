@@ -71,6 +71,16 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
                    [{"tables" => [noprimarytbl_def.merge("primary_key_columns" => [], "primary_key_type" => PrimaryKeyType::NO_AVAILABLE_KEY)]}]
   end
 
+  test_each "selects a covering key if there is no primary key and no unique key but there are only non-nullable columns" do
+    clear_schema
+    create_noprimaryjointbl(create_keys: true)
+    send_handshake_commands
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA,
+                   [{"tables" => [noprimaryjointbl_def(create_keys: true)]}]
+  end
+
   test_each "shows the default values for columns" do
     clear_schema
     create_defaultstbl
