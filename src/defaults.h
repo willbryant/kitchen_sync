@@ -10,4 +10,6 @@ const size_t DEFAULT_MAXIMUM_BLOCK_SIZE = 64*1024*1024; // arbitrary, but needs 
 
 const size_t DEFAULT_MAX_COMMANDS_TO_PIPELINE = 2;
 
+const char *DEFAULT_CIPHER = "aes256-gcm@openssh.com,aes256-ctr";
+
 #endif

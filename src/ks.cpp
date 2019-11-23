@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
 		if (options.from.username.empty()) options.from.username = "-";
 		if (options.from.password.empty()) options.from.password = "-";
 		if (options.set_from_variables.empty()) options.set_from_variables = "-";
-		if (options.cipher.empty()) options.cipher = "aes256-ctr";
+		if (options.cipher.empty()) options.cipher = DEFAULT_CIPHER;
 
 		vector<const char*> from_args;
 		if (!options.via.empty()) {
