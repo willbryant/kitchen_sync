@@ -445,4 +445,83 @@ void legacy_deserialize(Unpacker<InputStream> &unpacker, Column &column) {
 	}
 }
 
+template <typename OutputStream>
+void legacy_serialize(Packer<OutputStream> &packer, const Table &table) {
+	pack_map_length(packer, 5);
+	packer << string("name");
+	packer << table.name;
+	packer << string("columns");
+	packer << table.columns;
+	packer << string("primary_key_columns");
+	packer << table.primary_key_columns;
+	packer << string("primary_key_type");
+	// unfortunately this was implemented as value-serialised, unlike the other enums, so freeze in the values here
+	switch (table.primary_key_type) {
+		case PrimaryKeyType::no_available_key:
+			packer << 0;
+			break;
+
+		case PrimaryKeyType::explicit_primary_key:
+			packer << 1;
+			break;
+
+		case PrimaryKeyType::suitable_unique_key:
+			packer << 2;
+			break;
+
+		default:
+			throw runtime_error("Can't serialize primary key type " + to_string(static_cast<int>(table.primary_key_type)) + " using legacy protocol");
+	}
+	packer << string("keys");
+	packer << table.keys;
+}
+
+template <typename InputStream>
+void legacy_deserialize(Unpacker<InputStream> &unpacker, Table &table) {
+	size_t map_length = unpacker.next_map_length(); // checks type
+
+	bool primary_key_type_set = false;
+
+	while (map_length--) {
+		string attr_key = unpacker.template next<string>();
+
+		if (attr_key == "name") {
+			unpacker >> table.name;
+		} else if (attr_key == "columns") {
+			unpacker >> table.columns;
+		} else if (attr_key == "primary_key_columns") {
+			unpacker >> table.primary_key_columns;
+		} else if (attr_key == "primary_key_type") {
+			// unfortunately this was implemented as value-serialised, unlike the other enums
+			int primary_key_type = unpacker.template next<int>();
+			switch (primary_key_type) {
+				case 0:
+					table.primary_key_type = PrimaryKeyType::no_available_key;
+					break;
+
+				case 1:
+					table.primary_key_type = PrimaryKeyType::explicit_primary_key;
+					break;
+
+				case 2:
+					table.primary_key_type = PrimaryKeyType::suitable_unique_key;
+					break;
+
+				default:
+					throw runtime_error("Unexpected primary_key_type: " + to_string(primary_key_type));
+			}
+			primary_key_type_set = true;
+		} else if (attr_key == "keys") {
+			unpacker >> table.keys;
+		} else {
+			// ignore anything else, for forward compatibility
+			unpacker.skip();
+		}
+	}
+
+	// backwards compatibility with v1.13 and earlier, which didn't have primary_key_type
+	if (!primary_key_type_set) {
+		table.primary_key_type = table.primary_key_columns.empty() ? PrimaryKeyType::no_available_key : PrimaryKeyType::explicit_primary_key;
+	}
+}
 #endif

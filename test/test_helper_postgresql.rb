@@ -309,7 +309,7 @@ class PostgreSQLAdapter
           {"name" => "auth_srid", "column_type" => ColumnType::SINT_32BIT},
           {"name" => "srtext",    "column_type" => ColumnType::TEXT_VARCHAR, "size" => 2048},
           {"name" => "proj4text", "column_type" => ColumnType::TEXT_VARCHAR, "size" => 2048}],
-        "primary_key_type" => 1,
+        "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
         "primary_key_columns" => [0],
         "keys" => [] },
     ]

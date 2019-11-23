@@ -131,6 +131,10 @@ void operator << (Packer<VersionedFDWriteStream> &packer, const Key &key) {
 
 template <typename OutputStream>
 void operator << (Packer<OutputStream> &packer, const Table &table) {
+	if (packer.stream().protocol_version <= LAST_LEGACY_SCHEMA_FORMAT_VERSION) {
+		legacy_serialize(packer, table);
+		return;
+	}
 	pack_map_length(packer, 5);
 	packer << string("name");
 	packer << table.name;
@@ -139,7 +143,23 @@ void operator << (Packer<OutputStream> &packer, const Table &table) {
 	packer << string("primary_key_columns");
 	packer << table.primary_key_columns;
 	packer << string("primary_key_type");
-	packer << static_cast<int>(table.primary_key_type); // unfortunately this was implemented as value-serialised, unlike the other enums
+	switch (table.primary_key_type) {
+		case PrimaryKeyType::explicit_primary_key:
+			packer << string("explicit_primary_key");
+			break;
+
+		case PrimaryKeyType::suitable_unique_key:
+			packer << string("suitable_unique_key");
+			break;
+
+		case PrimaryKeyType::no_available_key:
+			packer << string("no_available_key");
+			break;
+
+		case PrimaryKeyType::entire_row_as_key:
+			packer << string("entire_row_as_key");
+			break;
+	}
 	packer << string("keys");
 	packer << table.keys;
 }
@@ -249,10 +269,12 @@ void operator >> (Unpacker<InputStream> &unpacker, Key &key) {
 
 template <typename InputStream>
 void operator >> (Unpacker<InputStream> &unpacker, Table &table) {
-	size_t map_length = unpacker.next_map_length(); // checks type
+	if (unpacker.stream().protocol_version <= LAST_LEGACY_SCHEMA_FORMAT_VERSION) {
+		legacy_deserialize(unpacker, table);
+		return;
+	}
 
-	// backwards compatibility with v1.13 and earlier, which didn't have primary_key_type
-	table.primary_key_type = PrimaryKeyType::explicit_primary_key;
+	size_t map_length = unpacker.next_map_length(); // checks type
 
 	while (map_length--) {
 		string attr_key = unpacker.template next<string>();
@@ -264,8 +286,16 @@ void operator >> (Unpacker<InputStream> &unpacker, Table &table) {
 		} else if (attr_key == "primary_key_columns") {
 			unpacker >> table.primary_key_columns;
 		} else if (attr_key == "primary_key_type") {
-			// unfortunately this was implemented as value-serialised, unlike the other enums
-			table.primary_key_type = static_cast<PrimaryKeyType>(unpacker.template next<int>());
+			string primary_key_type(unpacker.template next<string>());
+			if (primary_key_type == "no_available_key") {
+				table.primary_key_type = PrimaryKeyType::no_available_key;
+			} else if (primary_key_type == "explicit_primary_key") {
+				table.primary_key_type = PrimaryKeyType::explicit_primary_key;
+			} else if (primary_key_type == "suitable_unique_key") {
+				table.primary_key_type = PrimaryKeyType::suitable_unique_key;
+			} else if (primary_key_type == "entire_row_as_key") {
+				table.primary_key_type = PrimaryKeyType::entire_row_as_key;
+			}
 		} else if (attr_key == "keys") {
 			unpacker >> table.keys;
 		} else {

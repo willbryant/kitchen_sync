@@ -33,7 +33,7 @@ SQL
         {"name" => "col1",        "column_type" => LegacyColumnType::SINT, "size" => 4, "nullable" => false},
         {"name" => "another_col", "column_type" => LegacyColumnType::SINT, "size" => 2},
         {"name" => "col3",        "column_type" => LegacyColumnType::VCHR, "size" => 10}],
-      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
+      "primary_key_type" => 1, # legacy value for explicit_primary_key
       "primary_key_columns" => [0],
       "keys" => [] }
   end
@@ -225,7 +225,7 @@ SQL
         {"name" => "name",         "column_type" => LegacyColumnType::VCHR, "size" => 255},
         {"name" => "non_nullable", "column_type" => LegacyColumnType::SINT, "size" =>   4, "nullable" => false}],
       "primary_key_columns" => (create_suitable_keys ? [1] : []),
-      "primary_key_type" => (create_suitable_keys ? PrimaryKeyType::SUITABLE_UNIQUE_KEY : PrimaryKeyType::NO_AVAILABLE_KEY),
+      "primary_key_type" => (create_suitable_keys ? 2 : 0), # legacy values
       "keys" => [ # sorted in uniqueness then alphabetic name order, but otherwise a transcription of the above create index statements
         ({"name" => "correct_key",          "unique" => true,  "columns" => [1]} if create_suitable_keys),
         {"name" => "ignored_key",          "unique" => true,  "columns" => [0, 1]},

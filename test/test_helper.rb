@@ -110,10 +110,10 @@ module HashAlgorithm
 end
 
 module PrimaryKeyType
-  NO_AVAILABLE_KEY = 0
-  EXPLICIT_PRIMARY_KEY = 1
-  SUITABLE_UNIQUE_KEY = 2
-  ENTIRE_ROW_AS_KEY = 3
+  NO_AVAILABLE_KEY = "no_available_key"
+  EXPLICIT_PRIMARY_KEY = "explicit_primary_key"
+  SUITABLE_UNIQUE_KEY = "suitable_unique_key"
+  ENTIRE_ROW_AS_KEY = "entire_row_as_key"
 end
 
 module KitchenSync
