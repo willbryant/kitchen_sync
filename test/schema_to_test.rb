@@ -956,4 +956,10 @@ SQL
     assert_equal nil, connection.table_column_defaults("secondtbl")["tri"]
     assert_same_keys(secondtbl_def)
   end
+
+  test_each "creates adapter-specific schema" do
+    clear_schema
+    expect_handshake_commands(schema: {"tables" => [adapterspecifictbl_def]})
+    read_command
+  end
 end
