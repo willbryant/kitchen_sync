@@ -3,9 +3,9 @@ Supported schema
 
 Kitchen Sync's goal is to synchronize data, so currently it only knows how to synchronize tables.  It does know how to synchronize the table schemas well enough to be able to synchronize the data, but synchronizing of views, triggers, and other schema features is not currently implemented.
 
-Each table must have either an actual primary key, or a unique key that is suitable for use as a primary key (all columns non-nullable).
+To be efficiently synced, each table must have either an actual primary key, a unique key that is suitable for use as a primary key (all columns non-nullable), or all columns non-nullable and an index covering all columns.  Any other tables will just be cleared and repopulated like a normal reload.
 
-For each table, Kitchen Sync tries to synchronize:
+For each table, before synchronizing the actual table data, Kitchen Sync tries to synchronize:
 * the list of columns, by name and position
 * the type of each column, including nullability, size/length, and scale (see below)
 * the default value, default function, or associated sequence name for each column
