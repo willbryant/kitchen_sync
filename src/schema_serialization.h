@@ -62,7 +62,7 @@ void operator << (Packer<OutputStream> &packer, const Column &column) {
 
 		case DefaultType::generated_by_sequence:
 			packer << string("generated_by_sequence");
-			packer << column.default_value; // currently unused, but allowed for forward compatibility
+			packer << column.default_value;
 			break;
 
 		case DefaultType::generated_by_default_as_identity:
@@ -214,7 +214,7 @@ void operator >> (Unpacker<InputStream> &unpacker, Column &column) {
 			unpacker >> column.default_value;
 		} else if (attr_key == "generated_by_sequence") {
 			column.default_type = DefaultType::generated_by_sequence;
-			unpacker >> column.default_value; // currently unused, but allowed for forward compatibility
+			unpacker >> column.default_value;
 		} else if (attr_key == "generated_by_default_as_identity") {
 			column.default_type = DefaultType::generated_by_default_as_identity;
 			unpacker >> column.default_value; // currently unused, but allowed for forward compatibility

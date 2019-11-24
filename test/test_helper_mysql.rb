@@ -51,6 +51,10 @@ class MysqlAdapter
     query("SHOW FULL TABLES").select {|row| row["Table_type"] == "VIEW"}.collect {|row| row.values.first}
   end
 
+  def sequence_generators
+    []
+  end
+
   def table_primary_key_name(table_name)
     "PRIMARY"
   end
@@ -150,6 +154,10 @@ class MysqlAdapter
 
   def identity_default_type
     "generated_by_default_as_identity"
+  end
+
+  def identity_default_name(table_name, column_name)
+    ""
   end
 
   def identity_column_type

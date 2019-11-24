@@ -350,7 +350,7 @@ SQL
   def autotbl_def
     { "name"    => "autotbl",
       "columns" => [
-        {"name" => "inc",     "column_type" => ColumnType::SINT_32BIT, "nullable" => false, connection.identity_default_type => ""},
+        {"name" => "inc",     "column_type" => ColumnType::SINT_32BIT, "nullable" => false, connection.identity_default_type => connection.identity_default_name("autotbl", "inc")},
         {"name" => "payload", "column_type" => ColumnType::SINT_32BIT, "nullable" => false}],
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],

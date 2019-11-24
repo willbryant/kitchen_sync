@@ -207,7 +207,6 @@ public:
 	string &append_quoted_spatial_value_to(string &result, const string &value);
 	string &append_quoted_column_value_to(string &result, const Column &column, const string &value);
 	string column_type(const Column &column);
-	string column_sequence_name(const Table &table, const Column &column);
 	string column_default(const Table &table, const Column &column);
 	string column_definition(const Table &table, const Column &column);
 	string key_definition(const Table &table, const Key &key);
@@ -459,6 +458,12 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 				column.default_type = DefaultType::generated_by_sequence;
 			}
 
+			// we didn't previously serialise the sequence name
+			if (column.default_type == DefaultType::generated_by_sequence && column.default_value.empty()) {
+				// name to match what postgresql creates for serial columns
+				column.default_value = table.name + "_" + column.name + "_seq";
+			}
+
 			// support for VIRTUAL generated columns was yanked from postgresql 12 as it wasn't ready
 			if (column.default_type == DefaultType::generated_always_virtual) {
 				column.default_type = DefaultType::generated_always_stored;
@@ -590,11 +595,6 @@ string PostgreSQLClient::column_type(const Column &column) {
 	}
 }
 
-string PostgreSQLClient::column_sequence_name(const Table &table, const Column &column) {
-	// name to match what postgresql creates for serial columns
-	return table.name + "_" + column.name + "_seq";
-}
-
 string PostgreSQLClient::column_default(const Table &table, const Column &column) {
 	switch (column.default_type) {
 		case DefaultType::no_default:
@@ -607,7 +607,7 @@ string PostgreSQLClient::column_default(const Table &table, const Column &column
 			return " GENERATED ALWAYS AS IDENTITY";
 
 		case DefaultType::generated_by_sequence:
-			return string(" DEFAULT nextval('" + escape_string_value(quote_identifier(column_sequence_name(table, column))) + "'::regclass)");
+			return string(" DEFAULT nextval('" + escape_string_value(quote_identifier(column.default_value)) + "'::regclass)");
 
 		case DefaultType::default_value: {
 			string result(" DEFAULT ");
@@ -710,7 +710,7 @@ struct PostgreSQLColumnLister {
 				column.default_value.substr(column.default_value.length() - 12, 12) == "'::regclass)") {
 				// this is what you got back when you used the historic SERIAL pseudo-type (subsequently replaced by the new standard IDENTITY GENERATED ... AS IDENTITY)
 				column.default_type = DefaultType::generated_by_sequence;
-				column.default_value = "";
+				column.default_value = unquote_identifier(column.default_value.substr(9, column.default_value.length() - 21));
 
 			} else if (column.default_value.substr(0, 6) == "NULL::" && db_type.substr(0, column.default_value.length() - 6) == column.default_value.substr(6)) {
 				// postgresql treats a NULL default as distinct to no default, so we try to respect that by keeping the value as a function,
@@ -863,6 +863,19 @@ struct PostgreSQLColumnLister {
 			// the output of pg_get_expr so far.  note that pg does not interpret regular character
 			// escapes such as \t and \n when outputting these default definitions.
 			if (escaped[n] == '\\' || escaped[n] == '\'') {
+				n += 1;
+			}
+			result += escaped[n];
+		}
+		return result;
+	}
+
+	inline string unquote_identifier(const string &escaped) {
+		if (escaped.empty() || escaped[0] != '"' || escaped[escaped.length() - 1] != '"') return escaped;
+		string result;
+		result.reserve(escaped.length() - 2);
+		for (string::size_type n = 1; n < escaped.length() - 1; n++) {
+			if (escaped[n] == '"') {
 				n += 1;
 			}
 			result += escaped[n];

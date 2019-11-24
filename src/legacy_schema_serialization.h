@@ -244,7 +244,7 @@ void legacy_serialize(Packer<OutputStream> &packer, const Column &column) {
 		case DefaultType::generated_by_default_as_identity:
 		case DefaultType::generated_always_as_identity:
 			packer << string("sequence");
-			packer << column.default_value; // never populated or used, but had been provided for forward compatibility
+			packer << string(""); // was never populated or used in the legacy protocol versions
 			break;
 
 		case DefaultType::default_expression:
@@ -418,7 +418,7 @@ void legacy_deserialize(Unpacker<InputStream> &unpacker, Column &column) {
 			unpacker >> column.subtype;
 		} else if (attr_key == "sequence") {
 			column.default_type = DefaultType::generated_by_sequence; // debateable which we should use here, but that's the only PostgreSQL identity type that was supported by versions of KS that used the legacy schema serialization format
-			unpacker.skip(); // value was never used
+			unpacker.skip(); // value was never used in the legacy protocol versions
 		} else if (attr_key == "default_value") {
 			column.default_type = DefaultType::default_value;
 			unpacker >> column.default_value;
