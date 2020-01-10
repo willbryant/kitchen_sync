@@ -284,6 +284,7 @@ class MysqlAdapter
     execute(<<-SQL)
       CREATE TABLE ```mysql``tbl` (
         pri INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        parent_id INT UNSIGNED,
         tiny2 TINYINT(2) UNSIGNED DEFAULT 99,
         nulldefaultstr VARCHAR(255) DEFAULT NULL,
         secondstime TIME,
@@ -302,7 +303,8 @@ class MysqlAdapter
         fixedbinary3 BINARY(3),
         `select` INT,
         ```quoted``` INT,
-        PRIMARY KEY(pri))
+        PRIMARY KEY(pri),
+        FOREIGN KEY (parent_id) REFERENCES ```mysql``tbl`(pri) ON DELETE RESTRICT)
 SQL
   end
 
@@ -310,6 +312,7 @@ SQL
     { "name"    => "`mysql`tbl",
       "columns" => [
         {"name" => "pri",                   "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::UINT_32BIT : ColumnType::SINT_32BIT, "nullable" => false, identity_default_type => ""},
+        {"name" => "parent_id",             "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::UINT_32BIT : ColumnType::SINT_32BIT},
         {"name" => "tiny2",                 "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::UINT_8BIT : ColumnType::SINT_16BIT, "default_value" => "99"}, # note we've lost the (nonportable) display width (2) - size tells us the size of the integers, not the display width
         {"name" => "nulldefaultstr",        "column_type" => ColumnType::TEXT_VARCHAR, "size" => 255},
         {"name" => "secondstime",           "column_type" => ColumnType::TIME},
@@ -331,7 +334,7 @@ SQL
       ].compact,
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
-      "keys" => [] }
+      "keys" => [{"name" => "parent_id", "columns" => [1]}] } # automatically created
   end
 
   def adapterspecifictbl_row

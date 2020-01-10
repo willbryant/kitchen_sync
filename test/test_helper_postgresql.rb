@@ -350,6 +350,7 @@ class PostgreSQLAdapter
       CREATE TABLE """postgresql""tbl" (
         pri #{supports_generated_as_identity? ? 'integer GENERATED ALWAYS AS IDENTITY' : 'SERIAL'},
         second bigint NOT NULL DEFAULT nextval('second_seq'::regclass),
+        parent_id int REFERENCES """postgresql""tbl" (pri),
         uuidfield uuid,
         jsonfield json,
         jsonbfield #{jsonb_column_type? ? "jsonb" : "json"},
@@ -372,6 +373,7 @@ SQL
       "columns" => [
         {"name" => "pri",                     "column_type" => ColumnType::SINT_32BIT, "nullable" => false}.merge(supports_generated_as_identity? ? {"generated_always_as_identity" => ""} : {"generated_by_sequence" => identity_default_name('"postgresql"tbl', 'pri')}),
         {"name" => "second",                  "column_type" => ColumnType::SINT_64BIT, "nullable" => false, "generated_by_sequence" => "second_seq"},
+        {"name" => "parent_id",               "column_type" => ColumnType::SINT_32BIT},
         {"name" => "uuidfield"}.merge(compatible_with.uuid_column_type? ? {"column_type" => ColumnType::UUID} : {"column_type" => ColumnType::TEXT_FIXED, "size" => 36}),
         {"name" => "jsonfield",               "column_type" => compatible_with.json_column_type? ? ColumnType::JSON : ColumnType::TEXT},
         {"name" => "jsonbfield",              "column_type" => compatible_with.jsonb_column_type? ? ColumnType::JSON_BINARY : (compatible_with.json_column_type? ? ColumnType::JSON : ColumnType::TEXT)},

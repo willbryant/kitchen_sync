@@ -971,7 +971,7 @@ struct PostgreSQLTableLister {
 			  "FROM information_schema.table_constraints, "
 			       "information_schema.key_column_usage "
 			 "WHERE information_schema.table_constraints.table_name = '" + client.escape_string_value(table.name) + "' AND "
-			       "information_schema.key_column_usage.table_name = information_schema.table_constraints.table_name AND "
+			       "information_schema.key_column_usage.constraint_name = information_schema.table_constraints.constraint_name AND "
 			       "constraint_type = 'PRIMARY KEY' "
 			 "ORDER BY ordinal_position",
 			primary_key_lister);
