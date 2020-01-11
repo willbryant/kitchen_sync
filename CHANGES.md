@@ -1,6 +1,11 @@
 Changelog
 =========
 
+2.0rc2
+------
+* Fix key extraction on postgresql when tables have foreign key contraints (closes #78).  Thanks @hsenot.
+* Fix column and key extraction on postgresql when there is another table with the same name in a different schema.
+
 2.0rc1
 ------
 * Change the default `--commit` option to `--commit=often`.  You can still use `--commit=success` to get the old default behavior.
