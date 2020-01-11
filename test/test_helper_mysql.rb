@@ -95,6 +95,10 @@ class MysqlAdapter
     "`#{name.gsub('`', '``')}`"
   end
 
+  def supports_multiple_schemas?
+    false
+  end
+
   def zero_time_value
     Time.new(2000, 1, 1, 0, 0, 0)
   end

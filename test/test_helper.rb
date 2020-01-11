@@ -298,7 +298,7 @@ module KitchenSync
           @database_server = database_server
           @adapter_class = adapter_class
           begin
-            skip "pending" unless block
+            omit "pending" unless block
             before if respond_to?(:before)
             begin
               instance_eval(&block)

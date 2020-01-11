@@ -950,17 +950,20 @@ struct PostgreSQLTableLister {
 	PostgreSQLTableLister(PostgreSQLClient &client, Database &database, TypeMap &type_map, const ColumnTypeList &accepted_types): client(client), database(database), type_map(type_map), accepted_types(accepted_types) {}
 
 	void operator()(PostgreSQLRow &row) {
-		Table table(row.string_at(0));
+		string schema_name(row.string_at(0));
+		Table table(row.string_at(1));
 
 		PostgreSQLColumnLister column_lister(table, type_map, accepted_types);
 		client.query(
 			"SELECT attname, format_type(atttypid, atttypmod), attnotnull, atthasdef, pg_get_expr(adbin, adrelid), " + attidentity_column() + " AS attidentity, " + attgenerated_column() + " AS attgenerated "
 			  "FROM pg_attribute "
 			  "JOIN pg_class ON attrelid = pg_class.oid "
+			  "JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid "
 			  "JOIN pg_type ON atttypid = pg_type.oid "
 			  "LEFT JOIN pg_attrdef ON adrelid = attrelid AND adnum = attnum "
 			 "WHERE attnum > 0 AND "
 			       "NOT attisdropped AND "
+			       "pg_namespace.nspname = '" + client.escape_string_value(schema_name) + "' AND "
 			       "relname = '" + client.escape_string_value(table.name) + "' "
 			 "ORDER BY attnum",
 			column_lister);
@@ -970,7 +973,9 @@ struct PostgreSQLTableLister {
 			"SELECT column_name "
 			  "FROM information_schema.table_constraints, "
 			       "information_schema.key_column_usage "
-			 "WHERE information_schema.table_constraints.table_name = '" + client.escape_string_value(table.name) + "' AND "
+			 "WHERE information_schema.table_constraints.table_schema = '" + client.escape_string_value(schema_name) + "' AND "
+			       "information_schema.table_constraints.table_name = '" + client.escape_string_value(table.name) + "' AND "
+			       "information_schema.key_column_usage.table_schema = information_schema.table_constraints.table_schema AND "
 			       "information_schema.key_column_usage.constraint_name = information_schema.table_constraints.constraint_name AND "
 			       "constraint_type = 'PRIMARY KEY' "
 			 "ORDER BY ordinal_position",
@@ -980,8 +985,10 @@ struct PostgreSQLTableLister {
 		client.query(
 			"SELECT indexname, indisunique, indexdef, attname "
 			  "FROM (SELECT table_class.oid AS table_oid, index_class.relname AS indexname, pg_index.indisunique, pg_get_indexdef(indexrelid) AS indexdef, generate_series(1, array_length(indkey, 1)) AS position, unnest(indkey) AS attnum "
-			          "FROM pg_class table_class, pg_class index_class, pg_index "
-			         "WHERE table_class.relname = '" + client.escape_string_value(table.name) + "' AND "
+			          "FROM pg_namespace, pg_class table_class, pg_class index_class, pg_index "
+			         "WHERE pg_namespace.nspname = '" + client.escape_string_value(schema_name) + "' AND "
+			               "table_class.relnamespace = pg_namespace.oid AND "
+			               "table_class.relname = '" + client.escape_string_value(table.name) + "' AND "
 			               "table_class.relkind = 'r' AND "
 			               "index_class.relkind = 'i' AND "
 			               "pg_index.indrelid = table_class.oid AND "
@@ -1067,10 +1074,10 @@ void PostgreSQLClient::populate_types() {
 void PostgreSQLClient::populate_database_schema(Database &database, const ColumnTypeList &accepted_types) {
 	PostgreSQLTableLister table_lister(*this, database, type_map, accepted_types);
 	query(
-		"SELECT pg_class.relname "
-		  "FROM pg_class, pg_namespace "
-		 "WHERE pg_class.relnamespace = pg_namespace.oid AND "
-		       "pg_namespace.nspname = ANY (current_schemas(false)) AND "
+		"SELECT pg_namespace.nspname, pg_class.relname "
+		  "FROM pg_namespace, pg_class "
+		 "WHERE pg_namespace.nspname = ANY (current_schemas(false)) AND "
+		       "pg_class.relnamespace = pg_namespace.oid AND "
 		       "relkind = 'r' "
 		 "ORDER BY pg_relation_size(pg_class.oid) DESC, relname ASC",
 		table_lister);

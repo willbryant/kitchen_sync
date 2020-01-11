@@ -157,6 +157,19 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
                    [footbl_def["name"], [], []]
   end
 
+  test_each "ignores tables with the same name in other schemas" do
+    omit "This database doesn't support multiple schemas" unless connection.supports_multiple_schemas?
+    clear_schema
+    create_adapterspecifictbl
+    connection.create_private_schema_adapterspecifictbl
+
+    send_handshake_commands
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA,
+                   [{"tables" => [adapterspecifictbl_def]}]
+  end
+
   test_each "returns schema in legacy format for protocol version 7 and earlier, without an explicit TYPES command" do
     clear_schema
     create_noprimarytbl

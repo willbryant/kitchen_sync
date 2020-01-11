@@ -163,6 +163,10 @@ class PostgreSQLAdapter
     PG::Connection.quote_ident(name)
   end
 
+  def supports_multiple_schemas?
+    true
+  end
+
   def quote_ident_for_generation_expression(name)
     # postgresql doesn't quote these all the time, unlike mysql
     name
@@ -344,13 +348,13 @@ class PostgreSQLAdapter
     ["isn't", "a scalar"]
   end
 
-  def create_adapterspecifictbl
-    execute("CREATE SEQUENCE second_seq")
+  def create_adapterspecifictbl(name_prefix: "")
+    execute("CREATE SEQUENCE #{name_prefix}second_seq")
     execute(<<-SQL)
-      CREATE TABLE """postgresql""tbl" (
+      CREATE TABLE #{name_prefix}"""postgresql""tbl" (
         pri #{supports_generated_as_identity? ? 'integer GENERATED ALWAYS AS IDENTITY' : 'SERIAL'},
-        second bigint NOT NULL DEFAULT nextval('second_seq'::regclass),
-        parent_id int REFERENCES """postgresql""tbl" (pri),
+        second bigint NOT NULL DEFAULT nextval('#{name_prefix}second_seq'::regclass),
+        parent_id int REFERENCES #{name_prefix}"""postgresql""tbl" (pri),
         uuidfield uuid,
         jsonfield json,
         jsonbfield #{jsonb_column_type? ? "jsonb" : "json"},
@@ -366,6 +370,12 @@ class PostgreSQLAdapter
         "\"\"quoted\"\"" INT,
         PRIMARY KEY(pri))
 SQL
+  end
+
+  def create_private_schema_adapterspecifictbl
+    execute "DROP SCHEMA IF EXISTS private_schema CASCADE"
+    execute "CREATE SCHEMA private_schema"
+    create_adapterspecifictbl(name_prefix: "private_schema.")
   end
 
   def adapterspecifictbl_def(compatible_with: self)
