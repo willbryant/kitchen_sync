@@ -1,0 +1,5 @@
+services:
+- docker
+
+script:
+- docker-compose -f test/test-all-distros.yml build
