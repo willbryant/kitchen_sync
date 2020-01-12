@@ -5,15 +5,17 @@ FROM ubuntu:18.04
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 	DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
-	DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential cmake libssl-dev \
-		git ruby ruby-dev software-properties-common && \
+	DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+		build-essential cmake libssl-dev \
+		git ruby ruby-dev software-properties-common dirmngr gpg-agent && \
 	apt-get clean -y && \
 	rm -rf /var/cache/apt/archives/*
 
 RUN DEBIAN_FRONTEND=noninteractive apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 5072E1F5 && \
 	DEBIAN_FRONTEND=noninteractive add-apt-repository 'deb http://repo.mysql.com/apt/ubuntu/ bionic mysql-8.0' && \
 	DEBIAN_FRONTEND=noninteractive apt-get update && \
-	DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-server libmysqlclient-dev && \
+	DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+		mysql-server libmysqlclient-dev && \
 	apt-get clean -y && \
 	rm -rf /var/cache/apt/archives/*
 

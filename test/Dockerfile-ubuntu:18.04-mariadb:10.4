@@ -5,15 +5,17 @@ FROM ubuntu:18.04
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 	DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
-	DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential cmake libssl-dev \
-		git ruby ruby-dev software-properties-common && \
+	DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+		build-essential cmake libssl-dev \
+		git ruby ruby-dev software-properties-common dirmngr gpg-agent && \
 	apt-get clean -y && \
 	rm -rf /var/cache/apt/archives/*
 
 RUN DEBIAN_FRONTEND=noninteractive apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8 && \
 	DEBIAN_FRONTEND=noninteractive add-apt-repository 'deb http://sfo1.mirrors.digitalocean.com/mariadb/repo/10.4/ubuntu bionic main' && \
 	DEBIAN_FRONTEND=noninteractive apt-get update && \
-	DEBIAN_FRONTEND=noninteractive apt-get install -y mariadb-server libmariadb-dev && \
+	DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+		mariadb-server libmariadb-dev && \
 	apt-get clean -y && \
 	rm -rf /var/cache/apt/archives/*
 
