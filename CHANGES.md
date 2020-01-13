@@ -1,6 +1,10 @@
 Changelog
 =========
 
+2.0rc3
+------
+* Fix parsing of integer column types on MySQL 8.0.19+.
+
 2.0rc2
 ------
 * Fix key extraction on postgresql when tables have foreign key contraints (closes #78).  Thanks @hsenot.
