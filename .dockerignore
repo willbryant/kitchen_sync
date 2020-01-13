@@ -7,3 +7,4 @@
 !test/*.cpp
 !test/*.rb
 !test/Gemfile*
+!test/sync-test-source.sql
