@@ -2,4 +2,4 @@ services:
 - docker
 
 script:
-- docker-compose -f test/test-all-distros.yml build
+- docker-compose -f test/test-all.yml build

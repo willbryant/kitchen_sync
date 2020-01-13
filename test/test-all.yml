@@ -54,7 +54,21 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-centos:7-mariadb:5.5-postgresql:9.2-no-postgis
+
   ubuntu_18.04-checks:
     build:
       context: ..
       dockerfile: test/Dockerfile-ubuntu:18.04-checks
+
+  sync-local:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile-sync-local
+  sync-ssh:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile-sync-ssh
+  sync-v1:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile-sync-v1
