@@ -847,7 +847,7 @@ struct MySQLColumnLister {
 		}
 
 
-		if (db_type == "tinyint(1)") {
+		if (db_type == "tinyint(1)") { // this is the one display width that we continue to always see after the changes in mysql 8.0.19
 			if (column.default_type != DefaultType::no_default) {
 				if (column.default_value == "0") {
 					column.default_value = "false";
@@ -859,7 +859,7 @@ struct MySQLColumnLister {
 			}
 			column.column_type = ColumnType::boolean;
 
-		} else if (db_type.substr(0, 8) == "tinyint(") {
+		} else if (db_type == "tinyint" || db_type == "tinyint unsigned" || db_type.substr(0, 8) == "tinyint(") { // display width specifications were always present in mysql < 8.0.19 and never present from 8.0.19 on
 			// select the equivalent-width signed type if unsigned types aren't supported by the other
 			// end (and rely on runtime checks that there's no values that overflow).  select 16-bit
 			// types if 8-bit types aren't supported by the other end.
@@ -869,14 +869,14 @@ struct MySQLColumnLister {
 				column.column_type = select_supported_type(ColumnType::sint_8bit, ColumnType::sint_16bit);
 			}
 
-		} else if (db_type.substr(0, 9) == "smallint(") {
+		} else if (db_type == "smallint" || db_type == "smallint unsigned" || db_type.substr(0, 9) == "smallint(") { // see above
 			if (unsign) {
 				column.column_type = select_supported_type(ColumnType::uint_16bit, ColumnType::sint_16bit);
 			} else {
 				column.column_type = ColumnType::sint_16bit;
 			}
 
-		} else if (db_type.substr(0, 10) == "mediumint(") {
+		} else if (db_type == "mediumint" || db_type == "mediumint unsigned" || db_type.substr(0, 10) == "mediumint(") { // see above
 			// select 32-bit types if 24-bit types aren't supported by the other end.
 			if (unsign) {
 				column.column_type = select_supported_type(ColumnType::uint_24bit, ColumnType::sint_24bit, ColumnType::sint_32bit);
@@ -884,14 +884,14 @@ struct MySQLColumnLister {
 				column.column_type = select_supported_type(ColumnType::sint_24bit, ColumnType::sint_32bit);
 			}
 
-		} else if (db_type.substr(0, 4) == "int(") {
+		} else if (db_type == "int" || db_type == "int unsigned" || db_type.substr(0, 4) == "int(") { // see above
 			if (unsign) {
 				column.column_type = select_supported_type(ColumnType::uint_32bit, ColumnType::sint_32bit);
 			} else {
 				column.column_type = ColumnType::sint_32bit;
 			}
 
-		} else if (db_type.substr(0, 7) == "bigint(") {
+		} else if (db_type == "bigint" || db_type == "bigint unsigned" || db_type.substr(0, 7) == "bigint(") { // see above
 			if (unsign) {
 				column.column_type = select_supported_type(ColumnType::uint_64bit, ColumnType::sint_64bit);
 			} else {
