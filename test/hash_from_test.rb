@@ -161,4 +161,17 @@ class HashFromTest < KitchenSync::EndpointTestCase
     send_command   Commands::HASH, ["footbl", [], @keys[1], 1]
     expect_command Commands::HASH, ["footbl", [], @keys[1], 1, 1, hash_of(@rows[0..0], HashAlgorithm::XXH64)]
   end
+
+  test_each "optionally supports MD5 hashes" do
+    setup_with_footbl(target_minimum_block_size: 1, hash_algorithm: HashAlgorithm::MD5)
+
+    send_command   Commands::HASH, ["footbl", @keys[1], @keys[3], 1000]
+    expect_command Commands::HASH, ["footbl", @keys[1], @keys[3], 1000, 2, hash_of(@rows[2..3], HashAlgorithm::MD5)]
+
+    send_command   Commands::HASH, ["footbl", [], @keys[1], 1000]
+    expect_command Commands::HASH, ["footbl", [], @keys[1], 1000, 2, hash_of(@rows[0..1], HashAlgorithm::MD5)]
+
+    send_command   Commands::HASH, ["footbl", [], @keys[1], 1]
+    expect_command Commands::HASH, ["footbl", [], @keys[1], 1, 1, hash_of(@rows[0..0], HashAlgorithm::MD5)]
+  end
 end

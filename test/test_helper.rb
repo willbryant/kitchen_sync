@@ -6,6 +6,7 @@ require 'time'
 
 require 'msgpack'
 require 'ruby-xxhash'
+require 'blake3'
 
 ENDPOINT_ADAPTERS = {}
 require File.expand_path(File.join(File.dirname(__FILE__), 'test_helper_postgresql')) if ENV['ENDPOINT_DATABASES'].nil? || ENV['ENDPOINT_DATABASES'].include?('postgresql')
@@ -106,6 +107,7 @@ end
 module HashAlgorithm
   MD5 = 0
   XXH64 = 1
+  BLAKE3 = 2
 end
 
 module PrimaryKeyType
@@ -118,8 +120,8 @@ end
 module KitchenSync
   class TestCase < Test::Unit::TestCase
     EARLIEST_PROTOCOL_VERSION_SUPPORTED = 7
-    CURRENT_PROTOCOL_VERSION_USED = 8
-    LATEST_PROTOCOL_VERSION_SUPPORTED = 8
+    CURRENT_PROTOCOL_VERSION_USED = 9
+    LATEST_PROTOCOL_VERSION_SUPPORTED = 9
 
     undef_method :default_test if instance_methods.include? 'default_test' or
                                   instance_methods.include? :default_test
@@ -159,7 +161,7 @@ module KitchenSync
       spawner.send_results(*args)
     end
 
-    def send_handshake_commands(protocol_version: LATEST_PROTOCOL_VERSION_SUPPORTED, target_minimum_block_size: 1, hash_algorithm: HashAlgorithm::MD5, filters: nil, accepted_types: connection.supported_column_types)
+    def send_handshake_commands(protocol_version: LATEST_PROTOCOL_VERSION_SUPPORTED, target_minimum_block_size: 1, hash_algorithm: HashAlgorithm::BLAKE3, filters: nil, accepted_types: connection.supported_column_types)
       send_protocol_command(protocol_version)
       send_hash_algorithm_command(hash_algorithm)
       send_filters_command(filters) if filters
@@ -192,7 +194,7 @@ module KitchenSync
       expect_command Commands::TYPES
     end
 
-    def expect_handshake_commands(protocol_version_expected: CURRENT_PROTOCOL_VERSION_USED, protocol_version_supported: LATEST_PROTOCOL_VERSION_SUPPORTED, hash_algorithm: HashAlgorithm::MD5, filters: nil, schema:)
+    def expect_handshake_commands(protocol_version_expected: CURRENT_PROTOCOL_VERSION_USED, protocol_version_supported: LATEST_PROTOCOL_VERSION_SUPPORTED, hash_algorithm: HashAlgorithm::BLAKE3, filters: nil, schema:)
       # checking how protocol versions are handled is covered in protocol_versions_test; here we just need to get past that to get on to the commands we want to test
       expect_command Commands::PROTOCOL, [protocol_version_expected]
       @protocol_version = [protocol_version_expected, protocol_version_supported].min
@@ -273,7 +275,7 @@ module KitchenSync
       connection.sequence_generators.each {|sequence_name| execute "DROP SEQUENCE #{connection.quote_ident sequence_name}"}
     end
 
-    def hash_of(rows, hash_algorithm = HashAlgorithm::MD5)
+    def hash_of(rows, hash_algorithm = HashAlgorithm::BLAKE3)
       data = rows.collect {|row| MessagePack.pack(row, compatibility_mode: true)}.join
 
       case hash_algorithm
@@ -283,6 +285,9 @@ module KitchenSync
       when HashAlgorithm::XXH64
         result = XXhash.xxh64(data)
         [result >> 32, result & 0xFFFFFFFF].pack("NN")
+
+      when HashAlgorithm::BLAKE3
+        Blake3.digest(data)
       end
     end
 

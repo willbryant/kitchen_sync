@@ -28,5 +28,6 @@ if(DEFINED ENV{SKIP_POSTGIS})
 endif()
 
 # we also have a performance test utility that is not run as part of the test suite because there's no particular pass/fail criteria
-add_executable(ks_bench ks_bench.cpp ../src/xxHash/xxhash.cpp)
+add_executable(ks_bench ks_bench.cpp ../src/xxHash/xxhash.cpp ${BLAKE3_OBJECTS})
 target_link_libraries(ks_bench ${OPENSSL_LIBRARIES})
+set_property(TARGET ks_bench APPEND PROPERTY COMPILE_FLAGS "-O3")

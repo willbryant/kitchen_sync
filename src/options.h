@@ -10,7 +10,7 @@
 
 struct Options {
 	inline Options(): workers(1), verbose(0), progress(false), snapshot(true), alter(false), structure_only(false),
-    commit_level(CommitLevel::often), hash_algorithm(DEFAULT_HASH_ALGORITHM) {}
+    commit_level(CommitLevel::often), hash_algorithm(HashAlgorithm::auto_select) {}
 
 	void help() {
 		cerr <<
@@ -85,8 +85,9 @@ struct Options {
 			"                             would use are printed as suggestions.)"
 			"\n"
 			"  --hash arg                 Use the specified checksum algorithm.  The default\n"
-			"                             is MD5.  You can downgrade to XXH64 if you are more\n"
-			"                             interested in performance than data integrity.\n"
+			"                             is BLAKE3, falling back to MD5 for older versions.\n"
+			"                             You can downgrade to XXH64 if you prioritize maximum\n"
+			"                             performance and can tolerate a small risk of error.\n"
 			"                             This is not considered appropriate for production\n"
 			"                             use, but may be useful for dev/test machines.\n"
 			"\n"
@@ -215,6 +216,10 @@ struct Options {
 							hash_algorithm = HashAlgorithm::md5;
 						} else if (!strcmp(optarg, "XXH64")) {
 							hash_algorithm = HashAlgorithm::xxh64;
+						} else if (!strcmp(optarg, "BLAKE3")) {
+							hash_algorithm = HashAlgorithm::blake3;
+						} else if (!strcmp(optarg, "auto")) {
+							hash_algorithm = HashAlgorithm::auto_select;
 						} else {
 							throw invalid_argument("Unknown hash algorithm: " + string(optarg));
 						}

@@ -77,7 +77,7 @@ int endpoint_main(int argc, char *argv[]) {
 			bool snapshot = getenv_default("ENDPOINT_SNAPSHOT", false);
 			bool alter = getenv_default("ENDPOINT_ALTER", true);
 			CommitLevel commit_level = CommitLevel(getenv_default("ENDPOINT_COMMIT_LEVEL", CommitLevel::success));
-			HashAlgorithm hash_algorithm = static_cast<HashAlgorithm>(getenv_default("ENDPOINT_HASH_ALGORITHM", static_cast<int>(DEFAULT_HASH_ALGORITHM)));
+			HashAlgorithm hash_algorithm = static_cast<HashAlgorithm>(getenv_default("ENDPOINT_HASH_ALGORITHM", static_cast<int>(HashAlgorithm::auto_select)));
 			size_t target_minimum_block_size = getenv_default("ENDPOINT_TARGET_MINIMUM_BLOCK_SIZE", DEFAULT_MINIMUM_BLOCK_SIZE); // only set by tests
 			size_t target_maximum_block_size = getenv_default("ENDPOINT_TARGET_MAXIMUM_BLOCK_SIZE", DEFAULT_MAXIMUM_BLOCK_SIZE); // not currently used except manual testing
 			bool structure_only = getenv_default("ENDPOINT_STRUCTURE_ONLY", false);

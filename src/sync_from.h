@@ -23,7 +23,7 @@ struct SyncFromWorker {
 			input(input_stream),
 			output_stream(write_to_descriptor),
 			output(output_stream),
-			hash_algorithm(DEFAULT_HASH_ALGORITHM), // until advised to use a different hash algorithm by the 'to' end
+			hash_algorithm(HashAlgorithm::blake3), // really only the default for tests, as for real runs the hash algorithm is sent by a command from the 'to' end
 			status_area(status_area),
 			status_size(status_size) {
 	}
@@ -259,7 +259,7 @@ struct SyncFromWorker {
 		HashAlgorithm requested_hash_algorithm;
 		read_all_arguments(input, requested_hash_algorithm);
 
-		if (hash_algorithm == HashAlgorithm::md5 || hash_algorithm == HashAlgorithm::xxh64) {
+		if (hash_algorithm == HashAlgorithm::md5 || hash_algorithm == HashAlgorithm::xxh64 || hash_algorithm == HashAlgorithm::blake3) {
 			hash_algorithm = requested_hash_algorithm;
 		}
 

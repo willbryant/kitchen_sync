@@ -11,6 +11,8 @@
 #define XXH_STATIC_LINKING_ONLY
 #include "xxHash/xxhash.h"
 
+#include "blake3/blake3.h"
+
 #include "hash_algorithm.h"
 #include "message_pack/pack.h"
 #include "message_pack/packed_value.h"
@@ -42,7 +44,7 @@ struct RowPacker {
 	Packer<OutputStream> &packer;
 };
 
-#define MAX_DIGEST_LENGTH MD5_DIGEST_LENGTH
+#define MAX_DIGEST_LENGTH BLAKE3_OUT_LEN
 
 struct Hash {
 	inline Hash(): md_len(0) {}
@@ -86,6 +88,14 @@ struct RowHasher {
 			case HashAlgorithm::xxh64:
 				XXH64_reset(&xxh64_state, 0);
 				break;
+
+			case HashAlgorithm::blake3:
+				blake3_hasher_init(&blake3_state);
+				break;
+
+			default:
+				// never hit, but silence compiler warning
+				throw runtime_error("invalid hash algorithm");
 		}
 	}
 
@@ -105,6 +115,14 @@ struct RowHasher {
 			case HashAlgorithm::xxh64:
 				XXH64_update(&xxh64_state, buf, bytes);
 				break;
+
+			case HashAlgorithm::blake3:
+				blake3_hasher_update(&blake3_state, buf, bytes);
+				break;
+
+			default:
+				// never hit, but silence compiler warning
+				throw runtime_error("invalid hash algorithm");
 		}
 	}
 
@@ -124,9 +142,14 @@ struct RowHasher {
 				hash.md_value_64 = htonll(XXH64_digest(&xxh64_state));
 				return hash;
 
+			case HashAlgorithm::blake3:
+				hash.md_len = BLAKE3_OUT_LEN;
+				blake3_hasher_finalize(&blake3_state, hash.md_value, BLAKE3_OUT_LEN);
+				return hash;
+
 			default:
 				// never hit, but silence compiler warning
-				return hash;
+				throw runtime_error("invalid hash algorithm");
 		}
 	}
 
@@ -134,6 +157,7 @@ struct RowHasher {
 	union {
 		MD5_CTX mdctx;
 		XXH64_state_t xxh64_state;
+		blake3_hasher blake3_state;
 	};
 	size_t size;
 	Packer<RowHasher> row_packer;

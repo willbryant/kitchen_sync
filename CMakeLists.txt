@@ -73,8 +73,46 @@ if(Backtrace_FOUND OR APPLE)
 	ADD_DEFINITIONS("-DUSE_BACKTRACE")
 endif()
 
+# build blake3 support
+include(CheckCCompilerFlag)
+add_library(blake3 OBJECT src/blake3/blake3.c src/blake3/blake3_dispatch.c src/blake3/blake3_portable.c)
+set_property(TARGET blake3 APPEND PROPERTY COMPILE_FLAGS "-O3")
+set_property(TARGET blake3 PROPERTY C_STANDARD 99)
+
+CHECK_C_COMPILER_FLAG("-msse4.1" COMPILER_SUPPORTS_SSE_4_1)
+if(COMPILER_SUPPORTS_SSE_4_1)
+	target_sources(blake3 PRIVATE "src/blake3/blake3_sse41.c")
+	set_property(SOURCE src/blake3/blake3_sse41.c APPEND PROPERTY COMPILE_FLAGS "-msse4.1")
+else()
+	set_property(TARGET blake3 APPEND PROPERTY COMPILE_DEFINITIONS "BLAKE3_NO_SSE41")
+endif()
+
+CHECK_C_COMPILER_FLAG("-mavx2" COMPILER_SUPPORTS_AVX2)
+if(COMPILER_SUPPORTS_AVX2)
+	target_sources(blake3 PRIVATE "src/blake3/blake3_avx2.c")
+	set_property(SOURCE src/blake3/blake3_avx2.c APPEND PROPERTY COMPILE_FLAGS "-mavx2")
+else()
+	set_property(TARGET blake3 APPEND PROPERTY COMPILE_DEFINITIONS "BLAKE3_NO_AVX2")
+endif()
+
+CHECK_C_COMPILER_FLAG("-mavx512f -mavx512vl" COMPILER_SUPPORTS_AVX512)
+if(COMPILER_SUPPORTS_AVX512)
+	target_sources(blake3 PRIVATE "src/blake3/blake3_avx512.c")
+	set_property(SOURCE src/blake3/blake3_avx512.c APPEND PROPERTY COMPILE_FLAGS "-mavx512f -mavx512vl")
+else()
+	set_property(TARGET blake3 APPEND PROPERTY COMPILE_DEFINITIONS "BLAKE3_NO_AVX512")
+endif()
+
+CHECK_C_SOURCE_COMPILES("#include <arm_neon.h>\nint main() { return 0; }" COMPILER_SUPPORTS_NEON)
+if(COMPILER_SUPPORTS_NEON)
+	target_sources(blake3 PRIVATE "src/blake3/blake3_neon.c")
+	set_property(TARGET blake3 APPEND PROPERTY COMPILE_DEFINITIONS "BLAKE3_USE_NEON")
+endif()
+
+set(BLAKE3_OBJECTS $<TARGET_OBJECTS:blake3>)
+
 # the endpoints do the actual work
-set(ks_endpoint_SRCS src/schema.cpp src/subdivision.cpp src/filters.cpp src/abortable_barrier.cpp src/xxHash/xxhash.cpp)
+set(ks_endpoint_SRCS src/schema.cpp src/subdivision.cpp src/filters.cpp src/abortable_barrier.cpp src/xxHash/xxhash.cpp ${BLAKE3_OBJECTS})
 set(ks_endpoint_LIBS ${OPENSSL_LIBRARIES} ${YamlCPP_LIBRARIES})
 
 # turn on debugging symbols
