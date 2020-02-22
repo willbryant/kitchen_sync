@@ -5,10 +5,10 @@
 #include "../src/timestamp.h"
 
 template <typename T>
-double benchmark_one(T value, size_t columns, size_t rows, HashAlgorithm hash_algorithm) {
+double benchmark_one(const T &value, size_t columns, size_t rows, size_t reps, HashAlgorithm hash_algorithm) {
 	size_t total_bytes_hashed(0);
 	double start_time = timestamp();
-	for (size_t reps = 0; reps < 1000; reps++) {
+	for (size_t rep = 0; rep < reps; rep++) {
 		RowHasher hasher(hash_algorithm);
 		for (size_t row = 0; row < rows; row++) {
 			pack_array_length(hasher.row_packer, columns);
@@ -25,9 +25,9 @@ double benchmark_one(T value, size_t columns, size_t rows, HashAlgorithm hash_al
 }
 
 template <typename T>
-void benchmark(T value, size_t columns, size_t rows) {
-	cout << "MD5:      " << benchmark_one(value, columns, rows, HashAlgorithm::md5)   << "MB/s" << endl;
-	cout << "XXHASH64: " << benchmark_one(value, columns, rows, HashAlgorithm::xxh64) << "MB/s" << endl;
+void benchmark(T value, size_t columns, size_t rows, size_t reps = 1000) {
+	cout << "MD5:      " << benchmark_one(value, columns, rows, reps, HashAlgorithm::md5)    << "MB/s" << endl;
+	cout << "XXHASH64: " << benchmark_one(value, columns, rows, reps, HashAlgorithm::xxh64)  << "MB/s" << endl;
 	cout << endl;
 }
 
@@ -53,8 +53,16 @@ int main(int argc, char *argv[]) {
 		cout << "multiple medium rows (~24 KB):" << endl;
 		benchmark<string>("b104829e-3f9f-11e9-b6f7-f2189827a7e0", 6, 100);
 
-		cout << "very many medium rows (~2.4 MB):" << endl;
-		benchmark<string>("b104829e-3f9f-11e9-b6f7-f2189827a7e0", 6, 10000);
+		cout << endl;
+
+		cout << "individual long rows (~1 MB):" << endl;
+		string s("0123456789abcdef");
+		s.reserve(16384);
+		for (int i = 0; i < 16; i++) s += s;
+		benchmark<string>(s, 1, 1);
+
+		cout << "multiple long rows (~1 GB):" << endl;
+		benchmark<string>(s, 1, 1024, 1);
 	} catch (const exception &e) {
 		cerr << e.what() << endl;
 	}
