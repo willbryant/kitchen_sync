@@ -1,6 +1,10 @@
 Changelog
 =========
 
+unreleased
+----------
+* Update ruby test suite to run on ruby 2.7.0
+
 2.0
 ---
 * Change the default `--commit` option to `--commit=often`.  You can still use `--commit=success` to get the old default behavior.
