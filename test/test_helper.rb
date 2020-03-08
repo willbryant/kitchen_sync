@@ -6,7 +6,7 @@ require 'time'
 
 require 'msgpack'
 require 'ruby-xxhash'
-require 'blake3'
+require 'digest/blake3'
 
 ENDPOINT_ADAPTERS = {}
 require File.expand_path(File.join(File.dirname(__FILE__), 'test_helper_postgresql')) if ENV['ENDPOINT_DATABASES'].nil? || ENV['ENDPOINT_DATABASES'].include?('postgresql')
@@ -287,7 +287,7 @@ module KitchenSync
         [result >> 32, result & 0xFFFFFFFF].pack("NN")
 
       when HashAlgorithm::BLAKE3
-        Blake3.digest(data)
+        Digest::BLAKE3.digest(data)
       end
     end
 
