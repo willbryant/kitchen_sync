@@ -5,7 +5,6 @@ require 'fileutils'
 require 'time'
 
 require 'msgpack'
-require 'openssl'
 require 'ruby-xxhash'
 
 ENDPOINT_ADAPTERS = {}
@@ -279,7 +278,7 @@ module KitchenSync
 
       case hash_algorithm
       when HashAlgorithm::MD5
-        OpenSSL::Digest::MD5.new.digest(data)
+        Digest::MD5.digest(data)
 
       when HashAlgorithm::XXH64
         result = XXhash.xxh64(data)
