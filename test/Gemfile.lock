@@ -1,7 +1,7 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    digest-blake3 (0.22.0)
+    digest-blake3 (0.22.1)
     msgpack (1.2.4)
     mysql2 (0.5.2)
     pg (1.1.3)
