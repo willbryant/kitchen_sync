@@ -1,9 +1,10 @@
 Changelog
 =========
 
-unreleased
-----------
-* Update ruby test suite to run on ruby 2.7.0
+2.1
+---
+* New default hash algorithm BLAKE3, giving a significant performance improvement, particularly on CPUs supporting AVX2 and above.
+* Update ruby test suite to run on ruby 2.7.0.  Thanks @proby.
 
 2.0
 ---
