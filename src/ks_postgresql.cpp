@@ -264,9 +264,9 @@ PostgreSQLClient::PostgreSQLClient(
 	if (PQstatus(conn) != CONNECTION_OK) {
 		throw runtime_error(PQerrorMessage(conn));
 	}
-	if (PQsetClientEncoding(conn, "SQL_ASCII")) {
+	/*if (PQsetClientEncoding(conn, "SQL_ASCII")) {
 		throw runtime_error(PQerrorMessage(conn));
-	}
+	}*/
 
 	execute("SET client_min_messages TO WARNING");
 
@@ -367,9 +367,9 @@ void PostgreSQLClient::disable_referential_integrity(bool leader) {
 	// instead we implement this by changing session_replication_role - at the expense of firing
 	// any triggers actually set to REPLICA (which doesn't seem inappropriate given the use case).
 	// changing this setting requires superuser permissions, so don't try if we know we don't have that.
-	if (select_one("SELECT current_setting('is_superuser')") == "on") {
+	/*if (select_one("SELECT current_setting('is_superuser')") == "on") {
 		execute("SET session_replication_role = 'replica'");
-	} else if (leader && foreign_key_constraints_present()) {
+	} else*/ if (leader && foreign_key_constraints_present()) {
 		cerr << "Warning: can't disable foreign key constraint triggers without superuser privileges.  You may experience foreign key violation errors or locking problems if the database has foreign key constraints." << endl;
 	}
 }
@@ -1079,7 +1079,8 @@ void PostgreSQLClient::populate_database_schema(Database &database, const Column
 		 "WHERE pg_namespace.nspname = ANY (current_schemas(false)) AND "
 		       "pg_class.relnamespace = pg_namespace.oid AND "
 		       "relkind = 'r' "
-		 "ORDER BY pg_relation_size(pg_class.oid) DESC, relname ASC",
+		 "ORDER BY relname ASC",
+		 // "ORDER BY pg_relation_size(pg_class.oid) DESC, relname ASC",
 		table_lister);
 }
 
