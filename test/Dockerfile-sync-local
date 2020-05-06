@@ -44,4 +44,6 @@ RUN echo 'starting mysql' && \
 		mysqldump -u root --compact source >a.sql && \
 		mysqldump -u root --compact target >b.sql && \
 		cat a.sql && \
-		diff a.sql b.sql
+		diff a.sql b.sql && \
+	echo 'syncing back to check schema compatibility' && \
+		ks --from mysql://root@localhost/target --to mysql://root@localhost/source --verbose

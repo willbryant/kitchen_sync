@@ -166,6 +166,12 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     expect_handshake_commands(schema: {"tables" => [misctbl_def]})
     read_command
     assert_equal %w(misctbl), connection.tables
+    execute "INSERT INTO misctbl (pri, boolfield, textfield, blobfield) VALUES (42, true, '#{'0123456789abcdef'*32}', '#{'0123456789abcdef'*32}')"
+    assert_equal [[42, true, '0123456789abcdef'*32, '0123456789abcdef'*32]],
+                 query("SELECT pri, boolfield, textfield, blobfield FROM misctbl")
+    column_types = connection.table_column_types("misctbl")
+    assert_equal connection.text_column_type.downcase, column_types["textfield"].downcase
+    assert_equal connection.blob_column_type.downcase, column_types["blobfield"].downcase
   end
 
 

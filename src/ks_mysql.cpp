@@ -616,25 +616,25 @@ tuple<string, string> MySQLClient::column_type(const Column &column) {
 
 	switch (column.column_type) {
 		case ColumnType::binary:
-			if (column.size < 256) {
-				return make_tuple("tinyblob", "");
-			} else if (column.size < 65536) {
-				return make_tuple("blob", "");
-			} else if (column.size < 16777216) {
-				return make_tuple("mediumblob", "");
-			} else {
+			if (column.size == 0 || column.size >= 16777216) {
 				return make_tuple("longblob", "");
+			} else if (column.size >= 65536) {
+				return make_tuple("mediumblob", "");
+			} else if (column.size >= 256) {
+				return make_tuple("blob", "");
+			} else {
+				return make_tuple("tinyblob", "");
 			}
 
 		case ColumnType::text:
-			if (column.size < 256) {
-				return make_tuple("tinytext", "");
-			} else if (column.size < 65536) {
-				return make_tuple("text", "");
-			} else if (column.size < 16777216) {
-				return make_tuple("mediumtext", "");
-			} else {
+			if (column.size == 0 || column.size >= 16777216) {
 				return make_tuple("longtext", "");
+			} else if (column.size >= 65536) {
+				return make_tuple("mediumtext", "");
+			} else if (column.size >= 256) {
+				return make_tuple("text", "");
+			} else {
+				return make_tuple("tinytext", "");
 			}
 
 		case ColumnType::json:
