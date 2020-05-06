@@ -1,6 +1,10 @@
 Changelog
 =========
 
+2.2
+---
+* Fix regression in LONGBLOB/MEDIUMBLOB support for MySQL & MariaDB.
+
 2.1
 ---
 * New default hash algorithm BLAKE3, giving a significant performance improvement, particularly on CPUs supporting AVX2 and above.
