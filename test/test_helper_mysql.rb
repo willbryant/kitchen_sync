@@ -289,6 +289,7 @@ class MysqlAdapter
       CREATE TABLE ```mysql``tbl` (
         pri INT UNSIGNED NOT NULL AUTO_INCREMENT,
         parent_id INT UNSIGNED,
+        tiny1 TINYINT(1) DEFAULT NULL,
         tiny2 TINYINT(2) UNSIGNED DEFAULT 99,
         nulldefaultstr VARCHAR(255) DEFAULT NULL,
         secondstime TIME,
@@ -317,6 +318,7 @@ SQL
       "columns" => [
         {"name" => "pri",                   "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::UINT_32BIT : ColumnType::SINT_32BIT, "nullable" => false, identity_default_type => ""},
         {"name" => "parent_id",             "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::UINT_32BIT : ColumnType::SINT_32BIT},
+        {"name" => "tiny1",                 "column_type" => ColumnType::BOOLEAN},
         {"name" => "tiny2",                 "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::UINT_8BIT : ColumnType::SINT_16BIT, "default_value" => "99"}, # note we've lost the (nonportable) display width (2) - size tells us the size of the integers, not the display width
         {"name" => "nulldefaultstr",        "column_type" => ColumnType::TEXT_VARCHAR, "size" => 255},
         {"name" => "secondstime",           "column_type" => ColumnType::TIME},
