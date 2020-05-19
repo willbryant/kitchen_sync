@@ -399,8 +399,10 @@ struct SyncToAlgorithm {
 	}
 
 	inline void send_idle_command() {
-		send_command(output, Commands::IDLE);
-		read_expected_command(input, Commands::IDLE);
+		if (output.stream().protocol_version >= FIRST_IDLE_COMMAND_VERSION) {
+			send_command(output, Commands::IDLE);
+			read_expected_command(input, Commands::IDLE);
+		}
 	}
 
 	Worker &worker;

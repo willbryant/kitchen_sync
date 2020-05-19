@@ -39,11 +39,11 @@ RUN echo 'starting mysql' && \
 		ls -al /tmp/build && \
 		mysql -V && \
 	echo 'running sync' && \
-		ks --from mysql://root@localhost/source --to mysql://root@localhost/target --alter --workers 2 --verbose && \
+		ks --from mysql://root@localhost/source --to mysql://root@localhost/target --alter --workers 4 --verbose && \
 	echo 'comparing result' && \
 		mysqldump -u root --compact source >a.sql && \
 		mysqldump -u root --compact target >b.sql && \
-		cat a.sql && \
 		diff a.sql b.sql && \
-	echo 'syncing back to check schema compatibility' && \
-		ks --from mysql://root@localhost/target --to mysql://root@localhost/source --verbose
+	echo 'syncing both directions to check compatibility of created schema' && \
+		ks --from mysql://root@localhost/source --to mysql://root@localhost/target --workers 4 --verbose && \
+		ks --from mysql://root@localhost/target --to mysql://root@localhost/source --workers 4 --verbose

@@ -47,8 +47,11 @@ RUN echo 'starting mysql' && \
 		ssh-keygen -f ~/.ssh/id_rsa && \
 		cp ~/.ssh/id_rsa.pub ~/.ssh/authorized_keys && \
 	echo 'running sync' && \
-		ks --via localhost --from mysql://root@localhost/source --to mysql://root@localhost/target --alter --workers 2 --verbose && \
+		ks --via localhost --from mysql://root@localhost/source --to mysql://root@localhost/target --alter --workers 4 --verbose && \
 	echo 'comparing result' && \
 		mysqldump -u root --compact source >a.sql && \
 		mysqldump -u root --compact target >b.sql && \
-		diff a.sql b.sql
+		diff a.sql b.sql && \
+	echo 'syncing both directions to check compatibility of created schema' && \
+		ks --via localhost --from mysql://root@localhost/source --to mysql://root@localhost/target --workers 4 --verbose && \
+		ks --via localhost --from mysql://root@localhost/target --to mysql://root@localhost/source --workers 4 --verbose
