@@ -25,22 +25,20 @@ void be_christmassy() {
 	     << "           | |" << endl;
 }
 
-bool greet_remote_server(Options &options, const string &ssh_binary, const string &cipher, const string &from_binary) {
+bool greet_remote_server(Options &options, vector<const char*>::const_iterator connection_args_begin, vector<const char*>::const_iterator connection_args_end, const string &from_binary) {
 	string from_binary_cmd(from_binary.c_str() + string(" ") + string("do-nothing"));
 
-	const char *ssh_greeting_args[] = {
-		ssh_binary.c_str(),
-		"-C", "-c", cipher.c_str(),
-		options.via.c_str(),
-		from_binary_cmd.c_str(), nullptr };
+	vector<const char*> ssh_greeting_args(connection_args_begin, connection_args_end);
+	ssh_greeting_args.push_back(from_binary_cmd.c_str());
+	ssh_greeting_args.push_back(nullptr);
 
 	if (options.verbose >= VERY_VERBOSE) {
 		cout << "ssh greeting command:";
-		for (const char **p = ssh_greeting_args; *p; p++) cout << ' ' << (**p ? *p : "''");
+		for (const char **p = ssh_greeting_args.data(); *p; p++) cout << ' ' << (**p ? *p : "''");
 		cout << endl;
 	}
 
-	pid_t pid = Process::fork_and_exec(ssh_binary, ssh_greeting_args);
+	pid_t pid = Process::fork_and_exec(ssh_greeting_args.front(), ssh_greeting_args.data());
 
 	if (!Process::wait_for_and_check(pid)) {
 		cerr << "Couldn't start Kitchen Sync over SSH to " << options.via << ".  Please check that you can SSH to that server yourself, and that Kitchen Sync's binary can be found on that system at " << from_binary << "." << endl;
@@ -82,8 +80,14 @@ int main(int argc, char *argv[]) {
 			from_args.push_back("-C");
 			from_args.push_back("-c");
 			from_args.push_back(options.cipher.c_str());
+			if (!options.via_port.empty()) {
+				from_args.push_back("-p");
+				from_args.push_back(options.via_port.c_str());
+			}
 			from_args.push_back(options.via.c_str());
 		}
+		size_t connection_args(from_args.size());
+
 		from_args.push_back(from_binary.c_str());
 		from_args.push_back("from");
 		from_args.push_back(options.from.host.c_str());
@@ -101,7 +105,7 @@ int main(int argc, char *argv[]) {
 		}
 
 		if (!options.via.empty()) {
-			if (!greet_remote_server(options, ssh_binary, options.cipher, from_binary)) {
+			if (!greet_remote_server(options, from_args.begin(), from_args.begin() + connection_args, from_binary)) {
 				return 1;
 			}
 		}

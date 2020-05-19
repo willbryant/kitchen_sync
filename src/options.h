@@ -4,6 +4,7 @@
 #include <getopt.h>
 #include <cstring>
 #include <stdexcept>
+#include <algorithm>
 #include "commit_level.h"
 #include "defaults.h"
 #include "db_url.h"
@@ -149,6 +150,11 @@ struct Options {
 
 					case 'v':
 						via = optarg;
+						if (count(via.begin(), via.end(), ':') == 1) {
+							size_t colonpos = via.rfind(':');
+							via_port = via.substr(colonpos + 1);
+							via.resize(colonpos);
+						}
 						break;
 
 					case 'P':
@@ -257,6 +263,7 @@ struct Options {
 
 	DbUrl from, to;
 	string via;
+	string via_port;
 	string cipher;
 	string from_path;
 	string filters;
