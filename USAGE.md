@@ -75,7 +75,7 @@ But Kitchen Sync does not have to be run on a single node.  When you run Kitchen
 
 The Kitchen Sync protocol that runs between them mostly transfers only hashes of the content, so if large sections of the data already matches, the traffic actually sent over the network should be much smaller than the actual data compared.  (If the network is a bottleneck, this means the SSH transport option can even be beneficial over local networks, but it particularly helps over Internet-scale distances.)
 
-To use the SSH transport you need to install Kitchen Sync on a machine that you can SSH to at the source datacentre.  For current versions of Kitchen Sync you should always install the same version as you will have at the other end (the protocol is versioned to allow forward compatibility, but that level of cross-compatibility isn't being maintained in these early releases).
+To use the SSH transport you need to install Kitchen Sync on a machine that you can SSH to at the source datacentre.  Ideally you should install the same version as you will have at the other end, but we do attempt to maintain forward compatibility in case your server has an older version.
 
 For example, if you want to copy from a database server called `server1.sourcecluster` and have Kitchen Sync installed on another machine `console1.sourcecluster`, and you want to copy to a `server2.localcluster` server (which is on the same network you're running Kitchen Sync from):
 
