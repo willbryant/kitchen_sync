@@ -1,6 +1,13 @@
 Changelog
 =========
 
+2.3
+---
+
+* Support specifying the SSH port using `--via servername:port` syntax.
+* Fix incompatibility with v1 'from' ends when using multiple workers.
+* Work around compatibility problem when using the MySQL client library with MariaDB servers, causing problems determining schema defaults etc.
+
 2.2
 ---
 * Fix regression in LONGBLOB/MEDIUMBLOB support for MySQL & MariaDB.
