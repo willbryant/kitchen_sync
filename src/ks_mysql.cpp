@@ -15,6 +15,7 @@
 #define MYSQL_8_0_0 80000
 #define MARIADB_10_0_0 100000
 #define MARIADB_10_2_7 100207
+#define MARIADB_RPL_HACK_VERSION 50505
 
 enum MySQLColumnConversion {
 	encode_raw,
@@ -339,8 +340,17 @@ MySQLClient::MySQLClient(
 		execute("SET " + variables);
 	}
 
-	server_is_mariadb = strstr(mysql_get_server_info(&mysql), "MariaDB") != nullptr;
+	const char *server_info = mysql_get_server_info(&mysql);
+	server_is_mariadb = strstr(server_info, "MariaDB") != nullptr;
 	server_version = mysql_get_server_version(&mysql);
+	if (server_is_mariadb && server_version == MARIADB_RPL_HACK_VERSION) {
+		// if the mysql version of the client library is used with a mariadb server, we see 50505 instead of the real server
+		// version, because mysql_get_server_info returns strings like "5.5.5-10.4.13-MariaDB-1:10.4.13+maria~bionic" which
+		// get parsed by the library. this relates to a workaround made to support replication to older versions (MDEV-4088).
+		server_version  = strtoul(server_info + 6, (char**) &server_info, 10)*10000;
+		server_version += strtoul(server_info + 1, (char**) &server_info, 10)*100;
+		server_version += strtoul(server_info + 1, (char**) &server_info, 10);
+	}
 
 	// mysql doesn't represent the INFORMATION_SCHEMA tables themselves in INFORMATION_SCHEMA, so we have to use the old-style schema info SHOW statements and can't use COUNT(*) etc.
 	check_constraints_table_exists = !select_all("SHOW TABLES FROM INFORMATION_SCHEMA LIKE 'CHECK_CONSTRAINTS'").empty();
