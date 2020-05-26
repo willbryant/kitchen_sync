@@ -8,6 +8,7 @@
 #include "commit_level.h"
 #include "defaults.h"
 #include "db_url.h"
+#include "version.h"
 
 struct Options {
 	inline Options(): workers(1), verbose(0), progress(false), snapshot(true), alter(false), structure_only(false),
@@ -103,8 +104,14 @@ struct Options {
 			"\n"
 			"  --progress                 Indicate progress with dots.\n"
 			"\n"
-			"  --debug                    Log debugging information as the program works.\n";
+			"  --debug                    Log debugging information as the program works.\n"
+			"\n"
+			"  --version                  Display current version and exit.\n";
 		cerr << endl;
+	}
+
+	void version() {
+		cout << "ks version: " << ks_version() << endl;
 	}
 
 	inline bool parse(int argc, char *argv[]) {
@@ -131,6 +138,7 @@ struct Options {
 					{ "verbose",					no_argument,		NULL,	'V' },
 					{ "progress",					no_argument,		NULL,	'p' },
 					{ "debug",						no_argument,		NULL,	'd' },
+					{ "version",					no_argument,    NULL, 'n' },
 					{ NULL,							0,					NULL,	0 },
 				};
 
@@ -244,6 +252,10 @@ struct Options {
 
 					case '?':
 						help();
+						return false;
+
+					case 'n':
+						version();
 						return false;
 				}
 			}
