@@ -1,9 +1,6 @@
 require 'mysql2'
 require 'forwardable'
 
-class Mysql2::Client
-end
-
 class MysqlAdapter
   def host
     ENV["MYSQL_DATABASE_HOST"]     || ENV["ENDPOINT_DATABASE_HOST"]     || ""
