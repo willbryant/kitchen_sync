@@ -15,6 +15,7 @@
 #define MYSQL_8_0_0 80000
 #define MARIADB_10_0_0 100000
 #define MARIADB_10_2_7 100207
+#define MARIADB_10_4_2 100402
 #define MARIADB_RPL_HACK_VERSION 50505
 
 enum MySQLColumnConversion {
@@ -263,6 +264,7 @@ public:
 	inline bool explicit_json_column_type() const { return (!server_is_mariadb && server_version >= MYSQL_5_7_8); }
 	inline bool supports_json_column_type() const { return (explicit_json_column_type() || supports_check_constraints()); }
 	inline bool supports_generated_columns() const { return generation_expression_column_exists; }
+	inline bool supports_block_commit_locks() const { return (server_is_mariadb && server_version >= MARIADB_10_4_2); }
 
 	size_t execute(const string &sql);
 	string select_one(const string &sql);
@@ -447,13 +449,24 @@ void MySQLClient::rollback_transaction() {
 }
 
 string MySQLClient::export_snapshot() {
-	// mysql's system catalogs are non-transactional and do not give a consistent snapshot; furthermore,
-	// it doesn't support export/import of transactions, so we need to exclude other transactions while
-	// we start up our set of read transactions so that they see consistent data.
-	execute("FLUSH NO_WRITE_TO_BINLOG TABLES"); // wait for current update statements to finish, without blocking other connections
-	execute("FLUSH TABLES WITH READ LOCK"); // then block other connections from updating/committing
-	start_read_transaction(); // and start our transaction, and signal the other workers to start theirs
-	return "locked";
+	if (supports_block_commit_locks()) {
+		// mariadb 10.4 has a multi-stage backup lock mechanism which has significantly lower impact than FLUSH TABLES WITH READ LOCK
+		// in that it does not wait for queries or statements on open transactional tables to complete and doesn't need to block new
+		// ones from starting; this makes it much safer to use on a busy server with long-running statements and/or transactions.
+		// mysql also has a new backup lock implementation, but it doesn't have the property of blocking commits so isn't useful to us.
+		execute("BACKUP STAGE START");
+		execute("BACKUP STAGE BLOCK_COMMIT");
+		start_read_transaction(); // start our transaction
+		return "blocked"; // go ahead and signal the other workers to start theirs
+	} else {
+		// mysql's system catalogs are non-transactional and do not give a consistent snapshot; furthermore,
+		// it doesn't support export/import of transactions, so we need to exclude other transactions while
+		// we start up our set of read transactions so that they see consistent data.
+		execute("FLUSH NO_WRITE_TO_BINLOG TABLES"); // wait for current update statements to finish, without blocking other connections
+		execute("FLUSH TABLES WITH READ LOCK"); // then block other connections from updating/committing
+		start_read_transaction(); // start our transaction
+		return "locked"; // go ahead and signal the other workers to start theirs
+	}
 }
 
 void MySQLClient::import_snapshot(const string &snapshot) { // note the argument isn't needed for mysql
@@ -461,7 +474,11 @@ void MySQLClient::import_snapshot(const string &snapshot) { // note the argument
 }
 
 void MySQLClient::unhold_snapshot() {
-	execute("UNLOCK TABLES");
+	if (supports_block_commit_locks()) {
+		execute("BACKUP STAGE END");
+	} else {
+		execute("UNLOCK TABLES");
+	}
 }
 
 void MySQLClient::disable_referential_integrity(bool leader) {
