@@ -33,7 +33,7 @@ class MysqlAdapter
   end
 
   extend Forwardable
-  def_delegators :@connection, :query, :escape
+  def_delegators :@connection, :query, :escape, :close
   alias_method :execute, :query
 
   def server_version

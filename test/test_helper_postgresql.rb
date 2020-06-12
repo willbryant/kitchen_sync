@@ -39,7 +39,7 @@ class PostgreSQLAdapter
   end
 
   extend Forwardable
-  def_delegators :@connection, :query, :server_version, :escape
+  def_delegators :@connection, :query, :server_version, :escape, :close
 
   def execute(sql)
     @connection.async_exec(sql)
