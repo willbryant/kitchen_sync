@@ -1,19 +1,19 @@
 # this dockerfile builds kitchen sync and runs the test suite.  it needs to be built with the project repo root as the buildroot.
 # note that the tests are run as part of the build, you don't need to run anything afterwards.
 
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 	DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
 	DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
 		build-essential cmake libssl-dev \
 		mysql-server libmysqlclient-dev \
-		postgresql postgresql-10-postgis-2.4 postgresql-10-postgis-2.4-scripts libpq-dev \
+		postgresql postgresql-12-postgis-3 postgresql-12-postgis-3-scripts libpq-dev \
 		git ruby ruby-dev && \
 	apt-get clean -y && \
 	rm -rf /var/cache/apt/archives/*
 
-RUN gem install bundler -v 1.17.3 --no-ri --no-rdoc
+RUN gem install bundler -v 1.17.3
 
 WORKDIR /tmp
 COPY test/Gemfile Gemfile

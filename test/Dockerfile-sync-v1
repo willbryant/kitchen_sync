@@ -2,7 +2,7 @@
 # it needs to be built with the project repo root as the buildroot.
 # note that the test is run as part of the build, you don't need to run anything afterwards.
 
-FROM ubuntu:18.04
+FROM ubuntu:18.04 # v1.17 has compatibility problems with mysql 8.0, so we can't run this test successfully on 20.04
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 	DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
