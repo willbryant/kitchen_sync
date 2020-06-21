@@ -32,11 +32,12 @@ struct lower_priority {
 };
 
 struct TableJob {
-	TableJob(const Table &table): table(table), subdividable(primary_key_subdividable(table)), notify_when_work_could_be_shared(false), time_started(0), time_finished(0), hash_commands(0), hash_commands_completed(0), rows_commands(0) {}
+	TableJob(const Table &table): table(table), table_id(table.id_from_name()), subdividable(primary_key_subdividable(table)), notify_when_work_could_be_shared(false), time_started(0), time_finished(0), hash_commands(0), hash_commands_completed(0), rows_commands(0) {}
 
 	inline bool have_work_to_share() { return (!ranges_to_check.empty()); }
 
 	const Table &table;
+	const string table_id; // cached
 	const bool subdividable;
 
 	std::mutex mutex;

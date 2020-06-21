@@ -107,17 +107,17 @@ void apply_filter(Table &table, const TableFilter &table_filter) {
 }
 
 void apply_filters(const TableFilters &table_filters, Tables &tables) {
-	map<string, Table*> tables_by_name;
+	map<string, Table*> tables_by_id;
 
 	for (Table &table : tables) {
-		tables_by_name[table.name] = &table;
+		tables_by_id[table.name] = &table;
 	}
 
 	for (auto const &it : table_filters) {
 		const string &table_name(it.first);
 		const TableFilter &table_filter(it.second);
 
-		Table *table = tables_by_name[table_name];
+		Table *table = tables_by_id[table_name];
 		if (!table) throw filter_definition_error("Filtered table '" + table_name + "' not found");
 
 		apply_filter(*table, table_filter);

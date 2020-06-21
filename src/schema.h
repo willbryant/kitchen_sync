@@ -120,6 +120,8 @@ struct Table {
 	inline Table(const string &name): name(name) {}
 	inline Table() {}
 
+	inline const string &id_from_name() const { return name; }
+
 	inline bool operator <(const Table &other) const { return (name < other.name); }
 	inline bool operator ==(const Table &other) const { return (name == other.name && columns == other.columns && same_primary_key_as(other) && keys == other.keys); }
 	inline bool operator !=(const Table &other) const { return (!(*this == other)); }

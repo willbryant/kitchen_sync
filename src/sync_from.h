@@ -186,12 +186,12 @@ struct SyncFromWorker {
 				apply_filters(table_filters, database.tables);
 			} catch (const filter_definition_error &e) {
 				database.errors.push_back(e.what());
-				return; // bail out with tables_by_name still empty so tests that don't pay attention to the error and terminate can't mess about making other requests and giving confusing output
+				return; // bail out with tables_by_id still empty so tests that don't pay attention to the error and terminate can't mess about making other requests and giving confusing output
 			}
 		}
 
 		for (Table &table : database.tables) {
-			tables_by_name[table.name] = &table;
+			tables_by_id[table.id_from_name()] = &table;
 
 			// if the table doesn't have an actual primary key, choose one
 			choose_primary_key_for(table);
@@ -204,35 +204,35 @@ struct SyncFromWorker {
 	}
 
 	void handle_range_command() {
-		string table_name;
-		read_all_arguments(input, table_name);
-		show_status("syncing " + table_name);
+		string table_id;
+		read_all_arguments(input, table_id);
+		show_status("syncing " + table_id);
 
-		const Table &table(*tables_by_name.at(table_name));
-		send_command(output, Commands::RANGE, table_name, first_key(client, table), last_key(client, table));
+		const Table &table(*tables_by_id.at(table_id));
+		send_command(output, Commands::RANGE, table_id, first_key(client, table), last_key(client, table));
 	}
 
 	void handle_hash_command() {
-		string table_name;
+		string table_id;
 		ColumnValues prev_key, last_key;
 		size_t rows_to_hash;
-		read_all_arguments(input, table_name, prev_key, last_key, rows_to_hash);
-		show_status("syncing " + table_name);
+		read_all_arguments(input, table_id, prev_key, last_key, rows_to_hash);
+		show_status("syncing " + table_id);
 
 		RowHasher hasher(hash_algorithm);
-		size_t row_count = retrieve_rows(client, hasher, *tables_by_name.at(table_name), prev_key, last_key, rows_to_hash);
+		size_t row_count = retrieve_rows(client, hasher, *tables_by_id.at(table_id), prev_key, last_key, rows_to_hash);
 
-		send_command(output, Commands::HASH, table_name, prev_key, last_key, rows_to_hash, row_count, hasher.finish());
+		send_command(output, Commands::HASH, table_id, prev_key, last_key, rows_to_hash, row_count, hasher.finish());
 	}
 
 	void handle_rows_command() {
-		string table_name;
+		string table_id;
 		ColumnValues prev_key, last_key;
-		read_all_arguments(input, table_name, prev_key, last_key);
-		show_status("syncing " + table_name);
+		read_all_arguments(input, table_id, prev_key, last_key);
+		show_status("syncing " + table_id);
 
-		send_command_begin(output, Commands::ROWS, table_name, prev_key, last_key);
-		send_rows(*tables_by_name.at(table_name), prev_key, last_key);
+		send_command_begin(output, Commands::ROWS, table_id, prev_key, last_key);
+		send_rows(*tables_by_id.at(table_id), prev_key, last_key);
 		send_command_end(output);
 	}
 
@@ -280,7 +280,7 @@ struct SyncFromWorker {
 
 	DatabaseClient client;
 	Database database;
-	map<string, Table*> tables_by_name;
+	map<string, Table*> tables_by_id;
 	VersionedFDReadStream input_stream;
 	Unpacker<VersionedFDReadStream> input;
 	VersionedFDWriteStream output_stream;

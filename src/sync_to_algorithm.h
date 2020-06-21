@@ -51,7 +51,7 @@ struct SyncToAlgorithm {
 		if (table_job->table.primary_key_type != PrimaryKeyType::no_available_key) {
 			// start by scoping out the table
 			if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << " <- range " << table_job->table.name << endl;
-			send_command(output, Commands::RANGE, table_job->table.name);
+			send_command(output, Commands::RANGE, table_job->table_id);
 			if (input.next<verb_t>() != Commands::RANGE) throw command_error("Didn't receive response to RANGE command");
 			handle_range_response(table_job, row_replacer);
 		} else {
@@ -100,7 +100,7 @@ struct SyncToAlgorithm {
 				lock.unlock(); // don't hold the mutex while doing IO
 
 				outstanding_commands++;
-				send_rows_command(table, range_to_retrieve);
+				send_rows_command(table_job, range_to_retrieve);
 
 			} else if (outstanding_commands < max_outstanding_commands && !table_job->ranges_to_check.empty()) {
 				KeyRangeToCheck range_to_check(move(table_job->ranges_to_check.top()));
@@ -149,11 +149,11 @@ struct SyncToAlgorithm {
 		}
 	}
 
-	inline void send_rows_command(const Table &table, const KeyRange &range_to_retrieve) {
+	inline void send_rows_command(const shared_ptr<TableJob> &table_job, const KeyRange &range_to_retrieve) {
 		const ColumnValues &prev_key(get<0>(range_to_retrieve));
 		const ColumnValues &last_key(get<1>(range_to_retrieve));
-		if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << " <- rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
-		send_command(output, Commands::ROWS, table.name, prev_key, last_key);
+		if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << " <- rows " << table_job->table.name << ' ' << values_list(client, table_job->table, prev_key) << ' ' << values_list(client, table_job->table, last_key) << endl;
+		send_command(output, Commands::ROWS, table_job->table_id, prev_key, last_key);
 	}
 
 	inline void send_hash_command(const shared_ptr<TableJob> &table_job, const KeyRangeToCheck &range_to_check, list<HashResult> &ranges_hashed) {
@@ -164,7 +164,7 @@ struct SyncToAlgorithm {
 
 		// tell the other end to hash this range
 		if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << " <- hash " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << ' ' << range_to_check.rows_to_hash << endl;
-		send_command(output, Commands::HASH, table.name, prev_key, last_key, range_to_check.rows_to_hash);
+		send_command(output, Commands::HASH, table_job->table_id, prev_key, last_key, range_to_check.rows_to_hash);
 
 		// while that end is working, do the same at our end
 		RowHasherAndLastKey hasher(hash_algorithm, table.primary_key_columns);
@@ -278,7 +278,7 @@ struct SyncToAlgorithm {
 	}
 
 	void request_rows_without_pipelining(const shared_ptr<TableJob> &table_job, RowReplacer<DatabaseClient> &row_replacer, const KeyRange &range_to_retrieve) {
-		send_rows_command(table_job->table, range_to_retrieve);
+		send_rows_command(table_job, range_to_retrieve);
 		if (input.next<verb_t>() != Commands::ROWS) throw command_error("Didn't receive response to ROWS command");
 		handle_rows_response(table_job->table, row_replacer, true);
 
