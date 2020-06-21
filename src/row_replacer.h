@@ -40,7 +40,7 @@ struct RowReplacer;
 template <typename DatabaseClient, bool = is_base_of<SupportsReplace, DatabaseClient>::value>
 struct RowReplacerBuilder {
 	static string insert_sql_base(DatabaseClient &client, const Table &table) {
-		return "INSERT INTO " + client.quote_identifier(table.name) + " (" + columns_list(client, table.columns) +
+		return "INSERT INTO " + client.quote_table_name(table) + " (" + columns_list(client, table.columns) +
 			(client.supports_generated_as_identity() ? ") OVERRIDING SYSTEM VALUE VALUES\n(" : ") VALUES\n(");
 	}
 
@@ -61,7 +61,7 @@ template <typename DatabaseClient>
 struct RowReplacerBuilder<DatabaseClient, true> {
 	static string insert_sql_base(DatabaseClient &client, const Table &table) {
 		return (table.enforceable_primary_key() ? "REPLACE INTO " : "INSERT INTO ") +
-			client.quote_identifier(table.name) + " (" + columns_list(client, table.columns) + ") VALUES\n(";
+			client.quote_table_name(table) + " (" + columns_list(client, table.columns) + ") VALUES\n(";
 	}
 
 	static void construct_clearers(RowReplacer<DatabaseClient> &row_replacer) {
@@ -144,7 +144,7 @@ struct RowReplacer {
 
 	void clear_range(const ColumnValues &prev_key, const ColumnValues &last_key) {
 		apply();
-		rows_changed += client.execute("DELETE FROM " + client.quote_identifier(table.name) + where_sql(client, table, prev_key, last_key));
+		rows_changed += client.execute("DELETE FROM " + client.quote_table_name(table) + where_sql(client, table, prev_key, last_key));
 	}
 
 	DatabaseClient &client;

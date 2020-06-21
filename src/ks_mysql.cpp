@@ -245,6 +245,7 @@ public:
 	void convert_unsupported_database_schema(Database &database);
 
 	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '`'); };
+	inline string quote_table_name(const Table &table) { return ::quote_identifier(table.name, '`'); };
 	string escape_string_value(const string &value);
 	string &append_quoted_generic_value_to(string &result, const string &value);
 	string &append_quoted_spatial_value_to(string &result, const string &value);
@@ -781,7 +782,7 @@ string MySQLClient::key_definition(const Table &table, const Key &key) {
 	}
 	result += quote_identifier(key.name);
 	result += " ON ";
-	result += quote_identifier(table.name);
+	result += quote_table_name(table);
 	result += ' ';
 	result += columns_tuple(*this, table.columns, key.columns);
 	return result;
@@ -1144,7 +1145,7 @@ struct MySQLTableLister {
 		client.query("SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, " + generation_expression_column() + ", " + srid_column() + ", COLUMN_COMMENT, " + json_check_constraint_expression() + " AS JSON_CHECK_CONSTRAINT FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = SCHEMA() AND TABLE_NAME = '" + client.escape_string_value(table.name) + "' ORDER BY ORDINAL_POSITION", column_lister);
 
 		MySQLKeyLister key_lister(table);
-		client.query("SHOW KEYS FROM " + client.quote_identifier(table.name), key_lister);
+		client.query("SHOW KEYS FROM " + client.quote_table_name(table), key_lister);
 		sort(table.keys.begin(), table.keys.end()); // order is arbitrary for keys, but both ends must be consistent, so we sort the keys by name
 
 		database.tables.push_back(table);

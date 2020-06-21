@@ -10,7 +10,7 @@ struct UniqueKeyClearer {
 		client(&client),
 		table(&table),
 		key_columns(&key_columns),
-		delete_sql("DELETE FROM " + client.quote_identifier(table.name) + " WHERE (", ")") {
+		delete_sql("DELETE FROM " + client.quote_table_name(table) + " WHERE (", ")") {
 	}
 
 	bool key_enforceable(const PackedRow &row) {

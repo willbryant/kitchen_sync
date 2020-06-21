@@ -165,7 +165,7 @@ string retrieve_rows_sql(DatabaseClient &client, const Table &table, const Colum
 	}
 
 	result += " FROM ";
-	result += client.quote_identifier(table.name);
+	result += client.quote_table_name(table);
 
 	result += where_sql(client, table, prev_key, last_key, table.where_conditions);
 
@@ -188,7 +188,7 @@ string retrieve_rows_sql(DatabaseClient &client, const Table &table, const Colum
 template <typename DatabaseClient>
 string count_rows_sql(DatabaseClient &client, const Table &table, const ColumnValues &prev_key, const ColumnValues &last_key) {
 	string result("SELECT COUNT(*) FROM ");
-	result += client.quote_identifier(table.name);
+	result += client.quote_table_name(table);
 	result += where_sql(client, table, prev_key, last_key, table.where_conditions);
 	return result;
 }
@@ -198,7 +198,7 @@ string select_first_key_sql(DatabaseClient &client, const Table &table) {
 	string result("SELECT ");
 	result += columns_list(client, table.columns, table.primary_key_columns);
 	result += " FROM ";
-	result += client.quote_identifier(table.name);
+	result += client.quote_table_name(table);
 	result += where_sql(client, table, ColumnValues(), ColumnValues(), table.where_conditions);
 	result += column_orders_list(client, table, ASCENDING);
 	result += " LIMIT 1";
@@ -210,7 +210,7 @@ string select_last_key_sql(DatabaseClient &client, const Table &table) {
 	string result("SELECT ");
 	result += columns_list(client, table.columns, table.primary_key_columns);
 	result += " FROM ";
-	result += client.quote_identifier(table.name);
+	result += client.quote_table_name(table);
 	result += where_sql(client, table, ColumnValues(), ColumnValues(), table.where_conditions);
 	result += column_orders_list(client, table, DESCENDING);
 	result += " LIMIT 1";
@@ -222,7 +222,7 @@ string select_not_earlier_key_sql(DatabaseClient &client, const Table &table, co
 	string result("SELECT ");
 	result += columns_list(client, table.columns, table.primary_key_columns);
 	result += " FROM ";
-	result += client.quote_identifier(table.name);
+	result += client.quote_table_name(table);
 	result += where_sql(client, table, " >= ", key, " > ", prev_key, " <= ", last_key, table.where_conditions);
 	result += column_orders_list(client, table, ASCENDING);
 	result += " LIMIT 1";

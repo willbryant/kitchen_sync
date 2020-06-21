@@ -212,6 +212,7 @@ public:
 	string key_definition(const Table &table, const Key &key);
 
 	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '"'); };
+	inline string quote_table_name(const Table &table) { return ::quote_identifier(table.name, '"'); };
 	inline bool supports_jsonb_column_type() const { return (server_version >= POSTGRESQL_9_4); }
 	inline bool supports_generated_as_identity() const { return (server_version >= POSTGRESQL_10); }
 	inline bool supports_generated_columns() const { return (server_version >= POSTGRESQL_12); }
@@ -648,7 +649,7 @@ string PostgreSQLClient::key_definition(const Table &table, const Key &key) {
 	string result(key.unique() ? "CREATE UNIQUE INDEX " : "CREATE INDEX ");
 	result += quote_identifier(key.name);
 	result += " ON ";
-	result += quote_identifier(table.name);
+	result += quote_table_name(table);
 	result += ' ';
 	if (key.spatial()) result += "USING gist ";
 	result += columns_tuple(*this, table.columns, key.columns);

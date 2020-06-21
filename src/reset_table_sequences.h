@@ -14,13 +14,13 @@ struct ResetTableSequences <DatabaseClient, true> {
 		for (const Column &column : table.columns) {
 			if (column.default_type == DefaultType::generated_by_sequence) {
 				string statement("SELECT setval(pg_get_serial_sequence('");
-				statement += client.escape_string_value(client.quote_identifier(table.name));
+				statement += client.escape_string_value(client.quote_table_name(table));
 				statement += "', '";
 				statement += client.escape_string_value(column.name);
 				statement += "'), COALESCE(MAX(";
 				statement += client.quote_identifier(column.name);
 				statement += "), 0) + 1, false) FROM ";
-				statement += client.quote_identifier(table.name);
+				statement += client.quote_table_name(table);
 				client.execute(statement);
 			}
 		}
