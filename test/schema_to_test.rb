@@ -966,6 +966,8 @@ SQL
   test_each "creates adapter-specific schema" do
     clear_schema
     expect_handshake_commands(schema: {"tables" => [adapterspecifictbl_def]})
-    read_command
+    expect_command Commands::RANGE, [adapterspecifictbl_def["name"]]
+    send_command   Commands::RANGE, [adapterspecifictbl_def["name"], [], []]
+    expect_quit_and_close
   end
 end
