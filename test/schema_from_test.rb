@@ -141,6 +141,17 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
     end
   end
 
+  test_each "returns schema in legacy format for protocol version 7 and earlier, without an explicit TYPES command" do
+    clear_schema
+    create_noprimarytbl
+
+    send_handshake_commands(protocol_version: 7, accepted_types: nil)
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA,
+                   [{"tables" => [noprimarytbl_def_v7]}]
+  end
+
   test_each "ignores views" do
     clear_schema
     create_footbl
@@ -157,7 +168,7 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
                    [footbl_def["name"], [], []]
   end
 
-  test_each "ignores tables with the same name in other schemas" do
+  test_each "ignores tables with the same name in other schemas by default" do
     omit "This database doesn't support multiple schemas" unless connection.supports_multiple_schemas?
     clear_schema
     create_adapterspecifictbl
@@ -169,15 +180,41 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
     expect_command Commands::SCHEMA,
                    [{"tables" => [adapterspecifictbl_def]}]
   end
+end
 
-  test_each "returns schema in legacy format for protocol version 7 and earlier, without an explicit TYPES command" do
+class SchemaFromMultipleSchemasTest < KitchenSync::EndpointTestCase
+  include TestTableSchemas
+
+  def from_or_to
+    :from
+  end
+
+  def program_env
+    super.merge("ENDPOINT_SET_VARIABLES" => "search_path=public,#{connection.private_schema_name}")
+  end
+
+  test_each "returns tables in other schemas if they're in the search path" do
+    omit "This database doesn't support multiple schemas" unless connection.supports_multiple_schemas?
     clear_schema
-    create_noprimarytbl
+    connection.create_private_schema_adapterspecifictbl
 
-    send_handshake_commands(protocol_version: 7, accepted_types: nil)
+    send_handshake_commands
 
     send_command   Commands::SCHEMA
     expect_command Commands::SCHEMA,
-                   [{"tables" => [noprimarytbl_def_v7]}]
+                   [{"tables" => [adapterspecifictbl_def.merge("schema_name" => connection.private_schema_name)]}]
+  end
+
+  test_each "returns tables in each schema if there are tables with the same name in multiple schemas and they're in the search path" do
+    omit "This database doesn't support multiple schemas" unless connection.supports_multiple_schemas?
+    clear_schema
+    create_adapterspecifictbl
+    connection.create_private_schema_adapterspecifictbl
+
+    send_handshake_commands
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA,
+                   [{"tables" => [adapterspecifictbl_def(schema_name: connection.private_schema_name), adapterspecifictbl_def]}]
   end
 end

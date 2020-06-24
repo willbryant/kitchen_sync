@@ -54,11 +54,11 @@ struct CreateTableSequencesStatements <DatabaseClient, true> {
 		for (const Column &column : table.columns) {
 			if (column.default_type == DefaultType::generated_by_sequence) {
 				string result("DROP SEQUENCE IF EXISTS ");
-				result += client.quote_identifier(column.default_value);
+				result += client.quote_schema_name(table.schema_name) + '.' + client.quote_identifier(column.default_value);
 				statements.push_back(result);
 
 				result = "CREATE SEQUENCE ";
-				result += client.quote_identifier(column.default_value);
+				result += client.quote_schema_name(table.schema_name) + '.' + client.quote_identifier(column.default_value);
 				statements.push_back(result);
 			}
 		}
@@ -78,7 +78,7 @@ struct OwnTableSequencesStatements <DatabaseClient, true> {
 		for (const Column &column : table.columns) {
 			if (column.default_type == DefaultType::generated_by_sequence) {
 				string result("ALTER SEQUENCE ");
-				result += client.quote_identifier(column.default_value);
+				result += client.quote_schema_name(table.schema_name) + '.' + client.quote_identifier(column.default_value);
 				result += " OWNED BY ";
 				result += client.quote_table_name(table);
 				result += '.';

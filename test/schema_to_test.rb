@@ -971,3 +971,61 @@ SQL
     expect_quit_and_close
   end
 end
+
+class SchemaToMultipleSchemasTest < KitchenSync::EndpointTestCase
+  include TestTableSchemas
+
+  def from_or_to
+    :to
+  end
+
+  def program_env
+    if connection.supports_multiple_schemas?
+      super.merge("ENDPOINT_SET_VARIABLES" => "search_path=public,#{connection.private_schema_name}")
+    else
+      super
+    end
+  end
+
+  test_each "creates tables in other schemas if they're in the search path" do
+    omit "This database doesn't support multiple schemas" unless connection.supports_multiple_schemas?
+    clear_schema
+    expect_handshake_commands(schema: {"tables" => [adapterspecifictbl_def(schema_name: connection.private_schema_name)]})
+
+    expect_command Commands::RANGE, ["#{connection.private_schema_name}.#{adapterspecifictbl_def["name"]}"]
+    send_command   Commands::RANGE, ["#{connection.private_schema_name}.#{adapterspecifictbl_def["name"]}", [], []]
+    expect_quit_and_close
+
+    assert_equal({
+      connection.private_schema_name => [adapterspecifictbl_def["name"]],
+    }, connection.tables_by_schema)
+  end
+
+  test_each "creates tables in each schema if there are tables with the same name in multiple schemas and they're in the search path" do
+    omit "This database doesn't support multiple schemas" unless connection.supports_multiple_schemas?
+    clear_schema
+    expect_handshake_commands(schema: {"tables" => [adapterspecifictbl_def, adapterspecifictbl_def(schema_name: connection.private_schema_name)]})
+
+    expect_command Commands::RANGE, [adapterspecifictbl_def["name"]]
+    send_command   Commands::RANGE, [adapterspecifictbl_def["name"], [], []]
+    expect_command Commands::RANGE, ["#{connection.private_schema_name}.#{adapterspecifictbl_def["name"]}"]
+    send_command   Commands::RANGE, ["#{connection.private_schema_name}.#{adapterspecifictbl_def["name"]}", [], []]
+    expect_quit_and_close
+
+    assert_equal({
+      connection.private_schema_name => [adapterspecifictbl_def["name"]],
+      "public"                       => [adapterspecifictbl_def["name"]],
+    }, connection.tables_by_schema)
+    assert  connection.table_column_defaults(adapterspecifictbl_def["name"], connection.private_schema_name)["second"].include?("#{connection.private_schema_name}.second_seq")
+    assert !connection.table_column_defaults(adapterspecifictbl_def["name"],                       "public")["second"].include?("#{connection.private_schema_name}.second_seq")
+  end
+
+  test_each "raises an error if there are tables with the same name in multiple schemas on databases that don't support that" do
+    omit "This database supports multiple schemas fully" if connection.supports_multiple_schemas?
+    clear_schema
+    expect_handshake_commands(schema: {"tables" => [adapterspecifictbl_def, adapterspecifictbl_def(schema_name: "other_schema")]})
+    expect_stderr("Conflicting tables named #{adapterspecifictbl_def["name"]} present in multiple schemas") do
+      read_command
+    end
+  end
+end

@@ -44,12 +44,13 @@ class MysqlAdapter
     query("SHOW FULL TABLES").select {|row| row["Table_type"] == "BASE TABLE"}.collect {|row| row.values.first}
   end
 
-  def views
-    query("SHOW FULL TABLES").select {|row| row["Table_type"] == "VIEW"}.collect {|row| row.values.first}
+  def clear_schema
+    views.each {|view_name| execute "DROP VIEW #{quote_ident view_name}"}
+    tables.each {|table_name| execute "DROP TABLE #{quote_ident table_name}"}
   end
 
-  def sequence_generators
-    []
+  def views
+    query("SHOW FULL TABLES").select {|row| row["Table_type"] == "VIEW"}.collect {|row| row.values.first}
   end
 
   def table_primary_key_name(table_name)
@@ -309,7 +310,7 @@ class MysqlAdapter
 SQL
   end
 
-  def adapterspecifictbl_def(compatible_with: self)
+  def adapterspecifictbl_def(compatible_with: self, schema_name: nil)
     { "name"    => "`mysql`tbl",
       "columns" => [
         {"name" => "pri",                   "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::UINT_32BIT : ColumnType::SINT_32BIT, "nullable" => false, identity_default_type => ""},
@@ -335,7 +336,8 @@ SQL
       ].compact,
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
-      "keys" => [{"name" => "parent_id", "columns" => [1]}] } # automatically created
+      "keys" => [{"name" => "parent_id", "columns" => [1]}] }.merge( # automatically created
+      schema_name ? { "schema_name" => schema_name } : {}) # not actually supported by mysql, but error handling is tested
   end
 
   def adapterspecifictbl_row

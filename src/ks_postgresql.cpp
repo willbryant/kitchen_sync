@@ -212,7 +212,8 @@ public:
 	string key_definition(const Table &table, const Key &key);
 
 	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '"'); };
-	inline string quote_table_name(const Table &table) { return ::quote_identifier(table.name, '"'); };
+	inline string quote_schema_name(const string &schema_name) { return quote_identifier(schema_name.empty() ? "public" : schema_name); } // whereas in postgresql itself not specifying a schema means use the first entry in the search_path, but in KS it always means the normal default namespace for the database server in question
+	inline string quote_table_name(const Table &table) { return quote_schema_name(table.schema_name) + '.' + quote_identifier(table.name); }
 	inline bool supports_jsonb_column_type() const { return (server_version >= POSTGRESQL_9_4); }
 	inline bool supports_generated_as_identity() const { return (server_version >= POSTGRESQL_10); }
 	inline bool supports_generated_columns() const { return (server_version >= POSTGRESQL_12); }
@@ -608,7 +609,7 @@ string PostgreSQLClient::column_default(const Table &table, const Column &column
 			return " GENERATED ALWAYS AS IDENTITY";
 
 		case DefaultType::generated_by_sequence:
-			return string(" DEFAULT nextval('" + escape_string_value(quote_identifier(column.default_value)) + "'::regclass)");
+			return string(" DEFAULT nextval('" + escape_string_value(quote_schema_name(table.schema_name) + '.' + quote_identifier(column.default_value)) + "'::regclass)");
 
 		case DefaultType::default_value: {
 			string result(" DEFAULT ");
@@ -711,7 +712,17 @@ struct PostgreSQLColumnLister {
 				column.default_value.substr(column.default_value.length() - 12, 12) == "'::regclass)") {
 				// this is what you got back when you used the historic SERIAL pseudo-type (subsequently replaced by the new standard IDENTITY GENERATED ... AS IDENTITY)
 				column.default_type = DefaultType::generated_by_sequence;
-				column.default_value = unquote_identifier(column.default_value.substr(9, column.default_value.length() - 21));
+				string quoted_sequence_name(column.default_value.substr(9, column.default_value.length() - 21));
+
+				// postgresql requires that sequences belong to the same schema as the table that uses them, so we should always find that the sequence name is prefixed
+				// by the same schema name, if it's not in the default schema.  chop this off here; otherwise when it's applied at the other end, it'll all get quoted
+				// together with the sequence name as a single big identifier, which won't work.  we look for both quoted and unquoted forms rather than trying to guess
+				// whether postgresql would've used the quoted form.
+				if (!table.schema_name.empty()) {
+					quoted_sequence_name = remove_specific_schema_from_identifier(quoted_sequence_name, table.schema_name);
+				}
+
+				column.default_value = unquote_identifier(quoted_sequence_name);
 
 			} else if (column.default_value.substr(0, 6) == "NULL::" && db_type.substr(0, column.default_value.length() - 6) == column.default_value.substr(6)) {
 				// postgresql treats a NULL default as distinct to no default, so we try to respect that by keeping the value as a function,
@@ -884,6 +895,19 @@ struct PostgreSQLColumnLister {
 		return result;
 	}
 
+	inline string remove_specific_schema_from_identifier(const string &escaped, const string &schema_name) {
+		if (escaped.substr(0, table.schema_name.length() + 1) == schema_name + '.') {
+			return escaped.substr(schema_name.length() + 1);
+		}
+
+		string quoted_table_schema_name(quote_identifier(schema_name, '"'));
+		if (escaped.substr(0, quoted_table_schema_name.length() + 1) == quoted_table_schema_name + '.') {
+			return escaped.substr(quoted_table_schema_name.length() + 1);
+		}
+
+		return escaped;
+	}
+
 	inline tuple<string, string> extract_spatial_subtype_and_reference_system(string subtype) {
 		transform(subtype.begin(), subtype.end(), subtype.begin(), [](unsigned char c){ return tolower(c); });
 
@@ -952,7 +976,7 @@ struct PostgreSQLTableLister {
 
 	void operator()(PostgreSQLRow &row) {
 		string schema_name(row.string_at(0));
-		Table table(row.string_at(1));
+		Table table(schema_name == "public" ? "" : schema_name, row.string_at(1));
 
 		PostgreSQLColumnLister column_lister(table, type_map, accepted_types);
 		client.query(
@@ -1080,7 +1104,7 @@ void PostgreSQLClient::populate_database_schema(Database &database, const Column
 		 "WHERE pg_namespace.nspname = ANY (current_schemas(false)) AND "
 		       "pg_class.relnamespace = pg_namespace.oid AND "
 		       "relkind = 'r' "
-		 "ORDER BY pg_relation_size(pg_class.oid) DESC, relname ASC",
+		 "ORDER BY pg_relation_size(pg_class.oid) DESC, pg_namespace.nspname ASC, relname ASC",
 		table_lister);
 }
 

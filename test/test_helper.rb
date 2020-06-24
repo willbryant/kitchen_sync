@@ -270,9 +270,7 @@ module KitchenSync
     end
 
     def clear_schema
-      connection.views.each {|view_name| execute "DROP VIEW #{connection.quote_ident view_name}"}
-      connection.tables.each {|table_name| execute "DROP TABLE #{connection.quote_ident table_name}"}
-      connection.sequence_generators.each {|sequence_name| execute "DROP SEQUENCE #{connection.quote_ident sequence_name}"}
+      connection.clear_schema
     end
 
     def hash_of(rows, hash_algorithm = HashAlgorithm::BLAKE3)

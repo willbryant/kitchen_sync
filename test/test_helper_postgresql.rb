@@ -49,13 +49,23 @@ class PostgreSQLAdapter
     query("SELECT tablename::TEXT FROM pg_tables WHERE schemaname = ANY (current_schemas(false)) ORDER BY tablename").collect {|row| row["tablename"]}
   end
 
+  def tables_by_schema
+    query("SELECT schemaname::TEXT, tablename::TEXT FROM pg_tables WHERE schemaname::TEXT NOT IN ('information_schema', 'pg_catalog') ORDER BY tablename").each_with_object({}) {|row, results| (results[row["schemaname"]] ||= []) << row["tablename"]}
+  end
+
   def views
     query("SELECT viewname::TEXT FROM pg_views WHERE schemaname = ANY (current_schemas(false)) ORDER BY viewname").collect {|row| row["viewname"]}
   end
 
   def sequence_generators
     # from pg 10 on we would be able to be more consistent with the above: query("SELECT sequencename::TEXT FROM pg_sequences WHERE schemaname = ANY (current_schemas(false)) ORDER BY sequencename").collect {|row| row["sequencename"]}
-    query("SELECT sequence_name::TEXT FROM INFORMATION_SCHEMA.SEQUENCES WHERE sequence_schema = ANY (current_schemas(false)) ORDER BY sequence_name").collect {|row| row["sequence_name"]}
+    query("SELECT sequence_schema::TEXT, sequence_name::TEXT FROM INFORMATION_SCHEMA.SEQUENCES WHERE sequence_schema = ANY (current_schemas(false)) ORDER BY sequence_name").collect {|row| [row["sequence_schema"], row["sequence_name"]]}
+  end
+
+  def clear_schema
+    views.each {|view_name| execute "DROP VIEW #{quote_ident view_name}"}
+    tables_by_schema.each {|schema_name, tables| tables.each {|table_name| execute "DROP TABLE #{quote_ident schema_name}.#{quote_ident table_name}"}}
+    sequence_generators.each {|schema_name, sequence_name| execute "DROP SEQUENCE #{quote_ident schema_name}.#{quote_ident sequence_name}"}
   end
 
   def table_primary_key_name(table_name)
@@ -146,15 +156,17 @@ class PostgreSQLAdapter
     SQL
   end
 
-  def table_column_defaults(table_name)
+  def table_column_defaults(table_name, schema_name = nil)
     query(<<-SQL).collect.with_object({}) {|row, results| results[row["attname"]] = row["attdefault"].try!(:gsub, /^'(.*)'::.*$/, '\\1')}
       SELECT attname::TEXT, (CASE WHEN atthasdef THEN pg_get_expr(adbin, adrelid) ELSE NULL END) AS attdefault
         FROM pg_attribute
         JOIN pg_class ON attrelid = pg_class.oid
+        JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid
         LEFT JOIN pg_attrdef ON adrelid = attrelid AND adnum = attnum
        WHERE attnum > 0 AND
              NOT attisdropped AND
-             relname = '#{table_name}'
+             relname = '#{table_name}' AND
+             pg_namespace.nspname = #{schema_name ? "'#{escape schema_name}'" : "ANY (current_schemas(false))"}
        ORDER BY attnum
     SQL
   end
@@ -372,13 +384,17 @@ class PostgreSQLAdapter
 SQL
   end
 
-  def create_private_schema_adapterspecifictbl
-    execute "DROP SCHEMA IF EXISTS private_schema CASCADE"
-    execute "CREATE SCHEMA private_schema"
-    create_adapterspecifictbl(name_prefix: "private_schema.")
+  def private_schema_name
+    "private_schema"
   end
 
-  def adapterspecifictbl_def(compatible_with: self)
+  def create_private_schema_adapterspecifictbl
+    execute "DROP SCHEMA IF EXISTS #{private_schema_name} CASCADE"
+    execute "CREATE SCHEMA #{private_schema_name}"
+    create_adapterspecifictbl(name_prefix: "#{private_schema_name}.")
+  end
+
+  def adapterspecifictbl_def(compatible_with: self, schema_name: nil)
     { "name"    => '"postgresql"tbl',
       "columns" => [
         {"name" => "pri",                     "column_type" => ColumnType::SINT_32BIT, "nullable" => false}.merge(supports_generated_as_identity? ? {"generated_always_as_identity" => ""} : {"generated_by_sequence" => identity_default_name('"postgresql"tbl', 'pri')}),
@@ -400,7 +416,8 @@ SQL
       ].compact,
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
-      "keys" => [] }
+      "keys" => [] }.merge(
+      schema_name ? { "schema_name" => schema_name } : {})
   end
 
   def adapterspecifictbl_row

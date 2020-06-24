@@ -108,6 +108,7 @@ enum class PrimaryKeyType {
 };
 
 struct Table {
+	string schema_name; // only used on databases supporting multiple schema, and only set when not the default (eg. "public") for that database server
 	string name;
 	Columns columns;
 	ColumnIndices primary_key_columns;
@@ -117,13 +118,13 @@ struct Table {
 	// the following member isn't serialized currently (could be, but not required):
 	string where_conditions;
 
-	inline Table(const string &name): name(name) {}
+	inline Table(const string &schema_name, const string &name): schema_name(schema_name), name(name) {}
 	inline Table() {}
 
-	inline const string &id_from_name() const { return name; }
+	inline const string id_from_name() const { return (schema_name.empty() ? "" : escape_name_for_id(schema_name) + '.') + escape_name_for_id(name); }
 
-	inline bool operator <(const Table &other) const { return (name < other.name); }
-	inline bool operator ==(const Table &other) const { return (name == other.name && columns == other.columns && same_primary_key_as(other) && keys == other.keys); }
+	inline bool operator <(const Table &other) const { return (schema_name == other.schema_name ? name < other.name : schema_name < other.schema_name); }
+	inline bool operator ==(const Table &other) const { return (schema_name == other.schema_name && name == other.name && columns == other.columns && same_primary_key_as(other) && keys == other.keys); }
 	inline bool operator !=(const Table &other) const { return (!(*this == other)); }
 	size_t index_of_column(const string &name) const;
 
@@ -135,6 +136,14 @@ protected:
 		size_t this_explicit_columns = primary_key_type == PrimaryKeyType::explicit_primary_key ? primary_key_columns.size() : 0;
 		size_t that_explicit_columns = other.primary_key_type == PrimaryKeyType::explicit_primary_key ? other.primary_key_columns.size() : 0;
 		return (this_explicit_columns == that_explicit_columns && equal(primary_key_columns.begin(), primary_key_columns.begin() + this_explicit_columns, other.primary_key_columns.begin()));
+	}
+
+	inline string escape_name_for_id(const string &str) const {
+		string result(str);
+		for (size_t pos = 0; (pos = result.find(".\\", pos)) != string::npos; pos += 2) {
+			result.insert(pos, 1, '\\');
+		}
+		return result;
 	}
 };
 

@@ -520,7 +520,17 @@ string &MySQLClient::append_quoted_column_value_to(string &result, const Column 
 }
 
 void MySQLClient::convert_unsupported_database_schema(Database &database) {
+	set<string> table_names_seen;
+
 	for (Table &table : database.tables) {
+		// postgresql supports multiple schemas within a database; mysql doesn't.  in some respects mysql's databases
+		// are implemented more like postgresql's schemas, but not in others; we can't assume anything in particular
+		// about how the user would want to break out multiple schemas, so until told otherwise we must put everything
+		// into the target database - it'd certainly be a big surprise if we wrote to any other database than that chosen.
+		if (table_names_seen.count(table.name)) throw runtime_error("Conflicting tables named " + table.name + " present in multiple schemas");
+		table_names_seen.insert(table.name);
+		table.schema_name.clear();
+
 		for (Column &column : table.columns) {
 			// postgresql allows numeric with no precision or scale specification and preserves the given input data
 			// up to an implementation-defined precision and scale limit; mysql doesn't, and silently converts
@@ -1139,7 +1149,7 @@ struct MySQLTableLister {
 	inline MySQLTableLister(MySQLClient &client, Database &database, const ColumnTypeList &accepted_types): client(client), database(database), accepted_types(accepted_types) {}
 
 	inline void operator()(MySQLRow &row) {
-		Table table(row.string_at(0));
+		Table table("" /* schema */, row.string_at(0));
 
 		MySQLColumnLister column_lister(client, table, accepted_types);
 		client.query("SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, " + generation_expression_column() + ", " + srid_column() + ", COLUMN_COMMENT, " + json_check_constraint_expression() + " AS JSON_CHECK_CONSTRAINT FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = SCHEMA() AND TABLE_NAME = '" + client.escape_string_value(table.name) + "' ORDER BY ORDINAL_POSITION", column_lister);

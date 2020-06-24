@@ -135,7 +135,13 @@ void operator << (Packer<OutputStream> &packer, const Table &table) {
 		legacy_serialize(packer, table);
 		return;
 	}
-	pack_map_length(packer, 5);
+	if (table.schema_name.empty()) {
+		pack_map_length(packer, 5);
+	} else {
+		pack_map_length(packer, 6);
+		packer << string("schema_name");
+		packer << table.schema_name;
+	}
 	packer << string("name");
 	packer << table.name;
 	packer << string("columns");
@@ -279,7 +285,9 @@ void operator >> (Unpacker<InputStream> &unpacker, Table &table) {
 	while (map_length--) {
 		string attr_key = unpacker.template next<string>();
 
-		if (attr_key == "name") {
+		if (attr_key == "schema_name") {
+			unpacker >> table.schema_name;
+		} else if (attr_key == "name") {
 			unpacker >> table.name;
 		} else if (attr_key == "columns") {
 			unpacker >> table.columns;

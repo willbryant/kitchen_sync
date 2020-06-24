@@ -110,7 +110,15 @@ void apply_filters(const TableFilters &table_filters, Tables &tables) {
 	map<string, Table*> tables_by_id;
 
 	for (Table &table : tables) {
-		tables_by_id[table.name] = &table;
+		// we use id_from_name here as we want to include the schema name in the key we look for,
+		// as tables with the same name may be present in multiple schemas.  this is simply the
+		// table name itself when there is no schema name, unless the table name includes a period
+		// itself (which is very rare since that's a terrible idea!), and when there is a schema
+		// name it's the normal schemaname.tablename format.  the only people who would be offended
+		// by this behavior are people who expect tables in other schemas that are in the schema
+		// search path to get filtered even without putting the schema name in the filter file, but
+		// we can't really have it both ways.
+		tables_by_id[table.id_from_name()] = &table;
 	}
 
 	for (auto const &it : table_filters) {
