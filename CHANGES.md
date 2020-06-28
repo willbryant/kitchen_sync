@@ -1,6 +1,12 @@
 Changelog
 =========
 
+2.4
+---
+
+* Draft support for multiple schemas on PostgreSQL, including syncing tables that have the same name in multiple schemas, and creating them in the appropriate schema.
+* Fix resetting sequences on PostgreSQL tables that need quoting.
+
 2.3
 ---
 
