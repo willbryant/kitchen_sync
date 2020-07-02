@@ -927,8 +927,18 @@ struct MySQLColumnLister {
 		} else if (db_type == "float") {
 			column.column_type = ColumnType::float_32bit;
 
+		} else if (db_type.substr(0, 6) == "float(") {
+			column.column_type = ColumnType::float_32bit;
+			column.size = extract_column_length(db_type);
+			column.scale = extract_column_scale(db_type);
+
 		} else if (db_type == "double") {
 			column.column_type = ColumnType::float_64bit;
+
+		} else if (db_type.substr(0, 7) == "double(") {
+			column.column_type = ColumnType::float_64bit;
+			column.size = extract_column_length(db_type);
+			column.scale = extract_column_scale(db_type);
 
 		} else if (db_type == "tinyblob") {
 			column.column_type = ColumnType::binary;

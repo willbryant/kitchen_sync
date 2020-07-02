@@ -439,15 +439,21 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 				column.column_type = ColumnType::sint_32bit;
 			}
 
+			// postgresql's doesn't support mysql's FLOAT(M,D)/DOUBLE(M,D) extension; they'll be ignored
+			// by the type mapping code, but zero those fields here so the schema looks equal to schema_matcher
+			if (column.column_type == ColumnType::float_32bit || column.column_type == ColumnType::float_64bit) {
+				column.size = column.scale = 0;
+			}
+
+			// postgresql doesn't have different sized TEXT/BLOB columns, they're all equivalent to mysql's biggest type
 			if (column.column_type == ColumnType::text || column.column_type == ColumnType::binary) {
-				// postgresql doesn't have different sized TEXT/BLOB columns, they're all equivalent to mysql's biggest type
 				column.size = 0;
 			}
 
+			// postgresql requires that you create a material type for each enumeration, whereas mysql just lists the
+			// possible values on the column itself.  we don't currently implement creation/maintainance of these custom
+			// types ourselves - users need to do that - but we need to find the name of the type they've (hopefully) created.
 			if (column.column_type == ColumnType::enumeration && column.subtype.empty()) {
-				// postgresql requires that you create a material type for each enumeration, whereas mysql just lists the
-				// possible values on the column itself.  we don't currently implement creation/maintainance of these custom
-				// types ourselves - users need to do that - but we need to find the name of the type they've (hopefully) created.
 				for (auto it = type_map.enum_type_values.begin(); it != type_map.enum_type_values.end() && column.subtype.empty(); ++it) {
 					if (it->second == column.enumeration_values) {
 						column.subtype = it->first;

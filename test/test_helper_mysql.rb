@@ -305,6 +305,7 @@ class MysqlAdapter
         fixedbinary3 BINARY(3),
         `select` INT,
         ```quoted``` INT,
+        dbllen DOUBLE(12, 4),
         PRIMARY KEY(pri),
         FOREIGN KEY (parent_id) REFERENCES ```mysql``tbl`(pri) ON DELETE RESTRICT)
 SQL
@@ -333,6 +334,7 @@ SQL
         {"name" => "fixedbinary3",          "column_type" => compatible_with.is_a?(MysqlAdapter) ? ColumnType::BINARY_FIXED     : ColumnType::BINARY, "size" => 3},
         {"name" => "select",                "column_type" => ColumnType::SINT_32BIT},
         {"name" => "`quoted`",              "column_type" => ColumnType::SINT_32BIT},
+        {"name" => "dbllen",                "column_type" => ColumnType::FLOAT_64BIT, "size" => 12, "scale" => 4},
       ].compact,
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
