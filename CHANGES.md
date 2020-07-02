@@ -1,15 +1,17 @@
 Changelog
 =========
 
+2.5
+---
+* Support MySQL/MariaDB's nonstandard FLOAT(M,D) and DOUBLE(M,D) syntax.
+
 2.4
 ---
-
 * Draft support for multiple schemas on PostgreSQL, including syncing tables that have the same name in multiple schemas, and creating them in the appropriate schema.
 * Fix resetting sequences on PostgreSQL tables that need quoting.
 
 2.3
 ---
-
 * Support specifying the SSH port using `--via servername:port` syntax.
 * Fix incompatibility with v1 'from' ends when using multiple workers.
 * Work around compatibility problem when using the MySQL client library with MariaDB servers, causing problems determining schema defaults etc.
