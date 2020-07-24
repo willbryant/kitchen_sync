@@ -111,7 +111,7 @@ struct Options {
 	}
 
 	void version() {
-		cout << "ks version: " << ks_version() << endl;
+		cout << "ks version: " << KS_VERSION << endl;
 	}
 
 	inline bool parse(int argc, char *argv[]) {
@@ -138,7 +138,7 @@ struct Options {
 					{ "verbose",					no_argument,		NULL,	'V' },
 					{ "progress",					no_argument,		NULL,	'p' },
 					{ "debug",						no_argument,		NULL,	'd' },
-					{ "version",					no_argument,    NULL, 'n' },
+					{ "version",					no_argument,		NULL, 'n' },
 					{ NULL,							0,					NULL,	0 },
 				};
 
