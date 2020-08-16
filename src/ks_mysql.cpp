@@ -201,15 +201,6 @@ public:
 		}
 	}
 
-	template <typename Packer>
-	void pack_row_into(Packer &packer) const {
-		pack_array_length(packer, n_columns());
-
-		for (size_t column_number = 0; column_number < n_columns(); column_number++) {
-			pack_column_into(packer, column_number);
-		}
-	}
-
 private:
 	MySQLRes &_res;
 	MYSQL_ROW _row;

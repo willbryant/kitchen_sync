@@ -17,6 +17,15 @@
 #include "message_pack/pack.h"
 #include "message_pack/packed_value.h"
 
+template <typename Packer, typename DatabaseRow>
+void pack_row_into(Packer &packer, DatabaseRow &row) {
+	pack_array_length(packer, row.n_columns());
+
+	for (size_t column_number = 0; column_number < row.n_columns(); column_number++) {
+		row.pack_column_into(packer, column_number);
+	}
+}
+
 struct ValueCollector {
 	ValueCollector() {}
 
@@ -39,7 +48,7 @@ struct RowPacker {
 
 	template <typename DatabaseRow>
 	void operator()(const DatabaseRow &row) {
-		row.pack_row_into(packer);
+		pack_row_into(packer, row);
 	}
 
 	Packer<OutputStream> &packer;
@@ -102,7 +111,7 @@ struct RowHasher {
 
 	template <typename DatabaseRow>
 	inline void operator()(const DatabaseRow &row) {
-		row.pack_row_into(packer);
+		pack_row_into(packer, row);
 	}
 
 	inline void write(const uint8_t *buf, size_t bytes) {

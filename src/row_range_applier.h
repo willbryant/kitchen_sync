@@ -97,7 +97,7 @@ struct RowRangeApplier {
 
 	void operator()(const typename DatabaseClient::RowType &database_row) {
 		PackedRow row;
-		database_row.pack_row_into(row);
+		pack_row_into(row, database_row);
 		prev_key = primary_key_of(row);
 
 		RowsByPrimaryKey::iterator source_row = source_rows.find(prev_key);
