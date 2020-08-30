@@ -6,8 +6,8 @@
 
 struct PackedValue: public PackedBuffer {
 	inline size_t encoded_size() const { return used; }
-	inline uint8_t leader() const { return (used ? *encoded_bytes : 0); }
-	inline const uint8_t *data() const { return encoded_bytes; }
+	inline uint8_t leader() const { return (used ? *buffer() : 0); }
+	inline const uint8_t *data() const { return buffer(); }
 
 	inline bool is_nil() const { return (leader() == MSGPACK_NIL); }
 
