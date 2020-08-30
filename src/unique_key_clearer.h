@@ -3,6 +3,7 @@
 
 #include "base_sql.h"
 #include "encode_packed.h"
+#include "message_pack/packed_row.h"
 
 template <typename DatabaseClient>
 struct UniqueKeyClearer {
