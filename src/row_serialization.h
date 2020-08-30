@@ -80,7 +80,7 @@ inline bool operator != (const string &str, const Hash &hash) {
 }
 
 struct RowHasher {
-	RowHasher(HashAlgorithm hash_algorithm): hash_algorithm(hash_algorithm), size(0), finished(false), row_packer(*this) {
+	RowHasher(HashAlgorithm hash_algorithm): hash_algorithm(hash_algorithm), size(0), finished(false), packer(*this) {
 		switch (hash_algorithm) {
 			case HashAlgorithm::md5:
 				MD5_Init(&mdctx);
@@ -102,7 +102,7 @@ struct RowHasher {
 
 	template <typename DatabaseRow>
 	inline void operator()(const DatabaseRow &row) {
-		row.pack_row_into(row_packer);
+		row.pack_row_into(packer);
 	}
 
 	inline void write(const uint8_t *buf, size_t bytes) {
@@ -161,7 +161,7 @@ struct RowHasher {
 		blake3_hasher blake3_state;
 	};
 	size_t size;
-	Packer<RowHasher> row_packer;
+	Packer<RowHasher> packer;
 	Hash hash;
 	bool finished;
 };

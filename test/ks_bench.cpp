@@ -11,9 +11,9 @@ double benchmark_one(const T &value, size_t columns, size_t rows, size_t reps, H
 	for (size_t rep = 0; rep < reps; rep++) {
 		RowHasher hasher(hash_algorithm);
 		for (size_t row = 0; row < rows; row++) {
-			pack_array_length(hasher.row_packer, columns);
+			pack_array_length(hasher.packer, columns);
 			for (size_t column = 0; column < columns; column++) {
-				hasher.row_packer << value;
+				hasher.packer << value;
 			}
 		}
 		Hash hash(hasher.finish());
