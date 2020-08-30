@@ -170,11 +170,4 @@ struct PackedValueReadStream {
 	const uint8_t *data;
 };
 
-template <typename T>
-inline PackedValue &operator <<(PackedValue &value, const T &obj) {
-	Packer<PackedValue> packer(value);
-	packer << obj;
-	return value;
-}
-
 #endif

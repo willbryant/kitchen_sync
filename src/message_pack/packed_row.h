@@ -9,7 +9,8 @@ typedef vector<PackedValue> PackedRow;
 template <typename T>
 inline PackedRow &operator <<(PackedRow &row, const T &obj) {
 	row.resize(row.size() + 1);
-	row.back() << obj;
+	Packer<PackedValue> packer(row.back());
+	packer << obj;
 	return row;
 }
 

@@ -25,7 +25,8 @@ struct ValueCollector {
 		values.resize(row.n_columns());
 		for (size_t i = 0; i < row.n_columns(); i++) {
 			values[i].clear();
-			row.pack_column_into(values[i], i);
+			Packer<PackedValue> packer(values[i]);
+			row.pack_column_into(packer, i);
 		}
 	}
 
@@ -175,7 +176,8 @@ struct RowLastKey {
 		last_key.resize(primary_key_columns.size());
 		for (size_t i = 0; i < primary_key_columns.size(); i++) {
 			last_key[i].clear();
-			row.pack_column_into(last_key[i], primary_key_columns[i]);
+			Packer<PackedValue> packer(last_key[i]);
+			row.pack_column_into(packer, primary_key_columns[i]);
 		}
 	}
 
