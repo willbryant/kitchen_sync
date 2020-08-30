@@ -164,6 +164,9 @@ struct PackedValueReadStream {
 		data += bytes;
 	}
 
+	inline uint8_t peek() const { return (data ? *data : 0); }
+	inline uint8_t next() { return *data++; }
+
 	const uint8_t *data;
 };
 

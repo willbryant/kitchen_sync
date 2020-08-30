@@ -4,19 +4,29 @@
 #include "message_pack/copy_packed.h"
 
 template <typename DatabaseClient>
-string &sql_encode_and_append_packed_value_to(string &result, DatabaseClient &client, const Column &column, const PackedValue &value) {
-	if (value.is_nil())		return result += "NULL";
-	if (value.is_false())	return result += "false";
-	if (value.is_true())	return result += "true";
+string &sql_encode_and_append_packed_value_to(string &result, DatabaseClient &client, const Column &column, PackedValueReadStream &stream) {
+	uint8_t leader = stream.peek();
 
-	uint8_t leader = value.leader();
+	switch (leader) {
+		case MSGPACK_NIL:
+			stream.next();
+			return result += "NULL";
+
+		case MSGPACK_FALSE:
+			stream.next();
+			return result += "false";
+
+		case MSGPACK_TRUE:
+			stream.next();
+			return result += "true";
+	}
 
 	if ((leader >= MSGPACK_POSITIVE_FIXNUM_MIN && leader <= MSGPACK_POSITIVE_FIXNUM_MAX) ||
 		(leader >= MSGPACK_NEGATIVE_FIXNUM_MIN && leader <= MSGPACK_NEGATIVE_FIXNUM_MAX)) {
+		stream.next();
 		return result += to_string((int)(int8_t)leader); // up-cast to avoid int8_t being interpreted as char
 	}
 
-	PackedValueReadStream stream(value);
 	Unpacker<PackedValueReadStream> unpacker(stream);
 
 	switch (leader) {
@@ -64,6 +74,12 @@ string &sql_encode_and_append_packed_value_to(string &result, DatabaseClient &cl
 			client.append_quoted_column_value_to(result, column, unpacker.template next<string>());
 			return result;
 	}
+}
+
+template <typename DatabaseClient>
+string &sql_encode_and_append_packed_value_to(string &result, DatabaseClient &client, const Column &column, const PackedValue &value) {
+	PackedValueReadStream stream(value);
+	return sql_encode_and_append_packed_value_to(result, client, column, stream);
 }
 
 #endif
