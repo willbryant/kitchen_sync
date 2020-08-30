@@ -6,6 +6,7 @@
 
 #include "schema.h"
 #include "encode_packed.h"
+#include "packed_key.h"
 
 using namespace std;
 
@@ -78,12 +79,21 @@ string values_list(DatabaseClient &client, const Table &table, const ColumnValue
 		return "(NULL)";
 	}
 
+	PackedValueReadStream stream(values.data());
+	Unpacker<PackedValueReadStream> unpacker(stream);
+
+	size_t size = unpacker.next_array_length();
+	if (size != table.primary_key_columns.size()) { // must move the read stream past the encoded array length anyway, so we might as well check it
+		backtrace();
+		throw runtime_error("read incorrect element count from key: " + to_string(size) + " vs " + to_string(table.primary_key_columns.size()));
+	}
+
 	string result("(");
-	for (size_t n = 0; n < table.primary_key_columns.size(); n++) {
+	for (size_t n = 0; n < size; n++) {
 		if (n > 0) {
 			result += ',';
 		}
-		sql_encode_and_append_packed_value_to(result, client, table.columns[table.primary_key_columns[n]], values[n]);
+		sql_encode_and_append_packed_value_to(result, client, table.columns[table.primary_key_columns[n]], stream);
 	}
 	result += ")";
 	return result;

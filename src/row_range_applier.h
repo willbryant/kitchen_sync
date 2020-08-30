@@ -43,9 +43,11 @@ struct RowRangeApplier {
 
 	ColumnValues primary_key_of(const PackedRow &row) {
 		ColumnValues primary_key;
-		primary_key.reserve(table.primary_key_columns.size());
+		Packer<ColumnValues> packer(primary_key);
+		pack_array_length(packer, table.primary_key_columns.size());
 		for (size_t column_number : table.primary_key_columns) {
-			primary_key.push_back(row[column_number]);
+			const PackedValue &val(row[column_number]);
+			packer.write_bytes(val.data(), val.encoded_size());
 		}
 		return primary_key;
 	}

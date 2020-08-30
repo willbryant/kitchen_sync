@@ -157,6 +157,7 @@ Packer<Stream> &operator <<(Packer<Stream> &packer, const PackedValue &obj) {
 }
 
 struct PackedValueReadStream {
+	inline PackedValueReadStream(const uint8_t *data): data(data) {}
 	inline PackedValueReadStream(const PackedValue &value): data(value.data()) {}
 
 	inline void read(uint8_t *dest, size_t bytes) {

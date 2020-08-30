@@ -10,15 +10,21 @@ bool primary_key_subdividable(const Table &table) {
 
 template <typename T>
 inline T read_single_value(const ColumnValues &values) {
-	PackedValueReadStream stream(values[0]);
+	PackedValueReadStream stream(values.data());
 	Unpacker<PackedValueReadStream> unpacker(stream);
+	size_t size = unpacker.next_array_length();
+	if (size != 1) { // must move the read stream past the encoded array length anyway, so we might as well check it
+		backtrace();
+		throw runtime_error("read incorrect element count from key: " + to_string(size) + " vs " + to_string(1));
+	}
 	return unpacker.template next<T>();
 }
 
 template <typename T>
 inline ColumnValues pack_single_value(const T &value) {
-	ColumnValues result(1);
-	Packer<PackedValue> packer(result[0]);
+	ColumnValues result;
+	Packer<ColumnValues> packer(result);
+	pack_array_length(packer, 1);
 	packer << value;
 	return result;
 }

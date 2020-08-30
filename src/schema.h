@@ -12,7 +12,6 @@
 using namespace std;
 
 typedef vector<size_t> ColumnIndices;
-typedef vector<PackedValue> ColumnValues;
 typedef set<ColumnType> ColumnTypeList;
 
 enum class DefaultType {

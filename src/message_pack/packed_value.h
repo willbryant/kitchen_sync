@@ -18,11 +18,6 @@ struct PackedValue: public PackedBuffer {
 	inline bool operator !=(const PackedValue &other) const {
 		return (encoded_size() != other.encoded_size() || memcmp(data(), other.data(), encoded_size()) != 0);
 	}
-
-	inline bool operator <(const PackedValue &other) const {
-		if (encoded_size() != other.encoded_size()) return (encoded_size() < other.encoded_size());
-		return (memcmp(data(), other.data(), encoded_size()) < 0);
-	}
 };
 
 #endif

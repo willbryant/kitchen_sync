@@ -16,6 +16,7 @@
 #include "hash_algorithm.h"
 #include "message_pack/pack.h"
 #include "message_pack/packed_value.h"
+#include "packed_key.h"
 
 template <typename Packer, typename DatabaseRow>
 void pack_row_into(Packer &packer, DatabaseRow &row) {
@@ -31,15 +32,12 @@ struct ValueCollector {
 
 	template <typename DatabaseRow>
 	inline void operator()(const DatabaseRow &row) {
-		values.resize(row.n_columns());
-		for (size_t i = 0; i < row.n_columns(); i++) {
-			values[i].clear();
-			Packer<PackedValue> packer(values[i]);
-			row.pack_column_into(packer, i);
-		}
+		values.clear();
+		Packer<ColumnValues> packer(values);
+		pack_row_into(packer, row);
 	}
 
-	vector<PackedValue> values;
+	ColumnValues values;
 };
 
 template <typename OutputStream>
@@ -182,16 +180,16 @@ struct RowLastKey {
 	template <typename DatabaseRow>
 	inline void operator()(const DatabaseRow &row) {
 		// keep its primary key, in case this turns out to be the last row, in which case we'll need to send it to the other end
-		last_key.resize(primary_key_columns.size());
-		for (size_t i = 0; i < primary_key_columns.size(); i++) {
-			last_key[i].clear();
-			Packer<PackedValue> packer(last_key[i]);
-			row.pack_column_into(packer, primary_key_columns[i]);
+		last_key.clear();
+		Packer<ColumnValues> packer(last_key);
+		pack_array_length(packer, primary_key_columns.size());
+		for (size_t column_number : primary_key_columns) {
+			row.pack_column_into(packer, column_number);
 		}
 	}
 
 	const vector<size_t> &primary_key_columns;
-	vector<PackedValue> last_key;
+	ColumnValues last_key;
 };
 
 struct RowHasherAndLastKey: RowHasher, RowLastKey {
