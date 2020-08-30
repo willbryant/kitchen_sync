@@ -6,32 +6,32 @@
 #include "unpack.h"
 
 template <typename Stream>
-uint8_t *copy_bytes(Unpacker<Stream> &unpacker, PackedValue &obj, size_t bytes) {
+uint8_t *copy_bytes(Unpacker<Stream> &unpacker, PackedBuffer &obj, size_t bytes) {
 	uint8_t *start_of_data = obj.extend(bytes);
 	unpacker.read_bytes(start_of_data, bytes);
 	return start_of_data;
 }
 
 template <typename Stream>
-uint8_t copy_and_read_uint8_t(Unpacker<Stream> &unpacker, PackedValue &obj) {
+uint8_t copy_and_read_uint8_t(Unpacker<Stream> &unpacker, PackedBuffer &obj) {
 	uint8_t *p = copy_bytes(unpacker, obj, sizeof(uint8_t));
 	return *p;
 }
 
 template <typename Stream>
-uint16_t copy_and_read_uint16_t(Unpacker<Stream> &unpacker, PackedValue &obj) {
+uint16_t copy_and_read_uint16_t(Unpacker<Stream> &unpacker, PackedBuffer &obj) {
 	uint8_t *p = copy_bytes(unpacker, obj, sizeof(uint16_t));
 	return (*p << 8) + (*(p + 1)); // we can't cast to uint16_t* and use ntohs because the pointer may not be aligned, which would invoke undefined behavior
 }
 
 template <typename Stream>
-uint32_t copy_and_read_uint32_t(Unpacker<Stream> &unpacker, PackedValue &obj) {
+uint32_t copy_and_read_uint32_t(Unpacker<Stream> &unpacker, PackedBuffer &obj) {
 	uint8_t *p = copy_bytes(unpacker, obj, sizeof(uint32_t));
 	return (*p << 24) + (*(p + 1) << 16) + (*(p + 2) << 8) + (*(p + 3)); // we can't cast to uint32_t* and use ntohl because the pointer may not be aligned, which would invoke undefined behavior
 }
 
 template <typename Stream>
-void copy_object(Unpacker<Stream> &unpacker, PackedValue &obj) {
+void copy_object(Unpacker<Stream> &unpacker, PackedBuffer &obj) {
 	uint8_t leader = *copy_bytes(unpacker, obj, 1);
 
 	if ((leader == MSGPACK_NIL || leader == MSGPACK_FALSE || leader == MSGPACK_TRUE) ||
@@ -129,14 +129,14 @@ void copy_object(Unpacker<Stream> &unpacker, PackedValue &obj) {
 }
 
 template <typename Stream>
-void copy_array_members(Unpacker<Stream> &unpacker, PackedValue &obj, size_t size) {
+void copy_array_members(Unpacker<Stream> &unpacker, PackedBuffer &obj, size_t size) {
 	while (size--) {
 		copy_object(unpacker, obj);
 	}
 }
 
 template <typename Stream>
-void copy_map_members(Unpacker<Stream> &unpacker, PackedValue &obj, size_t size) {
+void copy_map_members(Unpacker<Stream> &unpacker, PackedBuffer &obj, size_t size) {
 	while (size--) {
 		copy_object(unpacker, obj);
 		copy_object(unpacker, obj);
