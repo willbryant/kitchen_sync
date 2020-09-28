@@ -1,6 +1,11 @@
 Changelog
 =========
 
+2.6
+---
+* Add `--version` option. Thanks @proby.
+* Revert 2.0 change 'Optimise inserts on MySQL/MariaDB by turning off `unique_key_checks` while syncing', suspected as the cause of a replication problem user field report.
+
 2.5
 ---
 * Support MySQL/MariaDB's nonstandard FLOAT(M,D) and DOUBLE(M,D) syntax.

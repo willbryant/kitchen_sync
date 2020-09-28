@@ -4,7 +4,7 @@
 #include <sstream>
 
 #define KS_MAJOR_VERSION 2
-#define KS_MINOR_VERSION 3
+#define KS_MINOR_VERSION 6
 #define KS_MAINT_VERSION 0
 
 inline string ks_version() {
