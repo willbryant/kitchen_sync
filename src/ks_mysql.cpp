@@ -769,15 +769,15 @@ string MySQLClient::key_definition(const Table &table, const Key &key) {
 	string result;
 	switch (key.key_type) {
 		case KeyType::standard_key:
-			result = "CREATE INDEX";
+			result = "CREATE INDEX ";
 			break;
 
 		case KeyType::unique_key:
-			result = "CREATE UNIQUE INDEX";
+			result = "CREATE UNIQUE INDEX ";
 			break;
 
 		case KeyType::spatial_key:
-			result = "CREATE SPATIAL INDEX";
+			result = "CREATE SPATIAL INDEX ";
 			break;
 	}
 	result += quote_identifier(key.name);
