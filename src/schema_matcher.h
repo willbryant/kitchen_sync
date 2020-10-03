@@ -2,38 +2,48 @@
 #define SCHEMA_MATCHER_H
 
 #include <algorithm>
+#include <functional>
 #include <list>
 
 #include "database_client_traits.h"
 #include "schema.h"
 
 typedef list<string> Statements;
+typedef function<void(const string&)> StatementFunction;
+
+StatementFunction append_to(Statements &statements) {
+	return [&statements](const string &statement) { statements.push_back(statement); };
+}
+
+StatementFunction prepend_to(Statements &statements) {
+	return [&statements](const string &statement) { statements.push_front(statement); };
+}
 
 // keys
 template <typename DatabaseClient, bool = is_base_of<GlobalKeys, DatabaseClient>::value>
 struct DropKeyStatements {
-	static void add_to(Statements &statements, DatabaseClient &client, const Table &table, const Key &key) {
+	static void generate(DatabaseClient &client, const Table &table, const Key &key, StatementFunction f) {
 		string result("ALTER TABLE ");
 		result += client.quote_table_name(table);
 		result += " DROP INDEX ";
 		result += client.quote_identifier(key.name);
-		statements.push_front(result);
+		f(result);
 	}
 };
 
 template <typename DatabaseClient>
 struct DropKeyStatements <DatabaseClient, true> {
-	static void add_to(Statements &statements, DatabaseClient &client, const Table &table, const Key &key) {
+	static void generate(DatabaseClient &client, const Table &table, const Key &key, StatementFunction f) {
 		string result("DROP INDEX ");
 		result += client.quote_identifier(key.name);
-		statements.push_front(result);
+		f(result);
 	}
 };
 
 template <typename DatabaseClient>
 struct CreateKeyStatements {
-	static void add_to(Statements &statements, DatabaseClient &client, const Table &table, const Key &key) {
-		statements.push_back(client.key_definition(table, key));
+	static void generate(DatabaseClient &client, const Table &table, const Key &key, StatementFunction f) {
+		f(client.key_definition(table, key));
 	}
 };
 
@@ -43,23 +53,23 @@ struct CreateKeyStatements {
 
 template <typename DatabaseClient, bool = is_base_of<SequenceColumns, DatabaseClient>::value>
 struct CreateTableSequencesStatements {
-	static void add_to(Statements &statements, DatabaseClient &client, const Table &table) {
+	static void generate(DatabaseClient &client, const Table &table, StatementFunction f) {
 		/* nothing required */
 	}
 };
 
 template <typename DatabaseClient>
 struct CreateTableSequencesStatements <DatabaseClient, true> {
-	static void add_to(Statements &statements, DatabaseClient &client, const Table &table) {
+	static void generate(DatabaseClient &client, const Table &table, StatementFunction f) {
 		for (const Column &column : table.columns) {
 			if (column.default_type == DefaultType::generated_by_sequence) {
 				string result("DROP SEQUENCE IF EXISTS ");
 				result += client.quote_schema_name(table.schema_name) + '.' + client.quote_identifier(column.default_value);
-				statements.push_back(result);
+				f(result);
 
 				result = "CREATE SEQUENCE ";
 				result += client.quote_schema_name(table.schema_name) + '.' + client.quote_identifier(column.default_value);
-				statements.push_back(result);
+				f(result);
 			}
 		}
 	}
@@ -67,14 +77,14 @@ struct CreateTableSequencesStatements <DatabaseClient, true> {
 
 template <typename DatabaseClient, bool = is_base_of<SequenceColumns, DatabaseClient>::value>
 struct OwnTableSequencesStatements {
-	static void add_to(Statements &statements, DatabaseClient &client, const Table &table) {
+	static void generate(DatabaseClient &client, const Table &table, StatementFunction f) {
 		/* nothing required */
 	}
 };
 
 template <typename DatabaseClient>
 struct OwnTableSequencesStatements <DatabaseClient, true> {
-	static void add_to(Statements &statements, DatabaseClient &client, const Table &table) {
+	static void generate(DatabaseClient &client, const Table &table, StatementFunction f) {
 		for (const Column &column : table.columns) {
 			if (column.default_type == DefaultType::generated_by_sequence) {
 				string result("ALTER SEQUENCE ");
@@ -83,7 +93,7 @@ struct OwnTableSequencesStatements <DatabaseClient, true> {
 				result += client.quote_table_name(table);
 				result += '.';
 				result += client.quote_identifier(column.name);
-				statements.push_back(result);
+				f(result);
 			}
 		}
 	}
@@ -92,15 +102,15 @@ struct OwnTableSequencesStatements <DatabaseClient, true> {
 // tables
 template <typename DatabaseClient>
 struct DropTableStatements {
-	static void add_to(Statements &statements, DatabaseClient &client, const Table &table) {
-		statements.emplace_back("DROP TABLE " + client.quote_table_name(table));
+	static void generate(DatabaseClient &client, const Table &table, StatementFunction f) {
+		f("DROP TABLE " + client.quote_table_name(table));
 	}
 };
 
 template <typename DatabaseClient>
 struct CreateTableStatements {
-	static void add_to(Statements &statements, DatabaseClient &client, const Table &table) {
-		CreateTableSequencesStatements<DatabaseClient>::add_to(statements, client, table);
+	static void generate(DatabaseClient &client, const Table &table, StatementFunction f) {
+		CreateTableSequencesStatements<DatabaseClient>::generate(client, table, f);
 
 		string result("CREATE TABLE ");
 		result += client.quote_table_name(table);
@@ -113,23 +123,23 @@ struct CreateTableStatements {
 			result += columns_tuple(client, table.columns, table.primary_key_columns);
 		}
 		result += ")";
-		statements.push_back(result);
+		f(result);
 
 		for (const Key &key : table.keys) {
-			CreateKeyStatements<DatabaseClient>::add_to(statements, client, table, key);
+			CreateKeyStatements<DatabaseClient>::generate(client, table, key, f);
 		}
 
-		OwnTableSequencesStatements<DatabaseClient>::add_to(statements, client, table);
+		OwnTableSequencesStatements<DatabaseClient>::generate(client, table, f);
 	}
 };
 
 template <typename DatabaseClient>
 struct AlterTableStatements {
-	static void add_to(Statements &statements, DatabaseClient &client, const Table &table, const string &alter_table_clauses) {
+	static void generate(DatabaseClient &client, const Table &table, const string &alter_table_clauses, StatementFunction f) {
 		string result("ALTER TABLE ");
 		result += client.quote_table_name(table);
 		result += alter_table_clauses;
-		statements.push_back(result);
+		f(result);
 	}
 };
 
@@ -194,12 +204,12 @@ struct AlterColumnNullabilityClauses<DatabaseClient, true> {
 
 template <typename DatabaseClient>
 struct UpdateTableStatements {
-	static void add_to(Statements &statements, DatabaseClient &client, const Table &table, const string &update_table_clauses) {
+	static void generate(DatabaseClient &client, const Table &table, const string &update_table_clauses, StatementFunction f) {
 		string result("UPDATE ");
 		result += client.quote_table_name(table);
 		result += " SET ";
 		result += update_table_clauses;
-		statements.push_back(result);
+		f(result);
 	}
 };
 
@@ -309,7 +319,7 @@ struct DropColumnClauses {
 				} else {
 					// proactively drop the key at the start to work around one case of https://bugs.mysql.com/bug.php?id=57497 -
 					// the single-column index case.  we also use this to avoid the new behavior from https://jira.mariadb.org/browse/MDEV-13613.
-					DropKeyStatements<DatabaseClient>::add_to(alter_statements, client, table, *key);
+					DropKeyStatements<DatabaseClient>::generate(client, table, *key, prepend_to(alter_statements));
 					key = table.keys.erase(key);
 				}
 			}
@@ -374,12 +384,12 @@ struct SchemaMatcher {
 			if (from_table == from_tables.end() ||
 				from_table->name > to_table->name) {
 				// our end has an extra table, drop it
-				DropTableStatements<DatabaseClient>::add_to(statements, client, *to_table);
+				DropTableStatements<DatabaseClient>::generate(client, *to_table, append_to(statements));
 				to_table = to_tables.erase(to_table);
 				// keep the current from_table and re-evaluate on the next iteration
 
 			} else if (to_table->name > from_table->name) {
-				CreateTableStatements<DatabaseClient>::add_to(statements, client, *from_table);
+				CreateTableStatements<DatabaseClient>::generate(client, *from_table, append_to(statements));
 				to_table = ++to_tables.insert(to_table, *from_table);
 				++from_table;
 
@@ -390,7 +400,7 @@ struct SchemaMatcher {
 			}
 		}
 		while (from_table != from_tables.end()) {
-			CreateTableStatements<DatabaseClient>::add_to(statements, client, *from_table);
+			CreateTableStatements<DatabaseClient>::generate(client, *from_table, append_to(statements));
 			to_tables.push_back(*from_table);
 			++from_table;
 		}
@@ -416,8 +426,8 @@ struct SchemaMatcher {
 		} else {
 			// nope, throw away those ALTER statements, and recreate the table
 			comment_on_table_differences(statements, from_table, to_table);
-			DropTableStatements<DatabaseClient>::add_to(statements, client, to_table);
-			CreateTableStatements<DatabaseClient>::add_to(statements, client, from_table);
+			DropTableStatements<DatabaseClient>::generate(client, to_table, append_to(statements));
+			CreateTableStatements<DatabaseClient>::generate(client, from_table, append_to(statements));
 			to_table = from_table;
 		}
 	}
@@ -446,13 +456,13 @@ struct SchemaMatcher {
 			if (from_key == from_table.keys.end() ||
 				from_key->name > to_key->name) {
 				// our end has an extra key, drop it
-				DropKeyStatements<DatabaseClient>::add_to(alter_statements, client, to_table, *to_key);
+				DropKeyStatements<DatabaseClient>::generate(client, to_table, *to_key, prepend_to(alter_statements));
 				to_key = to_table.keys.erase(to_key);
 				// keep the current from_key and re-evaluate on the next iteration
 
 			} else if (to_key->name > from_key->name) {
 				// their end has an extra key, add it
-				CreateKeyStatements<DatabaseClient>::add_to(alter_statements, client, to_table, *from_key);
+				CreateKeyStatements<DatabaseClient>::generate(client, to_table, *from_key, append_to(alter_statements));
 				to_key = ++to_table.keys.insert(to_key, *from_key);
 				++from_key;
 				// keep the current to_key and re-evaluate on the next iteration
@@ -465,7 +475,7 @@ struct SchemaMatcher {
 		}
 
 		while (from_key != from_table.keys.end()) {
-			CreateKeyStatements<DatabaseClient>::add_to(alter_statements, client, to_table, *from_key);
+			CreateKeyStatements<DatabaseClient>::generate(client, to_table, *from_key, append_to(alter_statements));
 			to_key = ++to_table.keys.insert(to_key, *from_key);
 			++from_key;
 		}
@@ -509,13 +519,13 @@ struct SchemaMatcher {
 		}
 
 		if (!update_table_clauses.empty()) {
-			UpdateTableStatements<DatabaseClient>::add_to(alter_statements, client, to_table, update_table_clauses);
+			UpdateTableStatements<DatabaseClient>::generate(client, to_table, update_table_clauses, append_to(alter_statements));
 		}
 		if (!alter_table_clauses.empty()) {
-			AlterTableStatements<DatabaseClient>::add_to(alter_statements, client, to_table, alter_table_clauses);
+			AlterTableStatements<DatabaseClient>::generate(client, to_table, alter_table_clauses, append_to(alter_statements));
 		}
 		if (!second_round_alter_table_clauses.empty()) {
-			AlterTableStatements<DatabaseClient>::add_to(alter_statements, client, to_table, second_round_alter_table_clauses);
+			AlterTableStatements<DatabaseClient>::generate(client, to_table, second_round_alter_table_clauses, append_to(alter_statements));
 		}
 	}
 
@@ -534,8 +544,8 @@ struct SchemaMatcher {
 		if (from_key == to_key) return;
 
 		// recreate the index.  not all databases can combine these two statements, so we implement the general case only for now.
-		DropKeyStatements<DatabaseClient>::add_to(alter_statements, client, from_table, to_key);
-		CreateKeyStatements<DatabaseClient>::add_to(alter_statements, client, from_table, from_key);
+		DropKeyStatements<DatabaseClient>::generate(client, from_table, to_key, prepend_to(alter_statements));
+		CreateKeyStatements<DatabaseClient>::generate(client, from_table, from_key, append_to(alter_statements));
 		to_key = from_key;
 	}
 
