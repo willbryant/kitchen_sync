@@ -383,6 +383,48 @@ SQL
       "keys" => [] }
   end
 
+  def create_fkc_parenttbl
+    execute(<<-SQL)
+CREATE TABLE fkc_parenttbl (
+  id INT NOT NULL,
+  PRIMARY KEY(id))
+SQL
+  end
+
+  def fkc_parenttbl_def
+    { "name"    => "fkc_parenttbl",
+      "columns" => [
+        {"name" => "id", "column_type" => ColumnType::SINT_32BIT, "nullable" => false},
+      ],
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
+      "primary_key_columns" => [0],
+      "keys" => [] }
+  end
+
+  def create_fkc_childtbl
+    execute(<<-SQL)
+CREATE TABLE fkc_childtbl (
+  id INT NOT NULL,
+  parent_id INT NOT NULL,
+  PRIMARY KEY(id))
+SQL
+    execute "CREATE INDEX index_fkc_childtbl_on_parent_id ON fkc_childtbl (parent_id)"
+    execute "ALTER TABLE fkc_childtbl ADD #{connection.foreign_key_constraint "parent_child_fkc", "parent_id", "fkc_parenttbl", "id"}"
+  end
+
+  def fkc_childtbl_def
+    { "name"    => "fkc_childtbl",
+      "columns" => [
+        {"name" => "id",        "column_type" => ColumnType::SINT_32BIT, "nullable" => false},
+        {"name" => "parent_id", "column_type" => ColumnType::SINT_32BIT, "nullable" => false},
+      ],
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
+      "primary_key_columns" => [0],
+      "keys" => [
+        {"name" => "index_fkc_childtbl_on_parent_id", "columns" => [1]}
+      ] }
+  end
+
   def create_adapterspecifictbl
     connection.create_adapterspecifictbl
   end

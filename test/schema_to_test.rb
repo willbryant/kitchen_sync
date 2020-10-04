@@ -946,6 +946,19 @@ SQL
       query("SELECT * FROM generatedtbl ORDER BY pri")
   end
 
+  test_each "can drop and recreate keys with a different name even if they are required for foreign key constraints" do
+    clear_schema
+    create_fkc_parenttbl
+    create_fkc_childtbl
+
+    renamed_def = fkc_childtbl_def
+    renamed_def["keys"][0]["name"] = "renamed_key"
+
+    expect_handshake_commands(schema: {"tables" => [fkc_parenttbl_def, renamed_def]})
+    read_command
+    assert_equal %w(renamed_key), connection.table_keys("fkc_childtbl")
+  end
+
   test_each "skips schema definitions it doesn't recognise" do
     clear_schema
 

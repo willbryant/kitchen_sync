@@ -427,33 +427,44 @@ struct SchemaMatcher {
 		Keys::const_iterator from_key = from_table.keys.begin();
 		Keys::iterator         to_key =   to_table.keys.begin();
 
+		Statements key_statements;
+
 		while (to_key != to_table.keys.end()) {
 			if (from_key == from_table.keys.end() ||
 				from_key->name > to_key->name) {
 				// our end has an extra key, drop it
-				DropKeyStatements<DatabaseClient>::generate(client, to_table, *to_key, prepend_to(alter_statements));
+				DropKeyStatements<DatabaseClient>::generate(client, to_table, *to_key, append_to(key_statements));
 				to_key = to_table.keys.erase(to_key);
 				// keep the current from_key and re-evaluate on the next iteration
 
 			} else if (to_key->name > from_key->name) {
-				// their end has an extra key, add it
-				CreateKeyStatements<DatabaseClient>::generate(client, to_table, *from_key, append_to(alter_statements));
+				// their end has an extra key, add it; prepend before any DROP KEYS statements so in the edge case where an FKC
+				// was using the old index but would be equally happy with a new one we're creating, it doesn't block the DROP
+				CreateKeyStatements<DatabaseClient>::generate(client, to_table, *from_key, prepend_to(key_statements));
 				to_key = ++to_table.keys.insert(to_key, *from_key);
 				++from_key;
 				// keep the current to_key and re-evaluate on the next iteration
 
+			} else if (from_key != to_key) {
+				// recreate the index.  not all databases can combine these two statements, so we implement the general case only for now.
+				DropKeyStatements<DatabaseClient>::generate(client, from_table, *to_key, append_to(key_statements));
+				CreateKeyStatements<DatabaseClient>::generate(client, from_table, *from_key, append_to(key_statements));
+				*to_key++ = *from_key++;
+
 			} else {
-				match_key(alter_statements, from_table, *from_key, *to_key);
 				++to_key;
 				++from_key;
 			}
 		}
 
 		while (from_key != from_table.keys.end()) {
-			CreateKeyStatements<DatabaseClient>::generate(client, to_table, *from_key, append_to(alter_statements));
+			// as above, do this before DROP KEYS when possible to avoid FKC errors
+			CreateKeyStatements<DatabaseClient>::generate(client, to_table, *from_key, prepend_to(key_statements));
 			to_key = ++to_table.keys.insert(to_key, *from_key);
 			++from_key;
 		}
+
+		alter_statements.splice(alter_statements.end(), key_statements);
 	}
 
 	void match_columns(Statements &alter_statements, const Table &from_table, Table &to_table) {
@@ -513,15 +524,6 @@ struct SchemaMatcher {
 			}
 		}
 		return false;
-	}
-
-	void match_key(Statements &alter_statements, const Table &from_table, const Key &from_key, Key &to_key) {
-		if (from_key == to_key) return;
-
-		// recreate the index.  not all databases can combine these two statements, so we implement the general case only for now.
-		DropKeyStatements<DatabaseClient>::generate(client, from_table, to_key, prepend_to(alter_statements));
-		CreateKeyStatements<DatabaseClient>::generate(client, from_table, from_key, append_to(alter_statements));
-		to_key = from_key;
 	}
 
 	DatabaseClient &client;

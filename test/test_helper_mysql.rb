@@ -282,6 +282,10 @@ class MysqlAdapter
     "A"
   end
 
+  def foreign_key_constraint(name, child_column_names, parent_table, parent_column_names, delete: "RESTRICT", update: "RESTRICT")
+    "CONSTRAINT #{name} FOREIGN KEY (#{Array(child_column_names).join(', ')}) REFERENCES #{parent_table} (#{Array(parent_column_names).join(', ')}) ON DELETE #{delete} ON UPDATE #{update}"
+  end
+
   def create_adapterspecifictbl
     execute(<<-SQL)
       CREATE TABLE ```mysql``tbl` (

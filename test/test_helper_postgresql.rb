@@ -360,6 +360,10 @@ class PostgreSQLAdapter
     ["isn't", "a scalar"]
   end
 
+  def foreign_key_constraint(_name, child_column_names, parent_table, parent_column_names, delete: "RESTRICT", update: "RESTRICT")
+    "FOREIGN KEY (#{Array(child_column_names).join(', ')}) REFERENCES #{parent_table} (#{Array(parent_column_names).join(', ')}) ON DELETE #{delete} ON UPDATE #{update}"
+  end
+
   def create_adapterspecifictbl(name_prefix: "")
     execute("CREATE SEQUENCE #{name_prefix}second_seq")
     execute(<<-SQL)
