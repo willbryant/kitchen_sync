@@ -17,4 +17,6 @@ echo "#define KS_VERSION \"$TAG\"" >src/version.h
 
 git commit -am "Update changelog for v$TAG"
 git tag v$TAG
-# git tag push --tags
+
+echo "To release: "
+echo "	git push && git push --tags"

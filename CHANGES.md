@@ -1,6 +1,10 @@
 Changelog
 =========
 
+2.7
+---
+* Create keys before dropping keys when possible, in case they're in use for an FKC.
+
 2.6
 ---
 * Add `--version` option. Thanks @proby.
@@ -28,7 +32,7 @@ Changelog
 2.1
 ---
 * New default hash algorithm BLAKE3, giving a significant performance improvement, particularly on CPUs supporting AVX2 and above.
-* Update ruby test suite to run on ruby 2.7.0.  Thanks @proby.
+* Update test suite to run on Ruby 2.7.0.  Thanks @proby.
 
 2.0
 ---
@@ -382,7 +386,7 @@ Release candidate for 1.0
 * Parse `tinyint(n != 1)` and `mediumint` MySQL column definitions for completeness
 * Give more helpful output if tests fail due to an `EOFError` while reading a command
 * Hopefully fix intermittent failures due to stderr output from the snapshot import/export test
-* Use msgpack 0.5.9 gem for ruby tests
+* Use msgpack 0.5.9 gem for Ruby tests
 
 0.14
 ----

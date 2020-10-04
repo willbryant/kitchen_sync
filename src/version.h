@@ -1,1 +1,1 @@
-#define KS_VERSION "2.6"
+#define KS_VERSION "2.7"
