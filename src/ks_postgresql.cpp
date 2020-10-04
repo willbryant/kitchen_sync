@@ -164,7 +164,7 @@ private:
 };
 
 
-class PostgreSQLClient: public GlobalKeys, public SequenceColumns, public DropKeysWhenColumnsDropped, public SetNullability {
+class PostgreSQLClient: public GlobalKeys, public SequenceColumns, public SetNullability {
 public:
 	typedef PostgreSQLRow RowType;
 

@@ -10,9 +10,6 @@ struct GlobalKeys {
 struct SequenceColumns {
 };
 
-struct DropKeysWhenColumnsDropped {
-};
-
 struct SetNullability {
 };
 
