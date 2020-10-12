@@ -383,6 +383,20 @@ SQL
       "keys" => [] }
   end
 
+def conflicting_indexed_table_def(suffix = "")
+    { "name"    => "conflicting_indexed_table#{suffix}",
+      "columns" => [
+        {"name" => "id",  "column_type" => ColumnType::SINT_64BIT},
+        {"name" => "sec", "column_type" => ColumnType::SINT_32BIT}
+      ],
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
+      "primary_key_columns" => [0],
+      "keys" => [
+        {"name" => "index_on_second_column", "columns" => [1]},
+        {"name" => "index_on_second_column_and_id_with_an_unnecessarily_long_key_name", "columns" => [1, 0]}
+      ] }
+  end
+
   def create_fkc_parenttbl
     execute(<<-SQL)
 CREATE TABLE fkc_parenttbl (

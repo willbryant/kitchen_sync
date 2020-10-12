@@ -424,6 +424,33 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     assert_same_keys(table_def)
   end
 
+  test_each "renumbers indexes if necessary for databases that have unique relation names" do
+    clear_schema
+    expect_handshake_commands(schema: {"tables" => (1..10).collect {|n| conflicting_indexed_table_def(n)}})
+    read_command
+
+    # our supported databases also truncate names to 63 or 64 characters
+    keys = connection.table_keys("conflicting_indexed_table1").sort
+    assert_includes %w(index_on_second_column), keys.shift
+    assert_includes %w(index_on_second_column_and_id_with_an_unnecessarily_long_key_nam
+                       index_on_second_column_and_id_with_an_unnecessarily_long_key_na),
+                    keys.shift
+
+    # and they should renumber if required, and truncate further if required to do that
+    keys = connection.table_keys("conflicting_indexed_table2").sort
+    assert_includes %w(index_on_second_column index_on_second_column2), keys.shift
+    assert_includes %w(index_on_second_column_and_id_with_an_unnecessarily_long_key_nam
+                       index_on_second_column_and_id_with_an_unnecessarily_long_key_n2),
+                    keys.shift
+
+    # truncating as many places as necessary
+    keys = connection.table_keys("conflicting_indexed_table10").sort
+    assert_includes %w(index_on_second_column index_on_second_column10), keys.shift
+    assert_includes %w(index_on_second_column_and_id_with_an_unnecessarily_long_key_nam
+                       index_on_second_column_and_id_with_an_unnecessarily_long_key_10),
+                    keys.shift
+  end
+
 
   test_each "drops extra columns before other columns without recreating the table" do
     clear_schema

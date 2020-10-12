@@ -577,6 +577,13 @@ void MySQLClient::convert_unsupported_database_schema(Database &database) {
 				column.default_value.clear();
 			}
 		}
+
+		for (Key &key : table.keys) {
+			if (key.name.size() >= 64) {
+				// mysql has a hardcoded limit of 64 characters for index names
+				key.name = key.name.substr(0, 64);
+			}
+		}
 	}
 }
 

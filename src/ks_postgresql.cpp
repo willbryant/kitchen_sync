@@ -191,6 +191,7 @@ public:
 	ColumnTypeList supported_types();
 	void populate_database_schema(Database &database, const ColumnTypeList &accepted_types);
 	void convert_unsupported_database_schema(Database &database);
+	string add_unique_relation_name_suffix(string name, set<string> used_relation_names, size_t max_allowed_length);
 
 	string escape_string_value(const string &value);
 	string &append_quoted_string_value_to(string &result, const string &value);
@@ -415,6 +416,8 @@ string &PostgreSQLClient::append_quoted_column_value_to(string &result, const Co
 }
 
 void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
+	map<string, set<string>> used_relation_names_by_schema;
+
 	for (Table &table : database.tables) {
 		for (Column &column : table.columns) {
 			// the modern type system negotiates compatible integer types, so we never get given types
@@ -481,7 +484,44 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 				key.name = key.name.substr(0, 63);
 			}
 		}
+
+		// see below
+		used_relation_names_by_schema[table.schema_name].insert(table.name);
 	}
+
+	// postgresql index names are unique across the whole schema, whereas they are unique only within a table for some databases.
+	// the underlying cause is that in pg, indexes are relations, and since relation names are unique across the schema, indexes also
+	// cannot have the same name as any other relations, including tables - which is why we have to do two passes over database.tables.
+	// rename indexes to fix any conflicts, on the assumption that users who aren't allowed to modify the source schema would prefer
+	// this to failing to sync, and everyone else who doesn't like our renames can rename their indexes themselves.
+	for (Table &table : database.tables) {
+		set<string> &used_relation_names(used_relation_names_by_schema[table.schema_name]);
+
+		for (Key &key : table.keys) {
+			if (used_relation_names.count(key.name)) {
+				key.name = add_unique_relation_name_suffix(key.name, used_relation_names, 63);
+			}
+
+			used_relation_names.insert(key.name);
+		}
+	}
+}
+
+string PostgreSQLClient::add_unique_relation_name_suffix(string name, set<string> used_relation_names, size_t max_allowed_length) {
+	for (size_t counter = 2; counter < numeric_limits<size_t>::max(); counter++) {
+		string suffix(to_string(counter));
+		if (name.length() + suffix.length() > max_allowed_length) {
+			name = name.substr(0, max_allowed_length - suffix.length());
+		}
+
+		string renumbered_name(name + suffix);
+		if (!used_relation_names.count(renumbered_name)) {
+			return renumbered_name;
+		}
+	}
+
+	// not really possible to ever get here, but return the original name and let the database explain the problem
+	return name;
 }
 
 map<ColumnType, string> SimpleColumnTypes{
