@@ -1,9 +1,14 @@
 Changelog
 =========
 
+2.8
+---
+* When syncing from MySQL/MariaDB to PostgreSQL, add a suffix number to indexes to make them unique across the schema if there are any conflicts.
+
 2.7
 ---
 * Create keys before dropping keys when possible, in case they're in use for an FKC.
+* Performance optimisation: allocate heap memory less for small objects in keys.
 
 2.6
 ---
