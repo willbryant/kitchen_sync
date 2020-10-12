@@ -73,6 +73,7 @@ class PostgreSQLAdapter
   end
 
   def table_keys(table_name)
+    raise "table #{table_name} doesn't exist" unless tables.include?(table_name)
     query(<<-SQL).collect {|row| row["relname"]}
       SELECT index_class.relname::TEXT
         FROM pg_class table_class, pg_index, pg_class index_class
@@ -85,6 +86,7 @@ class PostgreSQLAdapter
   end
 
   def table_keys_unique(table_name)
+    raise "table #{table_name} doesn't exist" unless tables.include?(table_name)
     query(<<-SQL).each_with_object({}) {|row, results| results[row["relname"]] = row["indisunique"]}
       SELECT index_class.relname::TEXT, indisunique
         FROM pg_class table_class, pg_index, pg_class index_class
@@ -103,6 +105,7 @@ class PostgreSQLAdapter
   end
 
   def table_key_columns(table_name)
+    raise "table #{table_name} doesn't exist" unless tables.include?(table_name)
     query(<<-SQL).each_with_object({}) {|row, results| results[row["relname"]] = key_definition_columns(row["definition"])}
       SELECT index_class.relname::TEXT, pg_get_indexdef(indexrelid) AS definition
         FROM pg_class table_class, pg_class index_class, pg_index
