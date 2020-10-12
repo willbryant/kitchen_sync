@@ -9,8 +9,8 @@ require 'ruby-xxhash'
 require 'digest/blake3'
 
 ENDPOINT_ADAPTERS = {}
-require File.expand_path(File.join(File.dirname(__FILE__), 'test_helper_postgresql')) if ENV['ENDPOINT_DATABASES'].nil? || ENV['ENDPOINT_DATABASES'].include?('postgresql')
-require File.expand_path(File.join(File.dirname(__FILE__), 'test_helper_mysql'))      if ENV['ENDPOINT_DATABASES'].nil? || ENV['ENDPOINT_DATABASES'].include?('mysql')
+require File.expand_path(File.join(File.dirname(__FILE__), 'postgresql_adapter')) if ENV['ENDPOINT_DATABASES'].nil? || ENV['ENDPOINT_DATABASES'].include?('postgresql')
+require File.expand_path(File.join(File.dirname(__FILE__), 'mysql_adapter'))      if ENV['ENDPOINT_DATABASES'].nil? || ENV['ENDPOINT_DATABASES'].include?('mysql')
 
 require File.expand_path(File.join(File.dirname(__FILE__), 'kitchen_sync_spawner'))
 require File.expand_path(File.join(File.dirname(__FILE__), 'test_table_schemas'))
