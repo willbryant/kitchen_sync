@@ -146,6 +146,25 @@ INLINE void load_key_words(const uint8_t key[BLAKE3_KEY_LEN],
   key_words[7] = load32(&key[7 * 4]);
 }
 
+INLINE void store32(void *dst, uint32_t w) {
+  uint8_t *p = (uint8_t *)dst;
+  p[0] = (uint8_t)(w >> 0);
+  p[1] = (uint8_t)(w >> 8);
+  p[2] = (uint8_t)(w >> 16);
+  p[3] = (uint8_t)(w >> 24);
+}
+
+INLINE void store_cv_words(uint8_t bytes_out[32], uint32_t cv_words[8]) {
+  store32(&bytes_out[0 * 4], cv_words[0]);
+  store32(&bytes_out[1 * 4], cv_words[1]);
+  store32(&bytes_out[2 * 4], cv_words[2]);
+  store32(&bytes_out[3 * 4], cv_words[3]);
+  store32(&bytes_out[4 * 4], cv_words[4]);
+  store32(&bytes_out[5 * 4], cv_words[5]);
+  store32(&bytes_out[6 * 4], cv_words[6]);
+  store32(&bytes_out[7 * 4], cv_words[7]);
+}
+
 void blake3_compress_in_place(uint32_t cv[8],
                               const uint8_t block[BLAKE3_BLOCK_LEN],
                               uint8_t block_len, uint64_t counter,
@@ -161,7 +180,90 @@ void blake3_hash_many(const uint8_t *const *inputs, size_t num_inputs,
                       bool increment_counter, uint8_t flags,
                       uint8_t flags_start, uint8_t flags_end, uint8_t *out);
 
-size_t blake3_simd_degree();
+size_t blake3_simd_degree(void);
+
+
+// Declarations for implementation-specific functions.
+void blake3_compress_in_place_portable(uint32_t cv[8],
+                                       const uint8_t block[BLAKE3_BLOCK_LEN],
+                                       uint8_t block_len, uint64_t counter,
+                                       uint8_t flags);
+
+void blake3_compress_xof_portable(const uint32_t cv[8],
+                                  const uint8_t block[BLAKE3_BLOCK_LEN],
+                                  uint8_t block_len, uint64_t counter,
+                                  uint8_t flags, uint8_t out[64]);
+
+void blake3_hash_many_portable(const uint8_t *const *inputs, size_t num_inputs,
+                               size_t blocks, const uint32_t key[8],
+                               uint64_t counter, bool increment_counter,
+                               uint8_t flags, uint8_t flags_start,
+                               uint8_t flags_end, uint8_t *out);
+
+#if defined(IS_X86)
+#if !defined(BLAKE3_NO_SSE2)
+void blake3_compress_in_place_sse2(uint32_t cv[8],
+                                   const uint8_t block[BLAKE3_BLOCK_LEN],
+                                   uint8_t block_len, uint64_t counter,
+                                   uint8_t flags);
+void blake3_compress_xof_sse2(const uint32_t cv[8],
+                              const uint8_t block[BLAKE3_BLOCK_LEN],
+                              uint8_t block_len, uint64_t counter,
+                              uint8_t flags, uint8_t out[64]);
+void blake3_hash_many_sse2(const uint8_t *const *inputs, size_t num_inputs,
+                           size_t blocks, const uint32_t key[8],
+                           uint64_t counter, bool increment_counter,
+                           uint8_t flags, uint8_t flags_start,
+                           uint8_t flags_end, uint8_t *out);
+#endif
+#if !defined(BLAKE3_NO_SSE41)
+void blake3_compress_in_place_sse41(uint32_t cv[8],
+                                    const uint8_t block[BLAKE3_BLOCK_LEN],
+                                    uint8_t block_len, uint64_t counter,
+                                    uint8_t flags);
+void blake3_compress_xof_sse41(const uint32_t cv[8],
+                               const uint8_t block[BLAKE3_BLOCK_LEN],
+                               uint8_t block_len, uint64_t counter,
+                               uint8_t flags, uint8_t out[64]);
+void blake3_hash_many_sse41(const uint8_t *const *inputs, size_t num_inputs,
+                            size_t blocks, const uint32_t key[8],
+                            uint64_t counter, bool increment_counter,
+                            uint8_t flags, uint8_t flags_start,
+                            uint8_t flags_end, uint8_t *out);
+#endif
+#if !defined(BLAKE3_NO_AVX2)
+void blake3_hash_many_avx2(const uint8_t *const *inputs, size_t num_inputs,
+                           size_t blocks, const uint32_t key[8],
+                           uint64_t counter, bool increment_counter,
+                           uint8_t flags, uint8_t flags_start,
+                           uint8_t flags_end, uint8_t *out);
+#endif
+#if !defined(BLAKE3_NO_AVX512)
+void blake3_compress_in_place_avx512(uint32_t cv[8],
+                                     const uint8_t block[BLAKE3_BLOCK_LEN],
+                                     uint8_t block_len, uint64_t counter,
+                                     uint8_t flags);
+
+void blake3_compress_xof_avx512(const uint32_t cv[8],
+                                const uint8_t block[BLAKE3_BLOCK_LEN],
+                                uint8_t block_len, uint64_t counter,
+                                uint8_t flags, uint8_t out[64]);
+
+void blake3_hash_many_avx512(const uint8_t *const *inputs, size_t num_inputs,
+                             size_t blocks, const uint32_t key[8],
+                             uint64_t counter, bool increment_counter,
+                             uint8_t flags, uint8_t flags_start,
+                             uint8_t flags_end, uint8_t *out);
+#endif
+#endif
+
+#if defined(BLAKE3_USE_NEON)
+void blake3_hash_many_neon(const uint8_t *const *inputs, size_t num_inputs,
+                           size_t blocks, const uint32_t key[8],
+                           uint64_t counter, bool increment_counter,
+                           uint8_t flags, uint8_t flags_start,
+                           uint8_t flags_end, uint8_t *out);
+#endif
 
 
 #endif /* BLAKE3_IMPL_H */

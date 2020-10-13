@@ -79,6 +79,14 @@ add_library(blake3 OBJECT src/blake3/blake3.c src/blake3/blake3_dispatch.c src/b
 set_property(TARGET blake3 APPEND PROPERTY COMPILE_FLAGS "-O3")
 set_property(TARGET blake3 PROPERTY C_STANDARD 99)
 
+CHECK_C_COMPILER_FLAG("-msse2" COMPILER_SUPPORTS_SSE2)
+if(COMPILER_SUPPORTS_SSE2)
+	target_sources(blake3 PRIVATE "src/blake3/blake3_sse2.c")
+	set_property(SOURCE src/blake3/blake3_sse2.c APPEND PROPERTY COMPILE_FLAGS "-msse2")
+else()
+	set_property(TARGET blake3 APPEND PROPERTY COMPILE_DEFINITIONS "BLAKE3_NO_SSE2")
+endif()
+
 CHECK_C_COMPILER_FLAG("-msse4.1" COMPILER_SUPPORTS_SSE_4_1)
 if(COMPILER_SUPPORTS_SSE_4_1)
 	target_sources(blake3 PRIVATE "src/blake3/blake3_sse41.c")

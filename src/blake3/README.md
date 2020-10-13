@@ -1,33 +1,14 @@
-This is the C implementation of BLAKE3. The public API consists of one
-struct and five functions in [`blake3.h`](blake3.h):
+The official C implementation of BLAKE3.
 
-- **`typedef struct {...} blake3_hasher`** An incremental BLAKE3 hashing
-  state, which can accept any number of updates.
-- **`blake3_hasher_init(...)`** Initialize a `blake3_hasher` in the
-  default hashing mode.
-- **`blake3_hasher_init_keyed(...)`** Initialize a `blake3_hasher` in
-  the keyed hashing mode, which accepts a 256-bit key.
-- **`blake3_hasher_init_derive_key(...)`** Initialize a `blake3_hasher`
-  in the key derivation mode, which accepts a context string of any
-  length. In this mode, the key material is given as input after
-  initialization. The context string should be hardcoded, globally
-  unique, and application-specific. A good default format for such
-  strings is `"[application] [commit timestamp] [purpose]"`, e.g.,
-  `"example.com 2019-12-25 16:18:03 session tokens v1"`.
-- **`blake3_hasher_update(...)`** Add input to the hasher. This can be
-  called any number of times.
-- **`blake3_hasher_finalize(...)`** Finalize the hasher and emit an
-  output of any length. This does not modify the hasher itself. It is
-  possible to finalize again after adding more input.
+# Example
 
-## Example
-
-Here's an example program that hashes bytes from standard input and
-prints the result:
+An example program that hashes bytes from standard input and prints the
+result:
 
 ```c
 #include "blake3.h"
 #include <stdio.h>
+#include <unistd.h>
 
 int main() {
   // Initialize the hasher.
@@ -36,8 +17,8 @@ int main() {
 
   // Read input bytes from stdin.
   unsigned char buf[65536];
-  size_t n;
-  while ((n = fread(buf, 1, 65536, stdin)) > 0) {
+  ssize_t n;
+  while ((n = read(STDIN_FILENO, buf, sizeof(buf))) > 0) {
     blake3_hasher_update(&hasher, buf, n);
   }
 
@@ -59,24 +40,145 @@ with a Unix-like OS, you can compile a working binary like this:
 
 ```bash
 gcc -O3 -o example example.c blake3.c blake3_dispatch.c blake3_portable.c \
-    blake3_sse41_x86-64_unix.S blake3_avx2_x86-64_unix.S blake3_avx512_x86-64_unix.S
+    blake3_sse2_x86-64_unix.S blake3_sse41_x86-64_unix.S blake3_avx2_x86-64_unix.S \
+    blake3_avx512_x86-64_unix.S
 ```
 
-## Building
+# API
 
-The Makefile included in this implementation is for testing. It's
-expected that callers will have their own build systems. This section
-describes the compilation steps that build systems (or folks compiling
-by hand) should take. Note that these steps may change in future
-versions.
+## The Struct
 
-### x86
+```c
+typedef struct {
+  // private fields
+} blake3_hasher;
+```
+
+An incremental BLAKE3 hashing state, which can accept any number of
+updates. This implementation doesn't allocate any heap memory, but
+`sizeof(blake3_hasher)` itself is relatively large, currently 1912 bytes
+on x86-64. This size can be reduced by restricting the maximum input
+length, as described in Section 5.4 of [the BLAKE3
+spec](https://github.com/BLAKE3-team/BLAKE3-specs/blob/master/blake3.pdf),
+but this implementation doesn't currently support that strategy.
+
+## Common API Functions
+
+```c
+void blake3_hasher_init(
+  blake3_hasher *self);
+```
+
+Initialize a `blake3_hasher` in the default hashing mode.
+
+---
+
+```c
+void blake3_hasher_update(
+  blake3_hasher *self,
+  const void *input,
+  size_t input_len);
+```
+
+Add input to the hasher. This can be called any number of times.
+
+---
+
+```c
+void blake3_hasher_finalize(
+  const blake3_hasher *self,
+  uint8_t *out,
+  size_t out_len);
+```
+
+Finalize the hasher and emit an output of any length. This doesn't
+modify the hasher itself, and it's possible to finalize again after
+adding more input. The constant `BLAKE3_OUT_LEN` provides the default
+output length, 32 bytes.
+
+## Less Common API Functions
+
+```c
+void blake3_hasher_init_keyed(
+  blake3_hasher *self,
+  const uint8_t key[BLAKE3_KEY_LEN]);
+```
+
+Initialize a `blake3_hasher` in the keyed hashing mode. The key must be
+exactly 32 bytes.
+
+---
+
+```c
+void blake3_hasher_init_derive_key(
+  blake3_hasher *self,
+  const char *context);
+```
+
+Initialize a `blake3_hasher` in the key derivation mode. The context
+string is given as an initialization parameter, and afterwards input key
+material should be given with `blake3_hasher_update`. The context string
+is a null-terminated C string which should be **hardcoded, globally
+unique, and application-specific**. The context string should not
+include any dynamic input like salts, nonces, or identifiers read from a
+database at runtime. A good default format for the context string is
+`"[application] [commit timestamp] [purpose]"`, e.g., `"example.com
+2019-12-25 16:18:03 session tokens v1"`.
+
+This function is intended for application code written in C. For
+language bindings, see `blake3_hasher_init_derive_key_raw` below.
+
+---
+
+```c
+void blake3_hasher_init_derive_key_raw(
+  blake3_hasher *self,
+  const void *context,
+  size_t context_len);
+```
+
+As `blake3_hasher_init_derive_key` above, except that the context string
+is given as a pointer to an array of arbitrary bytes with a provided
+length. This is intended for writing language bindings, where C string
+conversion would add unnecessary overhead and new error cases. Unicode
+strings should be encoded as UTF-8.
+
+Application code in C should prefer `blake3_hasher_init_derive_key`,
+which takes the context as a C string. If you need to use arbitrary
+bytes as a context string in application code, consider whether you're
+violating the requirement that context strings should be hardcoded.
+
+---
+
+```c
+void blake3_hasher_finalize_seek(
+  const blake3_hasher *self,
+  uint64_t seek,
+  uint8_t *out,
+  size_t out_len);
+```
+
+The same as `blake3_hasher_finalize`, but with an additional `seek`
+parameter for the starting byte position in the output stream. To
+efficiently stream a large output without allocating memory, call this
+function in a loop, incrementing `seek` by the output length each time.
+
+# Building
+
+This implementation is just C and assembly files. It doesn't include a
+public-facing build system. (The `Makefile` in this directory is only
+for testing.) Instead, the intention is that you can include these files
+in whatever build system you're already using. This section describes
+the commands your build system should execute, or which you can execute
+by hand. Note that these steps may change in future versions.
+
+## x86
 
 Dynamic dispatch is enabled by default on x86. The implementation will
 query the CPU at runtime to detect SIMD support, and it will use the
 widest instruction set available. By default, `blake3_dispatch.c`
-expects to be linked with code for four different instruction sets:
-portable C, SSE4.1, AVX2, and AVX-512.
+expects to be linked with code for five different instruction sets:
+portable C, SSE2, SSE4.1, AVX2, and AVX-512.
 
 For each of the x86 SIMD instruction sets, two versions are available,
 one in assembly (with three flavors: Unix, Windows MSVC, and Windows
@@ -91,7 +193,8 @@ the assembly implementations:
 
 ```bash
 gcc -shared -O3 -o libblake3.so blake3.c blake3_dispatch.c blake3_portable.c \
-    blake3_sse41_x86-64_unix.S blake3_avx2_x86-64_unix.S blake3_avx512_x86-64_unix.S
+    blake3_sse2_x86-64_unix.S blake3_sse41_x86-64_unix.S blake3_avx2_x86-64_unix.S \
+    blake3_avx512_x86-64_unix.S
 ```
 
 When building the intrinsics-based implementations, you need to build
@@ -100,27 +203,30 @@ explicitly enabled in the compiler. Here's the same shared library using
 the intrinsics-based implementations:
 
 ```bash
+gcc -c -fPIC -O3 -msse2 blake3_sse2.c -o blake3_sse2.o
 gcc -c -fPIC -O3 -msse4.1 blake3_sse41.c -o blake3_sse41.o
 gcc -c -fPIC -O3 -mavx2 blake3_avx2.c -o blake3_avx2.o
 gcc -c -fPIC -O3 -mavx512f -mavx512vl blake3_avx512.c -o blake3_avx512.o
 gcc -shared -O3 -o libblake3.so blake3.c blake3_dispatch.c blake3_portable.c \
-    blake3_avx2.o blake3_avx512.o blake3_sse41.o
+    blake3_avx2.o blake3_avx512.o blake3_sse41.o blake3_sse2.o
 ```
 
 Note above that building `blake3_avx512.c` requires both `-mavx512f` and
 `-mavx512vl` under GCC and Clang, as shown above. Under MSVC, the single
-`/arch:AVX512` flag is sufficient.
+`/arch:AVX512` flag is sufficient. The MSVC equivalent of `-mavx2` is
+`/arch:AVX2`. MSVC enables SSE4.1 by defaut, and it doesn't have a
+corresponding flag.
 
 If you want to omit SIMD code on x86, you need to explicitly disable
 each instruction set. Here's an example of building a shared library on
 x86 with only portable code:
 
 ```bash
-gcc -shared -O3 -o libblake3.so -DBLAKE3_NO_SSE41 -DBLAKE3_NO_AVX2 -DBLAKE3_NO_AVX512 \
-    blake3.c blake3_dispatch.c blake3_portable.c
+gcc -shared -O3 -o libblake3.so -DBLAKE3_NO_SSE2 -DBLAKE3_NO_SSE41 -DBLAKE3_NO_AVX2 \
+    -DBLAKE3_NO_AVX512 blake3.c blake3_dispatch.c blake3_portable.c
 ```
 
-### ARM NEON
+## ARM NEON
 
 The NEON implementation is not enabled by default on ARM, since not all
 ARM targets support it. To enable it, set `BLAKE3_USE_NEON=1`. Here's an
@@ -143,7 +249,7 @@ in call to always_inline ‘vaddq_u32’: target specific option mismatch
 ...then you may need to add something like `-mfpu=neon-vfpv4
 -mfloat-abi=hard`.
 
-### Other Platforms
+## Other Platforms
 
 The portable implementation should work on most other architectures. For
 example:
@@ -152,16 +258,12 @@ example:
 gcc -shared -O3 -o libblake3.so blake3.c blake3_dispatch.c blake3_portable.c
 ```
 
-## Differences from the Rust Implementation
+# Differences from the Rust Implementation
 
 The single-threaded Rust and C implementations use the same algorithms,
 and their performance is the same if you use the assembly
 implementations or if you compile the intrinsics-based implementations
 with Clang. (Both Clang and rustc are LLVM-based.)
 
-The C implementation does not currently support multi-threading. OpenMP
-support or similar might be added in the future.
-
-Both the C and Rust implementations support output of any length, but
-only the Rust implementation provides an incremental (and seekable)
-output reader. This might also be added in the future.
+The C implementation doesn't currently include any multithreading
+optimizations. OpenMP support or similar might be added in the future.

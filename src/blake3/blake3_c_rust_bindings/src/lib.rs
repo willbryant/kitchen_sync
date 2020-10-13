@@ -16,6 +16,11 @@ pub const OUT_LEN: usize = 32;
 // Feature detection functions for tests and benchmarks. Note that the C code
 // does its own feature detection in blake3_dispatch.c.
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+pub fn sse2_detected() -> bool {
+    is_x86_feature_detected!("sse2")
+}
+
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn sse41_detected() -> bool {
     is_x86_feature_detected!("sse4.1")
 }
@@ -59,6 +64,18 @@ impl Hasher {
         }
     }
 
+    pub fn new_derive_key_raw(context: &[u8]) -> Self {
+        let mut c_state = MaybeUninit::uninit();
+        unsafe {
+            ffi::blake3_hasher_init_derive_key_raw(
+                c_state.as_mut_ptr(),
+                context.as_ptr() as *const _,
+                context.len(),
+            );
+            Self(c_state.assume_init())
+        }
+    }
+
     pub fn update(&mut self, input: &[u8]) {
         unsafe {
             ffi::blake3_hasher_update(&mut self.0, input.as_ptr() as *const c_void, input.len());
@@ -68,6 +85,12 @@ impl Hasher {
     pub fn finalize(&self, output: &mut [u8]) {
         unsafe {
             ffi::blake3_hasher_finalize(&self.0, output.as_mut_ptr(), output.len());
+        }
+    }
+
+    pub fn finalize_seek(&self, seek: u64, output: &mut [u8]) {
+        unsafe {
+            ffi::blake3_hasher_finalize_seek(&self.0, seek, output.as_mut_ptr(), output.len());
         }
     }
 }
@@ -101,12 +124,23 @@ pub mod ffi {
             self_: *mut blake3_hasher,
             context: *const ::std::os::raw::c_char,
         );
+        pub fn blake3_hasher_init_derive_key_raw(
+            self_: *mut blake3_hasher,
+            context: *const ::std::os::raw::c_void,
+            context_len: usize,
+        );
         pub fn blake3_hasher_update(
             self_: *mut blake3_hasher,
             input: *const ::std::os::raw::c_void,
             input_len: usize,
         );
         pub fn blake3_hasher_finalize(self_: *const blake3_hasher, out: *mut u8, out_len: usize);
+        pub fn blake3_hasher_finalize_seek(
+            self_: *const blake3_hasher,
+            seek: u64,
+            out: *mut u8,
+            out_len: usize,
+        );
 
         // portable low-level functions
         pub fn blake3_compress_in_place_portable(
@@ -141,6 +175,35 @@ pub mod ffi {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     pub mod x86 {
         extern "C" {
+            // SSE2 low level functions
+            pub fn blake3_compress_in_place_sse2(
+                cv: *mut u32,
+                block: *const u8,
+                block_len: u8,
+                counter: u64,
+                flags: u8,
+            );
+            pub fn blake3_compress_xof_sse2(
+                cv: *const u32,
+                block: *const u8,
+                block_len: u8,
+                counter: u64,
+                flags: u8,
+                out: *mut u8,
+            );
+            pub fn blake3_hash_many_sse2(
+                inputs: *const *const u8,
+                num_inputs: usize,
+                blocks: usize,
+                key: *const u32,
+                counter: u64,
+                increment_counter: bool,
+                flags: u8,
+                flags_start: u8,
+                flags_end: u8,
+                out: *mut u8,
+            );
+
             // SSE4.1 low level functions
             pub fn blake3_compress_in_place_sse41(
                 cv: *mut u32,
