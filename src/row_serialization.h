@@ -4,7 +4,7 @@
 #include "md5/md5.h"
 
 #define XXH_STATIC_LINKING_ONLY
-#include "xxHash/xxhash.h"
+#include "xxHash/xxh_x86dispatch.h"
 
 #include "blake3/blake3.h"
 
@@ -92,6 +92,10 @@ struct RowHasher {
 				XXH64_reset(&xxh64_state, 0);
 				break;
 
+			case HashAlgorithm::xxh128:
+				XXH3_128bits_reset(&xxh128_state);
+				break;
+
 			case HashAlgorithm::blake3:
 				blake3_hasher_init(&blake3_state);
 				break;
@@ -119,6 +123,10 @@ struct RowHasher {
 				XXH64_update(&xxh64_state, buf, bytes);
 				break;
 
+			case HashAlgorithm::xxh128:
+				XXH3_128bits_update(&xxh128_state, buf, bytes);
+				break;
+
 			case HashAlgorithm::blake3:
 				blake3_hasher_update(&blake3_state, buf, bytes);
 				break;
@@ -141,8 +149,13 @@ struct RowHasher {
 				return hash;
 
 			case HashAlgorithm::xxh64:
-				hash.md_len = sizeof(uint64_t);
+				hash.md_len = sizeof(hash.md_value_64);
 				hash.md_value_64 = htonll(XXH64_digest(&xxh64_state));
+				return hash;
+
+			case HashAlgorithm::xxh128:
+				hash.md_len = sizeof(XXH128_hash_t);
+				XXH128_canonicalFromHash((XXH128_canonical_t*)&hash.md_value, XXH3_128bits_digest(&xxh128_state));
 				return hash;
 
 			case HashAlgorithm::blake3:
@@ -160,6 +173,7 @@ struct RowHasher {
 	union {
 		MD5_CTX mdctx;
 		XXH64_state_t xxh64_state;
+		XXH3_state_t xxh128_state;
 		blake3_hasher blake3_state;
 	};
 	size_t size;

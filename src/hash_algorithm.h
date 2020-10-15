@@ -7,6 +7,7 @@ enum class HashAlgorithm {
 	md5 = 0,
 	xxh64 = 1,
 	blake3 = 2,
+	xxh128 = 3,
 };
 
 #endif

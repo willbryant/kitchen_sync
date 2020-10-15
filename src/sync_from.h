@@ -259,7 +259,7 @@ struct SyncFromWorker {
 		HashAlgorithm requested_hash_algorithm;
 		read_all_arguments(input, requested_hash_algorithm);
 
-		if (hash_algorithm == HashAlgorithm::md5 || hash_algorithm == HashAlgorithm::xxh64 || hash_algorithm == HashAlgorithm::blake3) {
+		if (hash_algorithm == HashAlgorithm::md5 || hash_algorithm == HashAlgorithm::xxh64 || hash_algorithm == HashAlgorithm::blake3 || hash_algorithm == HashAlgorithm::xxh128) {
 			hash_algorithm = requested_hash_algorithm;
 		}
 

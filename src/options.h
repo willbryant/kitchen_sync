@@ -87,11 +87,10 @@ struct Options {
 			"                             would use are printed as suggestions.)"
 			"\n"
 			"  --hash arg                 Use the specified checksum algorithm.  The default\n"
-			"                             is BLAKE3, falling back to MD5 for older versions.\n"
-			"                             You can downgrade to XXH64 if you prioritize maximum\n"
-			"                             performance and can tolerate a small risk of error.\n"
-			"                             This is not considered appropriate for production\n"
-			"                             use, but may be useful for dev/test machines.\n"
+			"                             is BLAKE3, and you can switch to XXH128 to get\n"
+			"                             higher performance with less robust protection\n"
+			"                             against collisions. Older options XXH64 and MD5\n"
+			"                             are supported only for backwards compatibility.\n"
 			"\n"
 			"  --from-path                Directory in which to find the Kitchen Sync binaries\n"
 			"                             on the source end.  Normally you should not need this\n"
@@ -232,6 +231,8 @@ struct Options {
 							hash_algorithm = HashAlgorithm::xxh64;
 						} else if (!strcmp(optarg, "BLAKE3")) {
 							hash_algorithm = HashAlgorithm::blake3;
+						} else if (!strcmp(optarg, "XXH128")) {
+							hash_algorithm = HashAlgorithm::xxh128;
 						} else if (!strcmp(optarg, "auto")) {
 							hash_algorithm = HashAlgorithm::auto_select;
 						} else {

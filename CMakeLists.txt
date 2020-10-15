@@ -119,7 +119,7 @@ endif()
 set(BLAKE3_OBJECTS $<TARGET_OBJECTS:blake3>)
 
 # build xxhash support
-add_library(xxhash OBJECT src/xxHash/xxhash.c)
+add_library(xxhash OBJECT src/xxHash/xxhash.c src/xxHash/xxh_x86dispatch.c)
 set_property(TARGET xxhash APPEND PROPERTY COMPILE_FLAGS "-O3")
 set_property(TARGET xxhash PROPERTY C_STANDARD 11)
 set(XXHASH_OBJECTS $<TARGET_OBJECTS:xxhash>)

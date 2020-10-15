@@ -141,7 +141,7 @@ struct SyncToWorker {
 
 		send_command(output, Commands::HASH_ALGORITHM, static_cast<int>(hash_algorithm));
 		read_expected_command(input, Commands::HASH_ALGORITHM, hash_algorithm);
-		if (hash_algorithm != HashAlgorithm::md5 && hash_algorithm != HashAlgorithm::xxh64 && hash_algorithm != HashAlgorithm::blake3) {
+		if (hash_algorithm != HashAlgorithm::md5 && hash_algorithm != HashAlgorithm::xxh64 && hash_algorithm != HashAlgorithm::blake3 && hash_algorithm != HashAlgorithm::xxh128) {
 			throw runtime_error("Couldn't find a compatible hash algorithm");
 		}
 	}

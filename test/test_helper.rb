@@ -108,6 +108,7 @@ module HashAlgorithm
   MD5 = 0
   XXH64 = 1
   BLAKE3 = 2
+  XXH128 = 3
 end
 
 module PrimaryKeyType
