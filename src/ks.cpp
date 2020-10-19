@@ -87,17 +87,19 @@ int main(int argc, char *argv[]) {
 		// works both locally and over SSH.
 		string host_arg("ENDPOINT_DATABASE_HOST=" + options.from.host);
 		string port_arg("ENDPOINT_DATABASE_PORT=" + options.from.port);
-		string database_arg("ENDPOINT_DATABASE_NAME=" + options.from.database);
 		string username_arg("ENDPOINT_DATABASE_USERNAME=" + options.from.username);
 		string password_arg("ENDPOINT_DATABASE_PASSWORD=" + options.from.password);
+		string database_arg("ENDPOINT_DATABASE_NAME=" + options.from.database);
+		string schema_arg("ENDPOINT_DATABASE_SCHEMA=" + options.from.schema);
 		string set_from_variables_arg("ENDPOINT_SET_VARIABLES=" + options.set_from_variables);
 
 		from_args.push_back("env");
 		from_args.push_back(host_arg.c_str());
 		from_args.push_back(port_arg.c_str());
-		from_args.push_back(database_arg.c_str());
 		from_args.push_back(username_arg.c_str());
 		from_args.push_back(password_arg.c_str());
+		from_args.push_back(database_arg.c_str());
+		from_args.push_back(schema_arg.c_str());
 		from_args.push_back(set_from_variables_arg.c_str());
 		from_args.push_back(from_binary.c_str());
 		from_args.push_back("from");
@@ -127,9 +129,10 @@ int main(int argc, char *argv[]) {
 		// and we pass all options to the 'to' end in the environment
 		setenv("ENDPOINT_DATABASE_HOST", options.to.host);
 		setenv("ENDPOINT_DATABASE_PORT", options.to.port);
-		setenv("ENDPOINT_DATABASE_NAME", options.to.database);
 		setenv("ENDPOINT_DATABASE_USERNAME", options.to.username);
 		setenv("ENDPOINT_DATABASE_PASSWORD", options.to.password);
+		setenv("ENDPOINT_DATABASE_NAME", options.to.database);
+		setenv("ENDPOINT_DATABASE_SCHEMA", options.to.schema);
 		setenv("ENDPOINT_SET_VARIABLES", options.set_to_variables);
 
 		setenv("ENDPOINT_FILTERS_FILE", options.filters);

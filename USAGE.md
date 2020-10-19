@@ -40,6 +40,13 @@ ks --from mysql://someuser:mypassword@localhost/sourcedb \
    --to postgresql://someuser:mypassword@localhost/targetdb
 ```
 
+And when syncing from or to PostgreSQL you can specify a single schema:
+
+```
+ks --from mysql://someuser:mypassword@localhost/sourcedb \
+   --to postgresql://someuser:mypassword@localhost/targetdb/targetschema
+```
+
 Parallelizing
 -------------
 

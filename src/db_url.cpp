@@ -90,11 +90,13 @@ DbUrl::DbUrl(const string &url) {
 	pair<string, string> username_password = split_pair(username_password_and_host_port.first, ":", -1);
 	pair<string, string> host_port = !username_password_and_host_port.second.empty() && username_password_and_host_port.second[0] == '[' ?
 		separate_bracketed_host_and_port(username_password_and_host_port.second) : split_pair(username_password_and_host_port.second, ":", -1);
+	pair<string, string> database_and_schema = split_pair(username_password_host_port_and_database.second, "/", -1);
 
 	protocol = DbUrl::urldecode(protocol_and_rest.first);
 	username = DbUrl::urldecode(username_password.first);
 	password = DbUrl::urldecode(username_password.second);
 	host = DbUrl::urldecode(host_port.first);
 	port = DbUrl::urldecode(host_port.second);
-	database = DbUrl::urldecode(username_password_host_port_and_database.second);
+	database = DbUrl::urldecode(database_and_schema.first);
+	schema = DbUrl::urldecode(database_and_schema.second);
 }

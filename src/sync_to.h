@@ -20,7 +20,7 @@ template <typename DatabaseClient>
 struct SyncToWorker {
 	SyncToWorker(
 		Database &database, SyncQueue<DatabaseClient> &sync_queue, bool leader, int worker_number, int read_from_descriptor, int write_to_descriptor,
-		const string &database_host, const string &database_port, const string &database_name, const string &database_username, const string &database_password,
+		const string &database_host, const string &database_port, const string &database_username, const string &database_password, const string &database_name, const string &database_schema,
 		const string &set_variables, const string &filter_file, const set<string> &ignore_tables, const set<string> &only_tables,
 		int verbose, bool progress, bool snapshot, bool alter, CommitLevel commit_level,
 		HashAlgorithm hash_algorithm, size_t target_minimum_block_size, size_t target_maximum_block_size,
@@ -33,7 +33,7 @@ struct SyncToWorker {
 			output_stream(write_to_descriptor),
 			input(input_stream),
 			output(output_stream),
-			client(database_host, database_port, database_name, database_username, database_password, set_variables),
+			client(database_host, database_port, database_username, database_password, database_name, database_schema, set_variables),
 			table_filters(load_filters(filter_file)),
 			ignore_tables(ignore_tables),
 			only_tables(only_tables),

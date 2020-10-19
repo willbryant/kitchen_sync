@@ -34,6 +34,7 @@ int endpoint_main(int argc, char *argv[]) {
 		string database_host(getenv_default("ENDPOINT_DATABASE_HOST", ""));
 		string database_port(getenv_default("ENDPOINT_DATABASE_PORT", ""));
 		string database_name(getenv_default("ENDPOINT_DATABASE_NAME", ""));
+		string database_schema(getenv_default("ENDPOINT_DATABASE_SCHEMA", ""));
 		string database_username(getenv_default("ENDPOINT_DATABASE_USERNAME", ""));
 		string database_password(getenv_default("ENDPOINT_DATABASE_PASSWORD", ""));
 		string set_variables(getenv_default("ENDPOINT_SET_VARIABLES", ""));
@@ -62,7 +63,7 @@ int endpoint_main(int argc, char *argv[]) {
 			char *end_of_last_arg = last_arg + strlen(last_arg);
 			size_t status_size = end_of_last_arg - status_area;
 
-			sync_from<DatabaseClient>(database_host, database_port, database_name, database_username, database_password, set_variables, STDIN_FILENO, STDOUT_FILENO, status_area, status_size);
+			sync_from<DatabaseClient>(database_host, database_port, database_username, database_password, database_name, database_schema, set_variables, STDIN_FILENO, STDOUT_FILENO, status_area, status_size);
 		} else {
 			// the 'to' endpoint has already been converted to pass options using environment variables -
 			// since it's always on the same system as the ks command, it doesn't need legacy support.
@@ -82,7 +83,7 @@ int endpoint_main(int argc, char *argv[]) {
 			size_t target_maximum_block_size = getenv_default("ENDPOINT_TARGET_MAXIMUM_BLOCK_SIZE", DEFAULT_MAXIMUM_BLOCK_SIZE); // not currently used except manual testing
 			bool structure_only = getenv_default("ENDPOINT_STRUCTURE_ONLY", false);
 
-			sync_to<DatabaseClient>(workers, startfd, database_host, database_port, database_name, database_username, database_password, set_variables, filters_file, ignore, only, verbose, progress, snapshot, alter, commit_level, hash_algorithm, target_minimum_block_size, target_maximum_block_size, structure_only);
+			sync_to<DatabaseClient>(workers, startfd, database_host, database_port, database_username, database_password, database_name, database_schema, set_variables, filters_file, ignore, only, verbose, progress, snapshot, alter, commit_level, hash_algorithm, target_minimum_block_size, target_maximum_block_size, structure_only);
 		}
 	} catch (const sync_error& e) {
 		// the worker thread has already output the error to cerr

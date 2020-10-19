@@ -391,13 +391,17 @@ class PostgreSQLAdapter
 SQL
   end
 
+  def create_schema(schema_name)
+    execute "DROP SCHEMA IF EXISTS #{schema_name} CASCADE"
+    execute "CREATE SCHEMA #{schema_name}"
+  end
+
   def private_schema_name
     "private_schema"
   end
 
   def create_private_schema_adapterspecifictbl
-    execute "DROP SCHEMA IF EXISTS #{private_schema_name} CASCADE"
-    execute "CREATE SCHEMA #{private_schema_name}"
+    create_schema(private_schema_name)
     create_adapterspecifictbl(name_prefix: "#{private_schema_name}.")
   end
 

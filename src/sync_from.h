@@ -15,10 +15,10 @@
 template<class DatabaseClient>
 struct SyncFromWorker {
 	SyncFromWorker(
-		const string &database_host, const string &database_port, const string &database_name, const string &database_username, const string &database_password,
+		const string &database_host, const string &database_port, const string &database_username, const string &database_password, const string &database_name, const string &database_schema,
 		const string &set_variables,
 		int read_from_descriptor, int write_to_descriptor, char *status_area, size_t status_size):
-			client(database_host, database_port, database_name, database_username, database_password, set_variables),
+			client(database_host, database_port, database_username, database_password, database_name, database_schema, set_variables),
 			input_stream(read_from_descriptor),
 			input(input_stream),
 			output_stream(write_to_descriptor),

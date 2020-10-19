@@ -182,7 +182,7 @@ class SchemaFromTest < KitchenSync::EndpointTestCase
   end
 end
 
-class SchemaFromMultipleSchemasTest < KitchenSync::EndpointTestCase
+class SchemaFromMultipleDatabaseSchemasTest < KitchenSync::EndpointTestCase
   include TestTableSchemas
 
   def from_or_to
@@ -216,5 +216,42 @@ class SchemaFromMultipleSchemasTest < KitchenSync::EndpointTestCase
     send_command   Commands::SCHEMA
     expect_command Commands::SCHEMA,
                    [{"tables" => [adapterspecifictbl_def(schema_name: connection.private_schema_name), adapterspecifictbl_def]}]
+  end
+end
+
+class SchemaFromSpecificDatabaseSchemaTest < KitchenSync::EndpointTestCase
+  include TestTableSchemas
+
+  def from_or_to
+    :from
+  end
+
+  def program_env
+    super.merge("ENDPOINT_DATABASE_SCHEMA" => connection.private_schema_name)
+  end
+
+  test_each "returns tables in the selected schema as the default schema" do
+    omit "This database doesn't support multiple schemas" unless connection.supports_multiple_schemas?
+    clear_schema
+    connection.create_private_schema_adapterspecifictbl
+
+    send_handshake_commands
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA,
+                   [{"tables" => [adapterspecifictbl_def]}] # note no schema_name option here, so this table would normally go into the database's default schema
+  end
+
+  test_each "ignores tables in other schemas, even the database default" do
+    omit "This database doesn't support multiple schemas" unless connection.supports_multiple_schemas?
+    clear_schema
+    create_footbl
+    connection.create_private_schema_adapterspecifictbl
+
+    send_handshake_commands
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA,
+                   [{"tables" => [adapterspecifictbl_def]}] # same as above
   end
 end
