@@ -66,12 +66,6 @@ int main(int argc, char *argv[]) {
 		string   to_binary(binary_path + "ks_" +   options.to.protocol);
 		string  ssh_binary("/usr/bin/ssh");
 
-		// currently we still pass all options to the 'from' endpoint on the command line, but we've started preparing it to support environment variables.
-		// unfortunately when we transport program arguments over SSH it flattens them into a string and so empty arguments get lost; we work around by passing "-".
-		if (options.from.port    .empty()) options.from.port     = "-";
-		if (options.from.username.empty()) options.from.username = "-";
-		if (options.from.password.empty()) options.from.password = "-";
-		if (options.set_from_variables.empty()) options.set_from_variables = "-";
 		if (options.cipher.empty()) options.cipher = DEFAULT_CIPHER;
 
 		vector<const char*> from_args;
@@ -88,14 +82,25 @@ int main(int argc, char *argv[]) {
 		}
 		size_t connection_args(from_args.size());
 
+		// pass all options to the 'from' env in the environment; we could use SSH to SetEnv these, but then the
+		// server configuration would have to explicitly allow them. instead, we invoke the env program, which
+		// works both locally and over SSH.
+		string host_arg("ENDPOINT_DATABASE_HOST=" + options.from.host);
+		string port_arg("ENDPOINT_DATABASE_PORT=" + options.from.port);
+		string database_arg("ENDPOINT_DATABASE_NAME=" + options.from.database);
+		string username_arg("ENDPOINT_DATABASE_USERNAME=" + options.from.username);
+		string password_arg("ENDPOINT_DATABASE_PASSWORD=" + options.from.password);
+		string set_from_variables_arg("ENDPOINT_SET_VARIABLES=" + options.set_from_variables);
+
+		from_args.push_back("env");
+		from_args.push_back(host_arg.c_str());
+		from_args.push_back(port_arg.c_str());
+		from_args.push_back(database_arg.c_str());
+		from_args.push_back(username_arg.c_str());
+		from_args.push_back(password_arg.c_str());
+		from_args.push_back(set_from_variables_arg.c_str());
 		from_args.push_back(from_binary.c_str());
 		from_args.push_back("from");
-		from_args.push_back(options.from.host.c_str());
-		from_args.push_back(options.from.port.c_str());
-		from_args.push_back(options.from.database.c_str());
-		from_args.push_back(options.from.username.c_str());
-		from_args.push_back(options.from.password.c_str());
-		from_args.push_back(options.set_from_variables.c_str());
 		from_args.push_back(nullptr);
 
 		if (options.verbose >= VERY_VERBOSE) {
@@ -119,15 +124,15 @@ int main(int argc, char *argv[]) {
 			stdin_pipe.dup_write_to(to_descriptor_list_start + worker + options.workers);
 		}
 
-		// we pass all options to the 'to' end in the environment
+		// and we pass all options to the 'to' end in the environment
 		setenv("ENDPOINT_DATABASE_HOST", options.to.host);
 		setenv("ENDPOINT_DATABASE_PORT", options.to.port);
 		setenv("ENDPOINT_DATABASE_NAME", options.to.database);
 		setenv("ENDPOINT_DATABASE_USERNAME", options.to.username);
 		setenv("ENDPOINT_DATABASE_PASSWORD", options.to.password);
 		setenv("ENDPOINT_SET_VARIABLES", options.set_to_variables);
-		setenv("ENDPOINT_FILTERS_FILE", options.filters);
 
+		setenv("ENDPOINT_FILTERS_FILE", options.filters);
 		setenv("ENDPOINT_IGNORE_TABLES", options.ignore);
 		setenv("ENDPOINT_ONLY_TABLES", options.only);
 		setenv("ENDPOINT_WORKERS", to_string(options.workers));

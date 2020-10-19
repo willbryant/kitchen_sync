@@ -39,9 +39,9 @@ int endpoint_main(int argc, char *argv[]) {
 		string set_variables(getenv_default("ENDPOINT_SET_VARIABLES", ""));
 
 		if (from) {
-			// for backwards compatibility, we currently send and support positional arguments to the 'from'
+			// for backwards compatibility, we currently support receiving positional arguments to the 'from'
 			// endpoint (which may be on another system if the --via option is used), but we also accept
-			// environment variables (which we intend to use in the future).
+			// environment variables (which are used these days).
 			if (argc > 7) {
 				database_host = argv[2];
 				database_port = argv[3];
