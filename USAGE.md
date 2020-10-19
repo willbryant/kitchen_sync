@@ -43,7 +43,7 @@ ks --from mysql://someuser:mypassword@localhost/sourcedb \
 Parallelizing
 -------------
 
-By default Kitchen Sync will start only one worker.  To parallelize, use the `--workers` option:
+By default Kitchen Sync will start only one worker for each end, with a single database connection each.  To parallelize further, use the `--workers` option:
 
 ```
 ks --from postgresql://someuser:mypassword@localhost/sourcedb \
@@ -51,9 +51,7 @@ ks --from postgresql://someuser:mypassword@localhost/sourcedb \
    --workers 4
 ```
 
-In practice the appropriate number of workers depends mainly on your hardware.  Typically laptops are best with 2-4 workers and workstations with 4-8, but production-scale servers can easily scale up to 16 or more workers if there are an appropriate number of CPUs available, the disks are fast SSDs, and there are lots of tables to work on.
-
-When synchronizing over high-latency connections such as residential copper or long-distance international Internet or WAN links, there may be some benefit to running with more workers than CPUs to ensure that there is always work ready to do - Kitchen Sync pipelines heavily, but it's not perfect; running more workers means there is more work on other jobs to be done while waiting for the next response.
+In this case there would be 4 workers for each end.  In practice the appropriate number of workers depends mainly on your hardware.  Typically laptops are best with 2-4 workers and workstations with 4-8, but production-scale servers can easily scale up to 16 or more workers if there are an appropriate number of CPUs available, the disks are fast SSDs, etc.
 
 What is it doing?
 -----------------
@@ -77,18 +75,18 @@ The Kitchen Sync protocol that runs between them mostly transfers only hashes of
 
 To use the SSH transport you need to install Kitchen Sync on a machine that you can SSH to at the source datacentre.  Ideally you should install the same version as you will have at the other end, but we do attempt to maintain forward compatibility in case your server has an older version.
 
-For example, if you want to copy from a database server called `server1.sourcecluster` and have Kitchen Sync installed on another machine `console1.sourcecluster`, and you want to copy to a `server2.localcluster` server (which is on the same network you're running Kitchen Sync from):
+For example, if you want to copy from a database server called `server1.remotesite` and have Kitchen Sync installed on another machine `console1.remotesite`, and you want to copy to a `server2.localsite` server (which is on the same network you're running Kitchen Sync from):
 
 ```
-ks --via console1.sourcecluster
-   --from postgresql://myuser:secretpassword@server1.sourcecluster/sourcedb \
-   --to postgresql://anotheruser:greatpassword@server2.localcluster/targetdb
+ks --via console1.remotesite
+   --from postgresql://myuser:secretpassword@server1.remotesite/sourcedb \
+   --to postgresql://anotheruser:greatpassword@server2.localsite/targetdb
 ```
 
 Of course, it is always more efficient to install Kitchen Sync directly on the source and target database servers itself, and avoid even the LANs at each end becoming a bottleneck:
 
 ```
-ks --via server1.sourcecluster \
+ks --via server1.remotesite \
    --from postgresql://myuser:secretpassword@localhost/sourcedb \
    --to postgresql://anotheruser:greatpassword@localhost/targetdb
 ```
