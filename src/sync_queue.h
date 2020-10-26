@@ -43,7 +43,7 @@ struct TableJob {
 	std::mutex mutex;
 	std::condition_variable borrowed_task_completed;
 
-	list<KeyRange> ranges_to_retrieve;
+	deque<KeyRange> ranges_to_retrieve;
 	priority_queue<KeyRangeToCheck, deque<KeyRangeToCheck>, lower_priority> ranges_to_check;
 	bool notify_when_work_could_be_shared;
 
