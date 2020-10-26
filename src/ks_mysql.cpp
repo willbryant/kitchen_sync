@@ -161,8 +161,7 @@ public:
 			switch (_res.conversion_for(column_number)) {
 				case encode_bool:
 					// although we have made the assumption in this codebase that tinyint(1) is used only for booleans,
-					// in fact even if a field is tinyint(1) any tinyint value can be stored, even those with multiple digits,
-					// so we check our assumption here and raise an error rather than risk silently syncing incorrectly
+					// in fact even if a field is tinyint(1) any tinyint value can be stored, even those with multiple digits.
 					if (length_of(column_number) == 1) {
 						if (*result_at(column_number) == '0') {
 							packer << false;
@@ -172,7 +171,13 @@ public:
 							break;
 						}
 					}
-					throw runtime_error("Invalid value for boolean column " + _res.qualified_name_of_column(column_number) + ": " + string_at(column_number) + " (we assume tinyint(1) is used for booleans)");
+
+					// ok, we guessed wrong, this column isn't used as a boolean. we can't support this properly as it's too
+					// late to change the column type, but we can at least provide a workaround that will work in the case
+					// where we're syncing mysql -> mysql - serialize the actual value even though that's not a boolean. it will
+					// still unfortunately do the wrong thing when syncing to another database that has proper boolean types.
+					packer << int_at(column_number);
+					break;
 
 				case encode_uint:
 					packer << uint_at(column_number);
