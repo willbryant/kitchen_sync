@@ -1,6 +1,10 @@
 Changelog
 =========
 
+2.9
+---
+* Don't throw errors when syncing MySQL -> MySQL and `tinyint(1)` columns have non-boolean values (though note MySQL has deprecated integer display widths for anything except boolean columns). `tinyint(1)` columns will however continue to be interpreted as boolean when syncing MySQL -> PostgreSQL.
+
 2.8
 ---
 * When syncing from MySQL/MariaDB to PostgreSQL, add a suffix number to indexes to make them unique across the schema if there are any conflicts.
