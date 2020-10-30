@@ -171,9 +171,10 @@ public:
 	PostgreSQLClient(
 		const string &database_host,
 		const string &database_port,
-		const string &database_name,
 		const string &database_username,
 		const string &database_password,
+		const string &database_name,
+		const string &database_schema,
 		const string &variables);
 	~PostgreSQLClient();
 
@@ -204,7 +205,7 @@ public:
 	string key_definition(const Table &table, const Key &key);
 
 	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '"'); };
-	inline string quote_schema_name(const string &schema_name) { return quote_identifier(schema_name.empty() ? "public" : schema_name); } // whereas in postgresql itself not specifying a schema means use the first entry in the search_path, but in KS it always means the normal default namespace for the database server in question
+	inline string quote_schema_name(const string &schema_name) { return quote_identifier(schema_name.empty() ? default_schema : schema_name); } // whereas in postgresql itself not specifying a schema means use the first entry in the search_path, but in KS it always means the normal default namespace for the database server in question
 	inline string quote_table_name(const Table &table) { return quote_schema_name(table.schema_name) + '.' + quote_identifier(table.name); }
 	inline bool supports_jsonb_column_type() const { return (server_version >= POSTGRESQL_9_4); }
 	inline bool supports_generated_as_identity() const { return (server_version >= POSTGRESQL_10); }
@@ -229,6 +230,10 @@ public:
 		return res.n_tuples();
 	}
 
+public:
+	const string specified_schema;
+	const string default_schema; // will be the same as specified_schema if there is one, and "public" if not
+
 protected:
 	string sql_error(const string &sql);
 
@@ -245,10 +250,13 @@ private:
 PostgreSQLClient::PostgreSQLClient(
 	const string &database_host,
 	const string &database_port,
-	const string &database_name,
 	const string &database_username,
 	const string &database_password,
-	const string &variables) {
+	const string &database_name,
+	const string &database_schema,
+	const string &variables):
+	specified_schema(database_schema),
+	default_schema(database_schema.empty() ? "public" : database_schema) {
 
 	const char *keywords[] = { "host",                "port",                "dbname",              "user",                    "password",                nullptr };
 	const char *values[]   = { database_host.c_str(), database_port.c_str(), database_name.c_str(), database_username.c_str(), database_password.c_str(), nullptr };
@@ -263,6 +271,10 @@ PostgreSQLClient::PostgreSQLClient(
 	}
 
 	execute("SET client_min_messages TO WARNING");
+
+	if (!database_schema.empty()) {
+		execute("SET search_path=" + quote_identifier(database_schema));
+	}
 
 	if (!variables.empty()) {
 		execute("SET " + variables);
@@ -419,6 +431,16 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 	map<string, set<string>> used_relation_names_by_schema;
 
 	for (Table &table : database.tables) {
+		// normally we're syncing from an entire database to an entire database, and specified_schema will be left empty.
+		// if it's set to anything else, we're syncing into a single specific schema, and although in principle we could
+		// still allow other schemas as well, that's probably going to be a surprise to the user, or at least they'd
+		// probably want to set mappings for each named schema.
+		if (!table.schema_name.empty() && !specified_schema.empty()) {
+			throw runtime_error("Can't place table " + table.name + " from schema " + table.schema_name + " into schema " + default_schema + ". "
+				"To sync into a single specific schema you must sync from a single specific schema only.");
+		}
+
+		// check all the columns
 		for (Column &column : table.columns) {
 			// the modern type system negotiates compatible integer types, so we never get given types
 			// that postgresql won't support.  we have to support converting legacy schemas here though.
@@ -478,6 +500,7 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 			}
 		}
 
+		// check all the keys
 		for (Key &key : table.keys) {
 			if (key.name.size() >= 63) {
 				// postgresql has a hardcoded limit of 63 characters for index names
@@ -718,7 +741,7 @@ inline ColumnTypeList PostgreSQLClient::supported_types() {
 }
 
 struct PostgreSQLColumnLister {
-	inline PostgreSQLColumnLister(Table &table, TypeMap &type_map, const ColumnTypeList &accepted_types): table(table), type_map(type_map), accepted_types(accepted_types) {}
+	inline PostgreSQLColumnLister(PostgreSQLClient &client, Table &table, TypeMap &type_map, const ColumnTypeList &accepted_types): client(client), table(table), type_map(type_map), accepted_types(accepted_types) {}
 
 	inline void operator()(PostgreSQLRow &row) {
 		Column column;
@@ -752,12 +775,10 @@ struct PostgreSQLColumnLister {
 				string quoted_sequence_name(column.default_value.substr(9, column.default_value.length() - 21));
 
 				// postgresql requires that sequences belong to the same schema as the table that uses them, so we should always find that the sequence name is prefixed
-				// by the same schema name, if it's not in the default schema.  chop this off here; otherwise when it's applied at the other end, it'll all get quoted
+				// by the same schema name, if it's not in the 'public' schema.  chop this off here; otherwise when it's applied at the other end, it'll all get quoted
 				// together with the sequence name as a single big identifier, which won't work.  we look for both quoted and unquoted forms rather than trying to guess
-				// whether postgresql would've used the quoted form.
-				if (!table.schema_name.empty()) {
-					quoted_sequence_name = remove_specific_schema_from_identifier(quoted_sequence_name, table.schema_name);
-				}
+				// whether postgresql would've used the quoted form.  this isn't always present for tables in the 'public' schema, but it sometimes is, so look anyway.
+				quoted_sequence_name = remove_specific_schema_from_identifier(quoted_sequence_name, table.schema_name.empty() ? client.default_schema : table.schema_name);
 
 				column.default_value = unquote_identifier(quoted_sequence_name);
 
@@ -933,13 +954,13 @@ struct PostgreSQLColumnLister {
 	}
 
 	inline string remove_specific_schema_from_identifier(const string &escaped, const string &schema_name) {
-		if (escaped.substr(0, table.schema_name.length() + 1) == schema_name + '.') {
+		if (escaped.substr(0, schema_name.length() + 1) == schema_name + '.') {
 			return escaped.substr(schema_name.length() + 1);
 		}
 
-		string quoted_table_schema_name(quote_identifier(schema_name, '"'));
-		if (escaped.substr(0, quoted_table_schema_name.length() + 1) == quoted_table_schema_name + '.') {
-			return escaped.substr(quoted_table_schema_name.length() + 1);
+		string quoted_schema_name(quote_identifier(schema_name, '"'));
+		if (escaped.substr(0, quoted_schema_name.length() + 1) == quoted_schema_name + '.') {
+			return escaped.substr(quoted_schema_name.length() + 1);
 		}
 
 		return escaped;
@@ -967,6 +988,7 @@ struct PostgreSQLColumnLister {
 		return ColumnType::postgresql_specific;
 	}
 
+	PostgreSQLClient &client;
 	Table &table;
 	TypeMap &type_map;
 	const ColumnTypeList &accepted_types;
@@ -1013,9 +1035,9 @@ struct PostgreSQLTableLister {
 
 	void operator()(PostgreSQLRow &row) {
 		string schema_name(row.string_at(0));
-		Table table(schema_name == "public" ? "" : schema_name, row.string_at(1));
+		Table table(schema_name == client.default_schema ? "" : schema_name, row.string_at(1));
 
-		PostgreSQLColumnLister column_lister(table, type_map, accepted_types);
+		PostgreSQLColumnLister column_lister(client, table, type_map, accepted_types);
 		client.query(
 			"SELECT attname, format_type(atttypid, atttypmod), attnotnull, atthasdef, pg_get_expr(adbin, adrelid), " + attidentity_column() + " AS attidentity, " + attgenerated_column() + " AS attgenerated "
 			  "FROM pg_attribute "

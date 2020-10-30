@@ -220,9 +220,10 @@ public:
 	MySQLClient(
 		const string &database_host,
 		const string &database_port,
-		const string &database_name,
 		const string &database_username,
 		const string &database_password,
+		const string &database_name,
+		const string &database_schema,
 		const string &variables);
 	~MySQLClient();
 
@@ -307,10 +308,15 @@ private:
 MySQLClient::MySQLClient(
 	const string &database_host,
 	const string &database_port,
-	const string &database_name,
 	const string &database_username,
 	const string &database_password,
+	const string &database_name,
+	const string &database_schema,
 	const string &variables) {
+	// although our URL parser will accept schema names, they aren't supported by mysql
+	if (!database_schema.empty()) {
+		throw runtime_error("MySQL doesn't support multiple schemas. If you meant to the '/' character in the database name, URL-encode it as %2F.");
+	}
 
 	// mysql_real_connect takes separate params for numeric ports and unix domain sockets
 	int port = 0;

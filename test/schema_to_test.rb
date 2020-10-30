@@ -1012,7 +1012,7 @@ SQL
   end
 end
 
-class SchemaToMultipleSchemasTest < KitchenSync::EndpointTestCase
+class SchemaToMultipleDatabaseSchemasTest < KitchenSync::EndpointTestCase
   include TestTableSchemas
 
   def from_or_to
@@ -1065,6 +1065,46 @@ class SchemaToMultipleSchemasTest < KitchenSync::EndpointTestCase
     clear_schema
     expect_handshake_commands(schema: {"tables" => [adapterspecifictbl_def, adapterspecifictbl_def(schema_name: "other_schema")]})
     expect_stderr("Conflicting tables named #{adapterspecifictbl_def["name"]} present in multiple schemas") do
+      read_command
+    end
+  end
+end
+
+class SchemaToSpecificDatabaseSchemaTest < KitchenSync::EndpointTestCase
+  include TestTableSchemas
+
+  def from_or_to
+    :to
+  end
+
+  def program_env
+    if connection.supports_multiple_schemas?
+      super.merge("ENDPOINT_DATABASE_SCHEMA" => connection.private_schema_name)
+    else
+      super
+    end
+  end
+
+  test_each "creates tables in the selected schema by default" do
+    omit "This database doesn't support multiple schemas" unless connection.supports_multiple_schemas?
+    clear_schema
+    expect_handshake_commands(schema: {"tables" => [adapterspecifictbl_def]}) # note no schema_name option here, so this table would normally go into the database's default schema
+
+    expect_command Commands::RANGE, [adapterspecifictbl_def["name"]] # similarly, there's no schema name prefix here, because the table is in the default schema as far as the protocol is concerned
+    send_command   Commands::RANGE, [adapterspecifictbl_def["name"], [], []]
+    expect_quit_and_close
+
+    assert_equal({
+      connection.private_schema_name => [adapterspecifictbl_def["name"]],
+    }, connection.tables_by_schema)
+  end
+
+  test_each "complains if a table has any non-default schema name" do
+    omit "This database doesn't support multiple schemas" unless connection.supports_multiple_schemas?
+    clear_schema
+    connection.create_schema("different_schema")
+    expect_handshake_commands(schema: {"tables" => [adapterspecifictbl_def(schema_name: "different_schema")]})
+    expect_stderr("Can't place table #{adapterspecifictbl_def["name"]} from schema different_schema into schema private_schema. To sync into a single specific schema you must sync from a single specific schema only.") do
       read_command
     end
   end
