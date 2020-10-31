@@ -528,6 +528,36 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 			used_relation_names.insert(key.name);
 		}
 	}
+
+	// if syncing to a whole database, we check that the schemas we're told the tables belong to are all in search_path (at the
+	// 'to' end) because if not, populate_database_schema will not see them and we'll incorrectly think they need to be created
+	// which of course won't work since they already exist.
+	if (specified_schema.empty()) {
+		string current_schemas_list(select_one("SELECT current_schemas(false)"));
+		current_schemas_list = current_schemas_list.substr(1, current_schemas_list.length() - 2);
+
+		set<string> current_schemas(split_list(current_schemas_list, ","));
+		set<string> missing_schemas;
+
+		for (const auto schema_and_relation_names : used_relation_names_by_schema) {
+			const string schema_name(schema_and_relation_names.first.empty() ? default_schema : schema_and_relation_names.first);
+			if (!current_schemas.count(schema_name) && !current_schemas.count(quote_identifier(schema_name))) {
+				missing_schemas.insert(schema_name);
+			}
+		}
+
+		if (!missing_schemas.empty()) {
+			string error("The search_path is currently set to ");
+			error += current_schemas_list;
+			error += " but there are also tables in ";
+			for (const string s : missing_schemas) {
+				if (s != *missing_schemas.begin()) error += ", ";
+				error += s;
+			}
+			error += ". Either add to the 'to' end search_path using --set-to-variables or restrict the 'from' end search_path using --set-from-variables.";
+			throw runtime_error(error);
+		}
+	}
 }
 
 string PostgreSQLClient::add_unique_relation_name_suffix(string name, set<string> used_relation_names, size_t max_allowed_length) {

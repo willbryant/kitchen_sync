@@ -1060,6 +1060,15 @@ class SchemaToMultipleDatabaseSchemasTest < KitchenSync::EndpointTestCase
     assert !connection.table_column_defaults(adapterspecifictbl_def["name"],                       "public")["second"].include?("#{connection.private_schema_name}.second_seq")
   end
 
+  test_each "complains if there are tables in other schemas not in the search path" do
+    omit "This database doesn't support multiple schemas" unless connection.supports_multiple_schemas?
+    clear_schema
+    expect_handshake_commands(schema: {"tables" => [adapterspecifictbl_def(schema_name: connection.private_schema_name + "x")]})
+    expect_stderr("The search_path is currently set to public,private_schema but there are also tables in private_schemax. Either add to the 'to' end search_path using --set-to-variables or restrict the 'from' end search_path using --set-from-variables.") do
+      read_command
+    end
+  end
+
   test_each "raises an error if there are tables with the same name in multiple schemas on databases that don't support that" do
     omit "This database supports multiple schemas fully" if connection.supports_multiple_schemas?
     clear_schema
