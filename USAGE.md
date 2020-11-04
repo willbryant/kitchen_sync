@@ -33,20 +33,6 @@ ks --from postgresql://myuser:secretpassword@server1.cluster1/sourcedb \
 
 Please see "Transporting Kitchen Sync over SSH" below for more options, especially if you want to synchronize over the Internet or a WAN.
 
-Sychronization between different database servers is directly supported:
-
-```
-ks --from mysql://someuser:mypassword@localhost/sourcedb \
-   --to postgresql://someuser:mypassword@localhost/targetdb
-```
-
-And when syncing from or to PostgreSQL you can specify a single schema:
-
-```
-ks --from mysql://someuser:mypassword@localhost/sourcedb \
-   --to postgresql://someuser:mypassword@localhost/targetdb/targetschema
-```
-
 Parallelizing
 -------------
 
@@ -58,7 +44,42 @@ ks --from postgresql://someuser:mypassword@localhost/sourcedb \
    --workers 4
 ```
 
-In this case there would be 4 workers for each end.  In practice the appropriate number of workers depends mainly on your hardware.  Typically laptops are best with 2-4 workers and workstations with 4-8, but production-scale servers can easily scale up to 16 or more workers if there are an appropriate number of CPUs available, the disks are fast SSDs, etc.
+In this case there would be 4 workers for each end.  In practice the appropriate number of workers depends mainly on your hardware.  Typically laptops are best with 2-4 workers and workstations with 4-8, but production-scale servers can easily scale up to 32 or more workers if there are an appropriate number of CPUs available, the disks are fast SSDs, etc.
+
+Different database servers
+--------------------------
+
+Sychronization between different database servers is directly supported:
+
+```
+ks --from mysql://someuser:mypassword@localhost/sourcedb \
+   --to postgresql://someuser:mypassword@localhost/targetdb
+```
+
+Kitchen Sync will try to convert column types to their nearest compatible equivalent. See [Supported schema](SCHEMA.md) for more details. Column types that Kitchen Sync doesn't know how to convert will work when syncing to the same database server, but if you're syncing to another database server you'll get errors if the type isn't supported.
+
+Out of the supported types, geometry columns are the only _values_ that Kitchen Sync knows are represented in different ways on supported databases and it will attempt to convert them. All other values are passed through essentially unmodified (ignoring details like trailing decimal zeros etc. which are normalised).
+
+Multiple schemas
+----------------
+
+When syncing from or to PostgreSQL you can specify a single schema:
+
+```
+ks --from mysql://someuser:mypassword@localhost/sourcedb \
+   --to postgresql://someuser:mypassword@localhost/targetdb/targetschema
+```
+
+Which also makes it possible to sync between two schemas in the same database:
+
+```
+ks --from postgresql://someuser:mypassword@localhost/mydb/public \
+   --to postgresql://someuser:mypassword@localhost/mydb/other
+```
+
+When you specify a schema, Kitchen Sync will set the search path to just that schema.
+
+Otherwise, it will see the tables in the schema named in `search_path` (the default, or that you set using `--set-from-variables`). If you're syncing from a database with multiple schemas, you need to sync to a whole database rather than a single schema, and the tables will go into the same named schema as in the source database.
 
 What is it doing?
 -----------------
