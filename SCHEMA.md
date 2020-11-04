@@ -73,7 +73,7 @@ The following PostgreSQL types are supported and mapped to the MySQL equivalents
 
 | PostgreSQL | MySQL type | Conversion notes |
 | --- | --- | --- |
-| `json` | `CHAR(36)` | A comment will be used to mark the field as JSON so that you can sync back the other way |
+| `uuid` | `CHAR(36)` | |
 
 ### Spatial types
 
