@@ -1,6 +1,10 @@
 Changelog
 =========
 
+2.10
+----
+* Support syncing from a MySQL database to a specific named schema on PostgreSQL, vice versa, or between two PostgreSQL schemas.
+
 2.9
 ---
 * Don't throw errors when syncing MySQL -> MySQL and `tinyint(1)` columns have non-boolean values (though note MySQL has deprecated integer display widths for anything except boolean columns). `tinyint(1)` columns will however continue to be interpreted as boolean when syncing MySQL -> PostgreSQL.
