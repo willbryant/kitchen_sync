@@ -436,8 +436,10 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 		// still allow other schemas as well, that's probably going to be a surprise to the user, or at least they'd
 		// probably want to set mappings for each named schema.
 		if (!table.schema_name.empty() && !specified_schema.empty()) {
-			throw runtime_error("Can't place table " + table.name + " from schema " + table.schema_name + " into schema " + default_schema + ". "
+			database.errors.push_back(
+				"Can't place table " + table.name + " from schema " + table.schema_name + " into schema " + default_schema + ". "
 				"To sync into a single specific schema you must sync from a single specific schema only.");
+			return;
 		}
 
 		// check all the columns
@@ -555,7 +557,7 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 				error += s;
 			}
 			error += ". Either add to the 'to' end search_path using --set-to-variables or restrict the 'from' end search_path using --set-from-variables.";
-			throw runtime_error(error);
+			database.errors.push_back(error);
 		}
 	}
 }
