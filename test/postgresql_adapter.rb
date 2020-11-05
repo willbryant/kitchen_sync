@@ -36,6 +36,7 @@ class PostgreSQLAdapter
       password
     )
     @connection.type_map_for_results = PG::BasicTypeMapForResults.new(@connection)
+    @connection.type_map_for_results.default_type_map = PG::TypeMapAllStrings.new # instead of WarningTypeMap; only used when there's no other type mapping defined
   end
 
   extend Forwardable
@@ -46,20 +47,20 @@ class PostgreSQLAdapter
   end
 
   def tables
-    query("SELECT tablename::TEXT FROM pg_tables WHERE schemaname = ANY (current_schemas(false)) ORDER BY tablename").collect {|row| row["tablename"]}
+    query("SELECT tablename FROM pg_tables WHERE schemaname = ANY (current_schemas(false)) ORDER BY tablename").collect {|row| row["tablename"]}
   end
 
   def tables_by_schema
-    query("SELECT schemaname::TEXT, tablename::TEXT FROM pg_tables WHERE schemaname::TEXT NOT IN ('information_schema', 'pg_catalog') ORDER BY tablename").each_with_object({}) {|row, results| (results[row["schemaname"]] ||= []) << row["tablename"]}
+    query("SELECT schemaname, tablename FROM pg_tables WHERE schemaname NOT IN ('information_schema', 'pg_catalog') ORDER BY tablename").each_with_object({}) {|row, results| (results[row["schemaname"]] ||= []) << row["tablename"]}
   end
 
   def views
-    query("SELECT viewname::TEXT FROM pg_views WHERE schemaname = ANY (current_schemas(false)) ORDER BY viewname").collect {|row| row["viewname"]}
+    query("SELECT viewname FROM pg_views WHERE schemaname = ANY (current_schemas(false)) ORDER BY viewname").collect {|row| row["viewname"]}
   end
 
   def sequence_generators_by_schema
-    # from pg 10 on we would be able to be more consistent with the above: query("SELECT sequencename::TEXT FROM pg_sequences WHERE schemaname NOT IN ('information_schema', 'pg_catalog') ORDER BY sequencename").collect {|row| row["sequencename"]}
-    query("SELECT sequence_schema::TEXT, sequence_name::TEXT FROM INFORMATION_SCHEMA.SEQUENCES WHERE sequence_schema NOT IN ('information_schema', 'pg_catalog') ORDER BY sequence_name").collect {|row| [row["sequence_schema"], row["sequence_name"]]}
+    # from pg 10 on we would be able to be more consistent with the above: query("SELECT sequencename FROM pg_sequences WHERE schemaname NOT IN ('information_schema', 'pg_catalog') ORDER BY sequencename").collect {|row| row["sequencename"]}
+    query("SELECT sequence_schema, sequence_name FROM INFORMATION_SCHEMA.SEQUENCES WHERE sequence_schema NOT IN ('information_schema', 'pg_catalog') ORDER BY sequence_name").collect {|row| [row["sequence_schema"], row["sequence_name"]]}
   end
 
   def schemata
@@ -80,7 +81,7 @@ class PostgreSQLAdapter
   def table_keys(table_name)
     raise "table #{table_name} doesn't exist" unless tables.include?(table_name)
     query(<<-SQL).collect {|row| row["relname"]}
-      SELECT index_class.relname::TEXT
+      SELECT index_class.relname
         FROM pg_class table_class, pg_index, pg_class index_class
        WHERE table_class.relname = '#{table_name}' AND
              table_class.oid = pg_index.indrelid AND
@@ -93,7 +94,7 @@ class PostgreSQLAdapter
   def table_keys_unique(table_name)
     raise "table #{table_name} doesn't exist" unless tables.include?(table_name)
     query(<<-SQL).each_with_object({}) {|row, results| results[row["relname"]] = row["indisunique"]}
-      SELECT index_class.relname::TEXT, indisunique
+      SELECT index_class.relname, indisunique
         FROM pg_class table_class, pg_index, pg_class index_class
        WHERE table_class.relname = '#{table_name}' AND
              table_class.oid = pg_index.indrelid AND
@@ -112,7 +113,7 @@ class PostgreSQLAdapter
   def table_key_columns(table_name)
     raise "table #{table_name} doesn't exist" unless tables.include?(table_name)
     query(<<-SQL).each_with_object({}) {|row, results| results[row["relname"]] = key_definition_columns(row["definition"])}
-      SELECT index_class.relname::TEXT, pg_get_indexdef(indexrelid) AS definition
+      SELECT index_class.relname, pg_get_indexdef(indexrelid) AS definition
         FROM pg_class table_class, pg_class index_class, pg_index
        WHERE table_class.relname = '#{table_name}' AND
              table_class.relkind = 'r' AND
@@ -125,7 +126,7 @@ class PostgreSQLAdapter
 
   def table_column_names(table_name)
     query(<<-SQL).collect {|row| row["attname"]}
-      SELECT attname::TEXT
+      SELECT attname
         FROM pg_attribute, pg_class
        WHERE attrelid = pg_class.oid AND
              attnum > 0 AND
@@ -137,7 +138,7 @@ class PostgreSQLAdapter
 
   def table_column_types(table_name)
     query(<<-SQL).collect.with_object({}) {|row, results| results[row["attname"]] = row["atttype"]}
-      SELECT attname::TEXT, format_type(atttypid, atttypmod) AS atttype
+      SELECT attname, format_type(atttypid, atttypmod) AS atttype
         FROM pg_attribute, pg_class, pg_type
        WHERE attrelid = pg_class.oid AND
              atttypid = pg_type.oid AND
@@ -154,7 +155,7 @@ class PostgreSQLAdapter
 
   def table_column_nullability(table_name)
     query(<<-SQL).collect.with_object({}) {|row, results| results[row["attname"]] = !row["attnotnull"]}
-      SELECT attname::TEXT, attnotnull
+      SELECT attname, attnotnull
         FROM pg_attribute, pg_class
        WHERE attrelid = pg_class.oid AND
              attnum > 0 AND
@@ -166,7 +167,7 @@ class PostgreSQLAdapter
 
   def table_column_defaults(table_name, schema_name = nil)
     query(<<-SQL).collect.with_object({}) {|row, results| results[row["attname"]] = row["attdefault"].try!(:gsub, /^'(.*)'::.*$/, '\\1')}
-      SELECT attname::TEXT, (CASE WHEN atthasdef THEN pg_get_expr(adbin, adrelid) ELSE NULL END) AS attdefault
+      SELECT attname, (CASE WHEN atthasdef THEN pg_get_expr(adbin, adrelid) ELSE NULL END) AS attdefault
         FROM pg_attribute
         JOIN pg_class ON attrelid = pg_class.oid
         JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid
