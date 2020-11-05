@@ -3,7 +3,7 @@ GEM
   specs:
     digest-blake3 (0.37.0.1)
     msgpack (1.2.4)
-    mysql2 (0.5.2)
+    mysql2 (0.5.3)
     pg (1.2.3)
     power_assert (1.1.6)
     ruby-xxHash (0.4.0.1)
