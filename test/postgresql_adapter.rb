@@ -57,15 +57,20 @@ class PostgreSQLAdapter
     query("SELECT viewname::TEXT FROM pg_views WHERE schemaname = ANY (current_schemas(false)) ORDER BY viewname").collect {|row| row["viewname"]}
   end
 
-  def sequence_generators
-    # from pg 10 on we would be able to be more consistent with the above: query("SELECT sequencename::TEXT FROM pg_sequences WHERE schemaname = ANY (current_schemas(false)) ORDER BY sequencename").collect {|row| row["sequencename"]}
-    query("SELECT sequence_schema::TEXT, sequence_name::TEXT FROM INFORMATION_SCHEMA.SEQUENCES WHERE sequence_schema = ANY (current_schemas(false)) ORDER BY sequence_name").collect {|row| [row["sequence_schema"], row["sequence_name"]]}
+  def sequence_generators_by_schema
+    # from pg 10 on we would be able to be more consistent with the above: query("SELECT sequencename::TEXT FROM pg_sequences WHERE schemaname NOT IN ('information_schema', 'pg_catalog') ORDER BY sequencename").collect {|row| row["sequencename"]}
+    query("SELECT sequence_schema::TEXT, sequence_name::TEXT FROM INFORMATION_SCHEMA.SEQUENCES WHERE sequence_schema NOT IN ('information_schema', 'pg_catalog') ORDER BY sequence_name").collect {|row| [row["sequence_schema"], row["sequence_name"]]}
+  end
+
+  def schemata
+    query("SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('public', 'information_schema') AND schema_name NOT LIKE 'pg_%' ORDER BY schema_name").collect {|row| row["schema_name"]}
   end
 
   def clear_schema
     views.each {|view_name| execute "DROP VIEW #{quote_ident view_name}"}
     tables_by_schema.each {|schema_name, tables| tables.each {|table_name| execute "DROP TABLE #{quote_ident schema_name}.#{quote_ident table_name}"}}
-    sequence_generators.each {|schema_name, sequence_name| execute "DROP SEQUENCE #{quote_ident schema_name}.#{quote_ident sequence_name}"}
+    sequence_generators_by_schema.each {|schema_name, sequence_name| execute "DROP SEQUENCE #{quote_ident schema_name}.#{quote_ident sequence_name}"}
+    schemata.each {|schema_name| execute "DROP SCHEMA #{quote_ident schema_name}"}
   end
 
   def table_primary_key_name(table_name)
@@ -392,7 +397,6 @@ SQL
   end
 
   def create_schema(schema_name)
-    execute "DROP SCHEMA IF EXISTS #{schema_name} CASCADE"
     execute "CREATE SCHEMA #{schema_name}"
   end
 
