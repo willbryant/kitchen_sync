@@ -148,7 +148,13 @@ module KitchenSync
 
     def expect_command(*args)
       command = read_command
-      raise "expected command: [#{args.collect {|arg| PP.pp(arg, "", 200).strip}.join(",\n")}]\nbut received: [#{command.collect {|arg| PP.pp(arg, "", 200).strip}.join(",\n")}}]" unless args == command # use this instead of assert_equal so we get the backtrace
+
+      unless args == command
+        # use this raise instead of assert_equal so we get the backtrace
+        suffix = "\nstderr output: #{spawner.stderr_contents.inspect}" if spawner.stderr_contents && spawner.stderr_contents != "" # currently only really relevant if IGNORE_NONEMPTY_STDERR is set as otherwise read_command's check will get there first
+        raise "expected command: [#{args.collect {|arg| PP.pp(arg, "", 200).strip}.join(",\n")}]\n" \
+              "but received: [#{command.collect {|arg| PP.pp(arg, "", 200).strip}.join(",\n")}}]#{suffix}"
+      end
     rescue EOFError
       fail "expected #{args.inspect} but the connection was closed; stderr: #{spawner.stderr_contents}"
     end

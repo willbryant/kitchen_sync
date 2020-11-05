@@ -99,7 +99,7 @@ class KitchenSyncSpawner
       args = unpack_next # then 1 or more arrays
       if args != [] # terminated by an empty array, which we don't need to return
         results << args # we return all the other arrays
-      elsif stderr_contents && stderr_contents != "" && !@expected_stderr_contents # check stderr before returning the results
+      elsif !@expected_stderr_contents && !ENV['IGNORE_NONEMPTY_STDERR'] && stderr_contents && stderr_contents != "" # check stderr before returning the results
         fail "Unexpected stderr output: #{stderr_contents.inspect} (results were #{results.inspect})"
       else # all done
         return results
