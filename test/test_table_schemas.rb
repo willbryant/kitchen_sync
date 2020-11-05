@@ -443,8 +443,8 @@ SQL
     connection.create_adapterspecifictbl
   end
 
-  def adapterspecifictbl_def(*args)
-    connection.adapterspecifictbl_def(*args)
+  def adapterspecifictbl_def(**args)
+    connection.adapterspecifictbl_def(**args)
   end
 
   def adapterspecifictbl_row
