@@ -27,8 +27,8 @@ double benchmark_one(const T &value, size_t columns, size_t rows, size_t reps, H
 template <typename T>
 void benchmark(T value, size_t columns, size_t rows, size_t reps = 1000) {
 	cout << "MD5:      " << benchmark_one(value, columns, rows, reps, HashAlgorithm::md5)    << "MB/s" << endl;
-	cout << "XXHASH64: " << benchmark_one(value, columns, rows, reps, HashAlgorithm::xxh64)  << "MB/s" << endl;
 	cout << "BLAKE3:   " << benchmark_one(value, columns, rows, reps, HashAlgorithm::blake3) << "MB/s" << endl;
+	cout << "XXHASH64: " << benchmark_one(value, columns, rows, reps, HashAlgorithm::xxh64)  << "MB/s" << endl;
 	cout << endl;
 }
 
