@@ -119,8 +119,14 @@ endif()
 
 set(BLAKE3_OBJECTS $<TARGET_OBJECTS:blake3>)
 
+# build xxhash support
+add_library(xxhash OBJECT src/xxHash/xxhash.c)
+set_property(TARGET xxhash APPEND PROPERTY COMPILE_FLAGS "-O3")
+set_property(TARGET xxhash PROPERTY C_STANDARD 11)
+set(XXHASH_OBJECTS $<TARGET_OBJECTS:xxhash>)
+
 # the endpoints do the actual work
-set(ks_endpoint_SRCS src/schema.cpp src/subdivision.cpp src/filters.cpp src/abortable_barrier.cpp src/xxHash/xxhash.cpp ${BLAKE3_OBJECTS})
+set(ks_endpoint_SRCS src/schema.cpp src/subdivision.cpp src/filters.cpp src/abortable_barrier.cpp ${XXHASH_OBJECTS} ${BLAKE3_OBJECTS})
 set(ks_endpoint_LIBS ${OPENSSL_LIBRARIES} ${YamlCPP_LIBRARIES})
 
 # turn on debugging symbols
