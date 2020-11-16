@@ -58,12 +58,6 @@ set_target_properties(ks PROPERTIES COMPILE_FLAGS "${SANITIZE_OPTIONS}" LINK_FLA
 target_link_libraries(ks ${CMAKE_THREAD_LIBS_INIT})
 install(TARGETS ks RUNTIME DESTINATION bin)
 
-# the endpoints normally hash data using OpenSSL; on macOS we use Apple's Common Crypto fork instead
-if(NOT APPLE)
-	find_package(OpenSSL REQUIRED)
-	include_directories(${OPENSSL_INCLUDE_DIRS})
-endif()
-
 # is backtrace in libc?
 if(NOT APPLE)
 	find_package(Backtrace)
@@ -126,8 +120,8 @@ set_property(TARGET xxhash PROPERTY C_STANDARD 11)
 set(XXHASH_OBJECTS $<TARGET_OBJECTS:xxhash>)
 
 # the endpoints do the actual work
-set(ks_endpoint_SRCS src/schema.cpp src/subdivision.cpp src/filters.cpp src/abortable_barrier.cpp ${XXHASH_OBJECTS} ${BLAKE3_OBJECTS})
-set(ks_endpoint_LIBS ${OPENSSL_LIBRARIES} ${YamlCPP_LIBRARIES})
+set(ks_endpoint_SRCS src/schema.cpp src/subdivision.cpp src/filters.cpp src/abortable_barrier.cpp src/md5/md5.c ${XXHASH_OBJECTS} ${BLAKE3_OBJECTS})
+set(ks_endpoint_LIBS ${YamlCPP_LIBRARIES})
 
 # turn on debugging symbols
 set(CMAKE_BUILD_TYPE Debug)

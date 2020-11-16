@@ -5,7 +5,7 @@ FROM centos:8
 
 RUN yum update -y && \
 	yum clean all && \
-	yum install -y gcc gcc-c++ make cmake3 openssl-devel \
+	yum install -y gcc gcc-c++ make cmake3 \
 		postgresql-server postgresql-devel mariadb-server mariadb-devel \
 		git ruby-devel redhat-rpm-config
 

@@ -6,7 +6,7 @@ FROM ubuntu:20.04
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 	DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
 	DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-		build-essential cmake libssl-dev \
+		build-essential cmake \
 		mysql-server libmysqlclient-dev \
 		postgresql postgresql-12-postgis-3 postgresql-12-postgis-3-scripts libpq-dev \
 		git ruby ruby-dev && \

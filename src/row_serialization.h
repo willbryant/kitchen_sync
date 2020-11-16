@@ -1,12 +1,7 @@
 #ifndef ROW_SERIALIZATION_H
 #define ROW_SERIALIZATION_H
 
-#ifdef __APPLE__
-	#define COMMON_DIGEST_FOR_OPENSSL
-	#include <CommonCrypto/CommonDigest.h>
-#else
-	#include <openssl/md5.h>
-#endif
+#include "md5/md5.h"
 
 #define XXH_STATIC_LINKING_ONLY
 #include "xxHash/xxhash.h"
@@ -141,7 +136,7 @@ struct RowHasher {
 		finished = true;
 		switch (hash_algorithm) {
 			case HashAlgorithm::md5:
-				hash.md_len = MD5_DIGEST_LENGTH;
+				hash.md_len = 16;
 				MD5_Final(hash.md_value, &mdctx);
 				return hash;
 

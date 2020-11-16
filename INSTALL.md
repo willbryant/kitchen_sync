@@ -8,7 +8,6 @@ You can see the latest tagged release from the GitHub releases page at https://g
 To compile Kitchen Sync, you will need:
 * a C++14 compiler
 * CMake
-* OpenSSL library headers (except on macOS, where Apple's Common Crypto library is used instead)
 * PostgreSQL client library headers; and/or
 * MySQL or MariaDB client library headers
 
@@ -19,7 +18,7 @@ Ubuntu
 
 You can install the above build dependencies on Ubuntu using:
 ```
-apt-get install build-essential cmake libssl-dev
+apt-get install build-essential cmake
 ```
 
 And one or both of:
@@ -45,7 +44,7 @@ CentOS 7
 
 You can install the above build dependencies on CentOS 7 using:
 ```
-yum install gcc gcc-c++ make cmake openssl-devel
+yum install gcc gcc-c++ make cmake
 ```
 
 And one or both of:

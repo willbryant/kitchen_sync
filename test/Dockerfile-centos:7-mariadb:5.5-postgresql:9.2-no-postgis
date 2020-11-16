@@ -7,7 +7,7 @@ FROM centos:7
 RUN yum update -y && \
 	yum clean all && \
 	yum install -y epel-release centos-release-scl scl-utils && \
-	yum install -y gcc gcc-c++ make cmake3 openssl-devel \
+	yum install -y gcc gcc-c++ make cmake3 \
 		postgresql-server postgresql-devel mariadb-server mariadb-devel \
 		git rh-ruby25-ruby-devel
 
