@@ -60,10 +60,10 @@ services:
       context: ..
       dockerfile: test/Dockerfile-centos:7-mariadb:5.5-postgresql:9.2-no-postgis
 
-  ubuntu_20.04-checks:
+  ubuntu_18.04-checks:
     build:
       context: ..
-      dockerfile: test/Dockerfile-ubuntu:20.04-checks
+      dockerfile: test/Dockerfile-ubuntu:18.04-checks
 
   sync-local:
     build:
