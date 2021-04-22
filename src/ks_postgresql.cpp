@@ -902,21 +902,29 @@ struct PostgreSQLColumnLister {
 		} else if (db_type == "date") {
 			column.column_type = ColumnType::date;
 
-		} else if (db_type == "time without time zone") {
-			column.column_type = ColumnType::time;
-			column.size = 6; /* microsecond precision */
+		} else if (db_type.substr(0, 5) == "time(" || db_type.substr(0, 5) == "time ") {
+			if (db_type.find("with time zone") != string::npos) {
+				column.column_type = select_supported_type(ColumnType::time_tz, ColumnType::time);
+			} else {
+				column.column_type = ColumnType::time;
+			}
+			if (db_type.substr(0, 5) == "time(") {
+				column.size = extract_column_length(db_type);
+			} else {
+				column.size = 6; /* microsecond precision */
+			}
 
-		} else if (db_type == "time with time zone") {
-			column.column_type = select_supported_type(ColumnType::time_tz, ColumnType::time);
-			column.size = 6; /* microsecond precision */
-
-		} else if (db_type == "timestamp without time zone") {
-			column.column_type = ColumnType::datetime;
-			column.size = 6; /* microsecond precision */
-
-		} else if (db_type == "timestamp with time zone") {
-			column.column_type = select_supported_type(ColumnType::datetime_tz, ColumnType::datetime);
-			column.size = 6; /* microsecond precision */
+		} else if (db_type.substr(0, 10) == "timestamp(" || db_type.substr(0, 10) == "timestamp ") {
+			if (db_type.find("with time zone") != string::npos) {
+				column.column_type = select_supported_type(ColumnType::datetime_tz, ColumnType::datetime);
+			} else {
+				column.column_type = ColumnType::datetime;
+			}
+			if (db_type.substr(0, 10) == "timestamp(") {
+				column.size = extract_column_length(db_type);
+			} else {
+				column.size = 6; /* microsecond precision */
+			}
 
 		} else if (db_type == "geometry") {
 			column.column_type = ColumnType::spatial;

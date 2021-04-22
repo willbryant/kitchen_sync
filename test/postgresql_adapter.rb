@@ -391,6 +391,8 @@ class PostgreSQLAdapter
         pgfunctiondefault TEXT DEFAULT version(),
         timewithzone time with time zone,
         timestampwithzone timestamp with time zone,
+        timewithpreczone time(4) with time zone,
+        timestampwithpreczone timestamp(4) with time zone,
         "select" INT,
         "\"\"quoted\"\"" INT,
         PRIMARY KEY(pri))
@@ -427,6 +429,8 @@ SQL
         {"name" => "pgfunctiondefault",       "column_type" => ColumnType::TEXT,                        "default_expression" => "version()"},
         {"name" => "timewithzone",            "column_type" => compatible_with.time_zone_types? ? ColumnType::TIME_TZ     : ColumnType::TIME,     "size" => 6},
         {"name" => "timestampwithzone",       "column_type" => compatible_with.time_zone_types? ? ColumnType::DATETIME_TZ : ColumnType::DATETIME, "size" => 6},
+        {"name" => "timewithpreczone",        "column_type" => compatible_with.time_zone_types? ? ColumnType::TIME_TZ     : ColumnType::TIME,     "size" => 4},
+        {"name" => "timestampwithpreczone",   "column_type" => compatible_with.time_zone_types? ? ColumnType::DATETIME_TZ : ColumnType::DATETIME, "size" => 4},
         {"name" => "select",                  "column_type" => ColumnType::SINT_32BIT},
         {"name" => "\"quoted\"",              "column_type" => ColumnType::SINT_32BIT},
       ].compact,
