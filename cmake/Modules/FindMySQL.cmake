@@ -11,10 +11,8 @@
 #  MySQL_FOUND       - True if MySQL found.
 
 FIND_PATH(MySQL_INCLUDE_DIR mysql.h
-  /usr/local/include/mysql
-  /usr/include/mysql
-  /usr/include/mariadb
-  /usr/local/include/mariadb
+  PATHS /opt/homebrew/include /usr/local/include /usr/include
+  PATH_SUFFIXES mysql mariadb
 )
 
 SET(MySQL_NAMES mysqlclient mysqlclient_r mariadbclient mariadbclient_r)
@@ -27,8 +25,8 @@ IF(MySQL_LIBRARY_DIR)
 ELSE()
   FIND_LIBRARY(MySQL_LIBRARY
     NAMES ${MySQL_NAMES}
-    PATHS /usr/lib /usr/local/lib
-    PATH_SUFFIXES mysql
+    PATHS /opt/homebrew/lib /usr/local/lib /usr/lib
+    PATH_SUFFIXES mysql mariadb
   )
   get_filename_component(MySQL_LIBRARY_DIR ${MySQL_LIBRARY} PATH)
 ENDIF()
