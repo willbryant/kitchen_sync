@@ -157,7 +157,7 @@ if(PostgreSQL_FOUND)
 
   set(PostgreSQL_INCLUDE_DIRS ${PostgreSQL_INCLUDE_DIR} )
   set(PostgreSQL_LIBRARY_DIRS ${PostgreSQL_LIBRARY_DIR} )
-  set(PostgreSQL_LIBRARIES ${PostgreSQL_LIBRARY_TO_FIND})
+  set(PostgreSQL_LIBRARIES ${PostgreSQL_LIBRARY}) # not PostgreSQL_LIBRARY_TO_FIND, which is just "pq" without the path
 
   #message("Final PostgreSQL include dir: ${PostgreSQL_INCLUDE_DIRS}")
   #message("Final PostgreSQL library dir: ${PostgreSQL_LIBRARY_DIRS}")
