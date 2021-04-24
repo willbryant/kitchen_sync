@@ -1,6 +1,13 @@
 Changelog
 =========
 
+2.11
+----
+* Remove OpenSSL as a dependency.
+* Apple Silicon compilation fixes. Thanks @oobles.
+* Fix parsing of `timestamp(n) with/without time zone` on PostgreSQL.
+* Compatibility fixes to the test suite.
+
 2.10
 ----
 * Support syncing from a MySQL database to a specific named schema on PostgreSQL, vice versa, or between two PostgreSQL schemas.
