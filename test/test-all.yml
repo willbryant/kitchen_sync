@@ -51,10 +51,6 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-ubuntu:18.04-postgresql:10-mysql:5.7
-  ubuntu_16.04-postgresql_9.5-mysql_5.7:
-    build:
-      context: ..
-      dockerfile: test/Dockerfile-ubuntu:16.04-postgresql:9.5-mysql:5.7
   centos_7-mariadb_5.5-postgresql_9.2:
     build:
       context: ..
