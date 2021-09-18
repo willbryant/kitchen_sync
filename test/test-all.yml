@@ -10,6 +10,18 @@
 
 version: '3'
 services:
+  ubuntu_20.04-mariadb_10.6:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile-ubuntu:20.04-mariadb:10.6 # from MariaDB's repos
+  ubuntu_20.04-mariadb_10.5:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile-ubuntu:20.04-mariadb:10.5 # from MariaDB's repos
+  ubuntu_18.04-mysqlclient-mariadb_10.4:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile-ubuntu:18.04-mysqlclient-mariadb:10.4 # from MariaDB's repos + standard mysqlclient
   ubuntu_18.04-mariadb_10.4:
     build:
       context: ..
@@ -22,14 +34,18 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-ubuntu:18.04-mariadb:10.2 # from MariaDB's repos
-  ubuntu_18.04-mariadb_10.1:
-    build:
-      context: ..
-      dockerfile: test/Dockerfile-ubuntu:18.04-mariadb:10.1 # from Ubuntu's repos and uses the LGPL 'compat' client
   ubuntu_18.04-mysql_8.0:
     build:
       context: ..
       dockerfile: test/Dockerfile-ubuntu:18.04-mysql:8.0 # from MySQL AB's repos
+  ubuntu_20.04-postgresql_14:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile-ubuntu:20.04-postgresql:14
+  ubuntu_20.04-postgresql_13:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile-ubuntu:20.04-postgresql:13
   ubuntu_18.04-postgresql_12_no_postgis:
     build:
       context: ..
@@ -42,7 +58,6 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-ubuntu:18.04-postgresql:11 # from PGDG's repos
-
   ubuntu_20.04-postgresql_11-mysql_8.0:
     build:
       context: ..
@@ -55,6 +70,10 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-centos:7-mariadb:5.5-postgresql:9.2-no-postgis
+  centos_8-mariadb_10.3-postgresql_10:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile-centos:8-mariadb:10.3-postgresql:10-no-postgis
 
   ubuntu_20.04-checks:
     build:
