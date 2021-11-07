@@ -84,7 +84,8 @@ endif()
 
 if(COMPILER_SUPPORTS_NEON)
 	target_sources(blake3 PRIVATE "src/blake3/blake3_neon.c")
-	set_property(TARGET blake3 APPEND PROPERTY COMPILE_DEFINITIONS "BLAKE3_USE_NEON")
+else()
+	set_property(TARGET blake3 APPEND PROPERTY COMPILE_DEFINITIONS "BLAKE3_NO_NEON")
 endif()
 
 if(COMPILER_SUPPORTS_SSE2)
