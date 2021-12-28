@@ -318,10 +318,10 @@ string PostgreSQLClient::select_one(const string &sql) {
 }
 
 string PostgreSQLClient::sql_error(const string &sql) {
-	if (sql.size() < 200) {
+	if (sql.size() < 2000) {
 		return PQerrorMessage(conn) + string("\n") + sql;
 	} else {
-		return PQerrorMessage(conn) + string("\n") + sql.substr(0, 200) + "...";
+		return PQerrorMessage(conn) + string("\n") + sql.substr(0, 2000) + "...";
 	}
 }
 

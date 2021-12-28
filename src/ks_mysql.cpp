@@ -411,10 +411,10 @@ vector<string> MySQLClient::select_all(const string &sql) {
 }
 
 string MySQLClient::sql_error(const string &sql) {
-	if (sql.size() < 200) {
+	if (sql.size() < 2000) {
 		return mysql_error(&mysql) + string("\n") + sql;
 	} else {
-		return mysql_error(&mysql) + string("\n") + sql.substr(0, 200) + "...";
+		return mysql_error(&mysql) + string("\n") + sql.substr(0, 2000) + "...";
 	}
 }
 
