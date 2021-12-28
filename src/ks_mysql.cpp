@@ -15,6 +15,7 @@
 #define MYSQL_8_0_0 80000
 #define MARIADB_10_0_0 100000
 #define MARIADB_10_2_7 100207
+#define MARIADB_10_7_0 100700
 #define MARIADB_RPL_HACK_VERSION 50505
 
 enum MySQLColumnConversion {
@@ -260,6 +261,7 @@ public:
 	inline bool supports_check_constraints() const { return check_constraints_table_exists; }
 	inline bool explicit_json_column_type() const { return (!server_is_mariadb && server_version >= MYSQL_5_7_8); }
 	inline bool supports_json_column_type() const { return (explicit_json_column_type() || supports_check_constraints()); }
+	inline bool supports_uuid_column_type() const { return (server_is_mariadb && server_version >= MARIADB_10_7_0); }
 	inline bool supports_generated_columns() const { return generation_expression_column_exists; }
 
 	size_t execute(const string &sql);
@@ -679,6 +681,10 @@ tuple<string, string> MySQLClient::column_type(const Column &column) {
 				return make_tuple("longtext", " CHECK (json_valid(" + quote_identifier(column.name) + "))");
 			}
 
+		case ColumnType::uuid:
+			// not in SimpleColumnTypes because not all versions support it
+			return make_tuple("uuid", "");
+
 		case ColumnType::spatial:
 			// as discussed in convert_unsupported_schema(), mysql doesn't have separate geometry & geography types, but
 			// we use the 'spatial' type for columns without an SRS and 'spatial_geography' for those with.
@@ -820,6 +826,9 @@ inline ColumnTypeList MySQLClient::supported_types() {
 	}
 	if (supports_json_column_type()) {
 		result.insert(ColumnType::json);
+	}
+	if (supports_uuid_column_type()) {
+		result.insert(ColumnType::uuid);
 	}
 	if (supports_srid_settings_on_columns()) {
 		result.insert(ColumnType::spatial_geography);
@@ -1001,6 +1010,9 @@ struct MySQLColumnLister {
 
 		} else if (db_type == "json") {
 			column.column_type = ColumnType::json;
+
+		} else if (db_type == "uuid") {
+			column.column_type = ColumnType::uuid;
 
 		} else if (db_type == "date") {
 			column.column_type = ColumnType::date;

@@ -167,11 +167,16 @@ class MysqlAdapter
   end
 
   def uuid_column_type?
-    false
+    # supported by mariadb 10.7+
+    server_version !~ /^5\.5/ && server_version !~ /^10\.[0-6]/ && server_version =~ /MariaDB/
   end
 
   def uuid_column_type
-    "CHAR(36) COMMENT 'UUID'"
+    if uuid_column_type?
+      "UUID"
+    else
+      "CHAR(36) COMMENT 'UUID'"
+    end
   end
 
   def text_column_type
@@ -388,6 +393,7 @@ SQL
       ColumnType::ENUMERATION,
     ]).tap do |results|
       results << ColumnType::JSON if json_column_type?
+      results << ColumnType::UUID if uuid_column_type?
       results << ColumnType::SPATIAL_GEOGRAPHY if schema_srid_settings?
     end
   end
