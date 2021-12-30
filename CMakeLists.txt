@@ -3,6 +3,9 @@ project(kitchen_sync CXX C)
 
 cmake_minimum_required(VERSION 3.1)
 
+# turn on debugging symbols
+set(CMAKE_BUILD_TYPE Debug)
+
 # suppress warnings about using c++11 features such as variadic templates
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
@@ -127,9 +130,6 @@ set(XXHASH_OBJECTS $<TARGET_OBJECTS:xxhash>)
 # the endpoints do the actual work
 set(ks_endpoint_SRCS src/schema.cpp src/subdivision.cpp src/filters.cpp src/abortable_barrier.cpp src/md5/md5.c ${XXHASH_OBJECTS} ${BLAKE3_OBJECTS})
 set(ks_endpoint_LIBS ${YamlCPP_LIBRARIES})
-
-# turn on debugging symbols
-set(CMAKE_BUILD_TYPE Debug)
 
 # we have one endpoint program for mysql
 if(NOT NO_DATABASES)
