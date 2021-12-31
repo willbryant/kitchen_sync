@@ -62,7 +62,7 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-ubuntu:18.04-postgresql:11 # from PGDG's repos
-  ubuntu_20.04-postgresql_11-mysql_8.0:
+  ubuntu_20.04-postgresql_12-mysql_8.0:
     build:
       context: ..
       dockerfile: test/Dockerfile-ubuntu:20.04-postgresql:12-mysql:8.0
