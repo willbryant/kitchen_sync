@@ -1,6 +1,11 @@
 Changelog
 =========
 
+2.14
+----
+
+* Fix compliation regression on M1 macs.
+
 2.13
 ----
 
