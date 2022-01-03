@@ -20,3 +20,4 @@ git tag v$TAG
 
 echo "To release: "
 echo "	git push && git push --tags"
+echo "Don't forget to create the release on GitHub afterwards."

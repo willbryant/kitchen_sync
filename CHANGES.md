@@ -1,6 +1,11 @@
 Changelog
 =========
 
+2.13
+----
+
+* Fix compilation on ARM Linux.
+
 2.12
 ----
 
