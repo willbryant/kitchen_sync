@@ -14,7 +14,7 @@ Changelog
 2.12
 ----
 
-* Upgrade BLAKE3 to 1.1.0.
+* Upgrade BLAKE3 to 1.2.0.
 * Upgrade yaml-cpp to 0.7.0.
 
 2.11
