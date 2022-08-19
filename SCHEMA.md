@@ -121,4 +121,5 @@ Schema things currently ignored
 * `ASC`/`DESC` flags in index columns
 * Views
 * Triggers
+* Foreign Keys
 * Anything else not mentioned on this page!
