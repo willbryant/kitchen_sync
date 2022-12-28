@@ -7,7 +7,7 @@ class HashFromTest < KitchenSync::EndpointTestCase
     :from
   end
 
-  def setup_with_footbl(*handshake_args)
+  def setup_with_footbl(**handshake_args)
     clear_schema
     create_footbl
     execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str'), (100, 0, 'last')"
@@ -17,7 +17,7 @@ class HashFromTest < KitchenSync::EndpointTestCase
              [8,    -1, "longer str"],
              [100,   0,       "last"]]
     @keys = @rows.collect {|row| [row[0]]}
-    send_handshake_commands(*handshake_args)
+    send_handshake_commands(**handshake_args)
   end
 
   test_each "calculates the hash of all the rows whose key is greater than the first argument and not greater than the last argument, and returns it and the row count" do
