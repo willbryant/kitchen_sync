@@ -1,3 +1,5 @@
+require 'set'
+
 class Date
   def to_s
     strftime("%Y-%m-%d") # make the standard input format the output format
