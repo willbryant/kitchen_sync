@@ -1,5 +1,6 @@
 require 'mysql2'
 require 'forwardable'
+require 'set'
 
 class MysqlAdapter
   def host
