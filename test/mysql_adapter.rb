@@ -190,7 +190,7 @@ class MysqlAdapter
 
   def json_column_type?
     # supported by mysql 5.7+ (explicit type), and mariadb 10.2+ (using check constraints)
-    server_version !~ /^5\.5/ && server_version !~ /^10\.0.*MariaDB/ && server_version !~ /^10\.1.*MariaDB/
+    server_version !~ /^5\.5/ && server_version !~ /^10\.0\.*MariaDB/ && server_version !~ /^10\.1\.*MariaDB/
   end
 
   def jsonb_column_type?
