@@ -1,5 +1,6 @@
 require 'pg'
 require 'forwardable'
+require 'set'
 
 class PostgreSQLAdapter
   def host
