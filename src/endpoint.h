@@ -82,8 +82,9 @@ int endpoint_main(int argc, char *argv[]) {
 			size_t target_minimum_block_size = getenv_default("ENDPOINT_TARGET_MINIMUM_BLOCK_SIZE", DEFAULT_MINIMUM_BLOCK_SIZE); // only set by tests
 			size_t target_maximum_block_size = getenv_default("ENDPOINT_TARGET_MAXIMUM_BLOCK_SIZE", DEFAULT_MAXIMUM_BLOCK_SIZE); // not currently used except manual testing
 			bool structure_only = getenv_default("ENDPOINT_STRUCTURE_ONLY", false);
+			bool insert_only = getenv_default("ENDPOINT_INSERT_ONLY", false);
 
-			sync_to<DatabaseClient>(workers, startfd, database_host, database_port, database_username, database_password, database_name, database_schema, set_variables, filters_file, ignore, only, verbose, progress, snapshot, alter, commit_level, hash_algorithm, target_minimum_block_size, target_maximum_block_size, structure_only);
+			sync_to<DatabaseClient>(workers, startfd, database_host, database_port, database_username, database_password, database_name, database_schema, set_variables, filters_file, ignore, only, verbose, progress, snapshot, alter, commit_level, hash_algorithm, target_minimum_block_size, target_maximum_block_size, structure_only, insert_only);
 		}
 	} catch (const sync_error& e) {
 		// the worker thread has already output the error to cerr

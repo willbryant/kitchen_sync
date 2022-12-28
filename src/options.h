@@ -12,7 +12,7 @@
 
 struct Options {
 	inline Options(): workers(1), verbose(0), progress(false), snapshot(true), alter(false), structure_only(false),
-    commit_level(CommitLevel::often), hash_algorithm(HashAlgorithm::auto_select) {}
+    commit_level(CommitLevel::often), insert_only(false), hash_algorithm(HashAlgorithm::auto_select) {}
 
 	void help() {
 		cerr <<
@@ -86,6 +86,9 @@ struct Options {
 			"                             and if it doesn't match the statements --alter\n"
 			"                             would use are printed as suggestions.)"
 			"\n"
+			"  --insert-only              Run only INSERT DML, with no UPDATE or DELETE statements.\n"
+			"                             Only usable when schema & data will be conflict-free.\n"
+			"\n"
 			"  --hash arg                 Use the specified checksum algorithm.  The default\n"
 			"                             is BLAKE3, falling back to MD5 for older versions.\n"
 			"                             You can downgrade to XXH64 if you prioritize maximum\n"
@@ -134,6 +137,7 @@ struct Options {
 					{ "without-snapshot-export",	no_argument,		NULL,	'W' },
 					{ "commit",						required_argument,	NULL,	'c' },
 					{ "alter",						no_argument,		NULL,	'a' },
+					{ "insert-only",				no_argument,		NULL,	'I' },
 					{ "hash",					    required_argument,	NULL,	'h' },
 					{ "verbose",					no_argument,		NULL,	'V' },
 					{ "progress",					no_argument,		NULL,	'p' },
@@ -225,6 +229,10 @@ struct Options {
 						alter = true;
 						break;
 
+					case 'I':
+						insert_only = true;
+						break;
+
 					case 'h':
 						if (!strcmp(optarg, "MD5")) {
 							hash_algorithm = HashAlgorithm::md5;
@@ -287,6 +295,7 @@ struct Options {
 	bool snapshot;
 	bool alter;
 	CommitLevel commit_level;
+	bool insert_only;
 	HashAlgorithm hash_algorithm;
 	bool structure_only;
 	string ignore, only;

@@ -57,7 +57,7 @@ struct SyncToAlgorithm {
 		} else {
 			// if the table has no usable keys, all we can do is retrieve and apply the rows
 			if (worker.verbose) cout << "Clearing and reloading " << table_job->table.name << ", can't efficiently detect differences because it has no primary key and no other suitable keys." << endl;
-			row_replacer.clear_range(ColumnValues(), ColumnValues());
+			if (!worker.insert_only) row_replacer.clear_range(ColumnValues(), ColumnValues());
 			request_rows_without_pipelining(table_job, row_replacer, KeyRange());
 		}
 	}
@@ -295,7 +295,7 @@ struct SyncToAlgorithm {
 		read_array(input, table_name, prev_key, last_key); // the first array gives the range arguments, which is followed by one array for each row
 		if (worker.verbose > 1) cout << timestamp() << " worker " << worker.worker_number << " -> rows " << table.name << ' ' << values_list(client, table, prev_key) << ' ' << values_list(client, table, last_key) << endl;
 
-		if (final_rows) {
+		if (final_rows || worker.insert_only) {
 			RowInserter<DatabaseClient>(row_replacer, table).stream_from_input(input);
 		} else {
 			RowRangeApplier<DatabaseClient>(row_replacer, table, prev_key, last_key).stream_from_input(input);

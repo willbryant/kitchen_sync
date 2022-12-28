@@ -24,7 +24,7 @@ struct SyncToWorker {
 		const string &set_variables, const string &filter_file, const set<string> &ignore_tables, const set<string> &only_tables,
 		int verbose, bool progress, bool snapshot, bool alter, CommitLevel commit_level,
 		HashAlgorithm hash_algorithm, size_t target_minimum_block_size, size_t target_maximum_block_size,
-		bool structure_only):
+		bool structure_only, bool insert_only):
 			database(database),
 			sync_queue(sync_queue),
 			leader(leader),
@@ -46,6 +46,7 @@ struct SyncToWorker {
 			target_minimum_block_size(target_minimum_block_size),
 			target_maximum_block_size(target_maximum_block_size),
 			structure_only(structure_only),
+			insert_only(insert_only),
 			worker_thread(std::ref(*this)) {
 	}
 
@@ -359,6 +360,7 @@ struct SyncToWorker {
 	bool alter;
 	CommitLevel commit_level;
 	bool structure_only;
+	bool insert_only;
 
 	HashAlgorithm hash_algorithm;
 	size_t target_minimum_block_size;
