@@ -80,19 +80,39 @@ if(PostgreSQL_ROOT_DIRECTORIES)
 endif(PostgreSQL_ROOT_DIRECTORIES)
 
 set(PostgreSQL_KNOWN_VERSIONS ${PostgreSQL_ADDITIONAL_VERSIONS}
-    "9.1" "9.0" "8.4" "8.3" "8.2" "8.1" "8.0")
+    "16" "15" "14" "13" "12" "11" "10" "9.6" "9.5" "9.4" "9.3" "9.2" "9.1" "9.0" "8.4" "8.3" "8.2" "8.1" "8.0")
 
 # Define additional search paths for root directories.
-if ( WIN32 )
-  foreach (suffix ${PostgreSQL_KNOWN_VERSIONS} )
-    set(PostgreSQL_ADDITIONAL_SEARCH_PATHS ${PostgreSQL_ADDITIONAL_SEARCH_PATHS} "C:/Program Files/PostgreSQL/${suffix}" )
-  endforeach(suffix)
-endif( WIN32 )
 set( PostgreSQL_ROOT_DIRECTORIES
-   ${PostgreSQL_ROOT_DIRECTORIES}
+   ENV PostgreSQL_ROOT
    ${PostgreSQL_ROOT}
-   ${PostgreSQL_ADDITIONAL_SEARCH_PATHS}
 )
+foreach(suffix ${PostgreSQL_KNOWN_VERSIONS})
+  if(WIN32)
+    list(APPEND PostgreSQL_LIBRARY_ADDITIONAL_SEARCH_SUFFIXES
+        "PostgreSQL/${suffix}/lib")
+    list(APPEND PostgreSQL_INCLUDE_ADDITIONAL_SEARCH_SUFFIXES
+        "PostgreSQL/${suffix}/include")
+    list(APPEND PostgreSQL_TYPE_ADDITIONAL_SEARCH_SUFFIXES
+        "PostgreSQL/${suffix}/include/server")
+  endif()
+  if(UNIX)
+    list(APPEND PostgreSQL_LIBRARY_ADDITIONAL_SEARCH_SUFFIXES
+        "postgresql${suffix}"
+        "postgresql@${suffix}"
+        "pgsql-${suffix}/lib")
+    list(APPEND PostgreSQL_INCLUDE_ADDITIONAL_SEARCH_SUFFIXES
+        "postgresql${suffix}"
+        "postgresql@${suffix}"
+        "postgresql/${suffix}"
+        "pgsql-${suffix}/include")
+    list(APPEND PostgreSQL_TYPE_ADDITIONAL_SEARCH_SUFFIXES
+        "postgresql${suffix}/server"
+        "postgresql@${suffix}/server"
+        "postgresql/${suffix}/server"
+        "pgsql-${suffix}/include/server")
+  endif()
+endforeach()
 
 #
 # Look for an installation.
@@ -106,6 +126,7 @@ find_path(PostgreSQL_INCLUDE_DIR
     pgsql
     postgresql
     include
+    ${PostgreSQL_INCLUDE_ADDITIONAL_SEARCH_SUFFIXES}
   # Help the user find it if we cannot.
   DOC "The ${PostgreSQL_INCLUDE_DIR_MESSAGE}"
 )
@@ -132,6 +153,7 @@ else()
       ${PostgreSQL_ROOT_DIRECTORIES}
     PATH_SUFFIXES
       lib
+      ${PostgreSQL_LIBRARY_ADDITIONAL_SEARCH_SUFFIXES}
   )
   get_filename_component(PostgreSQL_LIBRARY_DIR ${PostgreSQL_LIBRARY} PATH)
 endif()
