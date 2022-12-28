@@ -10,10 +10,6 @@
 
 version: '3'
 services:
-  ubuntu_20.04-mariadb_10.7:
-    build:
-      context: ..
-      dockerfile: test/Dockerfile-ubuntu:20.04-mariadb:10.7 # from MariaDB's repos
   ubuntu_20.04-mariadb_10.6:
     build:
       context: ..
