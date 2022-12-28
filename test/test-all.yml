@@ -70,10 +70,6 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-centos:7-mariadb:5.5-postgresql:9.2-no-postgis
-  centos_8-mariadb_10.3-postgresql_10:
-    build:
-      context: ..
-      dockerfile: test/Dockerfile-centos:8-mariadb:10.3-postgresql:10-no-postgis
 
   ubuntu_20.04-checks:
     build:
