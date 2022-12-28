@@ -38,7 +38,7 @@ ADD test /tmp/test
 RUN echo 'starting mysql' && \
 		mkdir -p /var/run/mysqld && \
 		chown mysql:mysql /var/run/mysqld && \
-		(/usr/sbin/mysqld --skip-grant-tables &) && \
+		(/usr/sbin/mysqld --skip-grant-tables --user=root &) && \
 	echo 'waiting for mysql to start' && \
 		mysqladmin --wait=30 ping && \
 	echo 'creating mysql database' && \
