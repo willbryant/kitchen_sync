@@ -1,17 +1,17 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    digest-blake3 (0.37.0.1)
-    msgpack (1.2.4)
-    mysql2 (0.5.3)
-    pg (1.2.3)
-    power_assert (1.1.6)
-    ruby-xxHash (0.4.0.1)
-    test-unit (3.3.5)
+    digest-blake3 (1.2.0.0)
+    msgpack (1.6.0)
+    mysql2 (0.5.4)
+    pg (1.4.5)
+    power_assert (2.0.3)
+    ruby-xxHash (0.4.0.2)
+    test-unit (3.5.7)
       power_assert
 
 PLATFORMS
-  ruby
+  x86_64-darwin-21
 
 DEPENDENCIES
   digest-blake3
@@ -22,4 +22,4 @@ DEPENDENCIES
   test-unit
 
 BUNDLED WITH
-   1.17.3
+   2.3.1
