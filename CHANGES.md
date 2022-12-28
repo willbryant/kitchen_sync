@@ -1,6 +1,12 @@
 Changelog
 =========
 
+2.15
+----
+
+* Fix build for later Homebrew libpq installations.
+* Upgrade BLAKE3 to 1.3.3.
+
 2.14
 ----
 
