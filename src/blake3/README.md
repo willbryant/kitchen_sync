@@ -13,7 +13,7 @@ result:
 #include <string.h>
 #include <unistd.h>
 
-int main() {
+int main(void) {
   // Initialize the hasher.
   blake3_hasher hasher;
   blake3_hasher_init(&hasher);
@@ -106,17 +106,7 @@ Finalize the hasher and return an output of any length, given in bytes.
 This doesn't modify the hasher itself, and it's possible to finalize
 again after adding more input. The constant `BLAKE3_OUT_LEN` provides
 the default output length, 32 bytes, which is recommended for most
-callers.
-
-Outputs shorter than the default length of 32 bytes (256 bits) provide
-less security. An N-bit BLAKE3 output is intended to provide N bits of
-first and second preimage resistance and N/2 bits of collision
-resistance, for any N up to 256. Longer outputs don't provide any
-additional security.
-
-Shorter BLAKE3 outputs are prefixes of longer ones. Explicitly
-requesting a short output is equivalent to truncating the default-length
-output. (Note that this is different between BLAKE2 and BLAKE3.)
+callers. See the [Security Notes](#security-notes) below.
 
 ## Less Common API Functions
 
@@ -184,6 +174,36 @@ The same as `blake3_hasher_finalize`, but with an additional `seek`
 parameter for the starting byte position in the output stream. To
 efficiently stream a large output without allocating memory, call this
 function in a loop, incrementing `seek` by the output length each time.
+
+---
+
+```c
+void blake3_hasher_reset(
+  blake3_hasher *self);
+```
+
+Reset the hasher to its initial state, prior to any calls to
+`blake3_hasher_update`. Currently this is no different from calling
+`blake3_hasher_init` or similar again. However, if this implementation gains
+multithreading support in the future, and if `blake3_hasher` holds (optional)
+threading resources, this function will reuse those resources. Until then, this
+is mainly for feature compatibility with the Rust implementation.
+
+# Security Notes
+
+Outputs shorter than the default length of 32 bytes (256 bits) provide less security. An N-bit
+BLAKE3 output is intended to provide N bits of first and second preimage resistance and N/2
+bits of collision resistance, for any N up to 256. Longer outputs don't provide any additional
+security.
+
+Avoid relying on the secrecy of the output offset, that is, the `seek` argument of
+`blake3_hasher_finalize_seek`. [_Block-Cipher-Based Tree Hashing_ by Aldo
+Gunsing](https://eprint.iacr.org/2022/283) shows that an attacker who knows both the message
+and the key (if any) can easily determine the offset of an extended output. For comparison,
+AES-CTR has a similar property: if you know the key, you can decrypt a block from an unknown
+position in the output stream to recover its block index. Callers with strong secret keys
+aren't affected in practice, but secret offsets are a [design
+smell](https://en.wikipedia.org/wiki/Design_smell) in any case.
 
 # Building
 

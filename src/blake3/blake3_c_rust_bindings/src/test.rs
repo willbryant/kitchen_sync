@@ -207,99 +207,107 @@ type HashManyFn = unsafe extern "C" fn(
 
 // A shared helper function for platform-specific tests.
 pub fn test_hash_many_fn(hash_many_fn: HashManyFn) {
-    // 31 (16 + 8 + 4 + 2 + 1) inputs
-    const NUM_INPUTS: usize = 31;
-    let mut input_buf = [0; CHUNK_LEN * NUM_INPUTS];
-    crate::test::paint_test_input(&mut input_buf);
-    // A counter just prior to u32::MAX.
-    let counter = (1u64 << 32) - 1;
+    // Test a few different initial counter values.
+    // - 0: The base case.
+    // - u32::MAX: The low word of the counter overflows for all inputs except the first.
+    // - i32::MAX: *No* overflow. But carry bugs in tricky SIMD code can screw this up, if you XOR
+    //   when you're supposed to ANDNOT...
+    let initial_counters = [0, u32::MAX as u64, i32::MAX as u64];
+    for counter in initial_counters {
+        dbg!(counter);
 
-    // First hash chunks.
-    let mut chunks = ArrayVec::<&[u8; CHUNK_LEN], NUM_INPUTS>::new();
-    for i in 0..NUM_INPUTS {
-        chunks.push(array_ref!(input_buf, i * CHUNK_LEN, CHUNK_LEN));
-    }
-    let mut portable_chunks_out = [0; NUM_INPUTS * OUT_LEN];
-    unsafe {
-        crate::ffi::blake3_hash_many_portable(
-            chunks.as_ptr() as _,
-            chunks.len(),
-            CHUNK_LEN / BLOCK_LEN,
-            TEST_KEY_WORDS.as_ptr(),
-            counter,
-            true,
-            KEYED_HASH,
-            CHUNK_START,
-            CHUNK_END,
-            portable_chunks_out.as_mut_ptr(),
-        );
-    }
+        // 31 (16 + 8 + 4 + 2 + 1) inputs
+        const NUM_INPUTS: usize = 31;
+        let mut input_buf = [0; CHUNK_LEN * NUM_INPUTS];
+        crate::test::paint_test_input(&mut input_buf);
 
-    let mut test_chunks_out = [0; NUM_INPUTS * OUT_LEN];
-    unsafe {
-        hash_many_fn(
-            chunks.as_ptr() as _,
-            chunks.len(),
-            CHUNK_LEN / BLOCK_LEN,
-            TEST_KEY_WORDS.as_ptr(),
-            counter,
-            true,
-            KEYED_HASH,
-            CHUNK_START,
-            CHUNK_END,
-            test_chunks_out.as_mut_ptr(),
-        );
-    }
-    for n in 0..NUM_INPUTS {
-        dbg!(n);
-        assert_eq!(
-            &portable_chunks_out[n * OUT_LEN..][..OUT_LEN],
-            &test_chunks_out[n * OUT_LEN..][..OUT_LEN]
-        );
-    }
+        // First hash chunks.
+        let mut chunks = ArrayVec::<&[u8; CHUNK_LEN], NUM_INPUTS>::new();
+        for i in 0..NUM_INPUTS {
+            chunks.push(array_ref!(input_buf, i * CHUNK_LEN, CHUNK_LEN));
+        }
+        let mut portable_chunks_out = [0; NUM_INPUTS * OUT_LEN];
+        unsafe {
+            crate::ffi::blake3_hash_many_portable(
+                chunks.as_ptr() as _,
+                chunks.len(),
+                CHUNK_LEN / BLOCK_LEN,
+                TEST_KEY_WORDS.as_ptr(),
+                counter,
+                true,
+                KEYED_HASH,
+                CHUNK_START,
+                CHUNK_END,
+                portable_chunks_out.as_mut_ptr(),
+            );
+        }
 
-    // Then hash parents.
-    let mut parents = ArrayVec::<&[u8; 2 * OUT_LEN], NUM_INPUTS>::new();
-    for i in 0..NUM_INPUTS {
-        parents.push(array_ref!(input_buf, i * 2 * OUT_LEN, 2 * OUT_LEN));
-    }
-    let mut portable_parents_out = [0; NUM_INPUTS * OUT_LEN];
-    unsafe {
-        crate::ffi::blake3_hash_many_portable(
-            parents.as_ptr() as _,
-            parents.len(),
-            1,
-            TEST_KEY_WORDS.as_ptr(),
-            counter,
-            false,
-            KEYED_HASH | PARENT,
-            0,
-            0,
-            portable_parents_out.as_mut_ptr(),
-        );
-    }
+        let mut test_chunks_out = [0; NUM_INPUTS * OUT_LEN];
+        unsafe {
+            hash_many_fn(
+                chunks.as_ptr() as _,
+                chunks.len(),
+                CHUNK_LEN / BLOCK_LEN,
+                TEST_KEY_WORDS.as_ptr(),
+                counter,
+                true,
+                KEYED_HASH,
+                CHUNK_START,
+                CHUNK_END,
+                test_chunks_out.as_mut_ptr(),
+            );
+        }
+        for n in 0..NUM_INPUTS {
+            dbg!(n);
+            assert_eq!(
+                &portable_chunks_out[n * OUT_LEN..][..OUT_LEN],
+                &test_chunks_out[n * OUT_LEN..][..OUT_LEN]
+            );
+        }
 
-    let mut test_parents_out = [0; NUM_INPUTS * OUT_LEN];
-    unsafe {
-        hash_many_fn(
-            parents.as_ptr() as _,
-            parents.len(),
-            1,
-            TEST_KEY_WORDS.as_ptr(),
-            counter,
-            false,
-            KEYED_HASH | PARENT,
-            0,
-            0,
-            test_parents_out.as_mut_ptr(),
-        );
-    }
-    for n in 0..NUM_INPUTS {
-        dbg!(n);
-        assert_eq!(
-            &portable_parents_out[n * OUT_LEN..][..OUT_LEN],
-            &test_parents_out[n * OUT_LEN..][..OUT_LEN]
-        );
+        // Then hash parents.
+        let mut parents = ArrayVec::<&[u8; 2 * OUT_LEN], NUM_INPUTS>::new();
+        for i in 0..NUM_INPUTS {
+            parents.push(array_ref!(input_buf, i * 2 * OUT_LEN, 2 * OUT_LEN));
+        }
+        let mut portable_parents_out = [0; NUM_INPUTS * OUT_LEN];
+        unsafe {
+            crate::ffi::blake3_hash_many_portable(
+                parents.as_ptr() as _,
+                parents.len(),
+                1,
+                TEST_KEY_WORDS.as_ptr(),
+                counter,
+                false,
+                KEYED_HASH | PARENT,
+                0,
+                0,
+                portable_parents_out.as_mut_ptr(),
+            );
+        }
+
+        let mut test_parents_out = [0; NUM_INPUTS * OUT_LEN];
+        unsafe {
+            hash_many_fn(
+                parents.as_ptr() as _,
+                parents.len(),
+                1,
+                TEST_KEY_WORDS.as_ptr(),
+                counter,
+                false,
+                KEYED_HASH | PARENT,
+                0,
+                0,
+                test_parents_out.as_mut_ptr(),
+            );
+        }
+        for n in 0..NUM_INPUTS {
+            dbg!(n);
+            assert_eq!(
+                &portable_parents_out[n * OUT_LEN..][..OUT_LEN],
+                &test_parents_out[n * OUT_LEN..][..OUT_LEN]
+            );
+        }
     }
 }
 
@@ -507,5 +515,56 @@ fn test_finalize_seek() {
         dbg!(seek);
         test_hasher.finalize_seek(seek as u64, &mut out);
         assert_eq!(&expected[seek..][..out.len()], &out[..]);
+    }
+}
+
+#[test]
+fn test_reset() {
+    {
+        let mut hasher = crate::Hasher::new();
+        hasher.update(&[42; 3 * CHUNK_LEN + 7]);
+        hasher.reset();
+        hasher.update(&[42; CHUNK_LEN + 3]);
+        let mut output = [0; 32];
+        hasher.finalize(&mut output);
+
+        let mut reference_hasher = reference_impl::Hasher::new();
+        reference_hasher.update(&[42; CHUNK_LEN + 3]);
+        let mut reference_hash = [0; 32];
+        reference_hasher.finalize(&mut reference_hash);
+
+        assert_eq!(reference_hash, output);
+    }
+    {
+        let key = &[99; 32];
+        let mut hasher = crate::Hasher::new_keyed(key);
+        hasher.update(&[42; 3 * CHUNK_LEN + 7]);
+        hasher.reset();
+        hasher.update(&[42; CHUNK_LEN + 3]);
+        let mut output = [0; 32];
+        hasher.finalize(&mut output);
+
+        let mut reference_hasher = reference_impl::Hasher::new_keyed(key);
+        reference_hasher.update(&[42; CHUNK_LEN + 3]);
+        let mut reference_hash = [0; 32];
+        reference_hasher.finalize(&mut reference_hash);
+
+        assert_eq!(reference_hash, output);
+    }
+    {
+        let context = "BLAKE3 2020-02-12 10:20:58 reset test";
+        let mut hasher = crate::Hasher::new_derive_key(context);
+        hasher.update(&[42; 3 * CHUNK_LEN + 7]);
+        hasher.reset();
+        hasher.update(&[42; CHUNK_LEN + 3]);
+        let mut output = [0; 32];
+        hasher.finalize(&mut output);
+
+        let mut reference_hasher = reference_impl::Hasher::new_derive_key(context);
+        reference_hasher.update(&[42; CHUNK_LEN + 3]);
+        let mut reference_hash = [0; 32];
+        reference_hasher.finalize(&mut reference_hash);
+
+        assert_eq!(reference_hash, output);
     }
 }
