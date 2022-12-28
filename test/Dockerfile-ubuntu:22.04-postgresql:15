@@ -1,7 +1,7 @@
 # this dockerfile builds kitchen sync and runs the test suite.  it needs to be built with the project repo root as the buildroot.
 # note that the tests are run as part of the build, you don't need to run anything afterwards.
 
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 	DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
@@ -12,7 +12,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 	rm -rf /var/cache/apt/archives/*
 
 RUN DEBIAN_FRONTEND=noninteractive apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 7FCC7D46ACCC4CF8 && \
-	DEBIAN_FRONTEND=noninteractive add-apt-repository 'deb http://apt.postgresql.org/pub/repos/apt/ focal-pgdg main 14' && \
+	DEBIAN_FRONTEND=noninteractive add-apt-repository 'deb http://apt.postgresql.org/pub/repos/apt/ jammy-pgdg main 15' && \
 	DEBIAN_FRONTEND=noninteractive apt-get update && \
 	DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
 		postgresql-14 postgresql-14-postgis-3 postgresql-client-14 libpq-dev && \
