@@ -161,7 +161,7 @@ class SchemaToTest < KitchenSync::EndpointTestCase
 
   test_each "can create all supported types of columns" do
     clear_schema
-    connection.create_enum_column_type # this isn't done by KS itself at the moment
+    connection.drop_enum_column_type # check this gets recreated OK
 
     expect_handshake_commands(schema: {"tables" => [misctbl_def]})
     read_command

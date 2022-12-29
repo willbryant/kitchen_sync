@@ -338,14 +338,45 @@ struct AddColumnClauses<DatabaseClient, true> {
 	}
 };
 
-template <typename DatabaseClient>
-struct SchemaMatcher {
-	SchemaMatcher(DatabaseClient &client): client(client) {}
+template <typename DatabaseClient, bool = is_base_of<SupportsCustomTypes, DatabaseClient>::value>
+struct CustomTypeMatcher {
+	CustomTypeMatcher(DatabaseClient &client, Statements &statements) {}
 
-	void match_schemas(const Database &from_database, Database to_database) {
-		// currently we only pay attention to tables, but in the future we might support other schema items
-		match_tables(from_database.tables, to_database.tables);
+	void match_types_used(const Tables &from_tables, const Tables &to_tables) {
+		// nothing to do
 	}
+};
+
+template <typename DatabaseClient>
+struct CustomTypeMatcher<DatabaseClient, true> {
+	CustomTypeMatcher(DatabaseClient &client, Statements &statements): client(client), statements(statements) {}
+
+	void match_types_used(const Tables &from_tables, const Tables &to_tables) {
+		match_named_enums(from_tables);
+	}
+
+	void match_named_enums(const Tables &from_tables) {
+		map<string, vector<string>> enum_type_values(client.enum_type_values());
+
+		for (const Table &from_table: from_tables) {
+			for (const Column &column: from_table.columns) {
+				if (column.column_type == ColumnType::enumeration &&
+					!column.subtype.empty() &&
+					!enum_type_values.count(column.subtype)) {
+					statements.push_back("CREATE TYPE " + client.quote_identifier(column.subtype) + " AS ENUM " + values_list(client, column.enumeration_values));
+					enum_type_values[column.subtype] = column.enumeration_values;
+				}
+			}
+		}
+	}
+
+	DatabaseClient &client;
+	Statements &statements;
+};
+
+template <typename DatabaseClient>
+struct TableMatcher {
+	TableMatcher(DatabaseClient &client, Statements &statements): client(client), statements(statements) {}
 
 	void match_tables(Tables from_tables, Tables &to_tables) { // copies from_tables so we can sort it, mutates to_tables
 		// sort the table lists so they have the same order - they typically are already,
@@ -524,6 +555,22 @@ struct SchemaMatcher {
 			}
 		}
 		return false;
+	}
+
+	DatabaseClient &client;
+	Statements &statements;
+};
+
+template <typename DatabaseClient>
+struct SchemaMatcher {
+	SchemaMatcher(DatabaseClient &client): client(client) {}
+
+	void match_schemas(const Database &from_database, Database to_database) {
+		CustomTypeMatcher<DatabaseClient> custom_type_matcher(client, statements);
+		custom_type_matcher.match_types_used(from_database.tables, to_database.tables);
+
+		TableMatcher<DatabaseClient> table_matcher(client, statements);
+		table_matcher.match_tables(from_database.tables, to_database.tables);
 	}
 
 	DatabaseClient &client;

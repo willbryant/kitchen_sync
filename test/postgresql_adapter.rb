@@ -302,8 +302,12 @@ class PostgreSQLAdapter
     'real'
   end
 
-  def create_enum_column_type
+  def drop_enum_column_type
     execute "DROP TYPE IF EXISTS #{enum_column_type}"
+  end
+
+  def create_enum_column_type
+    drop_enum_column_type
     execute "CREATE TYPE #{enum_column_type} AS ENUM('red', 'green', 'blue', 'with''quote')"
   end
 

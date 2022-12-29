@@ -16,4 +16,7 @@ struct SetNullability {
 struct SupportsAddNonNullableColumns {
 };
 
+struct SupportsCustomTypes {
+};
+
 #endif
