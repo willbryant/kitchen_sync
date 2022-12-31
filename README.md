@@ -45,6 +45,4 @@ Please see [Supported schema](SCHEMA.md) for a list of the currently supported d
 Bugs
 ----
 
-Please use Github issues and check if your issue has already been reported first.
-
-[![Build Status](https://travis-ci.com/willbryant/kitchen_sync.svg?branch=master)](https://travis-ci.com/willbryant/kitchen_sync)
+Please use Github issues and check if your issue has already been reported first.
