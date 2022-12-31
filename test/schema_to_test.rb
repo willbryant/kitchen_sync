@@ -202,6 +202,18 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     assert_equal connection.column_enum_values("misctbl", "enumfield"), misctbl_enum_column_values
   end
 
+  test_each "can create columns from non-anonymous enum types, renaming away non-matching existing types" do
+    clear_schema
+    connection.create_enum_column_type
+
+    table_def = misctbl_def
+    table_def["columns"].detect {|column| column["name"] == "enumfield"}["enumeration_values"] = %w(different red green blue values)
+    expect_handshake_commands(schema: {"tables" => [table_def]})
+    read_command
+    assert_equal %w(misctbl), connection.tables
+    assert_equal connection.column_enum_values("misctbl", "enumfield"), %w(different red green blue values)
+  end
+
 
   test_each "doesn't complain about a missing table before other tables if told to ignore the table, and doesn't ask for its data" do
     program_env['ENDPOINT_IGNORE_TABLES'] = 'footbl'

@@ -675,10 +675,7 @@ string PostgreSQLClient::column_type(const Column &column) {
 		}
 
 		case ColumnType::enumeration:
-			if (type_map.enum_type_values.count(column.subtype) && // otherwise one will be created by CustomTypeMatcher
-				type_map.enum_type_values[column.subtype] != column.enumeration_values) {
-				throw runtime_error("The enumerated type named " + column.subtype + " has possible values " + values_list(*this, type_map.enum_type_values[column.subtype]) + " but should have possible values " + values_list(*this, column.enumeration_values) + " for column " + column.name + ", please alter the type");
-			}
+			// SchemaMatcher will make sure this exists and has the right values for us
 			return column.subtype;
 
 		case ColumnType::postgresql_specific:

@@ -360,9 +360,15 @@ struct CustomTypeMatcher<DatabaseClient, true> {
 
 		for (const Table &from_table: from_tables) {
 			for (const Column &column: from_table.columns) {
-				if (column.column_type == ColumnType::enumeration &&
-					!column.subtype.empty() &&
-					!enum_type_values.count(column.subtype)) {
+				if (column.column_type == ColumnType::enumeration && enum_type_values[column.subtype] != column.enumeration_values) {
+					// we always recreate since it isn't possible to drop values from enums
+					if (!enum_type_values[column.subtype].empty()) {
+						// we rename the old type away since there'll probably still be columns referencing it at this point
+						// this does unfortunately leave old enum types around as garbage that doesn't get collected, but they're harmless
+						string rename_old_type_to("_old_" + column.subtype);
+						while (!enum_type_values[rename_old_type_to].empty()) rename_old_type_to = rename_old_type_to + "_";
+						statements.push_back("ALTER TYPE " + client.quote_identifier(column.subtype) + " RENAME TO " + client.quote_identifier(rename_old_type_to));
+					}
 					statements.push_back("CREATE TYPE " + client.quote_identifier(column.subtype) + " AS ENUM " + values_list(client, column.enumeration_values));
 					enum_type_values[column.subtype] = column.enumeration_values;
 				}
