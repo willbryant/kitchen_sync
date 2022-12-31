@@ -181,6 +181,22 @@ class PostgreSQLAdapter
     SQL
   end
 
+  def column_enum_values(table_name, column_name)
+    enum_type = table_column_types(table_name)[column_name]
+    query(<<-SQL).collect {|row| row["enumlabel"]}
+      SELECT typname,
+             enumlabel
+        FROM pg_type,
+             pg_namespace,
+             pg_enum
+       WHERE pg_type.typnamespace = pg_namespace.oid AND
+             pg_namespace.nspname = ANY (current_schemas(false)) AND
+             pg_type.oid = enumtypid AND
+             pg_type.typname = '#{escape enum_type}'
+       ORDER BY enumtypid, enumsortorder
+    SQL
+  end
+
   def quote_ident(name)
     PG::Connection.quote_ident(name)
   end

@@ -172,6 +172,22 @@ class SchemaToTest < KitchenSync::EndpointTestCase
     column_types = connection.table_column_types("misctbl")
     assert_equal connection.text_column_type.downcase, column_types["textfield"].downcase
     assert_equal connection.blob_column_type.downcase, column_types["blobfield"].downcase
+    assert_equal connection.enum_column_type.downcase, column_types["enumfield"].downcase
+    assert_equal connection.column_enum_values("misctbl", "enumfield"), misctbl_enum_column_values
+  end
+
+  test_each "can create columns from anonymous enum types that match existing types" do
+    clear_schema
+    connection.create_enum_column_type
+
+    table_def = misctbl_def
+    table_def["columns"].detect {|column| column["name"] == "enumfield"}.delete("subtype")
+    expect_handshake_commands(schema: {"tables" => [table_def]})
+    read_command
+    assert_equal %w(misctbl), connection.tables
+    column_types = connection.table_column_types("misctbl")
+    assert_equal connection.enum_column_type.downcase, column_types["enumfield"].downcase
+    assert_equal connection.column_enum_values("misctbl", "enumfield"), misctbl_enum_column_values
   end
 
 

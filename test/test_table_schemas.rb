@@ -175,11 +175,15 @@ SQL
         {"name" => "textfield",     "column_type" => ColumnType::TEXT},
         {"name" => "blobfield",     "column_type" => ColumnType::BINARY},
         {"name" => "jsonfield",     "column_type" => connection.json_column_type? ? ColumnType::JSON : ColumnType::TEXT},
-        {"name" => "enumfield",     "column_type" => ColumnType::ENUMERATION, "enumeration_values" => ["red", "green", "blue", "with'quote"]}.merge(connection.enum_column_subtype),
+        {"name" => "enumfield",     "column_type" => ColumnType::ENUMERATION, "enumeration_values" => misctbl_enum_column_values}.merge(connection.enum_column_subtype),
       ],
       "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
       "primary_key_columns" => [0],
       "keys" => [] }
+  end
+
+  def misctbl_enum_column_values
+    ["red", "green", "blue", "with'quote"]
   end
 
   def create_noprimarytbl(create_suitable_keys: true)

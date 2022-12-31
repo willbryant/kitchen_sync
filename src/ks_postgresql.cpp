@@ -660,8 +660,6 @@ string PostgreSQLClient::column_type(const Column &column) {
 		}
 
 		case ColumnType::enumeration:
-			// a named ENUM type (presumably from another postgresql instance); we don't create/maintain
-			// these types ourselves currently, they need to exist already.
 			if (column.subtype.empty()) {
 				throw runtime_error("Can't find an enumerated type with possible values " + values_list(*this, column.enumeration_values) + " for column " + column.name + ", please create one using CREATE TYPE");
 			}

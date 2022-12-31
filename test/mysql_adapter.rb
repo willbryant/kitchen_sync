@@ -90,6 +90,11 @@ class MysqlAdapter
     query("SHOW COLUMNS FROM #{quote_ident table_name}").collect.with_object({}) {|row, results| results[row["Field"]] = row["Default"]}
   end
 
+  def column_enum_values(table_name, column_name)
+    type = table_column_types(table_name)[column_name]
+    type[6..-3].split("','").collect {|v| v.gsub("''", "'")} if type.start_with?("enum(")
+  end
+
   def quote_ident(name)
     "`#{name.gsub('`', '``')}`"
   end
@@ -244,7 +249,7 @@ class MysqlAdapter
   end
 
   def enum_column_type
-    "ENUM('red', 'green', 'blue', 'with''quote')"
+    "ENUM('red','green','blue','with''quote')"
   end
 
   def enum_column_subtype
