@@ -242,7 +242,7 @@ class MysqlAdapter
     'FLOAT'
   end
 
-  def drop_enum_column_type
+  def drop_custom_enum_types
   end
 
   def create_enum_column_type

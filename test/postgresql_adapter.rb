@@ -197,6 +197,17 @@ class PostgreSQLAdapter
     SQL
   end
 
+  def custom_enum_types
+    query(<<-SQL).collect {|row| row["typname"]}
+      SELECT typname
+        FROM pg_type,
+             pg_namespace
+       WHERE pg_type.typnamespace = pg_namespace.oid AND
+             pg_namespace.nspname = ANY (current_schemas(false)) AND
+             pg_type.typtype = 'e'
+    SQL
+  end
+
   def quote_ident(name)
     PG::Connection.quote_ident(name)
   end
@@ -318,12 +329,14 @@ class PostgreSQLAdapter
     'real'
   end
 
-  def drop_enum_column_type
-    execute "DROP TYPE IF EXISTS #{enum_column_type}"
+  def drop_custom_enum_types
+    custom_enum_types.each do |name|
+      execute "DROP TYPE #{quote_ident name}"
+    end
   end
 
   def create_enum_column_type
-    drop_enum_column_type
+    drop_custom_enum_types
     execute "CREATE TYPE #{enum_column_type} AS ENUM('red', 'green', 'blue', 'with''quote')"
   end
 

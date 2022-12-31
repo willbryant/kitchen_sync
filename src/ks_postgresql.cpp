@@ -428,6 +428,17 @@ string &PostgreSQLClient::append_quoted_column_value_to(string &result, const Co
 	}
 }
 
+string enum_values_hash(const vector<string> &values) {
+	RowHasher hasher(HashAlgorithm::blake3);
+	hasher.packer << values.size();
+	for (const string &value: values) hasher.packer << value;
+	Hash hash(hasher.hash);
+
+	char result[14];
+	sprintf(result, "enum_%.2x%.2x%.2x%.2x", hash.md_value[0], hash.md_value[1], hash.md_value[2], hash.md_value[3]);
+	return result;
+}
+
 void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 	map<string, set<string>> used_relation_names_by_schema;
 
@@ -470,13 +481,17 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 			}
 
 			// postgresql requires that you create a material type for each enumeration, whereas mysql just lists the
-			// possible values on the column itself.  when syncing from mysql, we don't currently implement creation/maintainance of these custom
-			// types ourselves - users need to do that - but we need to find the name of the type they've (hopefully) created.
+			// possible values on the column itself.  we need to find the name of the type they've (hopefully) created,
+			// or make one up.
 			if (column.column_type == ColumnType::enumeration && column.subtype.empty()) {
 				for (auto it = type_map.enum_type_values.begin(); it != type_map.enum_type_values.end() && column.subtype.empty(); ++it) {
 					if (it->second == column.enumeration_values) {
 						column.subtype = it->first;
 					}
+				}
+
+				if (column.subtype.empty()) {
+					column.subtype = enum_values_hash(column.enumeration_values);
 				}
 			}
 
@@ -660,9 +675,6 @@ string PostgreSQLClient::column_type(const Column &column) {
 		}
 
 		case ColumnType::enumeration:
-			if (column.subtype.empty()) {
-				throw runtime_error("Can't find an enumerated type with possible values " + values_list(*this, column.enumeration_values) + " for column " + column.name + ", please create one using CREATE TYPE");
-			}
 			if (type_map.enum_type_values.count(column.subtype) && // otherwise one will be created by CustomTypeMatcher
 				type_map.enum_type_values[column.subtype] != column.enumeration_values) {
 				throw runtime_error("The enumerated type named " + column.subtype + " has possible values " + values_list(*this, type_map.enum_type_values[column.subtype]) + " but should have possible values " + values_list(*this, column.enumeration_values) + " for column " + column.name + ", please alter the type");
