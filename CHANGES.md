@@ -1,6 +1,10 @@
 Changelog
 =========
 
+2.16
+----
+* Automatically create/replace PostgreSQL enum types that are used in the tables being synced.
+
 2.15
 ----
 
