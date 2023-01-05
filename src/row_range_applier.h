@@ -46,8 +46,9 @@ struct RowRangeApplier {
 		Packer<ColumnValues> packer(primary_key);
 		pack_array_length(packer, table.primary_key_columns.size());
 		for (size_t column_number : table.primary_key_columns) {
-			const PackedValue &val(row[column_number]);
-			packer.write_bytes(val.data(), val.encoded_size());
+			PackedValueReadStream stream(row, column_number);
+			Unpacker<PackedValueReadStream> unpacker(stream);
+			copy_object(unpacker, primary_key);
 		}
 		return primary_key;
 	}
@@ -62,9 +63,7 @@ struct RowRangeApplier {
 		// mostly avoided this particular problem, but we still had trouble in the case where the
 		// source dataset had deleted a large range that was still present on the local end; this
 		// way around requires fewer special cases.
-		for (const PackedValue &value : row) {
-			approx_buffered_bytes += value.encoded_size();
-		}
+		approx_buffered_bytes += row.encoded_size();
 		if (approx_buffered_bytes > MAX_BYTES_TO_BUFFER) {
 			check_rows_to_curr_key();
 			insert_remaining_rows();

@@ -4,6 +4,9 @@
 #include "packed_buffer.h"
 #include "type_codes.h"
 
+/*
+Represents a single (scalar) value encoded in MessagePack format.
+*/
 struct PackedValue: public PackedBuffer {
 	inline size_t encoded_size() const { return used; }
 	inline uint8_t leader() const { return (used ? *buffer() : 0); }

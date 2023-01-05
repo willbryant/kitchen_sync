@@ -11,7 +11,7 @@
 #include "hash_algorithm.h"
 #include "message_pack/pack.h"
 #include "message_pack/packed_value.h"
-#include "packed_key.h"
+#include "column_values.h"
 
 template <typename Packer, typename DatabaseRow>
 void pack_row_into(Packer &packer, DatabaseRow &row) {

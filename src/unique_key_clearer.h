@@ -15,8 +15,8 @@ struct UniqueKeyClearer {
 	}
 
 	bool key_enforceable(const PackedRow &row) {
-		for (size_t n = 0; n < key_columns->size(); n++) {
-			if (row[(*key_columns)[n]].is_nil()) return false;
+		for (size_t column : *key_columns) {
+			if (row.is_nil(column)) return false;
 		}
 		return true;
 	}
@@ -34,7 +34,8 @@ struct UniqueKeyClearer {
 			size_t column = (*key_columns)[n];
 			delete_sql += table->columns[column].name;
 			delete_sql += '=';
-			sql_encode_and_append_packed_value_to(delete_sql.curr, *client, table->columns[column], row[column]);
+			PackedValueReadStream stream(row, column);
+			sql_encode_and_append_packed_value_to(delete_sql.curr, *client, table->columns[column], stream);
 		}
 	}
 

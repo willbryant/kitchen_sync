@@ -76,10 +76,4 @@ string &sql_encode_and_append_packed_value_to(string &result, DatabaseClient &cl
 	}
 }
 
-template <typename DatabaseClient>
-string &sql_encode_and_append_packed_value_to(string &result, DatabaseClient &client, const Column &column, const PackedValue &value) {
-	PackedValueReadStream stream(value);
-	return sql_encode_and_append_packed_value_to(result, client, column, stream);
-}
-
 #endif

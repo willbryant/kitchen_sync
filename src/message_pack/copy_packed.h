@@ -2,6 +2,7 @@
 #define COPY_PACKED_H
 
 #include "packed_value.h"
+#include "packed_row.h"
 #include "pack.h"
 #include "unpack.h"
 
@@ -156,9 +157,45 @@ Packer<Stream> &operator <<(Packer<Stream> &packer, const PackedValue &obj) {
 	return packer;
 }
 
+template <typename Stream>
+Unpacker<Stream> &operator >>(Unpacker<Stream> &unpacker, PackedTuple &obj) {
+	obj.clear();
+	copy_object(unpacker, obj);
+	return unpacker;
+}
+
+template <typename Stream>
+Packer<Stream> &operator <<(Packer<Stream> &packer, const PackedTuple &obj) {
+	packer.write_bytes(obj.data(), obj.encoded_size());
+	return packer;
+}
+
+template <typename Stream>
+Unpacker<Stream> &operator >>(Unpacker<Stream> &unpacker, PackedRow &row) {
+	row.clear();
+
+	// we'd essentially like to use copy_object to copy the whole array in, but we need to record
+	// the offsets for each value as we go, which copy_array_members doesn't know how to do.
+	size_t size = unpacker.next_array_length(); // checks type
+	pack_array_length(row, size);
+	while (size--) {
+		row.starting_new_object();
+		copy_object(unpacker, row.values);
+	}
+
+	return unpacker;
+}
+
+template <typename Stream>
+Packer<Stream> &operator <<(Packer<Stream> &packer, const PackedRow &obj) {
+	packer.write_bytes(obj.values.data(), obj.values.encoded_size());
+	return packer;
+}
+
 struct PackedValueReadStream {
 	inline PackedValueReadStream(const uint8_t *data): data(data) {}
 	inline PackedValueReadStream(const PackedValue &value): data(value.data()) {}
+	inline PackedValueReadStream(const PackedRow &row, size_t column): data(row.values.data() + row.offsets.at(column)) {}
 
 	inline void read(uint8_t *dest, size_t bytes) {
 		memcpy(dest, data, bytes);

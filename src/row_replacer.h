@@ -10,20 +10,20 @@
 template <typename DatabaseClient>
 void append_row_tuple(DatabaseClient &client, const Columns &columns, BaseSQL &sql, const PackedRow &row, size_t columns_to_ignore = 0) {
 	if (sql.have_content()) sql += "),\n(";
+	PackedValueReadStream stream(row, 0);
 	for (size_t n = 0; n < row.size() - columns_to_ignore; n++) {
 		if (n > 0) {
 			sql += ',';
 		}
-		sql_encode_and_append_packed_value_to(sql.curr, client, columns[n], row[n]);
+		sql_encode_and_append_packed_value_to(sql.curr, client, columns[n], stream);
 	}
 }
 
 template <typename DatabaseClient>
 void append_row_tuples(DatabaseClient &client, const Columns &columns, BaseSQL &sql, const PackedRow &row) {
 	// retrieve_rows_sql adds an extra COUNT(*) column on to the end of the SELECT statements in the entire_row_as_key case
-	PackedValueReadStream stream(row.back());
-	Unpacker<PackedValueReadStream> unpacker(stream);
-
+	PackedValueReadStream stream_at_end(row, row.offsets.size() - 1);
+	Unpacker<PackedValueReadStream> unpacker(stream_at_end);
 	size_t count_to_insert = unpacker.next<size_t>();
 	if (!count_to_insert) throw range_error("Saw a zero row count!");
 

@@ -6,7 +6,7 @@
 
 #include "schema.h"
 #include "encode_packed.h"
-#include "packed_key.h"
+#include "column_values.h"
 
 using namespace std;
 
