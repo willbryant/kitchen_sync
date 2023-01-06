@@ -71,15 +71,13 @@ void MySQLRes::populate_conversions() {
 MySQLColumnConversion MySQLRes::conversion_for_field(const MYSQL_FIELD &field) {
 	switch (field.type) {
 		case MYSQL_TYPE_TINY:
-			if (field.length == 1) {
-				return encode_bool;
-			} // else [[fallthrough]];
-
 		case MYSQL_TYPE_SHORT:
 		case MYSQL_TYPE_INT24:
 		case MYSQL_TYPE_LONG:
 		case MYSQL_TYPE_LONGLONG:
-			if (field.flags & UNSIGNED_FLAG) {
+			if (field.length == 1) {
+				return encode_bool;
+			} else if (field.flags & UNSIGNED_FLAG) {
 				return encode_uint;
 			} else {
 				return encode_sint;

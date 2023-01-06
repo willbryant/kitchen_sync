@@ -86,7 +86,7 @@ class FilterFromTest < KitchenSync::EndpointTestCase
                    @filtered_rows[3]
   end
 
-  test_each "raises an error if told to replace column values in a primary key column" do
+  test_each "raises an error if told to replace column values in a primary key column" do
     create_some_tables
     execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"
     @filtered_rows = [[2,   6,      "testx"],
@@ -98,6 +98,24 @@ class FilterFromTest < KitchenSync::EndpointTestCase
 
     send_command   Commands::SCHEMA
     expect_command Commands::SCHEMA, [{"tables" => [footbl_def, secondtbl_def], "errors" => ["Can't replace values in column 'col1' table 'footbl' because it is used in the primary key"]}]
+  end
+
+  test_each "applies filters to boolean fields with the correct value type" do
+    clear_schema
+    create_misctbl
+    execute %Q{INSERT INTO misctbl (pri, boolfield, datefield, timefield, datetimefield, floatfield, doublefield, decimalfield, vchrfield, fchrfield, uuidfield, textfield, blobfield, jsonfield, enumfield) VALUES
+                                   (-21, true, '2099-12-31', '12:34:56', '2014-04-13 01:02:03', 1.25, 0.5, 123456.4321, 'vartext', 'fixedtext', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'sometext', 'test', '{"one": 1, "two": "test"}', 'green')} # insert the first row but not the second
+    @filtered_rows = [[-21, false, '2099-12-31', '12:34:56', '2014-04-13 01:02:03', '1.25', '0.5', '123456.4321', 'vartext', 'fixedtext', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'sometext', 'test', '{"one": 1, "two": "test"}', 'green']]
+
+    send_handshake_commands(filters: {"misctbl" => {"filter_expressions" => {"boolfield" => "false"}}})
+
+    send_command   Commands::SCHEMA
+    expect_command Commands::SCHEMA, [{"tables" => [misctbl_def]}]
+
+    send_command   Commands::ROWS, ["misctbl", [], []]
+    expect_command Commands::ROWS,
+                   ["misctbl", [], []],
+                   *@filtered_rows
   end
 
   test_each "applies both column filters and row filters if given" do
