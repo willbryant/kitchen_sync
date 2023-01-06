@@ -36,7 +36,6 @@ public:
 	inline int n_tuples() const { return mysql_num_rows(_res); } // if buffer was false, this will only work after reading all the rows
 	inline int n_columns() const { return _n_columns; }
 	inline MySQLColumnConversion conversion_for(int column_number) { if (conversions.empty()) populate_conversions(); return conversions[column_number]; }
-	string qualified_name_of_column(int column_number);
 
 private:
 	void populate_conversions();
@@ -99,10 +98,6 @@ MySQLColumnConversion MySQLRes::conversion_for_field(const MYSQL_FIELD &field) {
 		default:
 			return encode_raw;
 	}
-}
-
-string MySQLRes::qualified_name_of_column(int column_number) {
-	return string(_fields[column_number].table) + "." + string(_fields[column_number].name);
 }
 
 
