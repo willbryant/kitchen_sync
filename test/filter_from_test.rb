@@ -62,11 +62,11 @@ class FilterFromTest < KitchenSync::EndpointTestCase
 
   test_each "uses the given SQL expressions to filter column values in hash and rows commands for tables with a replace attribute" do
     create_some_tables
-    execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"
-    @filtered_rows = [[2,   6,       "testx"],
-                      [4,   7,        "foox"],
-                      [5, nil,     "default"],
-                      [8,  18, "longer strx"]]
+    execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longerstr')"
+    @filtered_rows = [[2,   6,      "testx"],
+                      [4,   7,       "foox"],
+                      [5, nil,    "default"],
+                      [8,  17, "longerstrx"]]
 
     send_handshake_commands(filters: {"footbl" => {"filter_expressions" => {"another_col" => "col1 + CHAR_LENGTH(col3)", "col3" => "COALESCE(col3 || 'x', 'default')"}}})
 
