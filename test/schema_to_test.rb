@@ -744,12 +744,13 @@ SQL
     assert_equal Time.new(2000, 1, 1, 0, 0, 0), rows[0][4]
     assert_equal 0, rows[0][5]
     assert_equal 0, rows[0][6]
-    assert_equal 0, BigDecimal(rows[0][7].to_s) # return type not consistent between ruby clients
-    assert_equal "", rows[0][8]
-    assert_equal "", rows[0][9].strip # padding not consistent between ruby clients
-    assert_equal connection.uuid_column_type? ? "00000000-0000-0000-0000-000000000000" : "", rows[0][10]
-    assert_equal "", rows[0][11]
+    assert_equal 0, rows[0][7]
+    assert_equal 0, BigDecimal(rows[0][8].to_s) # return type not consistent between ruby clients
+    assert_equal "", rows[0][9]
+    assert_equal "", rows[0][10].strip # padding not consistent between ruby clients
+    assert_equal connection.uuid_column_type? ? "00000000-0000-0000-0000-000000000000" : "", rows[0][11]
     assert_equal "", rows[0][12]
+    assert_equal "", rows[0][13]
   end
 
   test_each "adds non-nullable columns to existing tables, for any type of column" do

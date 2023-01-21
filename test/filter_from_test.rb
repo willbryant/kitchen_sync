@@ -103,9 +103,9 @@ class FilterFromTest < KitchenSync::EndpointTestCase
   test_each "applies filters to boolean fields with the correct value type" do
     clear_schema
     create_misctbl
-    execute %Q{INSERT INTO misctbl (pri, boolfield, datefield, timefield, datetimefield, floatfield, doublefield, decimalfield, vchrfield, fchrfield, uuidfield, textfield, blobfield, jsonfield, enumfield) VALUES
-                                   (-21, true, '2099-12-31', '12:34:56', '2014-04-13 01:02:03', 1.25, 0.5, 123456.4321, 'vartext', 'fixedtext', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'sometext', 'test', '{"one": 1, "two": "test"}', 'green')} # insert the first row but not the second
-    @filtered_rows = [[-21, false, '2099-12-31', '12:34:56', '2014-04-13 01:02:03', '1.25', '0.5', '123456.4321', 'vartext', 'fixedtext', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'sometext', 'test', '{"one": 1, "two": "test"}', 'green']]
+    execute %Q{INSERT INTO misctbl (pri, boolfield, datefield, timefield, datetimefield, smallfield, floatfield, doublefield, decimalfield, vchrfield, fchrfield, uuidfield, textfield, blobfield, jsonfield, enumfield) VALUES
+                                   (-21, true, '2099-12-31', '12:34:56', '2014-04-13 01:02:03', 100, 1.25, 0.5, 123456.4321, 'vartext', 'fixedtext', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'sometext', 'test', '{"one": 1, "two": "test"}', 'green')} # insert the first row but not the second
+    @filtered_rows = [[-21, false, '2099-12-31', '12:34:56', '2014-04-13 01:02:03', 100, '1.25', '0.5', '123456.4321', 'vartext', 'fixedtext', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'sometext', 'test', '{"one": 1, "two": "test"}', 'green']]
 
     send_handshake_commands(filters: {"misctbl" => {"filter_expressions" => {"boolfield" => "false"}}})
 
@@ -121,9 +121,9 @@ class FilterFromTest < KitchenSync::EndpointTestCase
   test_each "casts filter expressions returning strings instead of boolean values to the correct value type" do
     clear_schema
     create_misctbl
-    execute %Q{INSERT INTO misctbl (pri, boolfield, datefield, timefield, datetimefield, floatfield, doublefield, decimalfield, vchrfield, fchrfield, uuidfield, textfield, blobfield, jsonfield, enumfield) VALUES
-                                   (-21, true, '2099-12-31', '12:34:56', '2014-04-13 01:02:03', 1.25, 0.5, 123456.4321, 'vartext', 'fixedtext', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'sometext', 'test', '{"one": 1, "two": "test"}', 'green')} # insert the first row but not the second
-    @filtered_rows = [[-21, true, '2099-12-31', '12:34:56', '2014-04-13 01:02:03', '1.25', '0.5', '123456.4321', 'vartext', 'fixedtext', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'sometext', 'test', '{"one": 1, "two": "test"}', 'green']]
+    execute %Q{INSERT INTO misctbl (pri, boolfield, datefield, timefield, datetimefield, smallfield, floatfield, doublefield, decimalfield, vchrfield, fchrfield, uuidfield, textfield, blobfield, jsonfield, enumfield) VALUES
+                                   (-21, true, '2099-12-31', '12:34:56', '2014-04-13 01:02:03', 100, 1.25, 0.5, 123456.4321, 'vartext', 'fixedtext', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'sometext', 'test', '{"one": 1, "two": "test"}', 'green')} # insert the first row but not the second
+    @filtered_rows = [[-21, true, '2099-12-31', '12:34:56', '2014-04-13 01:02:03', 100, '1.25', '0.5', '123456.4321', 'vartext', 'fixedtext', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'sometext', 'test', '{"one": 1, "two": "test"}', 'green']]
 
     send_handshake_commands(filters: {"misctbl" => {"filter_expressions" => {"boolfield" => "'1'"}}})
 

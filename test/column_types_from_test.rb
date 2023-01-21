@@ -11,11 +11,11 @@ class ColumnTypesFromTest < KitchenSync::EndpointTestCase
     clear_schema
     create_misctbl
 
-    execute %Q{INSERT INTO misctbl (pri, boolfield, datefield, timefield, datetimefield, floatfield, doublefield, decimalfield, vchrfield, fchrfield, uuidfield, textfield, blobfield, jsonfield, enumfield) VALUES
-                                   (-21, true, '2099-12-31', '12:34:56', '2014-04-13 01:02:03', 1.25, 0.5, 123456.4321, 'vartext', 'fixedtext', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'sometext', 'test', '{"one": 1, "two": "test"}', 'green'),
-                                   (42, false, '1900-01-01', '00:00:00', '1970-02-03 23:59:59', 1.25, 0.5, 654321.1234, 'vartext', 'fixedtext', 'c26ae0c4-b071-4058-9044-92042d6740fc', 'sometext', 'binary\001test', '{"somearray": [1, 2, 3]}', 'with''quote')}
-    @rows = [[-21,  true, '2099-12-31', '12:34:56', '2014-04-13 01:02:03', '1.25', '0.5', '123456.4321', 'vartext', 'fixedtext', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'sometext', 'test',           '{"one": 1, "two": "test"}', 'green'],
-             [ 42, false, '1900-01-01', '00:00:00', '1970-02-03 23:59:59', '1.25', '0.5', '654321.1234', 'vartext', 'fixedtext', 'c26ae0c4-b071-4058-9044-92042d6740fc', 'sometext', "binary\001test", '{"somearray": [1, 2, 3]}',  "with'quote"]]
+    execute %Q{INSERT INTO misctbl (pri, boolfield, datefield, timefield, datetimefield, smallfield, floatfield, doublefield, decimalfield, vchrfield, fchrfield, uuidfield, textfield, blobfield, jsonfield, enumfield) VALUES
+                                   (-21, true, '2099-12-31', '12:34:56', '2014-04-13 01:02:03', 100, 1.25, 0.5, 123456.4321, 'vartext', 'fixedtext', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'sometext', 'test', '{"one": 1, "two": "test"}', 'green'),
+                                   (42, false, '1900-01-01', '00:00:00', '1970-02-03 23:59:59', -10, 1.25, 0.5, 654321.1234, 'vartext', 'fixedtext', 'c26ae0c4-b071-4058-9044-92042d6740fc', 'sometext', 'binary\001test', '{"somearray": [1, 2, 3]}', 'with''quote')}
+    @rows = [[-21,  true, '2099-12-31', '12:34:56', '2014-04-13 01:02:03', 100, '1.25', '0.5', '123456.4321', 'vartext', 'fixedtext', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'sometext', 'test',           '{"one": 1, "two": "test"}', 'green'],
+             [ 42, false, '1900-01-01', '00:00:00', '1970-02-03 23:59:59', -10, '1.25', '0.5', '654321.1234', 'vartext', 'fixedtext', 'c26ae0c4-b071-4058-9044-92042d6740fc', 'sometext', "binary\001test", '{"somearray": [1, 2, 3]}',  "with'quote"]]
     @keys = @rows.collect {|row| [row[0]]}
 
     send_handshake_commands

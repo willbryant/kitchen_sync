@@ -165,8 +165,8 @@ class RowsFromTest < KitchenSync::EndpointTestCase
   test_each "uses a consistent format for misc column types such as dates and times" do
     clear_schema
     create_misctbl
-    execute %Q{INSERT INTO misctbl (pri, boolfield, datefield, timefield, datetimefield, floatfield, doublefield, decimalfield, vchrfield, fchrfield, uuidfield, textfield, blobfield, jsonfield, enumfield) VALUES
-                                   (1, true, '2018-12-31', '23:59', '2018-12-31 23:59', 1.25, 0.5, 012345.6789, 'vchrvalue', 'fchrvalue', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'textvalue', 'blobvalue', '{"one": 1, "two": "test"}', 'with''quote')}
+    execute %Q{INSERT INTO misctbl (pri, boolfield, datefield, timefield, datetimefield, smallfield, floatfield, doublefield, decimalfield, vchrfield, fchrfield, uuidfield, textfield, blobfield, jsonfield, enumfield) VALUES
+                                   (1, true, '2018-12-31', '23:59', '2018-12-31 23:59', 32767, 1.25, 0.5, 012345.6789, 'vchrvalue', 'fchrvalue', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'textvalue', 'blobvalue', '{"one": 1, "two": "test"}', 'with''quote')}
     send_handshake_commands
 
     # note that we currently use string format for float and double fields, though we could convert them to proper msgpack types instead
@@ -174,7 +174,7 @@ class RowsFromTest < KitchenSync::EndpointTestCase
     send_command   Commands::ROWS, ["misctbl", [], []]
     expect_command Commands::ROWS,
                    ["misctbl", [], []],
-                   [1, true, '2018-12-31', '23:59:00', '2018-12-31 23:59:00', '1.25', '0.5', '12345.6789', 'vchrvalue', 'fchrvalue', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'textvalue', 'blobvalue', '{"one": 1, "two": "test"}', "with'quote"]
+                   [1, true, '2018-12-31', '23:59:00', '2018-12-31 23:59:00', 32767, '1.25', '0.5', '12345.6789', 'vchrvalue', 'fchrvalue', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'textvalue', 'blobvalue', '{"one": 1, "two": "test"}', "with'quote"]
   end
 
   test_each "returns the appropriate representation of adapter-specific column definitions" do
