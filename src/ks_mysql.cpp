@@ -233,6 +233,7 @@ public:
 	ColumnTypeList supported_types();
 	void populate_database_schema(Database &database, const ColumnTypeList &accepted_types);
 	void convert_unsupported_database_schema(Database &database);
+	void add_filter_expression_casts(Database &database);
 
 	inline string quote_identifier(const string &name) { return ::quote_identifier(name, '`'); };
 	inline string quote_table_name(const Table &table) { return ::quote_identifier(table.name, '`'); };
@@ -586,6 +587,28 @@ void MySQLClient::convert_unsupported_database_schema(Database &database) {
 			if (key.name.size() >= 64) {
 				// mysql has a hardcoded limit of 64 characters for index names
 				key.name = key.name.substr(0, 64);
+			}
+		}
+	}
+}
+
+void MySQLClient::add_filter_expression_casts(Database &database) {
+	for (Table &table : database.tables) {
+		for (Column &column : table.columns) {
+			if (column.filter_expression.empty()) continue;
+
+			switch (column.column_type) {
+				case ColumnType::boolean:
+					// because mysql doesn't have a real boolean type, they didn't bother supporting it as a CAST type.
+					// but they do have it as a recognisable subtype from expressions, at you get int(1) as the type of
+					// any boolean expression. so make sure it knows we intend the expression to be a boolean and then
+					// our resultset code will see it as a boolean and encode it to match.
+					column.filter_expression = "NOT NOT (" + column.filter_expression + ")";
+					break;
+
+				default:
+					// do nothing
+					break;
 			}
 		}
 	}

@@ -133,6 +133,7 @@ struct SyncFromWorker {
 		// immediately, in contrast to v8 which rescues and serializes them.
 		if (output_stream.protocol_version <= LAST_FILTERS_AFTER_SNAPSHOT_PROTOCOL_VERSION) {
 			apply_filters(table_filters, database.tables);
+			client.add_filter_expression_casts(database);
 		}
 
 		send_command(output, Commands::FILTERS);
@@ -184,6 +185,7 @@ struct SyncFromWorker {
 		if (!table_filters.empty()) { // optimisation, but also will always skip for protocol 7 and earlier, per above comment
 			try {
 				apply_filters(table_filters, database.tables);
+				client.add_filter_expression_casts(database);
 			} catch (const filter_definition_error &e) {
 				database.errors.push_back(e.what());
 				return; // bail out with tables_by_id still empty so tests that don't pay attention to the error and terminate can't mess about making other requests and giving confusing output

@@ -192,6 +192,7 @@ public:
 	ColumnTypeList supported_types();
 	void populate_database_schema(Database &database, const ColumnTypeList &accepted_types);
 	void convert_unsupported_database_schema(Database &database);
+	void add_filter_expression_casts(Database &database);
 	string add_unique_relation_name_suffix(string name, set<string> used_relation_names, size_t max_allowed_length);
 
 	string escape_string_value(const string &value);
@@ -574,6 +575,24 @@ void PostgreSQLClient::convert_unsupported_database_schema(Database &database) {
 			}
 			error += ". Either add to the 'to' end search_path using --set-to-variables or restrict the 'from' end search_path using --set-from-variables.";
 			database.errors.push_back(error);
+		}
+	}
+}
+
+void PostgreSQLClient::add_filter_expression_casts(Database &database) {
+	for (Table &table : database.tables) {
+		for (Column &column : table.columns) {
+			if (column.filter_expression.empty()) continue;
+
+			switch (column.column_type) {
+				case ColumnType::boolean:
+					column.filter_expression = "(" + column.filter_expression + ")::boolean";
+					break;
+
+				default:
+					// do nothing
+					break;
+			}
 		}
 	}
 }
