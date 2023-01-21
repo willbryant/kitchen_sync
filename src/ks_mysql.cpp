@@ -606,6 +606,22 @@ void MySQLClient::add_filter_expression_casts(Database &database) {
 					column.filter_expression = "NOT NOT (" + column.filter_expression + ")";
 					break;
 
+				case ColumnType::sint_8bit:
+				case ColumnType::sint_16bit:
+				case ColumnType::sint_24bit:
+				case ColumnType::sint_32bit:
+				case ColumnType::sint_64bit:
+					column.filter_expression = "CAST(" + column.filter_expression + " AS SIGNED INTEGER)";
+					break;
+
+				case ColumnType::uint_8bit:
+				case ColumnType::uint_16bit:
+				case ColumnType::uint_24bit:
+				case ColumnType::uint_32bit:
+				case ColumnType::uint_64bit:
+					column.filter_expression = "CAST(" + column.filter_expression + " AS UNSIGNED INTEGER)";
+					break;
+
 				default:
 					// do nothing
 					break;

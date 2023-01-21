@@ -583,16 +583,7 @@ void PostgreSQLClient::add_filter_expression_casts(Database &database) {
 	for (Table &table : database.tables) {
 		for (Column &column : table.columns) {
 			if (column.filter_expression.empty()) continue;
-
-			switch (column.column_type) {
-				case ColumnType::boolean:
-					column.filter_expression = "(" + column.filter_expression + ")::boolean";
-					break;
-
-				default:
-					// do nothing
-					break;
-			}
+			column.filter_expression = "(" + column.filter_expression + ")::" + column_type(column);
 		}
 	}
 }
