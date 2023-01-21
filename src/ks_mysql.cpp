@@ -242,6 +242,7 @@ public:
 	string &append_quoted_spatial_value_to(string &result, const string &value);
 	string &append_quoted_json_value_to(string &result, const string &value);
 	string &append_quoted_column_value_to(string &result, const Column &column, const string &value);
+	string column_type_suffix(const Column &column, size_t default_size = 0);
 	tuple<string, string> column_type(const Column &column);
 	string column_default(const Table &table, const Column &column);
 	string column_definition(const Table &table, const Column &column);
@@ -622,6 +623,14 @@ void MySQLClient::add_filter_expression_casts(Database &database) {
 					column.filter_expression = "CAST(" + column.filter_expression + " AS UNSIGNED INTEGER)";
 					break;
 
+				case ColumnType::time:
+					column.filter_expression = "CAST(" + column.filter_expression + " AS TIME" + column_type_suffix(column) + ")";
+					break;
+
+				case ColumnType::datetime:
+					column.filter_expression = "CAST(" + column.filter_expression + " AS DATETIME" + column_type_suffix(column) + ")";
+					break;
+
 				default:
 					// do nothing
 					break;
@@ -655,7 +664,7 @@ map<ColumnType, string> SimpleColumnTypes{
 	{ColumnType::datetime_mysqltimestamp, "timestamp"},
 };
 
-string column_type_suffix(const Column &column, size_t default_size = 0) {
+string MySQLClient::column_type_suffix(const Column &column, size_t default_size) {
 	string result;
 	if (column.size != default_size) {
 		result += '(';
