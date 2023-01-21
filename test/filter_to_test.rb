@@ -47,10 +47,10 @@ class FilterToTest < KitchenSync::EndpointTestCase
   test_each "sends the given SQL expressions in filter_expressions for tables with a replace attribute" do
     create_some_tables
     execute "INSERT INTO footbl VALUES (2, 10, 'test'), (4, NULL, 'foo'), (5, NULL, NULL), (8, -1, 'longer str')"
-    @filtered_rows = [[2,   6,       "testx"],
-                      [4,   7,        "foox"],
-                      [5, nil,     "default"],
-                      [8,  18, "longer strx"]]
+    @filtered_rows = [[2,   6,      "testx"],
+                      [4,   7,       "foox"],
+                      [5, nil,    "default"],
+                      [8,  18, "longerstrx"]]
 
     with_filter_file("footbl:\n  replace:\n    another_col: col1 + CHAR_LENGTH(col3)\n    col3: COALESCE(col3 || 'x', 'default')") do
       expect_handshake_commands(
