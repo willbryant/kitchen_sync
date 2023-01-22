@@ -30,14 +30,14 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-ubuntu:20.04-mariadb:10.5 # from MariaDB's repos
-  ubuntu_18.04-mysqlclient-mariadb_10.4:
+  ubuntu_20.04-mariadb_10.4:
     build:
       context: ..
-      dockerfile: test/Dockerfile-ubuntu:18.04-mysqlclient-mariadb:10.4 # from MariaDB's repos + standard mysqlclient
-  ubuntu_18.04-mariadb_10.4:
+      dockerfile: test/Dockerfile-ubuntu:20.04-mariadb:10.4 # from MariaDB's repos
+  ubuntu_20.04-mysqlclient-mariadb_10.4:
     build:
       context: ..
-      dockerfile: test/Dockerfile-ubuntu:18.04-mariadb:10.4 # from MariaDB's repos
+      dockerfile: test/Dockerfile-ubuntu:20.04-mysqlclient-mariadb:10.4 # from MariaDB's repos + standard mysqlclient
   ubuntu_18.04-mariadb_10.3:
     build:
       context: ..
