@@ -1,6 +1,11 @@
 Changelog
 =========
 
+2.17
+----
+
+* Wrap filter expressions in type-casts to match the column to ensure that they hash correctly.
+
 2.16
 ----
 * Automatically create/replace PostgreSQL enum types that are used in the tables being synced.
