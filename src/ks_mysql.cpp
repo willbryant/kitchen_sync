@@ -252,6 +252,7 @@ public:
 	inline bool information_schema_brackets_generated_column_expressions() const { return server_is_mariadb; }
 	inline bool supports_srid_settings_on_columns() const { return srid_column_exists; }
 	inline bool supports_fractional_seconds() const { return (server_version >= (server_is_mariadb ? MARIADB_10_0_0 : MYSQL_8_0_0)); } // mariadb 5.3 does support microseconds, but doesn't support all the required functions
+	inline bool supports_cast_to_float() const { return (server_is_mariadb || server_version >= MYSQL_8_0_0); }
 	inline bool supports_check_constraints() const { return check_constraints_table_exists; }
 	inline bool explicit_json_column_type() const { return (!server_is_mariadb && server_version >= MYSQL_5_7_8); }
 	inline bool supports_json_column_type() const { return (explicit_json_column_type() || supports_check_constraints()); }
@@ -625,6 +626,14 @@ void MySQLClient::add_filter_expression_casts(Database &database) {
 
 				case ColumnType::float_64bit:
 				case ColumnType::float_32bit:
+					if (supports_cast_to_float()) {
+						column.filter_expression = "CAST(" + column.filter_expression + " AS DOUBLE)";
+					} else {
+						column.filter_expression = "CAST(" + column.filter_expression + " AS DECIMAL)";
+					}
+					break;
+					// else [[fallthrough]];
+
 				case ColumnType::decimal:
 				case ColumnType::time:
 				case ColumnType::datetime:
