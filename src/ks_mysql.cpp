@@ -624,11 +624,24 @@ void MySQLClient::add_filter_expression_casts(Database &database) {
 					break;
 
 				case ColumnType::time:
-					column.filter_expression = "CAST(" + column.filter_expression + " AS TIME" + column_type_suffix(column) + ")";
+					column.filter_expression = "CAST(" + column.filter_expression + " AS TIME " + column_type_suffix(column) + ")";
 					break;
 
 				case ColumnType::datetime:
 					column.filter_expression = "CAST(" + column.filter_expression + " AS DATETIME" + column_type_suffix(column) + ")";
+					break;
+
+				case ColumnType::text:
+				case ColumnType::text_varchar:
+				case ColumnType::text_fixed:
+					// docs are wrong, supplying the length suffix causes NULL-padding up to the specified length, so don't do that
+					column.filter_expression = "CAST(" + column.filter_expression + " AS CHAR)";
+					break;
+
+				case ColumnType::binary:
+				case ColumnType::binary_varbinary:
+				case ColumnType::binary_fixed:
+					column.filter_expression = "CAST(" + column.filter_expression + " AS BINARY)";
 					break;
 
 				default:

@@ -123,13 +123,15 @@ class FilterFromTest < KitchenSync::EndpointTestCase
     create_misctbl
     execute %Q{INSERT INTO misctbl (pri, boolfield, datefield, timefield, datetimefield, smallfield, floatfield, doublefield, decimalfield, vchrfield, fchrfield, uuidfield, textfield, blobfield, jsonfield, enumfield) VALUES
                                    (-21, true, '2099-12-31', '12:34:56', '2014-04-13 01:02:03', 100, 1.25, 0.5, 123456.4321, 'vartext', 'fixedtext', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'sometext', 'test', '{"one": 1, "two": "test"}', 'green')} # insert the first row but not the second
-    @filtered_rows = [[-21, true, '2099-12-31', '01:23:45', '2001-02-03 04:05:06', -10, '1.25', '0.5', '123456.4321', 'vartext', 'fixedtext', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'sometext', 'test', '{"one": 1, "two": "test"}', 'green']]
+    @filtered_rows = [[-21, true, '2099-12-31', '01:23:45', '2001-02-03 04:05:06', -10, '1.25', '0.5', '123456.4321', '123456789', '123456789', 'e23d5cca-32b7-4fb7-917f-d46d01fbff42', 'sometext', 'test', '{"one": 1, "two": "test"}', 'green']]
 
     send_handshake_commands(filters: {"misctbl" => {"filter_expressions" => {
       "boolfield" => "'1'",
       "smallfield" => "'-10'",
       "timefield" => "'01:23:45.00'",
       "datetimefield" => "'2001-02-03 04:05:06.0000'",
+      "vchrfield" => "123456789", # note this is a YAML integer
+      "fchrfield" => "123456789", # likewise
     }}})
 
     send_command   Commands::SCHEMA
