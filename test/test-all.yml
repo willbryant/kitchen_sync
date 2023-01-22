@@ -38,10 +38,6 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-ubuntu:20.04-mysqlclient-mariadb:10.4 # from MariaDB's repos + standard mysqlclient
-  ubuntu_18.04-mysql_8.0:
-    build:
-      context: ..
-      dockerfile: test/Dockerfile-ubuntu:18.04-mysql:8.0 # from MySQL AB's repos
   ubuntu_20.04-postgresql_15:
     build:
       context: ..
