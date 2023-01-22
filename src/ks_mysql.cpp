@@ -623,12 +623,12 @@ void MySQLClient::add_filter_expression_casts(Database &database) {
 					column.filter_expression = "CAST(" + column.filter_expression + " AS UNSIGNED INTEGER)";
 					break;
 
+				case ColumnType::float_64bit:
+				case ColumnType::float_32bit:
+				case ColumnType::decimal:
 				case ColumnType::time:
-					column.filter_expression = "CAST(" + column.filter_expression + " AS TIME " + column_type_suffix(column) + ")";
-					break;
-
 				case ColumnType::datetime:
-					column.filter_expression = "CAST(" + column.filter_expression + " AS DATETIME" + column_type_suffix(column) + ")";
+					column.filter_expression = "CAST(" + column.filter_expression + " AS " + get<0>(column_type(column)) + ")";
 					break;
 
 				case ColumnType::text:
