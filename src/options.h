@@ -142,7 +142,7 @@ struct Options {
 					{ NULL,							0,					NULL,	0 },
 				};
 
-				char ch = getopt_long_only(argc, argv, "", longopts, NULL);
+				int ch = getopt_long_only(argc, argv, "", longopts, NULL);
 				if (ch == -1) break;
 
 				switch (ch) {
