@@ -1,6 +1,11 @@
 Changelog
 =========
 
+2.18
+----
+
+* Fix startup on ARM Linux.
+
 2.17
 ----
 
