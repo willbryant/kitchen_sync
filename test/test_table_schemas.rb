@@ -275,6 +275,34 @@ SQL
     [footbl_def, secondtbl_def]
   end
 
+  def from_keytbl_def
+    { "name"    => "keytbl",
+      "columns" => [
+        {"name" => "pri",  "column_type" => ColumnType::SINT_32BIT, "nullable" => false},
+        {"name" => "a",  "column_type" => ColumnType::SINT_32BIT},
+        {"name" => "b", "column_type" => ColumnType::SINT_32BIT}],
+      "primary_key_type" => PrimaryKeyType::EXPLICIT_PRIMARY_KEY,
+      "primary_key_columns" => [0], # note order is that listed in the key, not the index of the column in the table
+      "keys" => [
+        {"name" => "bidx", "unique" => true, "columns" => [2]}, # note the unique index sorts lexicographically after the standard index
+		{"name" => "aidx", "unique" => false, "columns" => [1]}] }
+  end
+
+  def create_to_keytbl
+	# The same table as from_keytbl_def but missing the unique index.
+    execute(<<-SQL)
+      CREATE TABLE keytbl (
+		pri INT NOT NULL,
+        a INT,
+		b INT,
+		PRIMARY KEY (pri))
+SQL
+
+	execute(<<-SQL)
+	  CREATE INDEX aidx ON keytbl (a)
+SQL
+  end
+
   def create_reservedtbl
     execute(<<-SQL)
       CREATE TABLE reservedtbl (

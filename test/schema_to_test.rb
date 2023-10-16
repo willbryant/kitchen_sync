@@ -935,6 +935,15 @@ SQL
     assert_secondtbl_rows_present
   end
 
+  test_each "adds missing unique keys, whose name sorts after an existing standard key name" do
+    clear_schema
+    create_to_keytbl
+
+    expect_handshake_commands(schema: {"tables" => [from_keytbl_def]})
+    read_command
+    assert_equal from_keytbl_def["keys"].collect {|key| key["name"]}.sort, connection.table_keys("keytbl").sort
+  end
+
   test_each "changes keys whose unique flag doesn't match, without recreating the table" do
     clear_schema
     create_secondtbl
