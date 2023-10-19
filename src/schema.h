@@ -93,6 +93,7 @@ struct Key {
 	inline bool spatial() const { return (key_type == KeyType::spatial_key); }
 
 	inline bool operator <(const Key &other) const { return (key_type != other.key_type ? key_type < other.key_type : name < other.name); }
+    inline bool operator >(const Key &other) const { return (key_type != other.key_type ? key_type > other.key_type : name > other.name); }
 	inline bool operator ==(const Key &other) const { return (name == other.name && key_type == other.key_type && columns == other.columns); }
 	inline bool operator !=(const Key &other) const { return (!(*this == other)); }
 };
