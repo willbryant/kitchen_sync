@@ -1,6 +1,11 @@
 Changelog
 =========
 
+2.19
+----
+
+* Fix unnecessary index re-creation when another unique index has been created at the 'from' end. Thanks @flux-ricky.
+
 2.18
 ----
 
