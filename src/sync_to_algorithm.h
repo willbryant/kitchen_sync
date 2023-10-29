@@ -94,7 +94,7 @@ struct SyncToAlgorithm {
 			std::unique_lock<std::mutex> lock(table_job->mutex);
 
 			if (writer && outstanding_commands < max_outstanding_commands && !table_job->ranges_to_retrieve.empty()) {
-				KeyRange range_to_retrieve(move(table_job->ranges_to_retrieve.front()));
+				KeyRange range_to_retrieve(std::move(table_job->ranges_to_retrieve.front()));
 				table_job->ranges_to_retrieve.pop_front();
 				table_job->rows_commands++;
 				lock.unlock(); // don't hold the mutex while doing IO
@@ -103,7 +103,7 @@ struct SyncToAlgorithm {
 				send_rows_command(table_job, range_to_retrieve);
 
 			} else if (outstanding_commands < max_outstanding_commands && !table_job->ranges_to_check.empty()) {
-				KeyRangeToCheck range_to_check(move(table_job->ranges_to_check.top()));
+				KeyRangeToCheck range_to_check(std::move(table_job->ranges_to_check.top()));
 				table_job->ranges_to_check.pop();
 				table_job->hash_commands++;
 				lock.unlock(); // don't hold the mutex while doing IO
@@ -267,7 +267,7 @@ struct SyncToAlgorithm {
 		// away, to facilitate parallelism; if we can't subdivide, \midpoint stays empty so we only queue one range.
 		ColumnValues midpoint;
 		if (table_job->subdividable) {
-			midpoint = move(first_key_not_earlier_than(client, table_job->table, subdivide_primary_key_range(table_job->table, their_first_key /* ideally for consistency we'd use this value minus one, but it doesn't actually matter */, their_last_key /* our_last_key would be better but might be < their_first_key and that is unsupported */), ColumnValues(), our_last_key));
+			midpoint = std::move(first_key_not_earlier_than(client, table_job->table, subdivide_primary_key_range(table_job->table, their_first_key /* ideally for consistency we'd use this value minus one, but it doesn't actually matter */, their_last_key /* our_last_key would be better but might be < their_first_key and that is unsupported */), ColumnValues(), our_last_key));
 		}
 		if (!midpoint.empty()) {
 			table_job->ranges_to_check.emplace(ColumnValues(), midpoint, UNKNOWN_ROW_COUNT, 1 /* start with 1 row and build up */, 0);
@@ -311,7 +311,7 @@ struct SyncToAlgorithm {
 
 		const Table &table(table_job->table);
 		if (ranges_hashed.empty()) throw command_error("Haven't issued a hash command for " + table.name + ", received " + values_list(client, table, prev_key) + " " + values_list(client, table, last_key));
-		HashResult hash_result(move(ranges_hashed.front()));
+		HashResult hash_result(std::move(ranges_hashed.front()));
 		ranges_hashed.pop_front();
 		if (table_name != table.name || prev_key != hash_result.prev_key || last_key != hash_result.last_key) throw command_error("Didn't issue hash command for " + table.name + " " + values_list(client, table, prev_key) + " " + values_list(client, table, last_key));
 
