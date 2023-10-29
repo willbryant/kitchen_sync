@@ -213,13 +213,13 @@ SQL
         {"name" => "non_nullable", "column_type" => ColumnType::SINT_32BIT, "nullable" => false}],
       "primary_key_columns" => (create_suitable_keys ? [1] : []),
       "primary_key_type" => (create_suitable_keys ? PrimaryKeyType::SUITABLE_UNIQUE_KEY : PrimaryKeyType::NO_AVAILABLE_KEY),
-      "keys" => [ # sorted in uniqueness then alphabetic name order, but otherwise a transcription of the above create index statements
+      "keys" => [ # sorted in alphabetic name order then by uniqueness, but otherwise a transcription of the above create index statements
         ({"name" => "correct_key",          "key_type" => "unique", "columns" => [1]} if create_suitable_keys),
+        {"name" => "everything_key",                               "columns" => [2, 0, 1, 3]},
         {"name" => "ignored_key",          "key_type" => "unique", "columns" => [0, 1]},
         ({"name" => "non_nullable_key",     "key_type" => "unique", "columns" => [3]} if create_suitable_keys),
+        {"name" => "not_unique_key",                               "columns" => [3]},
         {"name" => "version_and_name_key", "key_type" => "unique", "columns" => [1, 2]},
-        {"name" => "everything_key",                               "columns" => [2, 0, 1, 3]},
-        {"name" => "not_unique_key",                               "columns" => [3]}
       ].compact }
   end
 
@@ -232,13 +232,13 @@ SQL
         {"name" => "non_nullable", "column_type" => LegacyColumnType::SINT, "size" =>   4, "nullable" => false}],
       "primary_key_columns" => (create_suitable_keys ? [1] : []),
       "primary_key_type" => (create_suitable_keys ? 2 : 0), # legacy values
-      "keys" => [ # sorted in uniqueness then alphabetic name order, but otherwise a transcription of the above create index statements
+      "keys" => [ # sorted in alphabetic name order then by uniqueness, but otherwise a transcription of the above create index statements
         ({"name" => "correct_key",          "unique" => true,  "columns" => [1]} if create_suitable_keys),
+        {"name" => "everything_key",       "unique" => false, "columns" => [2, 0, 1, 3]},
         {"name" => "ignored_key",          "unique" => true,  "columns" => [0, 1]},
         ({"name" => "non_nullable_key",     "unique" => true,  "columns" => [3]} if create_suitable_keys),
+        {"name" => "not_unique_key",       "unique" => false, "columns" => [3]},
         {"name" => "version_and_name_key", "unique" => true,  "columns" => [1, 2]},
-        {"name" => "everything_key",       "unique" => false, "columns" => [2, 0, 1, 3]},
-        {"name" => "not_unique_key",       "unique" => false, "columns" => [3]}
       ].compact }
   end
 
