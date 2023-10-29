@@ -436,7 +436,7 @@ string enum_values_hash(const vector<string> &values) {
 	Hash hash(hasher.hash);
 
 	char result[14];
-	sprintf(result, "enum_%.2x%.2x%.2x%.2x", hash.md_value[0], hash.md_value[1], hash.md_value[2], hash.md_value[3]);
+	snprintf(result, 14, "enum_%.2x%.2x%.2x%.2x", hash.md_value[0], hash.md_value[1], hash.md_value[2], hash.md_value[3]);
 	return result;
 }
 
