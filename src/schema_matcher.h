@@ -482,7 +482,7 @@ struct TableMatcher {
 				++from_key;
 				// keep the current to_key and re-evaluate on the next iteration
 
-			} else if (from_key != to_key) {
+			} else if (*from_key != *to_key) {
 				// recreate the index.  not all databases can combine these two statements, so we implement the general case only for now.
 				DropKeyStatements<DatabaseClient>::generate(client, from_table, *to_key, append_to(key_statements));
 				CreateKeyStatements<DatabaseClient>::generate(client, from_table, *from_key, append_to(key_statements));
