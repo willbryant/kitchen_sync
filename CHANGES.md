@@ -1,6 +1,12 @@
 Changelog
 =========
 
+2.20
+----
+
+* Fix another unnecessary index re-creation case.
+* Fix some compiler deprecations.
+
 2.19
 ----
 
