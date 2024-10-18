@@ -15,7 +15,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-key adv --recv-keys --keyserver hkp://key
 	DEBIAN_FRONTEND=noninteractive add-apt-repository 'deb http://apt.postgresql.org/pub/repos/apt/ jammy-pgdg main 15' && \
 	DEBIAN_FRONTEND=noninteractive apt-get update && \
 	DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-		postgresql-14 postgresql-14-postgis-3 postgresql-client-14 libpq-dev && \
+		postgresql-15 postgresql-15-postgis-3 postgresql-client-15 libpq-dev && \
 	apt-get clean -y && \
 	rm -rf /var/cache/apt/archives/*
 
