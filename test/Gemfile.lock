@@ -4,7 +4,7 @@ GEM
     digest-blake3 (1.3.3.1)
     msgpack (1.6.0)
     mysql2 (0.5.4)
-    pg (1.2.3)
+    pg (1.3.5)
     power_assert (2.0.3)
     ruby-xxHash (0.4.0.2)
     test-unit (3.5.7)
