@@ -34,6 +34,10 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-ubuntu:20.04-postgresql:13 # from PGDG's repos
+  ubuntu_24.04-postgresql_16-maraidb_10.11:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile-ubuntu:24.04-postgresql:16-mariadb:10.11
   ubuntu_22.04-postgresql_14-mysql_8.0:
     build:
       context: ..
