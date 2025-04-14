@@ -1,21 +1,22 @@
 # this dockerfile builds kitchen sync and runs the test suite.  it needs to be built with the project repo root as the buildroot.
 # note that the tests are run as part of the build, you don't need to run anything afterwards.
 
-FROM ubuntu:22.04
+FROM ubuntu:20.04
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 	DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
 	DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
 		build-essential cmake libssl-dev \
+		libmysqlclient-dev \
 		git ruby ruby-dev software-properties-common dirmngr gpg-agent && \
 	apt-get clean -y && \
 	rm -rf /var/cache/apt/archives/*
 
 RUN DEBIAN_FRONTEND=noninteractive apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8 && \
-	DEBIAN_FRONTEND=noninteractive add-apt-repository 'deb http://sfo1.mirrors.digitalocean.com/mariadb/repo/10.8/ubuntu jammy main' && \
+	DEBIAN_FRONTEND=noninteractive add-apt-repository 'deb http://sfo1.mirrors.digitalocean.com/mariadb/repo/10.5/ubuntu focal main' && \
 	DEBIAN_FRONTEND=noninteractive apt-get update && \
 	DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-		mariadb-server libmariadb-dev && \
+		mariadb-server && \
 	apt-get clean -y && \
 	rm -rf /var/cache/apt/archives/*
 

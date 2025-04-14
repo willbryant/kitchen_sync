@@ -14,18 +14,6 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-ubuntu:22.04-mariadb:10.11 # from MariaDB's repos
-  ubuntu_22.04-mariadb_10.10:
-    build:
-      context: ..
-      dockerfile: test/Dockerfile-ubuntu:22.04-mariadb:10.10 # from MariaDB's repos
-  ubuntu_22.04-mariadb_10.9:
-    build:
-      context: ..
-      dockerfile: test/Dockerfile-ubuntu:22.04-mariadb:10.9 # from MariaDB's repos
-  ubuntu_22.04-mariadb_10.8:
-    build:
-      context: ..
-      dockerfile: test/Dockerfile-ubuntu:22.04-mariadb:10.8 # from MariaDB's repos
   ubuntu_20.04-mariadb_10.6:
     build:
       context: ..
@@ -34,14 +22,10 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-ubuntu:20.04-mariadb:10.5 # from MariaDB's repos
-  ubuntu_20.04-mariadb_10.4:
+  ubuntu_20.04-mysqlclient-mariadb_10.5:
     build:
       context: ..
-      dockerfile: test/Dockerfile-ubuntu:20.04-mariadb:10.4 # from MariaDB's repos
-  ubuntu_20.04-mysqlclient-mariadb_10.4:
-    build:
-      context: ..
-      dockerfile: test/Dockerfile-ubuntu:20.04-mysqlclient-mariadb:10.4 # from MariaDB's repos + standard mysqlclient
+      dockerfile: test/Dockerfile-ubuntu:20.04-mysqlclient-mariadb:10.5 # from MariaDB's repos + standard mysqlclient
   ubuntu_20.04-postgresql_15:
     build:
       context: ..
