@@ -46,18 +46,6 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-ubuntu:20.04-postgresql:13 # from PGDG's repos
-  ubuntu_18.04-postgresql_12_no_postgis:
-    build:
-      context: ..
-      dockerfile: test/Dockerfile-ubuntu:18.04-postgresql:12-no-postgis # from PGDG's repos
-  ubuntu_18.04-postgresql_12:
-    build:
-      context: ..
-      dockerfile: test/Dockerfile-ubuntu:18.04-postgresql:12 # from PGDG's repos
-  ubuntu_18.04-postgresql_11:
-    build:
-      context: ..
-      dockerfile: test/Dockerfile-ubuntu:18.04-postgresql:11 # from PGDG's repos
   ubuntu_22.04-postgresql_14-mysql_8.0:
     build:
       context: ..
@@ -66,14 +54,6 @@ services:
     build:
       context: ..
       dockerfile: test/Dockerfile-ubuntu:20.04-postgresql:12-mysql:8.0
-  ubuntu_18.04-postgresql_10-mysql_5.7:
-    build:
-      context: ..
-      dockerfile: test/Dockerfile-ubuntu:18.04-postgresql:10-mysql:5.7
-  centos_7-mariadb_5.5-postgresql_9.2:
-    build:
-      context: ..
-      dockerfile: test/Dockerfile-centos:7-mariadb:5.5-postgresql:9.2-no-postgis
 
   ubuntu_20.04-checks:
     build:
