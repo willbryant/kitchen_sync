@@ -10,6 +10,10 @@
 
 version: '3'
 services:
+  ubuntu_24.04-mariadb_11.4:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile-ubuntu:24.04-mariadb:11.4 # from MariaDB's repos
   ubuntu_22.04-mariadb_10.11:
     build:
       context: ..
