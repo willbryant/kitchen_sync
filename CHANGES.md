@@ -1,6 +1,11 @@
 Changelog
 =========
 
+2.21
+----
+* Fix compilation errors with newer toolchains. Thanks @cho-m.
+* Compatibility with CMake v4. Thanks @scottgeary.
+
 2.20
 ----
 
